@@ -1,0 +1,34 @@
+{
+  "name": "therapypub-puzzlequest",
+  "version": "0.0.1",
+  "description": "Therapy Pub and Co. PuzzleQuest website",
+  "main": "src/app.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jimevans/therapypub-puzzlequest.git"
+  },
+  "author": "Therapy Pub and Co.",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jimevans/therapypub-puzzlequest/issues"
+  },
+  "homepage": "https://github.com/jimevans/therapypub-puzzlequest#readme",
+  "dependencies": {
+    "bcrypt": "^5.1.0",
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^8.5.1",
+    "mongodb": "^4.12.1",
+    "mongoose": "^6.8.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.29.0",
+    "eslint-config-google": "^0.14.0"
+  }
+}
