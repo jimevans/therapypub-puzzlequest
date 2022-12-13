@@ -14,7 +14,9 @@ export async function getUserByUserName(name) {
 
 export async function deleteUser(name) {
     let result = await User.findOneAndDelete({userName: name});
-    console.log(result);
+    if (result === null) {
+        return { 'error': `User with user name ${name} does not exist` }
+    }
     return { 'status': 'success' };
 };
 
@@ -45,19 +47,19 @@ export async function createUser(user) {
     return { 'status': 'success' }
 };
 
-export async function updateUser(user) {
-    let foundUser = await User.findOne({ userName: user.userName });
+export async function updateUser(name, userData) {
+    let foundUser = await User.findOne({ userName: name });
     if (foundUser === null) {
-        return { 'error': `No user with user name ${user.userName} found` };
+        return { 'error': `No user with user name ${name} found` };
     }
     foundUser.displayName = userData.displayName || foundUser.displayName;
     if (userData.password) {
         const password = await bcrypt.hash(userData.password, 10);
         foundUser.password = password;
     }
-    foundUser.email = user.email.toLowerCase() || foundUser.email;
-    foundUser.sms = user.sms || foundUser.sms;
-    foundUser.authorizationLevel = user.authorizationLevel || foundUser.authorizationLevel;
+    foundUser.email = userData.email.toLowerCase() || foundUser.email;
+    foundUser.sms = userData.sms || foundUser.sms;
+    foundUser.authorizationLevel = userData.authorizationLevel || foundUser.authorizationLevel;
     await foundUser.save();
     return { 'status': 'success' };
 };
