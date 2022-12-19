@@ -55,6 +55,7 @@ const questSchema = new Schema({
 });
 
 const QuestModel = model('Quest', questSchema);
+const QuestPuzzleModel = model('QuestPuzzle', questPuzzleSchema);
 
-export { QuestModel }
+export { QuestModel, QuestPuzzleModel }
 
