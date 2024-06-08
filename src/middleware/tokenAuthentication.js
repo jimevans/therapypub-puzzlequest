@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import config from '../config.js';
+import { config } from '../config.js';
 
 const TOKEN_COOKIE_NAME = 'pq-db-token'
 
@@ -11,7 +11,7 @@ export default async (req, res, next) => {
     // are not supported.
     if ('token' in req.body) {
         // Token is part of a form submitted by the user. If the
-        // token is found as part of a form sumbission, move it to
+        // token is found as part of a form submission, move it to
         // an http-only cookie so future UI requests can access it.
         token = req.body.token;
         res.cookie(TOKEN_COOKIE_NAME, token, {
@@ -23,7 +23,7 @@ export default async (req, res, next) => {
         // method used by UI requests.
         token = req.cookies[TOKEN_COOKIE_NAME];
     } else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-        // Token is sent in the request authorizaation header. This
+        // Token is sent in the request authorization header. This
         // is usually the method of transmission from an external API
         // clients.
         token = req.headers.authorization.split(' ')[1];
@@ -32,7 +32,7 @@ export default async (req, res, next) => {
     if (token !== null) {
         try {
             let decoded = await jwt.verify(token, config.PQ_SECRET_KEY);
-            req.user = { 
+            req.user = {
                 userName: decoded.userName,
                 displayName: decoded.displayName,
                 email: decoded.email,
