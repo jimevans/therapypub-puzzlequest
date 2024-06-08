@@ -13,10 +13,13 @@ const mongodb = config.PQ_MONGODB_URI;
 
 import mongoose from 'mongoose';
 mongoose.set('strictQuery', false);
-mongoose.connect(mongodb, { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.connect(mongodb);
 
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'MongoDB connection error:'));
+
+import { userRouter } from './routes/users.js';
+app.use('/users', userRouter);
 
 app.listen(port, () => {
     console.log(
