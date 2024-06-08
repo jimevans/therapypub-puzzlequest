@@ -47,7 +47,11 @@ export async function register(req, res) {
 };
 
 function isUserAuthorized(userToBeModified, loggedInUserName, authorizationLevel) {
-    return userToBeModified === loggedInUserName || authorizationLevel > 0;
+    return userToBeModified === loggedInUserName || isUserAdmin(authorizationLevel);
+}
+
+function isUserAdmin(authorizationLevel) {
+    return authorizationLevel > 0;
 }
 
 export async function update(req, res) {
@@ -73,5 +77,13 @@ export async function remove(req, res) {
     if ('error' in response) {
         res.status(500).send(JSON.stringify(response));
     }
-    res.send(JSON.stringify(response));    
+    res.send(JSON.stringify(response));
+};
+
+export async function list(req, res) {
+    if (!isUserAdmin(req.user.authorizationLevel)) {
+        res.status(403).send(JSON.stringify({ 'error': `User ${req.user.userName} not authorized to list users`}));
+    }
+    const response = await UserService.listUsers();
+    res.send(JSON.stringify(response));
 };

@@ -2,10 +2,10 @@ import { UserModel as User } from '../models/user.model.js';
 
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import config from '../config.js';
+import { config } from '../config.js';
 
 export async function getUserByUserName(name) {
-    let user = await User.findOne({ userName: name }).lean();
+    const user = await User.findOne({ userName: name }).lean();
     if (user === null) {
         return { 'error': `No user with user name ${name} found` };
     }
@@ -13,7 +13,7 @@ export async function getUserByUserName(name) {
 };
 
 export async function deleteUser(name) {
-    let result = await User.findOneAndDelete({userName: name});
+    const result = await User.findOneAndDelete({userName: name});
     if (result === null) {
         return { 'error': `User with user name ${name} does not exist` }
     }
@@ -21,18 +21,19 @@ export async function deleteUser(name) {
 };
 
 export async function createUser(user) {
-    const userExists = await User.find({userName: user.userName}).length !== 0;
+    const existingUsers = await User.find({ userName: user.userName });
+    const userExists = existingUsers.length !== 0;
     if (userExists) {
         return { 'error': `User with user name ${user.userName} already exists` };
     }
     let authLevel = user.authorizationLevel || 0;
-    if (User.count() === 0) {
+    if (await User.countDocuments() === 0) {
         // First user created must be an admin user
         authLevel = 1;
     }
     const password = await bcrypt.hash(user.password, 10);
     try {
-        let newUser = new User({
+        const newUser = new User({
             userName: user.userName,
             displayName: user.displayName || user.userName,
             password: password,
@@ -48,7 +49,7 @@ export async function createUser(user) {
 };
 
 export async function updateUser(name, userData) {
-    let foundUser = await User.findOne({ userName: name });
+    const foundUser = await User.findOne({ userName: name });
     if (foundUser === null) {
         return { 'error': `No user with user name ${name} found` };
     }
@@ -72,7 +73,7 @@ export async function authenticate(userName, password) {
     if (!(await bcrypt.compare(password, user.password))) {
         return { 'error': `Password for user ${userName} does not match` };
     }
-    let token = jwt.sign(
+    const token = jwt.sign(
         {
             userName: user.userName,
             displayName: user.displayName,
@@ -81,9 +82,14 @@ export async function authenticate(userName, password) {
             authorizationLevel: user.authorizationLevel
         },
         config.PQ_SECRET_KEY,
-        { 
+        {
             expiresIn: '2h'
         }
     );
     return { 'status': 'success', 'token': token };
 };
+
+export async function listUsers() {
+    const users = await User.find({});
+    return { 'status': 'success', 'user': users }
+}
