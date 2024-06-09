@@ -1,5 +1,18 @@
 import { Schema, model } from 'mongoose';
 
+const QuestStatus = {
+  NOT_STARTED: 0,
+  IN_PROGRESS: 1,
+  COMPLETED: 2
+}
+
+const QuestPuzzleStatus = {
+  UNAVAILABLE: 0,
+  AWAITING_ACTIVATION: 1,
+  IN_PROGRESS: 2,
+  COMPLETED: 3
+}
+
 const questPuzzleSchema = new Schema({
   puzzleName: {
     type: String,
@@ -57,5 +70,5 @@ const questSchema = new Schema({
 const QuestModel = model('Quest', questSchema);
 const QuestPuzzleModel = model('QuestPuzzle', questPuzzleSchema);
 
-export { QuestModel, QuestPuzzleModel }
+export { QuestModel, QuestPuzzleModel, QuestStatus, QuestPuzzleStatus }
 

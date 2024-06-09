@@ -1,11 +1,12 @@
 import { QuestModel as Quest } from "../models/quest.model.js";
 import { QuestPuzzleModel as QuestPuzzle } from "../models/quest.model.js";
+import { QuestStatus, QuestPuzzleStatus } from "../models/quest.model.js";
 
 function getCurrentPuzzleIndex(quest) {
   let currentPuzzleIndex = 0;
   while (
     currentPuzzleIndex < quest.puzzles.length &&
-    quest.puzzles[currentPuzzleIndex] !== 1
+    quest.puzzles[currentPuzzleIndex].status !== QuestPuzzleStatus.AWAITING_ACTIVATION
   ) {
     currentPuzzleIndex++;
   }
@@ -20,7 +21,7 @@ async function getQuestData(name, omitUnavailablePuzzles = false) {
   ];
 
   if (omitUnavailablePuzzles) {
-    matchCriteria.push({ $match: { "puzzles.status": { $gte: 1 } } });
+    matchCriteria.push({ $match: { "puzzles.status": { $gte: QuestPuzzleStatus.AWAITING_ACTIVATION } } });
   }
   const quest = await Quest.aggregate(matchCriteria);
   return quest;
@@ -42,7 +43,7 @@ export async function createQuest(questDefinition) {
     // managing the implications of creating a quest.
     return { error: "Quest definition must contain a user name" };
   }
-  const questExists = (await User.find({ name: questName }).length) !== 0;
+  const questExists = (await Quest.find({ name: questName }).length) !== 0;
   if (questExists) {
     return { error: `Quest with name ${questName} already exists` };
   }
@@ -50,7 +51,7 @@ export async function createQuest(questDefinition) {
     name: questName,
     displayName: questDefinition.displayName || questName,
     userName: questDefinition.userName,
-    status: 0,
+    status: QuestStatus.NOT_STARTED,
     puzzles: [],
   });
 
@@ -65,7 +66,7 @@ export async function createQuest(questDefinition) {
         puzzleName: puzzleDefinition.puzzleName,
         questOrder: puzzleCount,
         nextHintToDisplay: 0,
-        status: 0,
+        status: QuestPuzzleStatus.UNAVAILABLE,
       });
       createQuest.puzzles.push(puzzle);
       puzzleCount++;
@@ -97,7 +98,7 @@ export async function addPuzzle(
     puzzleName: puzzleDefinition.puzzleName,
     questOrder: puzzleCount,
     nextHintToDisplay: 0,
-    status: 0,
+    status: QuestPuzzleStatus.UNAVAILABLE,
   });
 
   if (puzzlePosition < 0 || puzzlePosition >= quest.puzzles.length) {
@@ -115,7 +116,7 @@ export async function addPuzzle(
 }
 
 export async function getQuest(name) {
-  const quest = await getQuestData(name, true).lean();
+  const quest = await getQuestData(name).lean();
   if (quest === null) {
     return { error: `No quest with name ${name} found` };
   }
@@ -128,39 +129,14 @@ export async function startQuest(name) {
     return { error: `No quest with name ${name} found` };
   }
 
-  if (quest.status !== 0) {
+  if (quest.status !== QuestStatus.NOT_STARTED) {
     return {
       error: `Quest ${name} cannot be started; status is ${quest.status}`,
     };
   }
-  quest.status = 1;
+  quest.status = QuestStatus.IN_PROGRESS;
+  quest.puzzles[0].status = QuestPuzzleStatus.AWAITING_ACTIVATION;
   quest.puzzles[0].startTime = new Date(Date.now());
-  await quest.save();
-  return { status: "success" };
-}
-
-export async function finishPuzzle(name) {
-  const quest = await getQuestData(name);
-  if (quest === null) {
-    return { error: `No quest with name ${name} found` };
-  }
-
-  if (quest.status >= 2) {
-    return { error: `Quest ${name} is already completed` };
-  } else if (quest.status < 1) {
-    return { error: `Quest ${name} is not yet started` };
-  }
-
-  const currentPuzzleIndex = getCurrentPuzzleIndex(quest);
-  const currentTime = new Date(Date.now());
-  quest.puzzles[currentPuzzleIndex].endTime = currentTime;
-  quest.puzzles[currentPuzzleIndex].status = 3;
-  if (currentPuzzleIndex < quest.puzzles.length) {
-    quest.puzzles[currentPuzzleIndex + 1].status = 1;
-    quest.puzzles[currentPuzzleIndex + 1].startTime = currentTime;
-  } else {
-    quest.status = 2;
-  }
   await quest.save();
   return { status: "success" };
 }
@@ -171,9 +147,9 @@ export async function activatePuzzle(name) {
     return { error: `No quest with name ${name} found` };
   }
 
-  if (quest.status >= 2) {
+  if (quest.status >= QuestStatus.COMPLETED) {
     return { error: `Quest ${name} is already completed` };
-  } else if (quest.status < 1) {
+  } else if (quest.status < QuestStatus.NOT_STARTED) {
     return { error: `Quest ${name} is not yet started` };
   }
 
@@ -184,7 +160,33 @@ export async function activatePuzzle(name) {
 
   const currentTime = new Date(Date.now());
   quest.puzzles[currentPuzzleIndex].activationTime = currentTime;
-  quest.puzzles[currentPuzzleIndex].status = 2;
+  quest.puzzles[currentPuzzleIndex].status = QuestPuzzleStatus.IN_PROGRESS;
+  await quest.save();
+  return { status: "success" };
+}
+
+export async function finishPuzzle(name) {
+  const quest = await getQuestData(name);
+  if (quest === null) {
+    return { error: `No quest with name ${name} found` };
+  }
+
+  if (quest.status >= QuestStatus.COMPLETED) {
+    return { error: `Quest ${name} is already completed` };
+  } else if (quest.status < QuestStatus.IN_PROGRESS) {
+    return { error: `Quest ${name} is not yet started` };
+  }
+
+  const currentPuzzleIndex = getCurrentPuzzleIndex(quest);
+  const currentTime = new Date(Date.now());
+  quest.puzzles[currentPuzzleIndex].endTime = currentTime;
+  quest.puzzles[currentPuzzleIndex].status = QuestPuzzleStatus.COMPLETED;
+  if (currentPuzzleIndex < quest.puzzles.length) {
+    quest.puzzles[currentPuzzleIndex + 1].status = QuestPuzzleStatus.AWAITING_ACTIVATION;
+    quest.puzzles[currentPuzzleIndex + 1].startTime = currentTime;
+  } else {
+    quest.status = QuestStatus.COMPLETED;
+  }
   await quest.save();
   return { status: "success" };
 }
@@ -195,9 +197,9 @@ export async function getPuzzleHint(name) {
     return { error: `No quest with name ${name} found` };
   }
 
-  if (quest.status >= 2) {
+  if (quest.status >= QuestStatus.COMPLETED) {
     return { error: `Quest ${name} is already completed` };
-  } else if (quest.status < 1) {
+  } else if (quest.status < QuestStatus.NOT_STARTED) {
     return { error: `Quest ${name} is not yet started` };
   }
 
@@ -208,7 +210,7 @@ export async function getPuzzleHint(name) {
   // implications of requesting hints.
   const currentPuzzleIndex = getCurrentPuzzleIndex(quest);
   const currentPuzzleStatus = quest.puzzles[currentPuzzleIndex].status;
-  if (currentPuzzleStatus !== 2) {
+  if (currentPuzzleStatus !== QuestPuzzleStatus.IN_PROGRESS) {
     return {
       error: `Current puzzle (index: ${currentPuzzleIndex}) is not active (puzzle status: ${currentPuzzleStatus})`,
     };
