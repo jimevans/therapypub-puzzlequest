@@ -1,9 +1,15 @@
 import { config } from "../config.js";
 import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
+import { AuthorizationLevel } from "../models/user.model.js";
 
 export function index(req, res) {
   if (req.user === null) {
     res.render("index");
+    return;
+  }
+
+  if (req.user.authorizationLevel === AuthorizationLevel.ADMIN) {
+    res.render("adminHome", { user: req.user });
     return;
   }
   res.render("userHome", { user: req.user });
