@@ -13,7 +13,7 @@ function getCurrentPuzzleIndex(quest) {
 }
 
 async function getQuestData(name, omitUnavailablePuzzles = false) {
-  let matchCriteria = [
+  const matchCriteria = [
     { $match: { name: name } },
     { $unwind: "$puzzles" },
     { $sort: "puzzles.questOrder" },
@@ -22,7 +22,7 @@ async function getQuestData(name, omitUnavailablePuzzles = false) {
   if (omitUnavailablePuzzles) {
     matchCriteria.push({ $match: { "puzzles.status": { $gte: 1 } } });
   }
-  let quest = await Quest.aggregate(matchCriteria);
+  const quest = await Quest.aggregate(matchCriteria);
   return quest;
 }
 
@@ -46,7 +46,7 @@ export async function createQuest(questDefinition) {
   if (questExists) {
     return { error: `Quest with name ${questName} already exists` };
   }
-  let quest = new Quest({
+  const quest = new Quest({
     name: questName,
     displayName: questDefinition.displayName || questName,
     userName: questDefinition.userName,
@@ -61,7 +61,7 @@ export async function createQuest(questDefinition) {
     // when managing the implications of creating puzzles in a quest.
     let puzzleCount = 0;
     questDefinition.puzzles.forEach((puzzleDefinition) => {
-      let puzzle = new QuestPuzzle({
+      const puzzle = new QuestPuzzle({
         puzzleName: puzzleDefinition.puzzleName,
         questOrder: puzzleCount,
         nextHintToDisplay: 0,
@@ -80,7 +80,7 @@ export async function addPuzzle(
   puzzleDefinition,
   puzzlePosition = -1
 ) {
-  let quest = await getQuestData(questName, true);
+  const quest = await getQuestData(questName, true);
   if (quest === null) {
     return { error: `No quest with name ${questName} found` };
   }
@@ -93,7 +93,7 @@ export async function addPuzzle(
   // not exist. This is to avoid a lookup of the puzzle from the Puzzles
   // schema. Consumers of this service will have to take that into account
   // when managing the implications of creating puzzles in a quest.
-  let puzzle = new QuestPuzzle({
+  const puzzle = new QuestPuzzle({
     puzzleName: puzzleDefinition.puzzleName,
     questOrder: puzzleCount,
     nextHintToDisplay: 0,
@@ -115,7 +115,7 @@ export async function addPuzzle(
 }
 
 export async function getQuest(name) {
-  let quest = await getQuestData(name, true).lean();
+  const quest = await getQuestData(name, true).lean();
   if (quest === null) {
     return { error: `No quest with name ${name} found` };
   }
@@ -123,7 +123,7 @@ export async function getQuest(name) {
 }
 
 export async function startQuest(name) {
-  let quest = await getQuestData(name);
+  const quest = await getQuestData(name);
   if (quest === null) {
     return { error: `No quest with name ${name} found` };
   }
@@ -140,7 +140,7 @@ export async function startQuest(name) {
 }
 
 export async function finishPuzzle(name) {
-  let quest = await getQuestData(name);
+  const quest = await getQuestData(name);
   if (quest === null) {
     return { error: `No quest with name ${name} found` };
   }
@@ -166,7 +166,7 @@ export async function finishPuzzle(name) {
 }
 
 export async function activatePuzzle(name) {
-  let quest = await getQuestData(name);
+  const quest = await getQuestData(name);
   if (quest === null) {
     return { error: `No quest with name ${name} found` };
   }
@@ -190,7 +190,7 @@ export async function activatePuzzle(name) {
 }
 
 export async function getPuzzleHint(name) {
-  let quest = await getQuestData(name);
+  const quest = await getQuestData(name);
   if (quest === null) {
     return { error: `No quest with name ${name} found` };
   }

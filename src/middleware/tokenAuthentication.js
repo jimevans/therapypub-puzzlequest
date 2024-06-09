@@ -34,7 +34,7 @@ export async function tokenAuthenticate(req, res, next) {
 
   if (token !== null) {
     try {
-      let decoded = await jwt.verify(token, config.PQ_SECRET_KEY);
+      const decoded = await jwt.verify(token, config.PQ_SECRET_KEY);
       req.user = {
         userName: decoded.userName,
         displayName: decoded.displayName,

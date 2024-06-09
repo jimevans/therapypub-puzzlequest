@@ -18,7 +18,7 @@ export async function login(req, res) {
       .send(JSON.stringify({ error: "No password in request body" }));
     return;
   }
-  let response = await UserService.authenticate(
+  const response = await UserService.authenticate(
     req.body.userName,
     req.body.password
   );
@@ -50,7 +50,7 @@ export async function register(req, res) {
     res.status(400).send(JSON.stringify({ error: "No email in request body" }));
     return;
   }
-  let response = await UserService.createUser(req.body);
+  const response = await UserService.createUser(req.body);
   if ("error" in response) {
     res.status(400).send(JSON.stringify(response));
     return;
@@ -85,7 +85,7 @@ export async function update(req, res) {
         })
       );
   }
-  let response = await UserService.updateUser(req.params.userName, req.body);
+  const response = await UserService.updateUser(req.params.userName, req.body);
   if ("error" in response) {
     res.status(500).send(JSON.stringify(response));
   }
@@ -108,7 +108,7 @@ export async function remove(req, res) {
         })
       );
   }
-  let response = await UserService.deleteUser(req.params.userName);
+  const response = await UserService.deleteUser(req.params.userName);
   if ("error" in response) {
     res.status(500).send(JSON.stringify(response));
   }
