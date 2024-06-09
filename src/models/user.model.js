@@ -36,7 +36,12 @@ const userSchema = new Schema({
 });
 
 const teamSchema = new Schema({
-  team
+  teamName: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  members: [userSchema]
 });
 
 const UserModel = model('User', userSchema);
