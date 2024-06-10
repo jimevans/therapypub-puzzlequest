@@ -14,3 +14,24 @@ button.pq-button:hover {
 button.pq-button:active {
   background-color: #2878ad;
 }
+
+nav {
+  background-color: #3498db;
+  color: #ffffff;
+  display: flex;
+  justify-content: space-between;
+}
+
+nav ul {
+  list-style-type: none;
+}
+
+nav ul li {
+  display: inline-flex;
+  margin: 0.3em 1em;
+}
+
+a.menu-link {
+  color: #ffffff;
+  text-decoration: none;
+}

@@ -6,10 +6,21 @@
     <link rel="stylesheet" type="text/css" href="/style/pq.css" />
   </head>
   <body>
+    <nav>
+      <ul>
+        <li><%=user.displayName %></li>
+      </ul>
+      <ul>
+        <li data-api-endpoint="">Quests</li>
+        <li data-api-endpoint="">Puzzles</li>
+        <li><a id="users" class="menu-link" href="#" data-api-endpoint="/api/users/list">Users</a></li>
+        <li><a class="menu-link" href="/logout">Logout</a></li>
+      </ul>
+    </nav>
     <p>Welcome back <%=user.displayName %></p>
     <p>You are logged in with administrative privileges.</p>
-    <p>
-      <a href="/logout">Logout</a>
-    </p>
+    <div id="dataCollectionName"></div>
+    <div id="dataDisplay"></div>
+    <script type="text/javascript" src="/script/admin.js"></script>
   </body>
 </html>

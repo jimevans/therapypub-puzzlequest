@@ -58,10 +58,10 @@ export async function register(req, res) {
   res.send(JSON.stringify(response));
 }
 
-function isUserAuthorized(userToBeModified, user, authorizationLevel) {
+function isUserAuthorized(userToBeModified, user) {
   return (
     AuthenticationService.isCurrentUser(userToBeModified, user) ||
-    AuthenticationService.isUserAdmin(authorizationLevel)
+    AuthenticationService.isUserAdmin(user)
   );
 }
 
@@ -116,7 +116,7 @@ export async function remove(req, res) {
 }
 
 export async function list(req, res) {
-  if (!AuthenticationService.isUserAdmin(req.user.authorizationLevel)) {
+  if (!AuthenticationService.isUserAdmin(req.user)) {
     res
       .status(403)
       .send(

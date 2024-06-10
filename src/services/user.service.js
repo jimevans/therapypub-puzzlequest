@@ -92,5 +92,5 @@ export async function authenticate(userName, password) {
 
 export async function listUsers() {
   const users = await User.find({});
-  return { status: "success", user: users };
+  return { status: "success", users: users };
 }

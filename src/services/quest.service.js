@@ -13,6 +13,15 @@ function getCurrentPuzzleIndex(quest) {
   return currentPuzzleIndex;
 }
 
+export async function getQuests(status = -1) {
+  const statusFilter = {};
+  if (status >= QuestStatus.NOT_STARTED) {
+    statusFilter.status = status;
+  }
+  const quests = await Quest.find(statusFilter);
+  return quests;
+}
+
 async function getQuestData(name, omitUnavailablePuzzles = false) {
   const matchCriteria = [
     { $match: { name: name } },
