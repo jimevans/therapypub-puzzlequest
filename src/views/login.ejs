@@ -3,56 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <title>Login to PuzzleQuest</title>
-    <link rel="stylesheet" type="text/css" href="/public/pq.css" />
-    <script type="text/javascript">
-      async function login(e) {
-        e.preventDefault();
-        try {
-          data = {
-            userName: document.getElementById("userName").value,
-            password: document.getElementById("password").value,
-          };
-          const response = await fetch("/api/users/login", {
-            method: "post",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(data),
-          });
-          if (response.ok) {
-            const data = await response.json();
-            document.getElementById("token").value = data["token"];
-            document.getElementById("tokenForm").submit();
-          } else {
-            document.querySelector(".loginError").hidden = false;
-          }
-        } catch (err) {
-          console.log("error: " + err);
-        }
-      }
-
-      function addListeners() {
-        document.getElementById("login").addEventListener("click", (e) => {
-          login(e);
-        });
-      }
-
-      window.onload = addListeners;
-    </script>
+    <link rel="stylesheet" type="text/css" href="/style/pq.css" />
   </head>
   <body>
     <div>
       <label for="userName">User Name:</label>&nbsp;<input id="userName" />
     </div>
     <div>
-      <label for="password">Password:</label>&nbsp;<input
-        id="password"
-        type="password"
-      />
+      <label for="password">Password:</label>&nbsp;
+      <input id="password" type="password" />
     </div>
     <div>
-      <a id="login" href="/login">Login</a>&nbsp;
-      <a id="cancel" href="/">Cancel</a>
+      <button id="login" class="pq-button">Login</button>&nbsp;
+      <button id="cancel" class="pq-button">Cancel</button>
     </div>
     <div class="loginError" hidden>
       <span>Invalid user name or password</span>
@@ -61,5 +24,6 @@
       <input id="token" name="token" />
       <input name="submitButton" type="submit" />
     </form>
+    <script type="text/javascript" src="/script/login.js"></script>
   </body>
 </html>

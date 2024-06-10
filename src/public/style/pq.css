@@ -1,0 +1,16 @@
+button.pq-button {
+  border: 0;
+  background-color: #3498db;
+  color: #ffffff;
+  outline: 0;
+  padding: 10px 37.5px 10px 37.5px;
+  font-size: 1em;
+}
+
+button.pq-button:hover {
+  background-color: #2e8ac7;
+}
+
+button.pq-button:active {
+  background-color: #2878ad;
+}
