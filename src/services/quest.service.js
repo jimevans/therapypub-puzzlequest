@@ -6,7 +6,8 @@ function getCurrentPuzzleIndex(quest) {
   let currentPuzzleIndex = 0;
   while (
     currentPuzzleIndex < quest.puzzles.length &&
-    quest.puzzles[currentPuzzleIndex].status !== QuestPuzzleStatus.AWAITING_ACTIVATION
+    quest.puzzles[currentPuzzleIndex].status !==
+      QuestPuzzleStatus.AWAITING_ACTIVATION
   ) {
     currentPuzzleIndex++;
   }
@@ -30,7 +31,11 @@ async function getQuestData(name, omitUnavailablePuzzles = false) {
   ];
 
   if (omitUnavailablePuzzles) {
-    matchCriteria.push({ $match: { "puzzles.status": { $gte: QuestPuzzleStatus.AWAITING_ACTIVATION } } });
+    matchCriteria.push({
+      $match: {
+        "puzzles.status": { $gte: QuestPuzzleStatus.AWAITING_ACTIVATION },
+      },
+    });
   }
   const quest = await Quest.aggregate(matchCriteria);
   return quest;
@@ -191,7 +196,8 @@ export async function finishPuzzle(name) {
   quest.puzzles[currentPuzzleIndex].endTime = currentTime;
   quest.puzzles[currentPuzzleIndex].status = QuestPuzzleStatus.COMPLETED;
   if (currentPuzzleIndex < quest.puzzles.length) {
-    quest.puzzles[currentPuzzleIndex + 1].status = QuestPuzzleStatus.AWAITING_ACTIVATION;
+    quest.puzzles[currentPuzzleIndex + 1].status =
+      QuestPuzzleStatus.AWAITING_ACTIVATION;
     quest.puzzles[currentPuzzleIndex + 1].startTime = currentTime;
   } else {
     quest.status = QuestStatus.COMPLETED;

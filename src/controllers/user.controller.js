@@ -58,9 +58,9 @@ export async function register(req, res) {
   res.send(JSON.stringify(response));
 }
 
-function isUserAuthorized(userToBeModified, user) {
+function isUserAuthorized(userNameToBeModified, user) {
   return (
-    AuthenticationService.isCurrentUser(userToBeModified, user) ||
+    AuthenticationService.isCurrentUser(userNameToBeModified, user) ||
     AuthenticationService.isUserAdmin(user)
   );
 }
@@ -70,20 +70,12 @@ export async function update(req, res) {
     res.status(400).send(JSON.stringify({ error: "No request body" }));
     return;
   }
-  if (
-    !isUserAuthorized(
-      req.params.userName,
-      req.user,
-      req.user.authorizationLevel
-    )
-  ) {
-    res
-      .status(403)
-      .send(
-        JSON.stringify({
-          error: `User ${req.user.userName} not authorized to update user ${req.params.userName}`,
-        })
-      );
+  if (!isUserAuthorized(req.params.userName, req.user)) {
+    res.status(403).send(
+      JSON.stringify({
+        error: `User ${req.user.userName} not authorized to update user ${req.params.userName}`,
+      })
+    );
   }
   const response = await UserService.updateUser(req.params.userName, req.body);
   if ("error" in response) {
@@ -93,20 +85,12 @@ export async function update(req, res) {
 }
 
 export async function remove(req, res) {
-  if (
-    !isUserAuthorized(
-      req.params.userName,
-      req.user,
-      req.user.authorizationLevel
-    )
-  ) {
-    res
-      .status(403)
-      .send(
-        JSON.stringify({
-          error: `User ${req.user.userName} not authorized to delete user ${req.params.userName}`,
-        })
-      );
+  if (!isUserAuthorized(req.params.userName, req.user)) {
+    res.status(403).send(
+      JSON.stringify({
+        error: `User ${req.user.userName} not authorized to delete user ${req.params.userName}`,
+      })
+    );
   }
   const response = await UserService.deleteUser(req.params.userName);
   if ("error" in response) {
@@ -117,13 +101,11 @@ export async function remove(req, res) {
 
 export async function list(req, res) {
   if (!AuthenticationService.isUserAdmin(req.user)) {
-    res
-      .status(403)
-      .send(
-        JSON.stringify({
-          error: `User ${req.user.userName} not authorized to list users`,
-        })
-      );
+    res.status(403).send(
+      JSON.stringify({
+        error: `User ${req.user.userName} not authorized to list users`,
+      })
+    );
   }
   const response = await UserService.listUsers();
   res.send(JSON.stringify(response));

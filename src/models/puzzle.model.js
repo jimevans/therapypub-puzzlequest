@@ -1,26 +1,26 @@
-import { Schema, model } from 'mongoose';
+import { Schema, model } from "mongoose";
 
 const hintSchema = new Schema({
   text: {
     type: String,
     default: "",
-    required: true
+    required: true,
   },
   order: {
     type: Number,
     required: true,
-    default: 0
+    default: 0,
   },
   solutionWarning: {
     type: Boolean,
     required: true,
-    default: false
+    default: false,
   },
   timePenalty: {
     type: Number,
     required: true,
-    default: 0
-  }
+    default: 0,
+  },
 });
 
 const puzzleSchema = new Schema({
@@ -28,42 +28,42 @@ const puzzleSchema = new Schema({
     type: String,
     default: "",
     required: true,
-    unique: true
+    unique: true,
   },
   displayName: {
     type: String,
-    default: true
+    default: true,
   },
   type: {
     type: Number,
-    default: 0
+    default: 0,
   },
   text: {
     type: String,
-    default: ""
+    default: "",
   },
   solutionKeyword: {
     type: String,
     default: "",
-    required: true
+    required: true,
   },
   solutionDisplayText: {
     type: String,
     default: "",
-    required: true
+    required: true,
   },
   resourcePath: {
     type: String,
-    default: ""
+    default: "",
   },
   activationCode: {
     type: String,
     default: "",
-    required: true
+    required: true,
   },
-  hints: [hintSchema]
+  hints: [hintSchema],
 });
 
-const PuzzleModel = model('Puzzle', puzzleSchema);
+const PuzzleModel = model("Puzzle", puzzleSchema);
 
-export { PuzzleModel }
+export { PuzzleModel };

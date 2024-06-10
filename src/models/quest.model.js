@@ -1,47 +1,47 @@
-import { Schema, model } from 'mongoose';
+import { Schema, model } from "mongoose";
 
 const QuestStatus = {
   NOT_STARTED: 0,
   IN_PROGRESS: 1,
-  COMPLETED: 2
-}
+  COMPLETED: 2,
+};
 
 const QuestPuzzleStatus = {
   UNAVAILABLE: 0,
   AWAITING_ACTIVATION: 1,
   IN_PROGRESS: 2,
-  COMPLETED: 3
-}
+  COMPLETED: 3,
+};
 
 const questPuzzleSchema = new Schema({
   puzzleName: {
     type: String,
-    required: true
+    required: true,
   },
   questOrder: {
     type: Number,
     required: true,
-    default: 0
+    default: 0,
   },
   nextHintToDisplay: {
     type: Number,
     required: true,
-    default: 0
+    default: 0,
   },
   status: {
     type: Number,
     required: true,
-    default: 0
+    default: 0,
   },
   startTime: {
-    type: Date
+    type: Date,
   },
   endTime: {
-    type: Date
+    type: Date,
   },
   activationTime: {
-    type: Date
-  }
+    type: Date,
+  },
 });
 
 const questSchema = new Schema({
@@ -53,22 +53,21 @@ const questSchema = new Schema({
   },
   displayName: {
     type: String,
-    default: ""
+    default: "",
   },
   userName: {
     type: String,
-    required: true
+    required: true,
   },
   status: {
     type: Number,
     required: true,
-    default: 0
+    default: 0,
   },
-  puzzles: [questPuzzleSchema]
+  puzzles: [questPuzzleSchema],
 });
 
-const QuestModel = model('Quest', questSchema);
-const QuestPuzzleModel = model('QuestPuzzle', questPuzzleSchema);
+const QuestModel = model("Quest", questSchema);
+const QuestPuzzleModel = model("QuestPuzzle", questPuzzleSchema);
 
-export { QuestModel, QuestPuzzleModel, QuestStatus, QuestPuzzleStatus }
-
+export { QuestModel, QuestPuzzleModel, QuestStatus, QuestPuzzleStatus };

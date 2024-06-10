@@ -52,4 +52,4 @@ export async function tokenAuthenticate(req, res, next) {
     }
   }
   next();
-};
+}
