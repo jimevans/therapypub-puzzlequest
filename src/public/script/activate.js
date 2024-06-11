@@ -37,7 +37,7 @@ document.querySelector("#startbutton").addEventListener(
     ev.preventDefault();
     const imageData = takepicture();
     try {
-      const response = await fetch(`/api/puzzle/activate`, {
+      const response = await fetch(`/pq/api/puzzle/activate`, {
         method: "post",
         headers: {
           "Content-Type": "application/octet-stream"
@@ -61,9 +61,52 @@ document.querySelector("#startbutton").addEventListener(
   false,
 );
 
+function listDevices() {
+  navigator.mediaDevices.enumerateDevices()
+    .then((devices) => {
+      pageLog.innerHTML = pageLog.innerHTML + `queried for devices, got ${devices.length}<br>`;
+      devices.forEach((device) => {
+        pageLog.innerHTML = pageLog.innerHTML + `Kind ${device.kind}, Label ${device.label}<br>`;
+        try {
+          pageLog.innerHTML = pageLog.innerHTML + `Capabilities: ${JSON.stringify(device.getCapabilities())}<br>`
+        } catch (e) {}
+      });
+    })
+    .catch((err) => console.log(err));
+}
+
+function getEnvironmentCamera() {
+  return navigator.mediaDevices.enumerateDevices()
+    .then((devices) => {
+      pageLog.innerHTML = pageLog.innerHTML + `queried for devices, got ${devices.length}<br>`;
+      devices.forEach((device) => {
+        if (device.kind === "videoinput") {
+          try {
+            const capabilities = device.getCapabilities();
+            if (capabilities.facingMode === "environment") {
+              pageLog.innerHTML = pageLog.innerHTML + `Found rear first facing camera. Switching.<br>`
+              navigator.mediaDevices
+                .getUserMedia({ "facingMode": { "exact": "environment" } })
+                .then((stream) => {
+                  video.srcObject = stream;
+                  video.onloadedmetadata = function (e) {
+                    video.play();
+                    pageLog.innerHTML = pageLog.innerHTML + `After start<br>`;
+                  }
+                });
+            }
+          } catch (e) {}
+        }
+      });
+    })
+    .catch((err) => console.log(err));
+}
+
 let width = 320;
 let height = 240;
 let streaming = false;
+const pageLog = document.querySelector("#log");
+pageLog.innerHTML = pageLog.innerHTML + `Before start<br>`;
 navigator.mediaDevices
   .getUserMedia({
     video: true,
@@ -72,7 +115,9 @@ navigator.mediaDevices
   .then((stream) => {
     video.srcObject = stream;
     video.onloadedmetadata = function(e) {
-      video.play()
+      video.play();
+      pageLog.innerHTML = pageLog.innerHTML + `After start<br>`;
+      getEnvironmentCamera();
     }
   })
   .catch((err) => {
