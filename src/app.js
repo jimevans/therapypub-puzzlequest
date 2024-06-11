@@ -20,10 +20,16 @@ mongoose.connect(mongodb);
 const db = mongoose.connection;
 db.on("error", console.error.bind(console, "MongoDB connection error:"));
 
-import { UserApiRouter } from "./routes/api.users.js";
-app.use("/api/users", UserApiRouter);
 import { IndexRouter } from "./routes/index.js";
 app.use("/", IndexRouter);
+
+// API routes for data manipulation
+import { UserApiRouter } from "./routes/api.user.js";
+app.use("/api/user", UserApiRouter);
+
+//UI routes for data display
+import { UserRouter } from "./routes/user.js";
+app.use("/user", UserRouter);
 
 app.set("views", path.join(import.meta.dirname, "views"));
 app.set("view engine", "ejs");

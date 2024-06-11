@@ -35,3 +35,7 @@ a.menu-link {
   color: #ffffff;
   text-decoration: none;
 }
+
+.pq-hide {
+  display: none
+}

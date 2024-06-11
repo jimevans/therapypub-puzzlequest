@@ -30,8 +30,11 @@ document.querySelector("#users").addEventListener("click", async (e) => {
     const dataDisplayElement = document.querySelector("#dataDisplay");
     const userElements = [];
     userData.users.forEach((userInfo) => {
+      const link = document.createElement("a");
+      link.href = `/user/${userInfo.userName}`;
+      link.innerText = userInfo.userName;
       const userDiv = document.createElement("div");
-      userDiv.textContent = userInfo.userName;
+      userDiv.appendChild(link);
       userElements.push(userDiv);
     });
     dataDisplayElement.replaceChildren(...userElements);

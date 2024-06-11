@@ -29,7 +29,14 @@ export async function login(req, res) {
   res.send(JSON.stringify(response));
 }
 
-export async function register(req, res) {
+function isUserAuthorized(userNameToBeModified, user) {
+  return (
+    AuthenticationService.isCurrentUser(userNameToBeModified, user) ||
+    AuthenticationService.isUserAdmin(user)
+  );
+}
+
+export async function createUser(req, res) {
   if (!req.body) {
     res.status(400).send(JSON.stringify({ error: "No request body" }));
     return;
@@ -58,14 +65,27 @@ export async function register(req, res) {
   res.send(JSON.stringify(response));
 }
 
-function isUserAuthorized(userNameToBeModified, user) {
-  return (
-    AuthenticationService.isCurrentUser(userNameToBeModified, user) ||
-    AuthenticationService.isUserAdmin(user)
-  );
+export async function retrieveUser(req, res) {
+  if (!isUserAuthorized(req.params.userName, req.user)) {
+    res.status(403).send(
+      JSON.stringify({
+        error: `User ${req.user.userName} not authorized to retrieve user ${req.params.userName}`,
+      })
+    );
+  }
+  const response = await UserService.getUserByUserName(req.params.userName);
+  if ("error" in response) {
+    res.status(500).send(JSON.stringify(response));
+  }
+
+  if (!AuthenticationService.isUserAdmin(req.user)) {
+    delete response.user.authorizationLevel;
+  }
+
+  res.send(JSON.stringify(response));
 }
 
-export async function update(req, res) {
+export async function updateUser(req, res) {
   if (!req.body) {
     res.status(400).send(JSON.stringify({ error: "No request body" }));
     return;
@@ -84,7 +104,7 @@ export async function update(req, res) {
   res.send(JSON.stringify(response));
 }
 
-export async function remove(req, res) {
+export async function deleteUser(req, res) {
   if (!isUserAuthorized(req.params.userName, req.user)) {
     res.status(403).send(
       JSON.stringify({
@@ -99,7 +119,7 @@ export async function remove(req, res) {
   res.send(JSON.stringify(response));
 }
 
-export async function list(req, res) {
+export async function listUsers(req, res) {
   if (!AuthenticationService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
@@ -109,4 +129,16 @@ export async function list(req, res) {
   }
   const response = await UserService.listUsers();
   res.send(JSON.stringify(response));
+}
+
+export function renderUserDetails(req, res) {
+  if (!AuthenticationService.isUserAdmin(req.user)) {
+    res.status(403).send(
+      JSON.stringify({
+        error: `User ${req.user.userName} not authorized to list users`,
+      })
+    );
+  }
+
+  res.render("user", { userName: req.params.userName });
 }

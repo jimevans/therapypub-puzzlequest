@@ -4,7 +4,7 @@ document.querySelector("#login").addEventListener("click", async (e) => {
       userName: document.querySelector("#userName").value,
       password: document.querySelector("#password").value,
     };
-    const response = await fetch("/api/users/login", {
+    const response = await fetch("/api/user/login", {
       method: "post",
       headers: {
         "Content-Type": "application/json",

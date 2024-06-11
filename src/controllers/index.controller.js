@@ -12,7 +12,7 @@ export function index(req, res) {
     res.render("adminHome", { user: req.user });
     return;
   }
-  res.render("userHome", { user: req.user });
+  res.render("home", { user: req.user });
 }
 
 export function login(req, res) {

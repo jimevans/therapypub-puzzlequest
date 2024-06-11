@@ -6,9 +6,14 @@ const userApiRouter = express.Router();
 userApiRouter.get(
   "/list",
   TokenAuthenticator.tokenAuthenticate,
-  UserController.list
+  UserController.listUsers
 );
-userApiRouter.post("/register", UserController.register);
+userApiRouter.get(
+  "/:userName",
+  TokenAuthenticator.tokenAuthenticate,
+  UserController.retrieveUser
+);
+userApiRouter.post("/create", UserController.createUser);
 userApiRouter.post("/login", UserController.login);
 
 export { userApiRouter as UserApiRouter };
