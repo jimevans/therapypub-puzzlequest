@@ -4,6 +4,7 @@ const app = express();
 const port = 3000;
 
 app.use(express.json());
+app.use(express.raw({ limit: "100mb", type: "application/octet-stream" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(import.meta.dirname, "public")));
 
@@ -27,9 +28,15 @@ app.use("/", IndexRouter);
 import { UserApiRouter } from "./routes/api.user.js";
 app.use("/api/user", UserApiRouter);
 
+import { PuzzleApiRouter } from "./routes/api.puzzle.js";
+app.use("/api/puzzle", PuzzleApiRouter);
+
 //UI routes for data display
 import { UserRouter } from "./routes/user.js";
 app.use("/user", UserRouter);
+
+import { PuzzleRouter } from "./routes/puzzle.js";
+app.use("/puzzle", PuzzleRouter);
 
 app.set("views", path.join(import.meta.dirname, "views"));
 app.set("view engine", "ejs");
