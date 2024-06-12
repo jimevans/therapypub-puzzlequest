@@ -7,8 +7,7 @@ function takepicture() {
     canvas.height = height;
     context.drawImage(video, 0, 0, width, height);
 
-    const imageData = context.getImageData(0, 0, width, height);
-    return imageData.data;
+    return context.getImageData(0, 0, width, height);
   }
 }
 
@@ -36,13 +35,16 @@ document.querySelector("#startbutton").addEventListener(
   async (ev) => {
     ev.preventDefault();
     const imageData = takepicture();
+    const formData = new FormData();
+    formData.append("height", imageData.height);
+    formData.append("width", imageData.width);
+    formData.append("image", new Blob([imageData.data.buffer]));
     try {
-      const response = await fetch(`/pq/api/puzzle/activate`, {
+      const response = await fetch(`/api/puzzle/activate`, {
         method: "post",
         headers: {
-          "Content-Type": "application/octet-stream"
         },
-        body: imageData
+        body: formData
       });
       if (response.ok) {
         return await response.json();
@@ -61,63 +63,18 @@ document.querySelector("#startbutton").addEventListener(
   false,
 );
 
-function listDevices() {
-  navigator.mediaDevices.enumerateDevices()
-    .then((devices) => {
-      pageLog.innerHTML = pageLog.innerHTML + `queried for devices, got ${devices.length}<br>`;
-      devices.forEach((device) => {
-        pageLog.innerHTML = pageLog.innerHTML + `Kind ${device.kind}, Label ${device.label}<br>`;
-        try {
-          pageLog.innerHTML = pageLog.innerHTML + `Capabilities: ${JSON.stringify(device.getCapabilities())}<br>`
-        } catch (e) {}
-      });
-    })
-    .catch((err) => console.log(err));
-}
-
-function getEnvironmentCamera() {
-  return navigator.mediaDevices.enumerateDevices()
-    .then((devices) => {
-      pageLog.innerHTML = pageLog.innerHTML + `queried for devices, got ${devices.length}<br>`;
-      devices.forEach((device) => {
-        if (device.kind === "videoinput") {
-          try {
-            const capabilities = device.getCapabilities();
-            if (capabilities.facingMode === "environment") {
-              pageLog.innerHTML = pageLog.innerHTML + `Found rear first facing camera. Switching.<br>`
-              navigator.mediaDevices
-                .getUserMedia({ "facingMode": { "exact": "environment" } })
-                .then((stream) => {
-                  video.srcObject = stream;
-                  video.onloadedmetadata = function (e) {
-                    video.play();
-                    pageLog.innerHTML = pageLog.innerHTML + `After start<br>`;
-                  }
-                });
-            }
-          } catch (e) {}
-        }
-      });
-    })
-    .catch((err) => console.log(err));
-}
-
-let width = 320;
-let height = 240;
+let width = 640;
+let height = 480;
 let streaming = false;
-const pageLog = document.querySelector("#log");
-pageLog.innerHTML = pageLog.innerHTML + `Before start<br>`;
 navigator.mediaDevices
   .getUserMedia({
-    video: true,
+    video: { facingMode: "environment" },
     audio: false
   })
   .then((stream) => {
     video.srcObject = stream;
     video.onloadedmetadata = function(e) {
       video.play();
-      pageLog.innerHTML = pageLog.innerHTML + `After start<br>`;
-      getEnvironmentCamera();
     }
   })
   .catch((err) => {
