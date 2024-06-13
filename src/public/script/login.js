@@ -1,4 +1,5 @@
 document.querySelector("#login").addEventListener("click", async (e) => {
+  e.preventDefault();
   try {
     data = {
       userName: document.querySelector("#userName").value,
@@ -13,8 +14,17 @@ document.querySelector("#login").addEventListener("click", async (e) => {
     });
     if (response.ok) {
       const data = await response.json();
-      document.querySelector("#token").value = data["token"];
-      document.querySelector("#tokenForm").submit();
+      const tokenInput = document.createElement("input");
+      tokenInput.name = "token"
+      tokenInput.value = data["token"];
+
+      const dynamicForm = document.createElement("form");
+      dynamicForm.method = "post";
+      dynamicForm.action = "/login";
+      dynamicForm.hidden = true;
+      dynamicForm.appendChild(tokenInput);
+      document.body.appendChild(dynamicForm);
+      dynamicForm.submit();
     } else {
       document.querySelector(".loginError").hidden = false;
     }
@@ -25,4 +35,7 @@ document.querySelector("#login").addEventListener("click", async (e) => {
 
 document
   .querySelector("#cancel")
-  .addEventListener("click", (e) => (window.location.href = "/"));
+  .addEventListener("click", (e) => {
+    e.preventDefault();
+    window.location.href = "/";
+  });

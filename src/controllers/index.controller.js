@@ -24,6 +24,9 @@ export function authenticate(req, res) {
 }
 
 export function logout(req, res) {
+  // TODO: Create invalid token denylist and add to this to
+  // prevent tokens from logged out sessions from potentially
+  // being hijacked.
   if (TokenAuthenticator.TOKEN_COOKIE_NAME in req.cookies) {
     res.cookie(TokenAuthenticator.TOKEN_COOKIE_NAME, "", {
       httpOnly: true,

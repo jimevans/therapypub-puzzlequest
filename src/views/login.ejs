@@ -2,27 +2,34 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Login to PuzzleQuest</title>
+    <title>Sign in to PuzzleQuest</title>
     <link rel="stylesheet" type="text/css" href="/style/pq.css" />
   </head>
   <body>
-    <div>
-      <label for="userName">User Name:</label>&nbsp;<input id="userName" />
-    </div>
-    <div>
-      <label for="password">Password:</label>&nbsp;
-      <input id="password" type="password" />
-    </div>
-    <div>
-      <button id="login" class="pq-button">Login</button>&nbsp;
-      <button id="cancel" class="pq-button">Cancel</button>
-    </div>
-    <div class="loginError" hidden>
-      <span>Invalid user name or password</span>
-    </div>
-    <form id="tokenForm" method="post" action="/login" hidden>
-      <input id="token" name="token" />
-      <input name="submitButton" type="submit" />
+    <form>
+      <div>
+        <div class="pq-label">
+          <label for="userName">User Name:</label>
+        </div>
+        <div class="pq-input">
+          <input id="userName" />
+        </div>
+      </div>
+      <div>
+        <div class="pq-label"></div>
+          <label for="password">Password:</label>
+        </div>
+        <div class="pq-input">
+          <input id="password" type="password" />
+        </div>
+      </div>
+      <div>
+        <button id="login" class="pq-button" type="submit">Sign in</button>&nbsp;
+        <button id="cancel" class="pq-button">Cancel</button>
+      </div>
+      <div class="loginError" hidden>
+        <span>Invalid user name or password</span>
+      </div>
     </form>
     <script type="text/javascript" src="/script/login.js"></script>
   </body>
