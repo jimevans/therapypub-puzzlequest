@@ -1,9 +1,9 @@
 import { Schema, model } from "mongoose";
 
 const AuthorizationLevel = {
-  GUEST: 0,
-  USER: 1,
-  ADMIN: 10,
+  GUEST: { value: 0, description: "Guest" },
+  USER: { value: 1, description: "Authorized User" },
+  ADMIN: { value: 10, description: "Administrator" }
 };
 
 const userSchema = new Schema({

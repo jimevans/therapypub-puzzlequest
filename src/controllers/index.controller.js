@@ -1,6 +1,6 @@
 import { config } from "../config.js";
 import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
-import { AuthorizationLevel } from "../models/user.model.js";
+import * as AuthorizationService from "../services/authentication.service.js";
 
 export function index(req, res) {
   if (req.user === null) {
@@ -8,7 +8,7 @@ export function index(req, res) {
     return;
   }
 
-  if (req.user.authorizationLevel === AuthorizationLevel.ADMIN) {
+  if (AuthorizationService.isUserAdmin(req.user)) {
     res.render("adminHome", { user: req.user });
     return;
   }

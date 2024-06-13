@@ -26,10 +26,10 @@ export async function createUser(user) {
   if (userExists) {
     return { error: `User with user name ${user.userName} already exists` };
   }
-  let authLevel = user.authorizationLevel || AuthorizationLevel.USER;
+  let authLevel = user.authorizationLevel || AuthorizationLevel.USER.value;
   if ((await User.countDocuments()) === 0) {
     // First user created must be an admin user
-    authLevel = AuthorizationLevel.ADMIN;
+    authLevel = AuthorizationLevel.ADMIN.value;
   }
   const password = await bcrypt.hash(user.password, 10);
   try {

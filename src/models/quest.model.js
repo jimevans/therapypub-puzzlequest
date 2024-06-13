@@ -1,16 +1,16 @@
 import { Schema, model } from "mongoose";
 
 const QuestStatus = {
-  NOT_STARTED: 0,
-  IN_PROGRESS: 1,
-  COMPLETED: 2,
+  NOT_STARTED: { value: 0, description: "Not started" },
+  IN_PROGRESS: { value: 1, description: "In progress" },
+  COMPLETED: { value: 2, description: "Completed" }
 };
 
 const QuestPuzzleStatus = {
-  UNAVAILABLE: 0,
-  AWAITING_ACTIVATION: 1,
-  IN_PROGRESS: 2,
-  COMPLETED: 3,
+  UNAVAILABLE: { value: 0, description: "Unavailable" },
+  AWAITING_ACTIVATION: { value: 1, description: "Awaiting activation" },
+  IN_PROGRESS: { value: 2, description: "In progress" },
+  COMPLETED: { value: 3, description: "Completed" }
 };
 
 const questPuzzleSchema = new Schema({

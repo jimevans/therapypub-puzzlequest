@@ -1,5 +1,12 @@
 import { Schema, model } from "mongoose";
 
+const PuzzleType = {
+  TEXT: { value: 0, description: "text" },
+  IMAGE: { value: 1, description: "image" },
+  AUDIO: { value: 2, description: "audio" },
+  VIDEO: { value: 3, description: "video" }
+}
+
 const hintSchema = new Schema({
   text: {
     type: String,
@@ -66,4 +73,4 @@ const puzzleSchema = new Schema({
 
 const PuzzleModel = model("Puzzle", puzzleSchema);
 
-export { PuzzleModel };
+export { PuzzleModel, PuzzleType };
