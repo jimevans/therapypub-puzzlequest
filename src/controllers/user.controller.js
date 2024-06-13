@@ -73,16 +73,12 @@ export async function retrieveUser(req, res) {
       })
     );
   }
-  const response = await UserService.getUserByUserName(req.params.userName);
-  if ("error" in response) {
-    res.status(500).send(JSON.stringify(response));
+  const userResponse = await UserService.getUserByUserName(req.params.userName);
+  if ("error" in userResponse) {
+    res.status(500).send(JSON.stringify(userResponse));
   }
 
-  if (!AuthenticationService.isUserAdmin(req.user)) {
-    delete response.user.authorizationLevel;
-  }
-
-  res.send(JSON.stringify(response));
+  res.send(JSON.stringify(userResponse));
 }
 
 export async function updateUser(req, res) {

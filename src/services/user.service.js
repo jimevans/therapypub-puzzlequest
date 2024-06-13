@@ -5,7 +5,7 @@ import jwt from "jsonwebtoken";
 import { config } from "../config.js";
 
 export async function getUserByUserName(name) {
-  const user = await User.findOne({ userName: name }).lean();
+  const user = await User.findOne({ userName: name });
   if (user === null) {
     return { error: `No user with user name ${name} found` };
   }
@@ -21,15 +21,15 @@ export async function deleteUser(name) {
 }
 
 export async function createUser(user) {
-  const existingUsers = await User.find({ userName: user.userName });
+  const existingUsers = await User.find({ userName: user.userName }).lean();
   const userExists = existingUsers.length !== 0;
   if (userExists) {
     return { error: `User with user name ${user.userName} already exists` };
   }
-  let authLevel = user.authorizationLevel || AuthorizationLevel.USER.value;
+  let authLevel = user.authorizationLevel || AuthorizationLevel.USER;
   if ((await User.countDocuments()) === 0) {
     // First user created must be an admin user
-    authLevel = AuthorizationLevel.ADMIN.value;
+    authLevel = AuthorizationLevel.ADMIN;
   }
   const password = await bcrypt.hash(user.password, 10);
   try {

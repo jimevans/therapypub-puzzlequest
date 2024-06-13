@@ -1,9 +1,9 @@
 import { Schema, model } from "mongoose";
 
 const AuthorizationLevel = {
-  GUEST: { value: 0, description: "Guest" },
-  USER: { value: 1, description: "Authorized User" },
-  ADMIN: { value: 10, description: "Administrator" }
+  GUEST: 0,
+  USER: 1,
+  ADMIN: 10
 };
 
 const userSchema = new Schema({
@@ -34,6 +34,18 @@ const userSchema = new Schema({
     default: 0,
   },
 });
+
+userSchema.virtual("authorizationLevelDescription")
+  .get(function() {
+    if (this.authorizationLevel >= AuthorizationLevel.ADMIN) {
+      return "Administrator";
+    } else if (this.authorizationLevel >= AuthorizationLevel.USER) {
+      return "Authorized user";
+    }
+    return "Guest";
+  });
+
+userSchema.set("toJSON", { virtuals: true });
 
 const teamSchema = new Schema({
   teamName: {

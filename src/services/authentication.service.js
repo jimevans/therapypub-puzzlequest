@@ -25,7 +25,7 @@ export async function authenticate(userName, password) {
 }
 
 export function isUserAdmin(user) {
-  return user.authorizationLevel === AuthorizationLevel.ADMIN.value;
+  return user.authorizationLevel === AuthorizationLevel.ADMIN;
 }
 
 export function isCurrentUser(userName, currentUser) {

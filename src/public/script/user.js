@@ -40,7 +40,7 @@ async function populateUser(userName) {
     document.querySelector("#sms").innerText = userData.user.sms;
     if ("authorizationLevel" in userData.user) {
       document.querySelector("#authLevel").innerText =
-        authorizationLevelToString(userData.user.authorizationLevel);
+        userData.user.authorizationLevelDescription;
       document.querySelector(".pq-hide").classList.remove("pq-hide");
     }
   }
