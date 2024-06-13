@@ -31,17 +31,20 @@ async function getUserData(userName) {
 }
 
 async function populateUser(userName) {
-  const userData = await getUserData(userName);
-  if (userData && userData.status === "success") {
-    document.querySelector("#userName").innerText = userData.user.userName;
-    document.querySelector("#displayName").innerText =
-      userData.user.displayName;
-    document.querySelector("#email").innerText = userData.user.email;
-    document.querySelector("#sms").innerText = userData.user.sms;
-    if ("authorizationLevel" in userData.user) {
-      document.querySelector("#authLevel").innerText =
-        userData.user.authorizationLevelDescription;
-      document.querySelector(".pq-hide").classList.remove("pq-hide");
+  if (userName !== "") {
+    const userData = await getUserData(userName);
+    if (userData && userData.status === "success") {
+      document.querySelector("#user-name input").value = userData.user.userName;
+      document.querySelector("#display-name input").value =
+        userData.user.displayName;
+      document.querySelector("#email input").value = userData.user.email;
+      document.querySelector("#sms input").value = userData.user.sms;
+      if ("authorizationLevel" in userData.user) {
+        const authLevelElement = document.querySelector("#auth-level");
+        authLevelElement.querySelector("input").value =
+          userData.user.authorizationLevelDescription;
+        authLevelElement.classList.remove("pq-hide");
+      }
     }
   }
 }

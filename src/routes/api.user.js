@@ -13,7 +13,21 @@ userApiRouter.get(
   TokenAuthenticator.tokenAuthenticate,
   UserController.retrieveUser
 );
-userApiRouter.post("/create", UserController.createUser);
+userApiRouter.put(
+  "/:userName",
+  TokenAuthenticator.tokenAuthenticate,
+  UserController.updateUser
+);
+userApiRouter.delete(
+  "/:userName",
+  TokenAuthenticator.tokenAuthenticate,
+  UserController.deleteUser
+);
+userApiRouter.post(
+  "/create",
+  TokenAuthenticator.tokenAuthenticate,
+  UserController.createUser
+);
 userApiRouter.post("/login", UserController.login);
 
 export { userApiRouter as UserApiRouter };

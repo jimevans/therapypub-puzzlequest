@@ -1,3 +1,7 @@
+html {
+  font-family: sans-serif;
+}
+
 button.pq-button {
   border: 0;
   background-color: #3498db;
@@ -31,11 +35,22 @@ nav ul li {
   margin: 0.3em 1em;
 }
 
-a.menu-link {
+.pq-menu-link {
   color: #ffffff;
   text-decoration: none;
 }
 
 .pq-hide {
   display: none
+}
+
+.pq-form-element {
+  margin: 0.5rem;
+}
+
+.pq-label {
+  font-size: 0.75rem;
+  padding-right: 0.5rem;
+  padding-top: 0.25rem;
+  margin-bottom: 0.125rem;
 }

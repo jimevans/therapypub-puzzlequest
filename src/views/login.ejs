@@ -7,27 +7,29 @@
   </head>
   <body>
     <form>
-      <div>
+      <div class="pq-form-element">
         <div class="pq-label">
-          <label for="userName">User Name:</label>
+          <label for="user-name">User Name:</label>
         </div>
         <div class="pq-input">
-          <input id="userName" />
+          <input id="user-name" />
         </div>
       </div>
-      <div>
-        <div class="pq-label"></div>
+      <div class="pq-form-element">
+        <div class="pq-label">
           <label for="password">Password:</label>
         </div>
         <div class="pq-input">
           <input id="password" type="password" />
         </div>
       </div>
-      <div>
-        <button id="login" class="pq-button" type="submit">Sign in</button>&nbsp;
-        <button id="cancel" class="pq-button">Cancel</button>
-      </div>
-      <div class="loginError" hidden>
+      <div class="pq-form-element">
+        <div>
+          <button id="login" class="pq-button" type="submit">Sign in</button>&nbsp;
+          <button id="cancel" class="pq-button">Cancel</button>
+        </div>
+        </div>
+      <div class="pq-error pq-hide">
         <span>Invalid user name or password</span>
       </div>
     </form>

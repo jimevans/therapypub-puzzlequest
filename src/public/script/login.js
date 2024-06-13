@@ -1,8 +1,9 @@
 document.querySelector("#login").addEventListener("click", async (e) => {
   e.preventDefault();
+  document.querySelector(".pq-error").classList.add("pq-hide");
   try {
     data = {
-      userName: document.querySelector("#userName").value,
+      userName: document.querySelector("#user-name").value,
       password: document.querySelector("#password").value,
     };
     const response = await fetch("/api/user/login", {
@@ -21,12 +22,12 @@ document.querySelector("#login").addEventListener("click", async (e) => {
       const dynamicForm = document.createElement("form");
       dynamicForm.method = "post";
       dynamicForm.action = "/login";
-      dynamicForm.hidden = true;
+      dynamicForm.classList.add("pq-hide");
       dynamicForm.appendChild(tokenInput);
       document.body.appendChild(dynamicForm);
       dynamicForm.submit();
     } else {
-      document.querySelector(".loginError").hidden = false;
+      document.querySelector(".pq-error").classList.remove("pq-hide");
     }
   } catch (err) {
     console.log("error: " + err);

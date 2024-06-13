@@ -6,15 +6,76 @@
     <link rel="stylesheet" type="text/css" href="/style/pq.css" />
   </head>
   <body>
-    <p>User name: <span id="userName"></span></p>
-    <p>Display name: <span id="displayName"></span></p>
-    <p>Email: <span id="email"></span></p>
-    <p>SMS number: <span id="sms"></span></p>
-    <p class="pq-hide">Authorization level: <span id="authLevel"></span></p>
+    <div class="pq-form-element">
+      <div class="pq-label">
+        <label for="user-name">User name:</label>
+      </div>
+      <div id="user-name" class="pq-input">
+        <input value="<%= renderMode !== "create" ? user.userName : "" %>" <%= renderMode === "display" ? "readonly" : "" %> />
+      </div>
+    </div>
+    <div class="pq-form-element">
+      <div class="pq-label">
+        <label for="display-name">Display name:</label>
+      </div>
+      <div class="pq-input">
+        <input id="display-name" value="<%= renderMode !== "create" ? user.displayName : "" %>" <%= renderMode === "display" ? "readonly" : "" %> />
+      </div>
+    </div>
+    <% if (renderMode === "create") { %>
+    <div class="pq-form-element" class="pq-hide">
+      <div class="pq-label">
+        <label for="password">Password:</label>
+      </div>
+      <div class="pq-input">
+        <input id="password" type="password" />
+      </div>
+    </div>
+    <div class="pq-form-element" class="pq-hide">
+      <div class="pq-label">
+        <label for="password-confirm">Confirm password:</label>
+      </div>
+      <div class="pq-input">
+        <input id="password-confirm" type="password" />
+      </div>
+    </div>
+    <% } %>
+    <div class="pq-form-element">
+      <div class="pq-label">
+        <label for="email">Email:</label>
+      </div>
+      <div class="pq-input">
+        <input id="email" value="<%= renderMode !== "create" ? user.email : "" %>" <%= renderMode === "display" ? "readonly" : "" %> />
+      </div>
+    </div>
+    <div class="pq-form-element">
+      <div class="pq-label">
+        <label for="sms">SMS number:</label>
+      </div>
+      <div class="pq-input">
+        <input id="sms" value="<%= renderMode !== "create" ? user.sms : "" %>" <%= renderMode === "display" ? "readonly" : "" %> />
+      </div>
+    </div>
+    <% if (user.authorizationLevel >= 10) { %>
+    <div class="pq-form-element" class="pq-hide">
+      <div class="pq-label">
+        <label for="auth-level">Authorization level:</label
+      </div>
+      <% if (renderMode === "display") { %>
+      <div class="pq-input">
+        <input id="auth-level" value="<%= user.authorizationLevelDescription %>" readonly />
+      </div>
+      <% } else { %>
+      <div class="pq-select">
+        <select id="auth-level">
+          <option value="0">Guest</option>
+          <option value="1">Authorized user</option>
+          <option value="10">Administrator</option>
+        </select>
+      </div>
+      <% } %>
+    </div>
+    <% } %>
 
-    <script type="text/javascript" src="/script/user.js"></script>
-    <script>
-      populateUser("<%=userName %>");
-    </script>
   </body>
 </html>

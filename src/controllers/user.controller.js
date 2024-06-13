@@ -78,6 +78,11 @@ export async function retrieveUser(req, res) {
     res.status(500).send(JSON.stringify(userResponse));
   }
 
+  if (req.renderMode) {
+    res.render("user", { renderMode: req.renderMode, user: userResponse.user });
+    return;
+  }
+
   res.send(JSON.stringify(userResponse));
 }
 
@@ -131,10 +136,10 @@ export function renderUserDetails(req, res) {
   if (!AuthenticationService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
-        error: `User ${req.user.userName} not authorized to list users`,
+        error: `User ${req.user.userName} not authorized to retrieve user ${req.params.userName}`,
       })
     );
   }
 
-  res.render("user", { userName: req.params.userName });
+  res.render("userDetails", { userName: req.params.userName });
 }
