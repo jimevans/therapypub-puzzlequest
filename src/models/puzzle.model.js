@@ -1,10 +1,10 @@
 import { Schema, model } from "mongoose";
 
 const PuzzleType = {
-  TEXT: { value: 0, description: "text" },
-  IMAGE: { value: 1, description: "image" },
-  AUDIO: { value: 2, description: "audio" },
-  VIDEO: { value: 3, description: "video" }
+  TEXT: 0,
+  IMAGE: 1,
+  AUDIO: 2,
+  VIDEO: 3,
 }
 
 const hintSchema = new Schema({
