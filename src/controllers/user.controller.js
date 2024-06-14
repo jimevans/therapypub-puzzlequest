@@ -1,5 +1,6 @@
 import * as AuthenticationService from "../services/authentication.service.js";
 import * as UserService from "../services/user.service.js";
+import { RenderMode } from "../middleware/useRenderMode.js";
 
 export async function login(req, res) {
   if (!req.body) {
@@ -31,8 +32,9 @@ export async function login(req, res) {
 
 function isUserAuthorized(userNameToBeModified, user) {
   return (
-    AuthenticationService.isCurrentUser(userNameToBeModified, user) ||
-    AuthenticationService.isUserAdmin(user)
+    user &&
+    (AuthenticationService.isCurrentUser(userNameToBeModified, user) ||
+    AuthenticationService.isUserAdmin(user))
   );
 }
 
@@ -66,6 +68,11 @@ export async function createUser(req, res) {
 }
 
 export async function retrieveUser(req, res) {
+  if (req.renderMode && req.renderMode === RenderMode.CREATE) {
+    res.render("user", { renderMode: req.renderMode, user: null });
+    return;
+  }
+
   if (!isUserAuthorized(req.params.userName, req.user)) {
     res.status(403).send(
       JSON.stringify({
@@ -79,7 +86,7 @@ export async function retrieveUser(req, res) {
   }
 
   if (req.renderMode) {
-    res.render("user", { renderMode: req.renderMode, user: userResponse.user });
+    res.render("user", { renderMode: req.renderMode, currentUser: req.user, user: userResponse.user });
     return;
   }
 
