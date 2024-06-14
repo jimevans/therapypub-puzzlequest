@@ -131,15 +131,3 @@ export async function listUsers(req, res) {
   const response = await UserService.listUsers();
   res.send(JSON.stringify(response));
 }
-
-export function renderUserDetails(req, res) {
-  if (!AuthenticationService.isUserAdmin(req.user)) {
-    res.status(403).send(
-      JSON.stringify({
-        error: `User ${req.user.userName} not authorized to retrieve user ${req.params.userName}`,
-      })
-    );
-  }
-
-  res.render("userDetails", { userName: req.params.userName });
-}
