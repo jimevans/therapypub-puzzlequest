@@ -69,7 +69,16 @@ export async function createUser(req, res) {
 
 export async function retrieveUser(req, res) {
   if (req.renderMode && req.renderMode === RenderMode.CREATE) {
-    res.render("user", { renderMode: req.renderMode, user: null });
+    if (req.user == null || (req.user && AuthenticationService.isUserAdmin(req.user))) {
+      res.render("user", { renderMode: req.renderMode, currentUser: req.user, user: null });
+    } else {
+      res.status(403).send(
+        JSON.stringify(
+          {
+            error: `User ${req.user.userName} not authorized to create new users`,
+          })
+      );
+    }
     return;
   }
 

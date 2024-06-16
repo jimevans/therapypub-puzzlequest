@@ -1,3 +1,5 @@
+import { DataGrid } from "./components/grid.js";
+
 async function getData(element) {
   const apiEndpoint = element.getAttribute("data-api-endpoint");
   try {
@@ -24,19 +26,28 @@ async function getData(element) {
 
 document.querySelector("#users").addEventListener("click", async (e) => {
   e.preventDefault();
+  const gridElement = document.querySelector("#data-grid");
+  gridElement.classList.add("pq-hide");
   const userData = await getData(e.currentTarget);
   if (userData && userData.status === "success") {
-    document.querySelector("#dataCollectionName").textContent = "Users";
-    const dataDisplayElement = document.querySelector("#dataDisplay");
-    const userElements = [];
-    userData.users.forEach((userInfo) => {
-      const link = document.createElement("a");
-      link.href = `/user/${userInfo.userName}`;
-      link.innerText = userInfo.userName;
-      const userDiv = document.createElement("div");
-      userDiv.appendChild(link);
-      userElements.push(userDiv);
-    });
-    dataDisplayElement.replaceChildren(...userElements);
+    const fieldDefinitions = [
+      {
+        fieldName: "userName",
+        title: "User Name",
+        width: "25%",
+        linkTemplate: "/user/:userName"
+      },
+      {
+        fieldName: "displayName",
+        title: "Display Name",
+        width: "25%"
+      },
+    ];
+    const grid = new DataGrid();
+    grid.initialize("Users", "/user/register", fieldDefinitions, userData.users);
+    // TODO: Wire up user deletion
+    // grid.onDeleteRequested = (itemUrl) => console.log(itemUrl);
+    gridElement.replaceChildren(grid.getElement());
+    gridElement.classList.remove("pq-hide");
   }
 });

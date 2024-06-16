@@ -68,9 +68,9 @@
       <% } else { %>
       <div class="pq-select">
         <select id="auth-level">
-          <option value="0" <%=user.authorizationLevel === 0 ? "selected" : ""%>>Guest</option>
-          <option value="1"<%=user.authorizationLevel === 1 ? "selected" : ""%>>Authorized user</option>
-          <option value="10"<%=user.authorizationLevel === 10 ? "selected" : ""%>>Administrator</option>
+          <option value="0" <%=user?.authorizationLevel === 0 ? "selected" : ""%>>Guest</option>
+          <option value="1"<%=user?.authorizationLevel === 1 ? "selected" : ""%>>Authorized user</option>
+          <option value="10"<%=user?.authorizationLevel === 10 ? "selected" : ""%>>Administrator</option>
         </select>
       </div>
       <% } %>

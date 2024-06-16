@@ -35,13 +35,17 @@ nav ul li {
   margin: 0.3em 1em;
 }
 
+.pq-hide {
+  display: none
+}
+
+.pq-float-right {
+  float: right;
+}
+
 .pq-menu-link {
   color: #ffffff;
   text-decoration: none;
-}
-
-.pq-hide {
-  display: none
 }
 
 .pq-form-element {
@@ -53,4 +57,31 @@ nav ul li {
   padding-right: 0.5rem;
   padding-top: 0.25rem;
   margin-bottom: 0.125rem;
+}
+
+.pq-grid {
+  display: grid;
+}
+
+.pq-grid-title {
+  grid-row: 1;
+  grid-column: 1;
+  background-color: #3498db;
+  color: #ffffff;
+  padding: 1em 1em 1em 1em;
+}
+
+.pq-grid-title-text {
+  font-size: 1.25em;
+}
+
+.pq-grid-header-cell {
+  padding: .75em .75em .75em .75em;
+  font-size: 1em;
+  background-color: #c9c9c9;
+}
+
+.pq-grid-data-cell {
+  padding: .75em .75em .75em .75em;
+  font-size: 1em;
 }

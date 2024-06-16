@@ -7,6 +7,7 @@ const userRouter = express.Router();
 
 userRouter.get(
   "/register",
+  TokenAuthenticator.tokenAuthenticate,
   UseRenderMode.useRenderMode(UseRenderMode.RenderMode.CREATE),
   UserController.retrieveUser
 );
