@@ -2,6 +2,11 @@ html {
   font-family: sans-serif;
 }
 
+.pq-readonly {
+  color: #aaaaaa;
+  border-color: #aaaaaa;
+}
+
 button.pq-button {
   border: 0;
   background-color: #3498db;

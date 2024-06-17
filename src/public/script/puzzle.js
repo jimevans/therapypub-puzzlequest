@@ -79,8 +79,9 @@ function validateInput(puzzleData) {
 }
 
 function getPuzzleData() {
+  const puzzleName = renderMode === "create" ? document.querySelector("#puzzle-name").value : puzzle.name;
   const puzzleData = {
-    name: document.querySelector("#puzzle-name").value,
+    name: puzzleName,
     displayName: document.querySelector("#display-name").value,
     type: parseInt(document.querySelector("#puzzle-type").value),
     solutionKeyword: document.querySelector("#solution-keyword").value,
@@ -101,12 +102,17 @@ if (renderMode === "display") {
     e.preventDefault();
     window.location.href = `/puzzle/${puzzle.name}/edit`;
   });
+  document.querySelector("#close").addEventListener("click", (e) => {
+    e.preventDefault();
+    window.location.href = `/`;
+  });
 } else if (renderMode === "edit") {
   document.querySelector("#puzzle-type").addEventListener("change", (e) => {
     renderer.render(parseInt(e.target.value), "", true);
   });
   document.querySelector("#save").addEventListener("click", async (e) => {
     e.preventDefault();
+    clearError();
     const puzzleData = getPuzzleData();
     const dataErrors = validateInput(puzzleData, renderMode);
     if (dataErrors.length) {
@@ -141,7 +147,7 @@ if (renderMode === "display") {
   });
   document.querySelector("#cancel").addEventListener("click", (e) => {
     e.preventDefault();
-    window.location.href = `/puzzle/${userName}`;
+    window.location.href = `/puzzle/${puzzle.name}`;
   });
 } else if (renderMode === "create") {
   document.querySelector("#puzzle-type").addEventListener("change", (e) => {
@@ -149,6 +155,7 @@ if (renderMode === "display") {
   });
   document.querySelector("#save").addEventListener("click", async (e) => {
     e.preventDefault();
+    clearError();
     const puzzleData = getPuzzleData();
     const dataErrors = validateInput(puzzleData, renderMode);
     if (dataErrors.length) {

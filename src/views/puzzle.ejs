@@ -8,27 +8,55 @@
   <body>
     <div class="pq-form-element">
       <div class="pq-label">
+        <% if (renderMode !== "create") { %>
+        Puzzle name:
+        <% } else { %>
         <label for="puzzle-name">Puzzle name:</label>
+        <% } %>
       </div>
       <div class="pq-input">
-        <input id="puzzle-name" value="<%= renderMode !== "create" ? puzzle.name : "" %>" <%= renderMode !== "create" ? "readonly" : "" %> />
+        <% if (renderMode !== "create") { %>
+        <%= puzzle.name %>
+        <% } else { %>
+        <input id="puzzle-name" value="<%= renderMode !== "create" ? puzzle.name : "" %>" />
+        <% } %>
       </div>
     </div>
     <div class="pq-form-element">
       <div class="pq-label">
+        <% if (renderMode === "display") { %>
+        Display name:
+        <% } else { %>
         <label for="display-name">Display name:</label>
+        <% } %>
       </div>
       <div class="pq-input">
-        <input id="display-name" value="<%= renderMode !== "create" ? puzzle.displayName : "" %>" <%= renderMode === "display" ? "readonly" : "" %> />
+        <% if (renderMode === "display") { %>
+        <%= puzzle.displayName %>
+        <% } else { %>
+        <input id="puzzle-name" value="<%= renderMode !== "create" ? puzzle.displayName : "" %>" />
+        <% } %>
       </div>
     </div>
     <div class="pq-form-element">
       <div class="pq-label">
-        <label for="puzzle-type">Puzzle type:</label>
+        <% if (renderMode === "display") { %>
+        Display type:
+        <% } else { %>
+        <label for="display-name">Puzzle type:</label>
+        <% } %>
       </div>
       <% if (renderMode === "display") { %>
       <div class="pq-input">
-        <input id="puzzle-type" value="<%= puzzle.type %>" readonly />
+        <% if (puzzle.type === 0) { %>
+        Text
+        <% } else if (puzzle.type === 1) { %>
+        Image
+        <% } else if (puzzle.type === 2) { %>
+        Audio
+        <% } else if (puzzle.type === 3) { %>
+        Video
+        <% } %>
       </div>
       <% } else { %>
       <div class="pq-select">
@@ -50,23 +78,56 @@
     </div>
     <div class="pq-form-element">
       <div class="pq-label">
+        <% if (renderMode === "display") { %>
+        Solution keyword:
+        <% } else { %>
         <label for="solution-keyword">Solution keyword:</label>
+        <% } %>
       </div>
       <div class="pq-input">
-        <input id="solution-keyword" value="<%= renderMode !== "create" ? puzzle.solutionKeyword : "" %>" <%= renderMode === "display" ? "readonly" : "" %> />
+        <% if (renderMode === "display") { %>
+        <%= puzzle.solutionKeyword %>
+        <% } else { %>
+        <input id="solution-keyword" value="<%= renderMode !== "create" ? puzzle.solutionKeyword : "" %>" />
+        <% } %>
       </div>
     </div>
     <div class="pq-form-element">
       <div class="pq-label">
+        <% if (renderMode === "display") { %>
+        Solution display text:
+        <% } else { %>
         <label for="solution-display-text">Solution display text:</label>
+        <% } %>
       </div>
       <div class="pq-input">
-        <input id="solution-display-text" value="<%= renderMode !== "create" ? puzzle.solutionDisplayText : "" %>" <%= renderMode === "display" ? "readonly" : "" %> />
+        <% if (renderMode === "display") { %>
+        <%= puzzle.solutionDisplayText %>
+        <% } else { %>
+        <input id="solution-display-text" value="<%= renderMode !== "create" ? puzzle.solutionDisplayText : "" %>" />
+        <% } %>
+      </div>
+    </div>
+    <div class="pq-form-element">
+      <div class="pq-label">
+        <% if (renderMode === "display") { %>
+        Activation code:
+        <% } else { %>
+        <label for="activation-code">Activation code:</label>
+        <% } %>
+      </div>
+      <div class="pq-input">
+        <% if (renderMode === "display") { %>
+        <%= puzzle.activationCode %>
+        <% } else { %>
+        <input id="activation-code" value="<%= renderMode !== "create" ? puzzle.activationCode : "" %>" />
+        <% } %>
       </div>
     </div>
     <% if (renderMode === "display") { %>
     <div class="pq-form-element">
       <button id="edit" class="pq-button">Edit</button>
+      <button id="close" class="pq-button">Close</button>
     </div>
     <% } else { %>
     <div class="pq-form-element">
