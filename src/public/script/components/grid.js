@@ -107,7 +107,7 @@ class DataGrid {
         const deleteButton = document.createElement("button");
         deleteButton.innerText = "Delete";
         deleteButton.addEventListener("click", (e) => {
-          e.preventDefault;
+          e.preventDefault();
           this.onDeleteRequested(itemLinkUrl);
         });
         fillerColumnDataCell.appendChild(deleteButton);

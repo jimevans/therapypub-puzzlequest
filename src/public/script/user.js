@@ -62,12 +62,12 @@ function validateInput(userData, renderMode) {
 
 if (renderMode === "display") {
   document.querySelector("#edit").addEventListener("click", (e) => {
-    e.preventDefault;
+    e.preventDefault();
     window.location.href = `/user/${userName}/edit`;
   });
 } else if (renderMode === "edit") {
   document.querySelector("#save").addEventListener("click", async (e) => {
-    e.preventDefault;
+    e.preventDefault();
     const userData = {
       userName: document.querySelector("#user-name").value,
       displayName: document.querySelector("#display-name").value,
@@ -91,12 +91,12 @@ if (renderMode === "display") {
     window.location.href = "/";
   });
   document.querySelector("#cancel").addEventListener("click", (e) => {
-    e.preventDefault;
+    e.preventDefault();
     window.location.href = `/user/${userName}`;
   });
 } else if (renderMode === "create") {
   document.querySelector("#save").addEventListener("click", async (e) => {
-    e.preventDefault;
+    e.preventDefault();
     const userData = {
       userName: document.querySelector("#user-name").value,
       displayName: document.querySelector("#display-name").value,
@@ -117,7 +117,7 @@ if (renderMode === "display") {
     window.location.href = "/";
   });
   document.querySelector("#cancel").addEventListener("click", (e) => {
-    e.preventDefault;
+    e.preventDefault();
     window.location.href = "/";
   });
 }

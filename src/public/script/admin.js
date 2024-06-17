@@ -51,3 +51,31 @@ document.querySelector("#users").addEventListener("click", async (e) => {
     gridElement.classList.remove("pq-hide");
   }
 });
+
+document.querySelector("#puzzles").addEventListener("click", async (e) => {
+  e.preventDefault();
+  const gridElement = document.querySelector("#data-grid");
+  gridElement.classList.add("pq-hide");
+  const puzzleData = await getData(e.currentTarget);
+  if (puzzleData && puzzleData.status === "success") {
+    const fieldDefinitions = [
+      {
+        fieldName: "name",
+        title: "Puzzle Name",
+        width: "25%",
+        linkTemplate: "/puzzle/:name"
+      },
+      {
+        fieldName: "displayName",
+        title: "Display Name",
+        width: "25%"
+      },
+    ];
+    const grid = new DataGrid();
+    grid.initialize("Puzzles", "/puzzle/new", fieldDefinitions, puzzleData.puzzles);
+    // TODO: Wire up user deletion
+    // grid.onDeleteRequested = (itemUrl) => console.log(itemUrl);
+    gridElement.replaceChildren(grid.getElement());
+    gridElement.classList.remove("pq-hide");
+  }
+});

@@ -59,7 +59,7 @@
     <% if (currentUser && currentUser.authorizationLevel >= 10) { %>
     <div class="pq-form-element">
       <div class="pq-label">
-        <label for="auth-level">Authorization level:</label
+        <label for="auth-level">Authorization level:</label>
       </div>
       <% if (renderMode === "display") { %>
       <div class="pq-input">
@@ -91,11 +91,7 @@
     </div>
     <script type="text/javascript">
       const renderMode = "<%=renderMode%>";
-      <% if (user) { %>
-      const userName = "<%=user.userName%>"
-      <% } else { %>
-      const userName = null;
-      <% } %>
+      const userName = <%- JSON.stringify(user ? user.userName : null) %>;
     </script>
     <script type="text/javascript" src="/script/user.js"></script>
   </body>

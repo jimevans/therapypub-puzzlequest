@@ -12,7 +12,16 @@
       </ul>
       <ul>
         <li data-api-endpoint="">Quests</li>
-        <li data-api-endpoint="">Puzzles</li>
+        <li data-api-endpoint="">
+          <a
+            id="puzzles"
+            class="pq-menu-link"
+            href="#"
+            data-api-endpoint="/api/puzzle/list"
+          >
+            Puzzles
+          </a>
+        </li>
         <li>
           <a
             id="users"
@@ -28,8 +37,7 @@
     </nav>
     <p>Welcome back <%=user.displayName %></p>
     <p>You are logged in with administrative privileges.</p>
-    <div id="data-grid" class="pq-hide">
-    </div>
+    <div id="data-grid" class="pq-hide"></div>
     <script type="module" src="/script/admin.js"></script>
   </body>
 </html>
