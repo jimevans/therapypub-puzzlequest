@@ -24,41 +24,16 @@
     </div>
     <div class="pq-form-element">
       <div class="pq-label">
-        <% if (renderMode === "display") { %>
-        Display name:
-        <% } else { %>
         <label for="display-name">Display name:</label>
-        <% } %>
       </div>
       <div class="pq-input">
-        <% if (renderMode === "display") { %>
-        <%= puzzle.displayName %>
-        <% } else { %>
         <input id="puzzle-name" value="<%= renderMode !== "create" ? puzzle.displayName : "" %>" />
-        <% } %>
       </div>
     </div>
     <div class="pq-form-element">
       <div class="pq-label">
-        <% if (renderMode === "display") { %>
-        Display type:
-        <% } else { %>
         <label for="display-name">Puzzle type:</label>
-        <% } %>
       </div>
-      <% if (renderMode === "display") { %>
-      <div class="pq-input">
-        <% if (puzzle.type === 0) { %>
-        Text
-        <% } else if (puzzle.type === 1) { %>
-        Image
-        <% } else if (puzzle.type === 2) { %>
-        Audio
-        <% } else if (puzzle.type === 3) { %>
-        Video
-        <% } %>
-      </div>
-      <% } else { %>
       <div class="pq-select">
         <select id="puzzle-type">
           <option value="0" <%=puzzle === null || puzzle.type === 0 ? "selected" : ""%>>Text</option>
@@ -67,7 +42,6 @@
           <option value="3" <%=puzzle && puzzle.type === 3 ? "selected" : ""%>>Video</option>
         </select>
       </div>
-      <% } %>
     </div>
     <div class="pq-form-element">
       <div class="pq-label">
@@ -78,62 +52,40 @@
     </div>
     <div class="pq-form-element">
       <div class="pq-label">
-        <% if (renderMode === "display") { %>
-        Solution keyword:
-        <% } else { %>
         <label for="solution-keyword">Solution keyword:</label>
-        <% } %>
       </div>
       <div class="pq-input">
-        <% if (renderMode === "display") { %>
-        <%= puzzle.solutionKeyword %>
-        <% } else { %>
         <input id="solution-keyword" value="<%= renderMode !== "create" ? puzzle.solutionKeyword : "" %>" />
-        <% } %>
       </div>
     </div>
     <div class="pq-form-element">
       <div class="pq-label">
-        <% if (renderMode === "display") { %>
-        Solution display text:
-        <% } else { %>
         <label for="solution-display-text">Solution display text:</label>
-        <% } %>
       </div>
       <div class="pq-input">
-        <% if (renderMode === "display") { %>
-        <%= puzzle.solutionDisplayText %>
-        <% } else { %>
         <input id="solution-display-text" value="<%= renderMode !== "create" ? puzzle.solutionDisplayText : "" %>" />
-        <% } %>
       </div>
     </div>
     <div class="pq-form-element">
       <div class="pq-label">
-        <% if (renderMode === "display") { %>
-        Activation code:
-        <% } else { %>
         <label for="activation-code">Activation code:</label>
-        <% } %>
       </div>
       <div class="pq-input">
-        <% if (renderMode === "display") { %>
-        <%= puzzle.activationCode %>
-        <% } else { %>
         <input id="activation-code" value="<%= renderMode !== "create" ? puzzle.activationCode : "" %>" />
-        <% } %>
       </div>
     </div>
-    <% if (renderMode === "display") { %>
-    <div class="pq-form-element">
-      <button id="edit" class="pq-button">Edit</button>
-      <button id="close" class="pq-button">Close</button>
-    </div>
-    <% } else { %>
     <div class="pq-form-element">
       <button id="save" class="pq-button">Save</button>&nbsp;
       <button id="cancel" class="pq-button">Cancel</button>
     </div>
+    <div>
+      Hints
+    </div>
+    <% if (!puzzle.hints.length) { %>
+    <div>
+      No hints to display
+    </div>
+    <% } else { %>
     <% } %>
     <div class="pq-error pq-hide">
       <span id="error-message"></span>
@@ -143,6 +95,6 @@
       const renderMode = "<%=renderMode%>";
       const puzzle = <%- JSON.stringify( puzzle ? { "name": puzzle.name, "type": puzzle.type, "content": puzzle.text } : null) %>;
     </script>
-    <script type="module" src="/script/puzzle.js"></script>
+    <script type="module" src="/script/puzzleEdit.js"></script>
   </body>
 </html>

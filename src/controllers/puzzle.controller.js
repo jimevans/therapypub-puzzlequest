@@ -19,7 +19,12 @@ export async function receiveImageData(req, res) {
   } else {
     console.log("No QR code found in image");
   }
-  res.send(JSON.stringify({ status: "success", receivedDataLength: imageBuffer.length }));
+  res.send(
+    JSON.stringify({
+      status: "success",
+      receivedDataLength: imageBuffer.length,
+    })
+  );
 }
 
 export async function createPuzzle(req, res) {
@@ -32,10 +37,9 @@ export async function createPuzzle(req, res) {
   }
   if (!AuthenticationService.isUserAdmin(req.user)) {
     res.status(403).send(
-      JSON.stringify(
-        {
-          error: `User ${req.user.userName} not authorized to view puzzles`,
-        })
+      JSON.stringify({
+        error: `User ${req.user.userName} not authorized to view puzzles`,
+      })
     );
     return;
   }
@@ -57,7 +61,11 @@ export async function createPuzzle(req, res) {
     return;
   }
   if (!("solutionDisplayText" in req.body)) {
-    res.status(400).send(JSON.stringify({ error: "No solution display text in request body" }));
+    res
+      .status(400)
+      .send(
+        JSON.stringify({ error: "No solution display text in request body" })
+      );
     return;
   }
   if (!("activationCode" in req.body)) {
@@ -81,26 +89,32 @@ export async function retrievePuzzle(req, res) {
   }
   if (!AuthenticationService.isUserAdmin(req.user)) {
     res.status(403).send(
-      JSON.stringify(
-        {
-          error: `User ${req.user.userName} not authorized to view puzzles`,
-        })
+      JSON.stringify({
+        error: `User ${req.user.userName} not authorized to view puzzles`,
+      })
     );
     return;
   }
 
+  const viewName =
+    req.renderMode === RenderMode.DISPLAY ? "puzzleDetails" : "puzzleEdit";
   if (req.renderMode === RenderMode.CREATE) {
-    res.render("puzzle", { renderMode: req.renderMode, puzzle: null });
+    res.render(viewName, { renderMode: req.renderMode, puzzle: null });
     return;
   }
 
-  const puzzleResponse = await PuzzleService.getPuzzleByPuzzleName(req.params.name);
+  const puzzleResponse = await PuzzleService.getPuzzleByPuzzleName(
+    req.params.name
+  );
   if ("error" in puzzleResponse) {
     res.status(500).send(JSON.stringify(puzzleResponse));
   }
 
   if (req.renderMode) {
-    res.render("puzzle", { renderMode: req.renderMode, puzzle: puzzleResponse.puzzle });
+    res.render(viewName, {
+      renderMode: req.renderMode,
+      puzzle: puzzleResponse.puzzle,
+    });
     return;
   }
 
@@ -211,5 +225,10 @@ export function uploadBinaryData(req, res) {
     );
   }
 
-  res.send(JSON.stringify({status: "success", location: `/puzzleData/${req.file.filename}`}));
+  res.send(
+    JSON.stringify({
+      status: "success",
+      location: `/puzzleData/${req.file.filename}`,
+    })
+  );
 }
