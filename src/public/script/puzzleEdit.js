@@ -152,5 +152,9 @@ document.querySelector("#save").addEventListener("click", async (e) => {
 });
 document.querySelector("#cancel").addEventListener("click", (e) => {
   e.preventDefault();
-  window.location.href = `/puzzle/${puzzle.name}`;
+  if (puzzle) {
+    window.location.href = `/puzzle/${puzzle.name}`;
+  } else {
+    window.location.href = "/";
+  }
 });

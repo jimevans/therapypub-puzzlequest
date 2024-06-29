@@ -3,6 +3,11 @@
  */
 class DataGrid {
   #gridElement = document.createElement("div");
+  #gridTable = document.createElement("table");
+
+  allowCreation = true;
+  allowRowEditing = true;
+  allowRowReordering = true;
 
   /**
    * Initializes a new instance of the DataGrid class.
@@ -26,7 +31,7 @@ class DataGrid {
     titleSpan.innerText = titleText;
     gridTitleElement.appendChild(titleSpan);
 
-    if (createItemUrl) {
+    if (this.allowCreation && createItemUrl) {
       const createLink = document.createElement("a");
       createLink.classList.add("pq-menu-link", "pq-float-right");
       createLink.href = createItemUrl;
@@ -43,44 +48,33 @@ class DataGrid {
    * @param {Object} columnDefinitions an object containing the field definitions
    */
   #createGridHeader(columnDefinitions) {
-    const gridTemplateColumns = [];
-    let columnNumber = 0;
+    const tableHeader = document.createElement("thead");
+    const headerRow = document.createElement("tr");
     columnDefinitions.forEach((columnDefinition) => {
-      columnNumber++;
-      const headerCell = document.createElement("div");
-      headerCell.classList.add("pq-grid-header-cell");
-      headerCell.innerText = `${columnDefinition.title}`;
-      headerCell.style.gridRow = "2";
-      headerCell.style.gridColumn = `${columnNumber}`;
-      gridTemplateColumns.push(`${columnDefinition.width}`);
-      this.#gridElement.appendChild(headerCell);
+      const tableCell = document.createElement("th");
+      tableCell.innerText = `${columnDefinition.title}`;
+      headerRow.appendChild(tableCell);
     });
 
-    // Add a filler column at the end
-    columnNumber++;
-    const fillerHeaderCell = document.createElement("div");
-    fillerHeaderCell.classList.add("pq-grid-header-cell");
-    fillerHeaderCell.style.gridRow = "2";
-    fillerHeaderCell.style.gridColumn = `${columnNumber}`;
-    this.#gridElement.appendChild(fillerHeaderCell);
-    gridTemplateColumns.push("auto");
-    this.#gridElement.style.gridTemplateColumns = gridTemplateColumns.join(" ");
+    // Add a filler column at the end, if needed
+    if (this.allowRowEditing) {
+      const buttonEditingHeader = document.createElement("th");
+      headerRow.appendChild(buttonEditingHeader);
+    }
+
+    tableHeader.appendChild(headerRow);
+    this.#gridTable.appendChild(tableHeader);
   }
 
   #fillGridData(columnDefinitions, gridData) {
+    const tableBody = document.createElement("tbody");
+
     // Create a row for each piece of data.
-    let rowNumber = 2;
-    let columnNumber = 0;
     gridData.forEach((item) => {
-      columnNumber = 0;
-      rowNumber++;
+      const dataRow = document.createElement("tr");
       let itemLinkUrl;
       columnDefinitions.forEach((columnDefinition) => {
-        columnNumber++;
-        const dataCell = document.createElement("div");
-        dataCell.classList.add("pq-grid-data-cell");
-        dataCell.style.gridRow = `${rowNumber}`;
-        dataCell.style.gridColumn = `${columnNumber}`;
+        const dataCell = document.createElement("td");
         if (columnDefinition.linkTemplate) {
           itemLinkUrl = columnDefinition.linkTemplate.replace(
             `:${columnDefinition.fieldName}`,
@@ -93,28 +87,27 @@ class DataGrid {
         } else {
           dataCell.innerText = item[columnDefinition.fieldName];
         }
-        this.#gridElement.appendChild(dataCell);
+        dataRow.appendChild(dataCell);
       });
 
       // Create filler column with delete button at end.
-      columnNumber++;
-      const fillerColumnDataCell = document.createElement("div");
-      fillerColumnDataCell.classList.add("pq-grid-data-cell");
-      fillerColumnDataCell.style.gridRow = `${rowNumber}`;
-      fillerColumnDataCell.style.gridColumn = `${columnNumber}`;
+      if (this.allowRowEditing) {
+        const fillerColumnDataCell = document.createElement("td");
 
-      if (itemLinkUrl) {
-        const deleteButton = document.createElement("button");
-        deleteButton.innerText = "Delete";
-        deleteButton.addEventListener("click", (e) => {
-          e.preventDefault();
-          this.onDeleteRequested(itemLinkUrl);
-        });
-        fillerColumnDataCell.appendChild(deleteButton);
+        if (itemLinkUrl) {
+          const deleteButton = document.createElement("button");
+          deleteButton.innerText = "Delete";
+          deleteButton.addEventListener("click", (e) => {
+            e.preventDefault();
+            this.onDeleteRequested(itemLinkUrl);
+          });
+          fillerColumnDataCell.appendChild(deleteButton);
+        }
+        dataRow.appendChild(fillerColumnDataCell);
       }
-
-      this.#gridElement.appendChild(fillerColumnDataCell);
+      tableBody.appendChild(dataRow);
     });
+    this.#gridTable.appendChild(tableBody);
   }
 
   onDeleteRequested = (itemLinkUrl) => {};
@@ -123,6 +116,7 @@ class DataGrid {
     this.#createGridTitle(titleText, columnDefinitions.length, createItemUrl);
     this.#createGridHeader(columnDefinitions);
     this.#fillGridData(columnDefinitions, gridData);
+    this.#gridElement.appendChild(this.#gridTable);
   }
 
   getElement() {

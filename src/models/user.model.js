@@ -53,7 +53,12 @@ const teamSchema = new Schema({
     required: true,
     unique: true,
   },
-  members: [userSchema],
+  joinCode: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  memberNames: [String],
 });
 
 const UserModel = model("User", userSchema);

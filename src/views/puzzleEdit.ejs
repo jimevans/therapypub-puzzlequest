@@ -27,7 +27,7 @@
         <label for="display-name">Display name:</label>
       </div>
       <div class="pq-input">
-        <input id="puzzle-name" value="<%= renderMode !== "create" ? puzzle.displayName : "" %>" />
+        <input id="display-name" value="<%= renderMode !== "create" ? puzzle.displayName : "" %>" />
       </div>
     </div>
     <div class="pq-form-element">
@@ -81,7 +81,7 @@
     <div>
       Hints
     </div>
-    <% if (!puzzle.hints.length) { %>
+    <% if (!puzzle?.hints.length) { %>
     <div>
       No hints to display
     </div>
