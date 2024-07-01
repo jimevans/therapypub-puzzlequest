@@ -1,7 +1,8 @@
 import { DataGrid } from "./components/grid.js";
+import { Lookup } from "./components/lookup.js";
+import { Modal } from "./components/modal.js";
 
-async function getData(element) {
-  const apiEndpoint = element.getAttribute("data-api-endpoint");
+async function getData(apiEndpoint) {
   try {
     const response = await fetch(apiEndpoint, {
       method: "get",
@@ -28,7 +29,7 @@ document.querySelector("#users").addEventListener("click", async (e) => {
   e.preventDefault();
   const gridElement = document.querySelector("#data-grid");
   gridElement.classList.add("pq-hide");
-  const userData = await getData(e.currentTarget);
+  const userData = await getData(e.currentTarget.getAttribute("data-api-endpoint"));
   if (userData && userData.status === "success") {
     const fieldDefinitions = [
       {
@@ -44,7 +45,10 @@ document.querySelector("#users").addEventListener("click", async (e) => {
       },
     ];
     const grid = new DataGrid();
-    grid.initialize("Users", "/user/register", fieldDefinitions, userData.users);
+    grid.initialize("Users", fieldDefinitions, userData.users);
+    grid.onAddDataRequested = (e) => {
+      window.location.href = "/user/register";
+    };
     // TODO: Wire up user deletion
     // grid.onDeleteRequested = (itemUrl) => console.log(itemUrl);
     gridElement.replaceChildren(grid.getElement());
@@ -56,7 +60,7 @@ document.querySelector("#puzzles").addEventListener("click", async (e) => {
   e.preventDefault();
   const gridElement = document.querySelector("#data-grid");
   gridElement.classList.add("pq-hide");
-  const puzzleData = await getData(e.currentTarget);
+  const puzzleData = await getData(e.currentTarget.getAttribute("data-api-endpoint"));
   if (puzzleData && puzzleData.status === "success") {
     const fieldDefinitions = [
       {
@@ -72,10 +76,38 @@ document.querySelector("#puzzles").addEventListener("click", async (e) => {
       },
     ];
     const grid = new DataGrid();
-    grid.initialize("Puzzles", "/puzzle/new", fieldDefinitions, puzzleData.puzzles);
+    grid.initialize("Puzzles", fieldDefinitions, puzzleData.puzzles);
+    grid.onAddDataRequested = (e) => {
+      window.location.href = "/puzzle/new";
+    };
     // TODO: Wire up user deletion
     // grid.onDeleteRequested = (itemUrl) => console.log(itemUrl);
     gridElement.replaceChildren(grid.getElement());
     gridElement.classList.remove("pq-hide");
   }
+});
+
+const modal = new Lookup();
+modal.setTitle("Test modal");
+modal.setConfirmButtonText("Hit me");
+
+document.querySelector("#show-modal").addEventListener("click", async (e) => {
+  const fieldDefinitions = [
+    {
+      fieldName: "name",
+      title: "Puzzle Name",
+      width: "25%",
+    },
+    {
+      fieldName: "displayName",
+      title: "Display Name",
+      width: "25%"
+    },
+  ];
+  await modal.initialize("Select puzzles", "/api/puzzle/list", "puzzles", fieldDefinitions);
+  modal.onConfirmButtonClick = (e) => {
+    const selectedPuzzles = modal.getSelectedData();
+    console.log(JSON.stringify(selectedPuzzles));
+  }
+  modal.show();
 });

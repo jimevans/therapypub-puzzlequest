@@ -3,26 +3,28 @@
  */
 class DataGrid {
   #gridElement = document.createElement("div");
-  #gridTable = document.createElement("table");
+  #gridTable;
+  #addNewDataLink = document.createElement("a");
+  #gridData = {};
 
   allowCreation = true;
+  allowRowDeleting = true;
   allowRowEditing = true;
   allowRowReordering = true;
+  allowRowSelecting = false;
 
   /**
    * Initializes a new instance of the DataGrid class.
    */
   constructor() {
-    this.#gridElement.classList.add("pq-grid");
   }
 
   /**
    * Creates the grid title element.
    * @param {String} titleText the text of the grid title
-   * @param {Number} columnCount the number of data columns in the grid
    * @param {String | undefined} createItemUrl the URL for creating a new data item in the grid
    */
-  #createGridTitle(titleText, columnCount, createItemUrl) {
+  #createGrid(titleText) {
     const gridTitleElement = document.createElement("div");
     gridTitleElement.classList.add("pq-grid-title");
 
@@ -31,34 +33,48 @@ class DataGrid {
     titleSpan.innerText = titleText;
     gridTitleElement.appendChild(titleSpan);
 
-    if (this.allowCreation && createItemUrl) {
-      const createLink = document.createElement("a");
-      createLink.classList.add("pq-menu-link", "pq-float-right");
-      createLink.href = createItemUrl;
-      createLink.innerText = "Create new";
-      gridTitleElement.appendChild(createLink);
+    if (this.allowCreation) {
+      this.#addNewDataLink.classList.add("pq-menu-link", "pq-float-right");
+      this.#addNewDataLink.href = "#";
+      this.#addNewDataLink.innerText = "Create new";
+      this.#addNewDataLink.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.onAddDataRequested(e);
+      })
+      gridTitleElement.appendChild(this.#addNewDataLink);
     }
 
-    gridTitleElement.style.gridColumnEnd = `${columnCount + 2}`;
     this.#gridElement.appendChild(gridTitleElement);
+
+    this.#gridTable = document.createElement("table");
+    this.#gridElement.appendChild(this.#gridTable);
   }
 
   /**
    * Creates the grid column header element.
    * @param {Object} columnDefinitions an object containing the field definitions
    */
-  #createGridHeader(columnDefinitions) {
+  #populateGridHeader(columnDefinitions) {
     const tableHeader = document.createElement("thead");
     const headerRow = document.createElement("tr");
+
+    if (this.allowRowSelecting) {
+      const selectionColumnHeader = document.createElement("th");
+      selectionColumnHeader.classList.add("pq-grid-header-cell")
+      headerRow.appendChild(selectionColumnHeader);
+    }
+
     columnDefinitions.forEach((columnDefinition) => {
       const tableCell = document.createElement("th");
+      tableCell.classList.add("pq-grid-header-cell")
       tableCell.innerText = `${columnDefinition.title}`;
       headerRow.appendChild(tableCell);
     });
 
     // Add a filler column at the end, if needed
-    if (this.allowRowEditing) {
+    if (this.allowRowEditing || this.allowRowDeleting) {
       const buttonEditingHeader = document.createElement("th");
+      buttonEditingHeader.classList.add("pq-grid-header-cell")
       headerRow.appendChild(buttonEditingHeader);
     }
 
@@ -66,15 +82,32 @@ class DataGrid {
     this.#gridTable.appendChild(tableHeader);
   }
 
-  #fillGridData(columnDefinitions, gridData) {
+  #populateGridData(columnDefinitions) {
     const tableBody = document.createElement("tbody");
 
     // Create a row for each piece of data.
-    gridData.forEach((item) => {
+    this.#gridData.forEach((item) => {
       const dataRow = document.createElement("tr");
+      if (this.allowRowSelecting) {
+        const selectionCell = document.createElement("td");
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.addEventListener("change", (e) => {
+          if (e.target.checked) {
+            e.target.parentNode.parentNode.setAttribute("data-row-selected", "true");
+          } else {
+            e.target.parentNode.parentNode.removeAttribute("data-row-selected");
+          }
+        });
+        selectionCell.appendChild(checkbox);
+        dataRow.appendChild(selectionCell);
+      }
+
       let itemLinkUrl;
       columnDefinitions.forEach((columnDefinition) => {
         const dataCell = document.createElement("td");
+        dataCell.classList.add("pq-grid-data-cell")
+        dataCell.setAttribute("data-field-name", columnDefinition.fieldName);
         if (columnDefinition.linkTemplate) {
           itemLinkUrl = columnDefinition.linkTemplate.replace(
             `:${columnDefinition.fieldName}`,
@@ -91,15 +124,14 @@ class DataGrid {
       });
 
       // Create filler column with delete button at end.
-      if (this.allowRowEditing) {
+      if (this.allowRowDeleting || this.allowRowEditing) {
         const fillerColumnDataCell = document.createElement("td");
-
-        if (itemLinkUrl) {
+        if (this.allowRowDeleting) {
           const deleteButton = document.createElement("button");
           deleteButton.innerText = "Delete";
           deleteButton.addEventListener("click", (e) => {
             e.preventDefault();
-            this.onDeleteRequested(itemLinkUrl);
+            this.onDeleteDataRequested(e);
           });
           fillerColumnDataCell.appendChild(deleteButton);
         }
@@ -110,17 +142,34 @@ class DataGrid {
     this.#gridTable.appendChild(tableBody);
   }
 
-  onDeleteRequested = (itemLinkUrl) => {};
+  #clearGrid() {
+    while (this.#gridElement.firstChild) {
+      this.#gridElement.removeChild(this.#gridElement.firstChild);
+    }
+  }
 
-  initialize(titleText, createItemUrl, columnDefinitions, gridData) {
-    this.#createGridTitle(titleText, columnDefinitions.length, createItemUrl);
-    this.#createGridHeader(columnDefinitions);
-    this.#fillGridData(columnDefinitions, gridData);
+  onDeleteDataRequested = (e) => { };
+  onAddDataRequested = (e) => { };
+
+  initialize(titleText, columnDefinitions, gridData) {
+    this.#gridData = gridData;
+    this.#clearGrid();
+    this.#createGrid(titleText);
+    this.#populateGridHeader(columnDefinitions);
+    this.#populateGridData(columnDefinitions);
     this.#gridElement.appendChild(this.#gridTable);
+  }
+
+  setAddNewDataLinkText(text) {
+    this.#addNewDataLink.innerText = text;
   }
 
   getElement() {
     return this.#gridElement;
+  }
+
+  getData() {
+    return this.#gridData;
   }
 }
 
