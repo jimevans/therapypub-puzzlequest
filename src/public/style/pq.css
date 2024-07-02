@@ -85,6 +85,10 @@ nav ul li {
   font-size: 1em;
 }
 
+.pq-grid-row-selected {
+  background-color: #9ed0f1;
+}
+
 .pq-modal-overlay {
   position: fixed;
   top: 0;

@@ -6,7 +6,9 @@ class DataGrid {
   #gridTable= document.createElement("table");;
   #tableBody = document.createElement("tbody");
   #addNewDataLink = document.createElement("a");
+  #titleTextElement = document.createElement("span");
   #gridData = [];
+  #columnDefinitions = [];
 
   allowCreation = true;
   allowRowDeleting = true;
@@ -17,7 +19,8 @@ class DataGrid {
   /**
    * Initializes a new instance of the DataGrid class.
    */
-  constructor() {
+  constructor(titleText, columnDefinitions) {
+    this.#columnDefinitions = columnDefinitions;
   }
 
   /**
@@ -29,10 +32,9 @@ class DataGrid {
     const gridTitleElement = document.createElement("div");
     gridTitleElement.classList.add("pq-grid-title");
 
-    const titleSpan = document.createElement("span");
-    titleSpan.classList.add("pq-grid-title-text");
-    titleSpan.innerText = titleText;
-    gridTitleElement.appendChild(titleSpan);
+    this.#titleTextElement.classList.add("pq-grid-title-text");
+    this.setTitleText(titleText)
+    gridTitleElement.appendChild(this.#titleTextElement);
 
     if (this.allowCreation) {
       this.#addNewDataLink.classList.add("pq-menu-link", "pq-float-right");
@@ -52,18 +54,16 @@ class DataGrid {
   #createRow(columnDefinitions) {
     const dataRow = document.createElement("tr");
     if (this.allowRowSelecting) {
-      const selectionCell = document.createElement("td");
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.addEventListener("change", (e) => {
-        if (e.target.checked) {
-          e.target.parentNode.parentNode.setAttribute("data-row-selected", "true");
+      dataRow.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (e.currentTarget.hasAttribute("data-row-selected")) {
+          e.currentTarget.classList.remove("pq-grid-row-selected");
+          e.currentTarget.removeAttribute("data-row-selected");
         } else {
-          e.target.parentNode.parentNode.removeAttribute("data-row-selected");
+          e.currentTarget.classList.add("pq-grid-row-selected");
+          e.currentTarget.setAttribute("data-row-selected", "true");
         }
       });
-      selectionCell.appendChild(checkbox);
-      dataRow.appendChild(selectionCell);
     }
 
     columnDefinitions.forEach((columnDefinition) => {
@@ -120,12 +120,6 @@ class DataGrid {
     const tableHeader = document.createElement("thead");
     const headerRow = document.createElement("tr");
 
-    if (this.allowRowSelecting) {
-      const selectionColumnHeader = document.createElement("th");
-      selectionColumnHeader.classList.add("pq-grid-header-cell")
-      headerRow.appendChild(selectionColumnHeader);
-    }
-
     columnDefinitions.forEach((columnDefinition) => {
       const tableCell = document.createElement("th");
       tableCell.classList.add("pq-grid-header-cell")
@@ -152,9 +146,6 @@ class DataGrid {
   }
 
   #clearGrid() {
-    while (this.#tableBody.firstChild) {
-      this.#tableBody.removeAttribute(this.#tableBody.firstChild);
-    }
     while (this.#gridElement.firstChild) {
       this.#gridElement.removeChild(this.#gridElement.firstChild);
     }
@@ -173,6 +164,10 @@ class DataGrid {
 
   setAddNewDataLinkText(text) {
     this.#addNewDataLink.innerText = text;
+  }
+
+  setTitleText(text) {
+    this.#titleTextElement.innerText = text;
   }
 
   getElement() {
