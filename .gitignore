@@ -106,4 +106,6 @@ dist
 # Optional npmrc file
 .npmrc
 
+.DS_Store
+
 src/public/puzzleData/**
