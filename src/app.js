@@ -31,12 +31,18 @@ app.use("/api/user", UserApiRouter);
 import { PuzzleApiRouter } from "./routes/api.puzzle.js";
 app.use("/api/puzzle", PuzzleApiRouter);
 
+import { QuestApiRouter } from "./routes/api.quest.js";
+app.use("/api/quest", QuestApiRouter);
+
 //UI routes for data display
 import { UserRouter } from "./routes/user.js";
 app.use("/user", UserRouter);
 
 import { PuzzleRouter } from "./routes/puzzle.js";
 app.use("/puzzle", PuzzleRouter);
+
+import { QuestRouter } from "./routes/quest.js";
+app.use("/quest", QuestRouter);
 
 app.set("views", path.join(import.meta.dirname, "views"));
 app.set("view engine", "ejs");

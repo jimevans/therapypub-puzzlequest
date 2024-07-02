@@ -1,4 +1,8 @@
-import { UserModel as User, AuthorizationLevel } from "../models/user.model.js";
+import {
+  TeamModel as Team,
+  UserModel as User,
+  AuthorizationLevel,
+} from "../models/user.model.js";
 
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -88,6 +92,27 @@ export async function authenticate(userName, password) {
     }
   );
   return { status: "success", token: token };
+}
+
+export async function getUserAndTeams(name) {
+  const user = await User.findOne({ userName: name });
+  if (user === null) {
+    return { error: `No user with user name ${name} found` };
+  }
+  const allNames = [
+    ...{ name: user.userName, displayName: user.displayName, type: "user" },
+  ];
+  const teamsContainingUser = await Team.find({
+    memberNames: { $elemMatch: { $eq: name } },
+  });
+  teamsContainingUser.forEach((team) =>
+    allNames.push({
+      name: team.teamName,
+      displayName: team.displayName,
+      type: "team",
+    })
+  );
+  return { status: "success", identifiers: allNames };
 }
 
 export async function listUsers() {

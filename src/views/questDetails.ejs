@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Puzzle Details</title>
+    <title>Quest Details</title>
     <link rel="stylesheet" type="text/css" href="/style/pq.css" />
     <link rel="icon" type="image/png" href="/image/pq-logo-64.png" sizes="64x64 32x32 24x24 16x16" />
     <link rel="icon" type="image/png" href="/image/pq-logo-192.png" sizes="192x192" />
@@ -10,10 +10,10 @@
   <body>
     <div class="pq-form-element">
       <div class="pq-label">
-        Puzzle name:
+        Quest name:
       </div>
       <div class="pq-input">
-        <%= puzzle.name %>
+        <%= quest.name %>
       </div>
     </div>
     <div class="pq-form-element">
@@ -21,62 +21,37 @@
         Display name:
       </div>
       <div class="pq-input">
-        <%= puzzle.displayName %>
+        <%= quest.displayName %>
       </div>
     </div>
     <div class="pq-form-element">
       <div class="pq-label">
-        Display type:
+        User or team:
       </div>
       <div class="pq-input">
-        <% if (puzzle.type === 0) { %>
-        Text
-        <% } else if (puzzle.type === 1) { %>
-        Image
-        <% } else if (puzzle.type === 2) { %>
-        Audio
-        <% } else if (puzzle.type === 3) { %>
-        Video
+        <%= quest.userName %>
+      </div>
+    </div>
+    <div class="pq-form-element">
+      <div class="pq-label">
+        Status:
+      </div>
+      <div class="pq-input">
+        <% if (quest.status === 0) { %>
+        Not started
+        <% } else if (quest.status === 1) { %>
+        In progress
+        <% } else if (quest.status === 2) { %>
+        Completed
         <% } %>
       </div>
     </div>
-    <div class="pq-form-element">
-      <div class="pq-label">
-        <label>Puzzle content:</label>
-      </div>
-      <div id="puzzle-content">
-      </div>
-    </div>
-    <div class="pq-form-element">
-      <div class="pq-label">
-        Solution keyword:
-      </div>
-      <div class="pq-input">
-        <%= puzzle.solutionKeyword %>
-      </div>
-    </div>
-    <div class="pq-form-element">
-      <div class="pq-label">
-        Solution display text:
-      </div>
-      <div class="pq-input">
-        <%= puzzle.solutionDisplayText %>
-      </div>
-    </div>
-    <div class="pq-form-element">
-      <div class="pq-label">
-        Activation code:
-      </div>
-      <div class="pq-input">
-        <%= puzzle.activationCode %>
-      </div>
-    </div>
     <div>
-      Hints
+      Puzzles
     </div>
-    <% if (!puzzle.hints.length) { %>
+    <% if (!quest.puzzles.length) { %>
     <div>
-      No hints to display
+    No puzzles to display
     </div>
     <% } else { %>
     <% } %>
@@ -90,8 +65,8 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script type="text/javascript">
       const renderMode = "<%=renderMode%>";
-      const puzzle = <%- JSON.stringify( puzzle ? { "name": puzzle.name, "type": puzzle.type, "content": puzzle.text } : null) %>;
+      const quest = <%- JSON.stringify(quest ? { "name": quest.name, "puzzles": quest.puzzles } : null) %>;
     </script>
-    <script type="module" src="/script/puzzleDetails.js"></script>
+    <script type="module" src="/script/questDetails.js"></script>
   </body>
 </html>

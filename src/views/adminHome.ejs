@@ -13,7 +13,16 @@
         <li><%=user.displayName %></li>
       </ul>
       <ul>
-        <li data-api-endpoint="">Quests</li>
+        <li data-api-endpoint="">
+         <a
+          id="quests"
+          class="pq-menu-link"
+          href="#"
+          data-api-endpoint="/api/quest/list"
+        >
+          Quests
+         </a>
+        </li>
         <li data-api-endpoint="">
           <a
             id="puzzles"
@@ -34,6 +43,7 @@
             Users
           </a>
         </li>
+        <li><a id="teams" class="pq-menu-link" href="#" data-api-endpoint="/api/teams/list">Teams</a></li>
         <li><a class="pq-menu-link" href="/logout">Logout</a></li>
       </ul>
     </nav>

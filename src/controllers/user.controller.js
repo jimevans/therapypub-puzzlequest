@@ -88,10 +88,12 @@ export async function retrieveUser(req, res) {
         error: `User ${req.user.userName} not authorized to retrieve user ${req.params.userName}`,
       })
     );
+    return;
   }
   const userResponse = await UserService.getUserByUserName(req.params.userName);
   if ("error" in userResponse) {
     res.status(500).send(JSON.stringify(userResponse));
+    return;
   }
 
   if (req.renderMode) {
@@ -113,10 +115,12 @@ export async function updateUser(req, res) {
         error: `User ${req.user.userName} not authorized to update user ${req.params.userName}`,
       })
     );
+    return;
   }
   const response = await UserService.updateUser(req.params.userName, req.body);
   if ("error" in response) {
     res.status(500).send(JSON.stringify(response));
+    return;
   }
   res.send(JSON.stringify(response));
 }
@@ -128,10 +132,12 @@ export async function deleteUser(req, res) {
         error: `User ${req.user.userName} not authorized to delete user ${req.params.userName}`,
       })
     );
+    return;
   }
   const response = await UserService.deleteUser(req.params.userName);
   if ("error" in response) {
     res.status(500).send(JSON.stringify(response));
+    return;
   }
   res.send(JSON.stringify(response));
 }
@@ -143,6 +149,7 @@ export async function listUsers(req, res) {
         error: `User ${req.user.userName} not authorized to list users`,
       })
     );
+    return;
   }
   const response = await UserService.listUsers();
   res.send(JSON.stringify(response));

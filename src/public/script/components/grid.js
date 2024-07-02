@@ -3,9 +3,10 @@
  */
 class DataGrid {
   #gridElement = document.createElement("div");
-  #gridTable;
+  #gridTable= document.createElement("table");;
+  #tableBody = document.createElement("tbody");
   #addNewDataLink = document.createElement("a");
-  #gridData = {};
+  #gridData = [];
 
   allowCreation = true;
   allowRowDeleting = true;
@@ -45,9 +46,70 @@ class DataGrid {
     }
 
     this.#gridElement.appendChild(gridTitleElement);
-
-    this.#gridTable = document.createElement("table");
     this.#gridElement.appendChild(this.#gridTable);
+  }
+
+  #createRow(columnDefinitions) {
+    const dataRow = document.createElement("tr");
+    if (this.allowRowSelecting) {
+      const selectionCell = document.createElement("td");
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.addEventListener("change", (e) => {
+        if (e.target.checked) {
+          e.target.parentNode.parentNode.setAttribute("data-row-selected", "true");
+        } else {
+          e.target.parentNode.parentNode.removeAttribute("data-row-selected");
+        }
+      });
+      selectionCell.appendChild(checkbox);
+      dataRow.appendChild(selectionCell);
+    }
+
+    columnDefinitions.forEach((columnDefinition) => {
+      const dataCell = document.createElement("td");
+      dataCell.classList.add("pq-grid-data-cell")
+      dataCell.setAttribute("data-field-name", columnDefinition.fieldName);
+      dataRow.appendChild(dataCell);
+    });
+
+    // Create filler column with delete button at end.
+    if (this.allowRowDeleting || this.allowRowEditing) {
+      const fillerColumnDataCell = document.createElement("td");
+      if (this.allowRowDeleting) {
+        const deleteButton = document.createElement("button");
+        deleteButton.innerText = "Delete";
+        deleteButton.addEventListener("click", (e) => {
+          e.preventDefault();
+          this.onDeleteDataRequested(e);
+        });
+        fillerColumnDataCell.appendChild(deleteButton);
+      }
+      dataRow.appendChild(fillerColumnDataCell);
+    }
+    return dataRow;
+  }
+
+  addDataRow(dataItem, columnDefinitions) {
+    const tableRow = this.#createRow(columnDefinitions);
+    columnDefinitions.forEach((columnDefinition) => {
+      const dataCell = tableRow.querySelector(`td[data-field-name='${columnDefinition.fieldName}']`);
+      if (dataCell) {
+        if (columnDefinition.linkTemplate) {
+          const itemLinkUrl = columnDefinition.linkTemplate.replace(
+            `:${columnDefinition.fieldName}`,
+            dataItem[columnDefinition.fieldName]
+          );
+          const link = document.createElement("a");
+          link.href = itemLinkUrl;
+          link.innerText = dataItem[columnDefinition.fieldName];
+          dataCell.appendChild(link);
+        } else {
+          dataCell.innerText = dataItem[columnDefinition.fieldName];
+        }
+      }
+    });
+    this.#tableBody.appendChild(tableRow);
   }
 
   /**
@@ -83,66 +145,16 @@ class DataGrid {
   }
 
   #populateGridData(columnDefinitions) {
-    const tableBody = document.createElement("tbody");
-
-    // Create a row for each piece of data.
     this.#gridData.forEach((item) => {
-      const dataRow = document.createElement("tr");
-      if (this.allowRowSelecting) {
-        const selectionCell = document.createElement("td");
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.addEventListener("change", (e) => {
-          if (e.target.checked) {
-            e.target.parentNode.parentNode.setAttribute("data-row-selected", "true");
-          } else {
-            e.target.parentNode.parentNode.removeAttribute("data-row-selected");
-          }
-        });
-        selectionCell.appendChild(checkbox);
-        dataRow.appendChild(selectionCell);
-      }
-
-      let itemLinkUrl;
-      columnDefinitions.forEach((columnDefinition) => {
-        const dataCell = document.createElement("td");
-        dataCell.classList.add("pq-grid-data-cell")
-        dataCell.setAttribute("data-field-name", columnDefinition.fieldName);
-        if (columnDefinition.linkTemplate) {
-          itemLinkUrl = columnDefinition.linkTemplate.replace(
-            `:${columnDefinition.fieldName}`,
-            item[columnDefinition.fieldName]
-          );
-          const link = document.createElement("a");
-          link.href = itemLinkUrl;
-          link.innerText = item[columnDefinition.fieldName];
-          dataCell.appendChild(link);
-        } else {
-          dataCell.innerText = item[columnDefinition.fieldName];
-        }
-        dataRow.appendChild(dataCell);
-      });
-
-      // Create filler column with delete button at end.
-      if (this.allowRowDeleting || this.allowRowEditing) {
-        const fillerColumnDataCell = document.createElement("td");
-        if (this.allowRowDeleting) {
-          const deleteButton = document.createElement("button");
-          deleteButton.innerText = "Delete";
-          deleteButton.addEventListener("click", (e) => {
-            e.preventDefault();
-            this.onDeleteDataRequested(e);
-          });
-          fillerColumnDataCell.appendChild(deleteButton);
-        }
-        dataRow.appendChild(fillerColumnDataCell);
-      }
-      tableBody.appendChild(dataRow);
+      this.addDataRow(item, columnDefinitions);
     });
-    this.#gridTable.appendChild(tableBody);
+    this.#gridTable.appendChild(this.#tableBody);
   }
 
   #clearGrid() {
+    while (this.#tableBody.firstChild) {
+      this.#tableBody.removeAttribute(this.#tableBody.firstChild);
+    }
     while (this.#gridElement.firstChild) {
       this.#gridElement.removeChild(this.#gridElement.firstChild);
     }
@@ -157,7 +169,6 @@ class DataGrid {
     this.#createGrid(titleText);
     this.#populateGridHeader(columnDefinitions);
     this.#populateGridData(columnDefinitions);
-    this.#gridElement.appendChild(this.#gridTable);
   }
 
   setAddNewDataLinkText(text) {

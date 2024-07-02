@@ -53,6 +53,10 @@ const teamSchema = new Schema({
     required: true,
     unique: true,
   },
+  displayName: {
+    type: String,
+    required: true,
+  },
   joinCode: {
     type: String,
     required: true,

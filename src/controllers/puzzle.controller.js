@@ -34,6 +34,7 @@ export async function createPuzzle(req, res) {
         error: `User must be logged in to create puzzles`,
       })
     );
+    return;
   }
   if (!AuthenticationService.isUserAdmin(req.user)) {
     res.status(403).send(
@@ -86,6 +87,7 @@ export async function retrievePuzzle(req, res) {
         error: `User must be logged in to retrieve puzzles`,
       })
     );
+    return;
   }
   if (!AuthenticationService.isUserAdmin(req.user)) {
     res.status(403).send(
@@ -108,6 +110,7 @@ export async function retrievePuzzle(req, res) {
   );
   if ("error" in puzzleResponse) {
     res.status(500).send(JSON.stringify(puzzleResponse));
+    return;
   }
 
   if (req.renderMode) {
@@ -128,6 +131,7 @@ export async function updatePuzzle(req, res) {
         error: `User must be logged in to update puzzles`,
       })
     );
+    return;
   }
   if (!AuthenticationService.isUserAdmin(req.user)) {
     res.status(403).send(
@@ -145,6 +149,7 @@ export async function updatePuzzle(req, res) {
   const response = await PuzzleService.updatePuzzle(req.params.name, req.body);
   if ("error" in response) {
     res.status(500).send(JSON.stringify(response));
+    return;
   }
   res.send(JSON.stringify(response));
 }
@@ -156,6 +161,7 @@ export async function deletePuzzle(req, res) {
         error: `User must be logged in to delete puzzles`,
       })
     );
+    return;
   }
   if (!AuthenticationService.isUserAdmin(req.user)) {
     res.status(403).send(
@@ -173,6 +179,7 @@ export async function deletePuzzle(req, res) {
   const response = await PuzzleService.deletePuzzle(req.params.name);
   if ("error" in response) {
     res.status(500).send(JSON.stringify(response));
+    return;
   }
   res.send(JSON.stringify(response));
 }
@@ -184,6 +191,7 @@ export async function listPuzzles(req, res) {
         error: `User must be logged in to list puzzles`,
       })
     );
+    return;
   }
   if (!AuthenticationService.isUserAdmin(req.user)) {
     res.status(403).send(
@@ -191,6 +199,7 @@ export async function listPuzzles(req, res) {
         error: `User ${req.user.userName} not authorized to list puzzles`,
       })
     );
+    return;
   }
   const response = await PuzzleService.listPuzzles();
   res.send(JSON.stringify(response));
@@ -223,6 +232,7 @@ export function uploadBinaryData(req, res) {
         error: `Request does not contain binary data`,
       })
     );
+    return;
   }
 
   res.send(

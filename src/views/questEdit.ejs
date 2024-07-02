@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Puzzle Details</title>
+    <link rel="stylesheet" type="text/css" href="/style/pq.css" />
+    <link rel="icon" type="image/png" href="/image/pq-logo-64.png" sizes="64x64 32x32 24x24 16x16" />
+    <link rel="icon" type="image/png" href="/image/pq-logo-192.png" sizes="192x192" />
+  </head>
+  <body>
+    <div class="pq-form-element">
+      <div class="pq-label">
+        <% if (renderMode !== "create") { %>
+        Quest name:
+        <% } else { %>
+        <label for="quest-name">Quest name:</label>
+        <% } %>
+      </div>
+      <div class="pq-input">
+        <% if (renderMode !== "create") { %>
+        <%= quest.name %>
+        <% } else { %>
+        <input id="quest-name" value="<%= renderMode !== "create" ? quest.name : "" %>" />
+        <% } %>
+      </div>
+    </div>
+    <div class="pq-form-element">
+      <div class="pq-label">
+        <label for="display-name">Display name:</label>
+      </div>
+      <div class="pq-input">
+        <input id="display-name" value="<%= renderMode !== "create" ? quest.displayName : "" %>" />
+      </div>
+    </div>
+    <div class="pq-form-element">
+      <div class="pq-label">
+        <label for="user-name">User name:</label>
+      </div>
+      <div class="pq-input">
+        <input id="user-name" value="<%= renderMode !== "create" ? quest.userName : "" %>" readonly />
+        <button id="set-user-button" class="pq-button">Set user</button>
+      </div>
+    </div>
+    <div class="pq-form-element">
+      <div class="pq-label">
+        <label for="quest-status">Quest status:</label>
+      </div>
+      <div class="pq-select">
+        <select id="quest-status">
+          <option value="0" <%=quest === null || quest.status === 0 ? "selected" : ""%>>Not started</option>
+          <option value="1" <%=quest && quest.status === 1 ? "selected" : ""%>>In progress</option>
+          <option value="2" <%=quest && quest.status === 2 ? "selected" : ""%>>Completed</option>
+        </select>
+      </div>
+    </div>
+    <div class="pq-form-element">
+      <div class="pq-label">
+        <label>Quest puzzles:</label>
+      </div>
+      <div id="quest-puzzles">
+      </div>
+    </div>
+    <div class="pq-form-element">
+      <button id="save" class="pq-button">Save</button>&nbsp;
+      <button id="cancel" class="pq-button">Cancel</button>
+    </div>
+    <div class="pq-error pq-hide">
+      <span id="error-message"></span>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script type="text/javascript">
+      const renderMode = "<%=renderMode%>";
+      const quest = <%- JSON.stringify( quest ? { "name": quest.name, "puzzles": quest.puzzles } : null) %>;
+    </script>
+    <script type="module" src="/script/questEdit.js"></script>
+  </body>
+</html>

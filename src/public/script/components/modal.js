@@ -1,10 +1,10 @@
 class Modal {
   #overlayElement;
-  #modal = document.createElement("article");
-  #modalHeader = document.createElement("header");
-  #modalBody = document.createElement("div");
-  #modalTitleElement = document.createElement("h2");
-  #modalFooter = document.createElement("footer");
+  #modal;
+  #modalHeader;
+  #modalBody;
+  #modalTitleElement;
+  #modalFooter;
   #buttonCount;
 
   constructor(buttonCount = 2) {
@@ -13,17 +13,17 @@ class Modal {
     if (!this.#overlayElement) {
       this.#overlayElement = document.createElement("div");
       this.#overlayElement.classList.add("pq-modal-overlay");
-
-      this.#modal.classList.add("pq-modal");
-      this.#createCloseButton();
-      this.#createModalHeader();
-      this.#createModalBody();
-      this.#createModalFooter();
-
-      this.#overlayElement.appendChild(this.#modal);
-
       document.querySelector("body").appendChild(this.#overlayElement);
     }
+
+    this.#modal = document.createElement("article");
+    this.#modal.classList.add("pq-modal");
+
+    this.#createCloseButton();
+    this.#createModalHeader();
+    this.#createModalBody();
+    this.#createModalFooter();
+    this.#overlayElement.replaceChildren(this.#modal);
   }
 
   #createCloseButton() {
@@ -37,17 +37,21 @@ class Modal {
   }
 
   #createModalHeader() {
+    this.#modalHeader = document.createElement("header");
     this.#modalHeader.classList.add("pq-modal-header");
+    this.#modalTitleElement = document.createElement("h2");
     this.#modalHeader.appendChild(this.#modalTitleElement);
     this.#modal.appendChild(this.#modalHeader);
   }
 
   #createModalBody() {
+    this.#modalBody = document.createElement("div");
     this.#modalBody.classList.add("pq-modal-body");
     this.#modal.appendChild(this.#modalBody);
   }
 
   #createModalFooter() {
+    this.#modalFooter = document.createElement("footer");
     this.#modalFooter.classList.add("pq-modal-footer");
     const confirmButton = document.createElement("button");
     confirmButton.classList.add("pq-button");

@@ -1,6 +1,7 @@
 import { QuestModel as Quest } from "../models/quest.model.js";
 import { QuestPuzzleModel as QuestPuzzle } from "../models/quest.model.js";
 import { QuestStatus, QuestPuzzleStatus } from "../models/quest.model.js";
+import * as UserService from "./user.service.js";
 
 function getCurrentPuzzleIndex(quest) {
   let currentPuzzleIndex = 0;
@@ -12,33 +13,6 @@ function getCurrentPuzzleIndex(quest) {
     currentPuzzleIndex++;
   }
   return currentPuzzleIndex;
-}
-
-export async function getQuests(status = -1) {
-  const statusFilter = {};
-  if (status >= QuestStatus.NOT_STARTED) {
-    statusFilter.status = status;
-  }
-  const quests = await Quest.find(statusFilter);
-  return quests;
-}
-
-async function getQuestData(name, omitUnavailablePuzzles = false) {
-  const matchCriteria = [
-    { $match: { name: name } },
-    { $unwind: "$puzzles" },
-    { $sort: "puzzles.questOrder" },
-  ];
-
-  if (omitUnavailablePuzzles) {
-    matchCriteria.push({
-      $match: {
-        "puzzles.status": { $gte: QuestPuzzleStatus.AWAITING_ACTIVATION },
-      },
-    });
-  }
-  const quest = await Quest.aggregate(matchCriteria);
-  return quest;
 }
 
 export async function createQuest(questDefinition) {
@@ -88,6 +62,64 @@ export async function createQuest(questDefinition) {
   }
   await quest.save();
   return { status: "success" };
+}
+
+export async function deleteQuest(name) {
+  const result = await Quest.findOneAndDelete({ name: name });
+  if (result === null) {
+    return { error: `User with user name ${name} does not exist` };
+  }
+  return { status: "success" };
+}
+
+export async function updateQuest(name, questDefinition) {
+  const foundQuest = await Quest.findOne({ name: name });
+  if (foundQuest === null) {
+    return { error: `No quest with quest name ${name} found` };
+  }
+  if (questDefinition.name || questDefinition.displayName) {
+    foundQuest.name = questDefinition.name || questDefinition.displayName.replace(" ", ".").toLowerCase();
+    foundQuest.displayName = questDefinition.displayName || questDefinition.name;
+  }
+  foundQuest.userName = questDefinition.userName || foundQuest.userName;
+  foundQuest.status = questDefinition.status || foundQuest.status;
+  foundQuest.puzzles = questDefinition.puzzles || foundQuest.puzzles;
+  await foundQuest.save();
+  return { status: "success" };
+}
+
+export async function getQuests(user = null, status = -1) {
+  const questFilter = {};
+  if (status >= QuestStatus.NOT_STARTED) {
+    questFilter.status = status;
+  }
+  if (user) {
+    const userNameResponse = await UserService.getUserAndTeams(user);
+    if ("error" in userNameResponse) {
+      return userNameResponse;
+    }
+    questFilter.userName = { $in: userNameResponse.identifiers };
+  }
+  const foundQuests = await Quest.find(questFilter);
+  return { status: "success", quests: foundQuests };
+}
+
+async function getQuestData(name, omitUnavailablePuzzles = false) {
+  const matchCriteria = [
+    { $match: { name: name } },
+    { $unwind: "$puzzles" },
+    { $sort: "puzzles.questOrder" },
+  ];
+
+  if (omitUnavailablePuzzles) {
+    matchCriteria.push({
+      $match: {
+        "puzzles.status": { $gte: QuestPuzzleStatus.AWAITING_ACTIVATION },
+      },
+    });
+  }
+  const foundQuest = await Quest.aggregate(matchCriteria);
+  return { status: "success", quest: foundQuest };
 }
 
 export async function addPuzzle(

@@ -1,6 +1,5 @@
 import { DataGrid } from "./components/grid.js";
 import { Lookup } from "./components/lookup.js";
-import { Modal } from "./components/modal.js";
 
 async function getData(apiEndpoint) {
   try {
@@ -86,6 +85,40 @@ document.querySelector("#puzzles").addEventListener("click", async (e) => {
     gridElement.classList.remove("pq-hide");
   }
 });
+
+document.querySelector("#quests").addEventListener("click", async (e) => {
+  e.preventDefault();
+  const gridElement = document.querySelector("#data-grid");
+  gridElement.classList.add("pq-hide");
+  const questData = await getData(e.currentTarget.getAttribute("data-api-endpoint"));
+  if (questData && questData.status === "success") {
+    const fieldDefinitions = [
+      {
+        fieldName: "name",
+        title: "Quest Name",
+        linkTemplate: "/quest/:name"
+      },
+      {
+        fieldName: "displayName",
+        title: "Display Name"
+      },
+      {
+        fieldName: "userName",
+        title: "User Name"
+      },
+    ];
+    const grid = new DataGrid();
+    grid.initialize("Quests", fieldDefinitions, questData.quests);
+    grid.onAddDataRequested = (e) => {
+      window.location.href = "/quest/new";
+    };
+    // TODO: Wire up user deletion
+    // grid.onDeleteRequested = (itemUrl) => console.log(itemUrl);
+    gridElement.replaceChildren(grid.getElement());
+    gridElement.classList.remove("pq-hide");
+  }
+});
+
 
 const modal = new Lookup();
 modal.setTitle("Test modal");
