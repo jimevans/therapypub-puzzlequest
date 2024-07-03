@@ -2,15 +2,20 @@ import { DataGrid } from "./grid.js";
 import { Modal } from "./modal.js";
 
 class Lookup extends Modal {
-  #grid = new DataGrid();
+  #grid;
 
-  constructor() {
+  constructor(lookupCaption, columnDefinitions, selectMultiple) {
     super();
-    this.#grid.allowCreation = false;
-    this.#grid.allowRowSelecting = true;
-    this.#grid.allowRowDeleting = false;
-    this.#grid.allowRowEditing = false;
-    this.#grid.allowRowReordering = false;
+    const gridOptions = {
+      showTitle: false,
+      allowCreation: false,
+      allowRowSelecting: selectMultiple ? DataGrid.ROW_SELECTION_MULTIPLE : DataGrid.ROW_SELECTION_SINGLE,
+      allowRowDeleting: false,
+      allowRowEditing: false,
+      allowRowReordering: false,
+    }
+    this.setTitle(lookupCaption);
+    this.#grid = new DataGrid("", columnDefinitions, gridOptions);
   }
 
   async #getData(apiEndpoint) {
@@ -36,11 +41,11 @@ class Lookup extends Modal {
     }
   }
 
-  async initialize(caption, dataRetrievalUri, responseDataField, gridColumnDefinitions) {
+  async render(dataRetrievalUri, responseDataField) {
     const gridDataResponse = await this.#getData(dataRetrievalUri);
     if (gridDataResponse && gridDataResponse.status === "success") {
       if (responseDataField in gridDataResponse) {
-        this.#grid.initialize(caption, gridColumnDefinitions, gridDataResponse[responseDataField]);
+        this.#grid.render(gridDataResponse[responseDataField]);
         this.setBodyContent(this.#grid.getElement());
       }
     }

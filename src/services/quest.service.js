@@ -31,7 +31,7 @@ export async function createQuest(questDefinition) {
     // managing the implications of creating a quest.
     return { error: "Quest definition must contain a user name" };
   }
-  const questExists = (await Quest.find({ name: questName }).length) !== 0;
+  const questExists = (await Quest.find({ name: questName })).length !== 0;
   if (questExists) {
     return { error: `Quest with name ${questName} already exists` };
   }
@@ -50,13 +50,13 @@ export async function createQuest(questDefinition) {
     // when managing the implications of creating puzzles in a quest.
     let puzzleCount = 0;
     questDefinition.puzzles.forEach((puzzleDefinition) => {
-      const puzzle = new QuestPuzzle({
+      const puzzle = {
         puzzleName: puzzleDefinition.puzzleName,
         questOrder: puzzleCount,
         nextHintToDisplay: 0,
         status: QuestPuzzleStatus.UNAVAILABLE,
-      });
-      createQuest.puzzles.push(puzzle);
+      };
+      quest.puzzles.push(puzzle);
       puzzleCount++;
     });
   }
@@ -105,68 +105,73 @@ export async function getQuests(user = null, status = -1) {
 }
 
 async function getQuestData(name, omitUnavailablePuzzles = false) {
-  const matchCriteria = [
+  const foundQuests = await Quest.aggregate([
     { $match: { name: name } },
-    { $unwind: "$puzzles" },
-    { $sort: "puzzles.questOrder" },
-  ];
-
-  if (omitUnavailablePuzzles) {
-    matchCriteria.push({
-      $match: {
-        "puzzles.status": { $gte: QuestPuzzleStatus.AWAITING_ACTIVATION },
-      },
+    { $limit: 1 },
+    {
+      $lookup: {
+        from: "puzzles",
+        localField: "puzzles.puzzleName",
+        foreignField: "name",
+        as: "puzzleDetails"
+      }
+    }
+  ]);
+  if (foundQuests.length === 0) {
+    return { status: "success", quest: null };
+  }
+  // We should only ever have one here, so take the 0th one.
+  const foundQuest = foundQuests[0];
+  const questData = {
+    name: foundQuest.name,
+    displayName: foundQuest.displayName,
+    userName: foundQuest.userName,
+    status: foundQuest.status,
+    puzzles: []
+  }
+  const foundPuzzles = foundQuest.puzzles.filter(puzzle => {
+    if (!omitUnavailablePuzzles || (omitUnavailablePuzzles && puzzle.status >= QuestPuzzleStatus.AWAITING_ACTIVATION)) {
+      return puzzle;
+    }
+  }).sort((a, b) => a.questOrder - b.questOrder);
+  foundPuzzles.forEach(puzzle => {
+    let statusDescription = "";
+    switch (puzzle.status) {
+      case QuestPuzzleStatus.AWAITING_ACTIVATION:
+        statusDescription = "Awaiting activation";
+        break;
+      case QuestPuzzleStatus.IN_PROGRESS:
+        statusDescription = "In progress";
+        break;
+      case QuestPuzzleStatus.COMPLETED:
+        statusDescription = "Completed";
+      default:
+        statusDescription = "Unavailable";
+        break;
+    }
+    const detail = foundQuest.puzzleDetails.filter(puzzleDetail => puzzle.puzzleName === puzzleDetail.name)[0];
+    questData.puzzles.push({
+      name: puzzle.puzzleName,
+      displayName: detail.displayName,
+      solutionDisplayText: detail.solutionDisplayText,
+      questOrder: puzzle.questOrder,
+      nextHintToDisplay: puzzle.nextHintToDisplay,
+      status: puzzle.status,
+      statusDescription: statusDescription,
+      startTime: puzzle.startTime,
+      endTime: puzzle.endTime,
+      activationTime: puzzle.activationTime
     });
-  }
-  const foundQuest = await Quest.aggregate(matchCriteria);
-  return { status: "success", quest: foundQuest };
-}
-
-export async function addPuzzle(
-  questName,
-  puzzleDefinition,
-  puzzlePosition = -1
-) {
-  const quest = await getQuestData(questName, true);
-  if (quest === null) {
-    return { error: `No quest with name ${questName} found` };
-  }
-
-  if (quest.status !== 0) {
-    return { error: `Quest with name ${questName} has been started` };
-  }
-
-  // NOTE: This could lead to attempting to add a puzzle name that does
-  // not exist. This is to avoid a lookup of the puzzle from the Puzzles
-  // schema. Consumers of this service will have to take that into account
-  // when managing the implications of creating puzzles in a quest.
-  const puzzle = new QuestPuzzle({
-    puzzleName: puzzleDefinition.puzzleName,
-    questOrder: puzzleCount,
-    nextHintToDisplay: 0,
-    status: QuestPuzzleStatus.UNAVAILABLE,
   });
-
-  if (puzzlePosition < 0 || puzzlePosition >= quest.puzzles.length) {
-    quest.puzzles.push(puzzle);
-  } else {
-    quest.puzzles.splice(puzzlePosition, 0, puzzle);
-  }
-  let order = 0;
-  quest.puzzles.forEach((questPuzzle) => {
-    questPuzzle.questOrder = order;
-    order++;
-  });
-  await quest.save();
-  return { status: "success" };
+  return { status: "success", quest: questData };
 }
 
 export async function getQuest(name) {
-  const quest = await getQuestData(name).lean();
-  if (quest === null) {
+  const questData = await getQuestData(name);
+  if (questData === null) {
     return { error: `No quest with name ${name} found` };
   }
-  return { status: "success", quest: quest };
+  return { status: "success", quest: questData.quest };
 }
 
 export async function startQuest(name) {

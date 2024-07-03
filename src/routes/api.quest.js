@@ -9,17 +9,17 @@ questApiRouter.get(
   QuestController.listQuests
 );
 questApiRouter.get(
-  "/:questName",
+  "/:name",
   TokenAuthenticator.tokenAuthenticate,
   QuestController.retrieveQuest
 );
 questApiRouter.put(
-  "/:questName",
+  "/:name",
   TokenAuthenticator.tokenAuthenticate,
   QuestController.updateQuest
 );
 questApiRouter.delete(
-  "/:questName",
+  "/:name",
   TokenAuthenticator.tokenAuthenticate,
   QuestController.deleteQuest
 );

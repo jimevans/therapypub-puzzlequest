@@ -24,10 +24,10 @@ export async function createQuest(req, res) {
     res.status(400).send(JSON.stringify({ error: "No request body" }));
     return;
   }
-  if (!("name" in req.body && !"displayName" in req.body)) {
+  if (!("name" in req.body) && !("displayName" in req.body)) {
     res
       .status(400)
-      .send(JSON.stringify({ error: "No puzzle name in request body" }));
+      .send(JSON.stringify({ error: "No quest name in request body" }));
     return;
   }
   if (!("userName" in req.body)) {
@@ -74,6 +74,7 @@ export async function retrieveQuest(req, res) {
   );
   if ("error" in questResponse) {
     res.status(500).send(JSON.stringify(questResponse));
+    return;
   }
 
   if (req.renderMode) {

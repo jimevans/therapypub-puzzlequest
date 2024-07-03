@@ -1,5 +1,4 @@
 import { DataGrid } from "./components/grid.js";
-import { Lookup } from "./components/lookup.js";
 
 async function getData(apiEndpoint) {
   try {
@@ -43,8 +42,8 @@ document.querySelector("#users").addEventListener("click", async (e) => {
         width: "25%"
       },
     ];
-    const grid = new DataGrid();
-    grid.initialize("Users", fieldDefinitions, userData.users);
+    const grid = new DataGrid("Users", fieldDefinitions);
+    grid.render(userData.users);
     grid.onAddDataRequested = (e) => {
       window.location.href = "/user/register";
     };
@@ -74,12 +73,12 @@ document.querySelector("#puzzles").addEventListener("click", async (e) => {
         width: "25%"
       },
     ];
-    const grid = new DataGrid();
-    grid.initialize("Puzzles", fieldDefinitions, puzzleData.puzzles);
+    const grid = new DataGrid("Puzzles", fieldDefinitions);
+    grid.render(puzzleData.puzzles);
     grid.onAddDataRequested = (e) => {
       window.location.href = "/puzzle/new";
     };
-    // TODO: Wire up user deletion
+    // TODO: Wire up puzzle deletion
     // grid.onDeleteRequested = (itemUrl) => console.log(itemUrl);
     gridElement.replaceChildren(grid.getElement());
     gridElement.classList.remove("pq-hide");
@@ -107,40 +106,14 @@ document.querySelector("#quests").addEventListener("click", async (e) => {
         title: "User Name"
       },
     ];
-    const grid = new DataGrid();
-    grid.initialize("Quests", fieldDefinitions, questData.quests);
+    const grid = new DataGrid("Quests", fieldDefinitions);
+    grid.render(questData.quests);
     grid.onAddDataRequested = (e) => {
       window.location.href = "/quest/new";
     };
-    // TODO: Wire up user deletion
+    // TODO: Wire up quest deletion
     // grid.onDeleteRequested = (itemUrl) => console.log(itemUrl);
     gridElement.replaceChildren(grid.getElement());
     gridElement.classList.remove("pq-hide");
   }
-});
-
-
-const modal = new Lookup();
-modal.setTitle("Test modal");
-modal.setConfirmButtonText("Hit me");
-
-document.querySelector("#show-modal").addEventListener("click", async (e) => {
-  const fieldDefinitions = [
-    {
-      fieldName: "name",
-      title: "Puzzle Name",
-      width: "25%",
-    },
-    {
-      fieldName: "displayName",
-      title: "Display Name",
-      width: "25%"
-    },
-  ];
-  await modal.initialize("Select puzzles", "/api/puzzle/list", "puzzles", fieldDefinitions);
-  modal.onConfirmButtonClick = (e) => {
-    const selectedPuzzles = modal.getSelectedData();
-    console.log(JSON.stringify(selectedPuzzles));
-  }
-  modal.show();
 });

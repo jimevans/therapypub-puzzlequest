@@ -15,43 +15,66 @@ function showError(errorMessage) {
   errorNotifier.classList.remove("pq-hide");
 }
 
-const puzzleGrid = new DataGrid();
-puzzleGrid.allowCreation = true;
-puzzleGrid.allowRowDeleting = true;
-puzzleGrid.allowRowEditing = true;
-puzzleGrid.allowRowReordering = true;
-puzzleGrid.allowRowSelecting = false;
+async function callDataApi(apiEndPoint, method, data) {
+  try {
+    const response = await fetch(apiEndPoint, {
+      method: method,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+    if (response.ok) {
+      return await response.json();
+    } else {
+      const responseData = await response.json();
+      if ("error" in responseData) {
+        console.log(
+          `${response.status} received with error ${responseData.error}`
+        );
+      }
+      return responseData;
+    }
+  } catch (err) {
+    console.log("error: " + err);
+  }
+}
+
+const puzzleGridOptions = {
+  allowCreation: true,
+  allowRowDeleting: true,
+  allowRowEditing: true,
+  allowRowReordering: true,
+  allowRowSelecting: false
+}
+
 const columnDefinitions = [
   {
     fieldName: "name",
     title: "Puzzle Name",
   },
   {
+    fieldName: "displayName",
+    title: "Display Name"
+  },
+  {
+    fieldName: "solutionDisplayText",
+    title: "Solution"
+  },
+  {
     fieldName: "nextHintToDisplay",
     title: "Next Hint Number"
   },
   {
-    fieldName: "status",
+    fieldName: "statusDescription",
     title: "Status"
   }
 ];
-puzzleGrid.initialize("Quest Puzzles", columnDefinitions, quest ? quest.puzzles : []);
+const puzzleGrid = new DataGrid("Quest Puzzles", columnDefinitions, puzzleGridOptions);
+puzzleGrid.setAddNewDataLinkText("Add puzzle to quest");
+puzzleGrid.render(quest ? quest.puzzles : []);
 
 puzzleGrid.onAddDataRequested = () => {
-  const puzzleLookup = new Lookup();
-  puzzleLookup.onConfirmButtonClick = (e) => {
-    const selectedPuzzles = puzzleLookup.getSelectedData();
-    puzzleLookup.hide();
-    selectedPuzzles.forEach((puzzle) => {
-      const questPuzzle = {
-        name: puzzle.name,
-        nextHintToDisplay: 0,
-        status: 0
-      }
-      puzzleGrid.addDataRow(questPuzzle, columnDefinitions);
-    });
-  }
-
    const lookupColumnDefinitions = [
     {
       fieldName: "name",
@@ -62,22 +85,32 @@ puzzleGrid.onAddDataRequested = () => {
       title: "Display name"
     },
     {
-      fieldName: "solutionText",
+      fieldName: "solutionDisplayText",
       title: "Solution text"
     }
   ];
-  puzzleLookup.initialize("Puzzles", "/api/puzzle/list", "puzzles", lookupColumnDefinitions);
+  const puzzleLookup = new Lookup("Select puzzles", lookupColumnDefinitions, true);
+  puzzleLookup.onConfirmButtonClick = (e) => {
+    const selectedPuzzles = puzzleLookup.getSelectedData();
+    puzzleLookup.hide();
+    selectedPuzzles.forEach((puzzle) => {
+      const questPuzzle = {
+        name: puzzle.name,
+        displayName: puzzle.displayName,
+        solutionDisplayText: puzzle.solutionDisplayText,
+        nextHintToDisplay: 0,
+        status: 0
+      }
+      puzzleGrid.addDataRow(questPuzzle, columnDefinitions);
+    });
+  }
+
+  puzzleLookup.render("/api/puzzle/list", "puzzles");
   puzzleLookup.show();
 }
 
 document.querySelector("#set-user-button").addEventListener("click", (e) => {
   e.stopPropagation();
-  const userLookup = new Lookup();
-  userLookup.onConfirmButtonClick = (e) => {
-    const selectedUser = userLookup.getSelectedData();
-    userLookup.hide();
-  }
-
    const lookupColumnDefinitions = [
     {
       fieldName: "userName",
@@ -88,9 +121,90 @@ document.querySelector("#set-user-button").addEventListener("click", (e) => {
       title: "Display name"
     }
   ];
-  userLookup.initialize("Users", "/api/user/list", "users", lookupColumnDefinitions);
+  const userLookup = new Lookup("Select user", lookupColumnDefinitions);
+  userLookup.onConfirmButtonClick = (e) => {
+    const selectedUser = userLookup.getSelectedData();
+    userLookup.hide();
+    if (selectedUser.length > 0) {
+      document.querySelector("#user-name").value = selectedUser[0].userName;
+    }
+  }
+  userLookup.render("/api/user/list", "users");
   userLookup.show();
-
 });
 
 document.querySelector("#quest-puzzles").replaceChildren(puzzleGrid.getElement());
+
+document.querySelector("#cancel").addEventListener("click", (e) => {
+  e.preventDefault();
+  if (quest) {
+    window.location.href = `/quest/${quest.name}`;
+  } else {
+    window.location.href = "/";
+  }
+});
+
+
+function getQuestData() {
+  let puzzleIndex = 0;
+  const questPuzzles = [];
+  puzzleGrid.getData().forEach(questPuzzle => {
+    questPuzzles.push({
+      puzzleName: questPuzzle.name,
+      questOrder: puzzleIndex,
+      nextHintToDisplay: questPuzzle.nextHintToDisplay,
+      status: questPuzzle.status
+    });
+    puzzleIndex++;
+  })
+  const questName =
+    renderMode === "create"
+      ? document.querySelector("#quest-name").value
+      : quest.name;
+  const questData = {
+    name: questName,
+    displayName: document.querySelector("#display-name").value,
+    userName: document.querySelector("#user-name").value,
+    status: parseInt(document.querySelector("#quest-status").value),
+    puzzles: questPuzzles
+  };
+  return questData;
+}
+
+function validateInput(questData) {
+  const dataErrors = [];
+  if (questData.name === "") {
+    dataErrors.push("quest name cannot be empty");
+  }
+  if (questData.displayName === "") {
+    dataErrors.push("quest display name cannot be empty");
+  }
+  if (questData.userName === "") {
+    dataErrors.push("solution keyword cannot be empty");
+  }
+  return dataErrors;
+}
+
+document.querySelector("#save").addEventListener("click", async (e) => {
+  e.preventDefault();
+  clearError();
+  const questData = getQuestData();
+  const dataErrors = validateInput(questData, renderMode);
+  if (dataErrors.length) {
+    showError(dataErrors.join(", "));
+    return;
+  }
+
+  const dataApiVerb = renderMode === "edit" ? "put" : "post";
+  const dataApiUrl =
+    renderMode === "edit"
+      ? `/api/quest/${questData.name}`
+      : `/api/quest/create`;
+
+  const dataReturn = await callDataApi(dataApiUrl, dataApiVerb, questData);
+  if ("error" in dataReturn) {
+    showError(dataReturn.error);
+    return;
+  }
+  window.location.href = `/quest/${questData.name}`;
+});
