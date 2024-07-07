@@ -121,3 +121,8 @@ if (renderMode === "display") {
     window.location.href = "/";
   });
 }
+
+document.querySelector("#more-info-link").addEventListener("click", (e) => {
+  e.preventDefault();
+  document.querySelector("#more-info").classList.remove("pq-hide");
+});

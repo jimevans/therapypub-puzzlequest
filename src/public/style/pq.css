@@ -64,6 +64,11 @@ nav ul li {
   margin-bottom: 0.125rem;
 }
 
+.pq-link {
+  text-decoration: underline;
+  color: #3498db;
+}
+
 .pq-grid-title {
   background-color: #3498db;
   color: #ffffff;

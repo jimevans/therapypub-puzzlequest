@@ -52,10 +52,24 @@
     </div>
     <div class="pq-form-element">
       <div class="pq-label">
-        <label for="sms">SMS number:</label>
+        <label for="sms">Phone number:</label>
       </div>
       <div class="pq-input">
         <input id="sms" value="<%= renderMode !== "create" ? user.sms : "" %>" <%= renderMode === "display" ? "readonly" : "" %> />
+      </div>
+    </div>
+    <div class="pq-form-element">
+      <div class="pq-label">
+        <label for="allow-sms">Allow sending of SMS messages:</label>
+        <input id="allow-sms" type="checkbox" />&nbsp;<a id="more-info-link" class="pq-link">More info</a>
+      </div>
+      <div id="more-info" class="pq-hide pq-label">
+        Checking this box gives The PuzzleQuest Game consent to send you mobile text (SMS) messages.<br>
+        These messages will come from The PuzzleQuest Game number (813-296-5411).<br>
+        The PuzzleQuest Game does not charge for these services, but messaging and data rates<br>
+        from your mobile provider may apply. You may opt out of receiving the messages at any<br>
+        time by replying "STOP", or by unchecking this checkbox. See our
+        <a href="/policies/privacy.html">Privacy Policy</a> for full details.
       </div>
     </div>
     <% if (currentUser && currentUser.authorizationLevel >= 10) { %>
