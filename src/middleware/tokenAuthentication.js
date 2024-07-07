@@ -18,7 +18,7 @@ export async function tokenAuthenticate(req, res, next) {
       httpOnly: true,
       secure: config.PQ_RUNTIME_ENVIRONMENT !== "development",
     });
-  } else if (TOKEN_COOKIE_NAME in req.cookies) {
+  } else if (req.cookies && TOKEN_COOKIE_NAME in req.cookies) {
     // Token is stored as an http-only cookie. This is the usual
     // method used by UI requests.
     token = req.cookies[TOKEN_COOKIE_NAME];
