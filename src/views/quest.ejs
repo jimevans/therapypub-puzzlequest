@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>PuzzleQuest</title>
+    <link rel="stylesheet" type="text/css" href="/style/pq.css" />
+    <link rel="icon" type="image/png" href="/image/pq-logo-64.png" sizes="64x64 32x32 24x24 16x16" />
+    <link rel="icon" type="image/png" href="/image/pq-logo-192.png" sizes="192x192" />
+  </head>
+  <body>
+    <div class="pq-header">
+      <span class="pq-header-text"><%= quest.displayName %></span>
+      <a href="/" class="pq-menu-link pq-float-right">Return to dashboard</a>
+    </div>
+    <p>Puzzles</p>
+    <table>
+      <% const dateFormatter = Intl.DateTimeFormat(undefined, { month: "short", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }); %>
+      <% quest.puzzles.forEach((puzzle) => { %>
+        <% if (puzzle.status > 0) { %>
+        <tr>
+          <td>
+            <a href="/quest/<%=quest.name%>/puzzle/<%=puzzle.name%><%=puzzle.status === 1 ? "/activate" : "" %>"><%= puzzle.displayName %></a>
+          </td>
+          <td>
+            <%= puzzle.statusDescription %>
+          </td>
+          <td>
+            <%= puzzle.startTime ? dateFormatter.format(puzzle.startTime) : "" %>
+          </td>
+          <td>
+            <%= puzzle.activationTime ? dateFormatter.format(puzzle.activationTime) : "" %>
+          </td>
+          <td>
+            <%= puzzle.endTime ? dateFormatter.format(puzzle.endTime) : "" %>
+          </td>
+          <td>
+            <%= puzzle.status >= 3 ? puzzle.solutionDisplayText : "" %>
+          </td>
+        </tr>
+        <% } %>
+      <% }); %>
+    </table>
+  </body>
+</html>

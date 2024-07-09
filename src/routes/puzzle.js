@@ -5,9 +5,6 @@ import * as PuzzleController from "../controllers/puzzle.controller.js";
 
 const puzzleRouter = express.Router();
 
-// TODO: Remove this. It's only here for demo/experimentation purposes.
-puzzleRouter.get("/activate", PuzzleController.activatePuzzle);
-
 puzzleRouter.get(
   "/new",
   TokenAuthenticator.tokenAuthenticate,

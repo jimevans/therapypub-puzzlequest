@@ -12,7 +12,6 @@ const storage = multer.diskStorage({
   }
 });
 
-const uploadActivate = multer();
 const upload = multer({ storage: storage });
 
 const puzzleApiRouter = express.Router();
@@ -46,13 +45,6 @@ puzzleApiRouter.post(
   TokenAuthenticator.tokenAuthenticate,
   upload.single("binary"),
   PuzzleController.uploadBinaryData
-);
-
-// TODO: Remove this. It's only here for demo/experimentation purposes.
-puzzleApiRouter.post(
-  "/activate",
-  uploadActivate.single("image"),
-  PuzzleController.receiveImageData
 );
 
 export { puzzleApiRouter as PuzzleApiRouter };

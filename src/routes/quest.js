@@ -24,7 +24,20 @@ questRouter.get(
   TokenAuthenticator.tokenAuthenticate,
   UseRenderMode.useRenderMode(UseRenderMode.RenderMode.EDIT),
   QuestController.retrieveQuest
-)
+);
 
+questRouter.get(
+  "/:name/puzzle/:puzzleName",
+  TokenAuthenticator.tokenAuthenticate,
+  UseRenderMode.useRenderMode(UseRenderMode.RenderMode.DISPLAY),
+  QuestController.renderQuestPuzzle
+);
+
+questRouter.get(
+  "/:name/puzzle/:puzzleName/activate",
+  TokenAuthenticator.tokenAuthenticate,
+  UseRenderMode.useRenderMode(UseRenderMode.RenderMode.DISPLAY),
+  QuestController.renderQuestPuzzleActivation
+);
 
 export { questRouter as QuestRouter };

@@ -2,16 +2,48 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Login to PuzzleQuest</title>
+    <meta name="viewport" content="width=device-width" />
+    <title>PuzzleQuest</title>
     <link rel="stylesheet" type="text/css" href="/style/pq.css" />
     <link rel="icon" type="image/png" href="/image/pq-logo-64.png" sizes="64x64 32x32 24x24 16x16" />
     <link rel="icon" type="image/png" href="/image/pq-logo-192.png" sizes="192x192" />
   </head>
   <body>
-    <video id="video" muted="muted" autoplay="autoplay" playsinline="playsinline">Video stream not available.</video>
-    <canvas id="canvas"></canvas>
-    <button id="startbutton">Take photo</button>
-    <div id="log"></div>
+    <h2>Activate Puzzle: <%=puzzle.displayName %></h2>
+    <div>
+      Activate by
+    </div>
+    <div>
+      <input type="radio" id="qr-code" name="auth-method" value="qr" />
+      <label for="qr-code">Scanning QR code</label>
+    </div>
+    <div>
+      <input type="radio" id="text-value" name="auth-method" value="text" />
+      <label for="text">Entering code text</label>
+    </div>
+    <div id="qr-code-scanner" class="pq-hide">
+      <div>
+        <button id="start-button">Enable camera</button>
+        <button id="scan-code-button" class="pq-hide">Scan code</button>
+      </div>
+      <div id="camera-image" class="pq-hide">
+        <video id="video" muted="muted" playsinline="playsinline" class="pq-hide">Video stream not available.</video>
+        <canvas id="canvas"></canvas>
+      </div>
+    </div>
+    <div id="text-entry" class="pq-hide">
+      <div class="pq-label">
+        <label for="text-auth-code">Enter authorization code</label>
+      </div>
+      <div class="pq-input">
+        <input id="text-auth-code" class="pq-input" />&nbsp;<button id="send-code-text-button" class="pq-button">Send code</button>
+      </div>
+    </div>
+    <div id="error-details" class="pq-hide"></div>
+    <script type="text/javascript">
+      const questName = <%- JSON.stringify(quest ? quest : null) %>;
+      const puzzleName = <%- JSON.stringify(puzzle ? puzzle.name : null) %>;
+    </script>
     <script type="text/javascript" src="/script/activate.js"></script>
   </body>
 </html>

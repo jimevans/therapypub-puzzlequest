@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>PuzzleQuest</title>
+    <link rel="stylesheet" type="text/css" href="/style/pq.css" />
+    <link rel="icon" type="image/png" href="/image/pq-logo-64.png" sizes="64x64 32x32 24x24 16x16" />
+    <link rel="icon" type="image/png" href="/image/pq-logo-192.png" sizes="192x192" />
+  </head>
+  <body>
+    <div class="pq-header">
+      <span class="pq-header-text"><%= puzzle.displayName %></span>
+      <a href="/quest/<%=quest%>" class="pq-menu-link pq-float-right">Return to quest</a>
+    </div>
+    <div id="puzzle-content">
+      <%- rendered %>
+    </div>
+    <div id="hints">
+      <div class="pq-header">
+        <span class="pq-header-text">Hints</span>
+        <% if (puzzle.status < 3) { %>
+          <% if (puzzle.nextHintSolutionWarning === undefined) { %>
+          <span id="request-hint" class="pq-float-right">No available hints</span>
+          <% } else if (puzzle.nextHintSolutionWarning) { %>
+          <a id="request-hint" href="#" class="pq-menu-link pq-float-right" data-solution-warning="true">Request hint</a>
+          <% } else { %>
+          <a id="request-hint" href="#" class="pq-menu-link pq-float-right">Request hint</a>
+          <% } %>
+        <% } %>
+      </div>
+      <div id="used-hints">
+        <% if (puzzle.hints.length) { %>
+          <% puzzle.hints.forEach((hint) => { %>
+            <p class="pq-hint"><%=hint.text %></p>
+          <% }); %>
+        <% } else { %>
+          <p>No hints used</p>
+        <% } %>
+      </div>
+    </div>
+    <% if (puzzle.status === 2) { %>
+    <div id="solve">
+      <div class="pq-label">
+        <label for="solution">Solution</label>
+      </div>
+      <div class="pq-input">
+        <input id="solution-guess" />&nbsp;
+        <button id="submit-button" class="pq-button">Submit solution</button>
+      </div>
+      <div id="solution-errors" class="pq-hide">
+      </div>
+    </div>
+    <% } %>
+    <div id="solution" class="<%=puzzle.status !== 3 ? "pq-hide" : ""%>">
+      <div class="pq-header">
+        Solution
+      </div>
+      <div id="solution-text">
+        <%= puzzle.status === 3 ? puzzle.solutionDisplayText : "" %>
+      </div>
+    </div>
+    <script type="text/javascript">
+      const questName = <%- JSON.stringify(quest ? quest : null) %>;
+      const puzzleName = <%- JSON.stringify(puzzle ? puzzle.name : null) %>;
+    </script>
+    <script type="module" src="/script/puzzle.js"></script>
+  </body>
+</html>

@@ -53,6 +53,21 @@ nav ul li {
   text-decoration: none;
 }
 
+.pq-header {
+  background-color: #3498db;
+  color: #ffffff;
+  padding: 1em 1em 1em 1em;
+}
+
+.pq-header-text {
+  font-size: 1.25em;
+}
+
+.pq-puzzle-img {
+  width: 100%;
+  height: auto;
+}
+
 .pq-form-element {
   margin: 0.5rem;
 }

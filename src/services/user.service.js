@@ -100,7 +100,7 @@ export async function getUserAndTeams(name) {
     return { error: `No user with user name ${name} found` };
   }
   const allNames = [
-    ...{ name: user.userName, displayName: user.displayName, type: "user" },
+    { name: user.userName, displayName: user.displayName, type: "user" },
   ];
   const teamsContainingUser = await Team.find({
     memberNames: { $elemMatch: { $eq: name } },

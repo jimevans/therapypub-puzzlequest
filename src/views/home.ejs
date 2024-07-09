@@ -2,6 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
     <title>PuzzleQuest</title>
     <link rel="stylesheet" type="text/css" href="/style/pq.css" />
     <link rel="icon" type="image/png" href="/image/pq-logo-64.png" sizes="64x64 32x32 24x24 16x16" />
@@ -12,5 +13,40 @@
     <p>
       <a href="/logout">Logout</a>
     </p>
+    <div>
+      Quests
+    </div>
+    <div id="quests">
+      <% if (quests && quests.length) { %>
+        <table>
+          <thead>
+            <tr>
+              <th>Quest Name</th>
+              <th>Quest Status</th>
+              <th>Quest Start</th>
+              <th>Quest End</th>
+            </tr>
+          </thead>
+          <tbody>
+          <% for (let i = 0; i < quests.length; i++) { %>
+            <tr>
+              <td>
+                <% if (quests[i].status >= 1) { %>
+                <a href="/quest/<%=quests[i].name%>"><%= quests[i].displayName %></a>
+                <% } else { %>
+                  <%= quests[i].displayName %>
+                <% } %>
+              </td>
+              <td><%= quests[i].statusDescription %></td>
+              <td><%= quests[i].startTime %></td>
+              <td><%= quests[i].endTime %></td>
+            </tr>
+          <% } %>
+          </tbody>
+        </table>
+      <% } else { %>
+        <div>You have no quests.</div>
+      <% } %>
+    </div>
   </body>
 </html>

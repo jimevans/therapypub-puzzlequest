@@ -8,6 +8,32 @@ document.querySelector("#close").addEventListener("click", (e) => {
   e.preventDefault();
   window.location.href = `/`;
 });
+document.querySelector("#activate")?.addEventListener("click", async (e) => {
+  e.preventDefault();
+  try {
+    const response = await fetch(`/api/quest/${quest.name}/activate`, {
+      method: "put",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: "",
+    });
+    if (response.ok) {
+      return await response.json();
+    } else {
+      const responseData = await response.json();
+      if ("error" in responseData) {
+        console.log(
+          `${response.status} received with error ${responseData.error}`
+        );
+      }
+      return responseData;
+    }
+  } catch (err) {
+    console.log("error: " + err);
+  }
+  window.location.href = "/";
+});
 
 const puzzleGridColumnDefinitions = [
   {

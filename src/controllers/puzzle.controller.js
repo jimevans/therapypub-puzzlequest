@@ -5,28 +5,6 @@ import { RenderMode } from "../middleware/useRenderMode.js";
 import * as AuthenticationService from "../services/authentication.service.js";
 import * as PuzzleService from "../services/puzzle.service.js";
 
-// TODO: Remove this. It's only here for demo/experimentation purposes.
-export function activatePuzzle(req, res) {
-  res.render("activate");
-}
-
-// TODO: Remove this. It's only here for demo/experimentation purposes.
-export async function receiveImageData(req, res) {
-  const imageBuffer = new Uint8ClampedArray(req.file.buffer);
-  const code = jsQR(imageBuffer, req.body.width, req.body.height);
-  if (code) {
-    console.log(`${code.data}`);
-  } else {
-    console.log("No QR code found in image");
-  }
-  res.send(
-    JSON.stringify({
-      status: "success",
-      receivedDataLength: imageBuffer.length,
-    })
-  );
-}
-
 export async function createPuzzle(req, res) {
   if (req.user === null) {
     res.status(401).send(

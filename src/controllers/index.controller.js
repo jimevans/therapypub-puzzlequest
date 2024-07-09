@@ -1,8 +1,9 @@
 import { config } from "../config.js";
 import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
 import * as AuthorizationService from "../services/authentication.service.js";
+import * as QuestService from "../services/quest.service.js";
 
-export function index(req, res) {
+export async function index(req, res) {
   if (req.user === null) {
     res.render("index");
     return;
@@ -12,7 +13,22 @@ export function index(req, res) {
     res.render("adminHome", { user: req.user });
     return;
   }
-  res.render("home", { user: req.user });
+
+  const quests = [];
+  const foundQuests = await QuestService.getQuests(req.user.userName);
+  foundQuests.quests.forEach((quest) => {
+    const startTime = quest.puzzles.length ? quest.puzzles[0].startTime : "";
+    const endTime = quest.puzzles.length ? quest.puzzles[quest.puzzles.length - 1].endTime : "";
+    quests.push({
+      name: quest.name,
+      displayName: quest.displayName,
+      status: quest.status,
+      statusDescription: quest.statusDescription,
+      startTime: startTime || "",
+      endTime: endTime || ""
+    })
+  });
+  res.render("home", { user: req.user, quests: quests });
 }
 
 export function login(req, res) {
