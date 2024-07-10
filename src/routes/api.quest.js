@@ -22,16 +22,6 @@ questApiRouter.put(
   TokenAuthenticator.tokenAuthenticate,
   QuestController.updateQuest
 );
-questApiRouter.put(
-  "/:name/activate",
-  TokenAuthenticator.tokenAuthenticate,
-  QuestController.activateQuest
-);
-questApiRouter.put(
-  "/:name/reset",
-  TokenAuthenticator.tokenAuthenticate,
-  QuestController.resetQuest
-);
 questApiRouter.delete(
   "/:name",
   TokenAuthenticator.tokenAuthenticate,
@@ -41,6 +31,16 @@ questApiRouter.post(
   "/create",
   TokenAuthenticator.tokenAuthenticate,
   QuestController.createQuest
+);
+questApiRouter.put(
+  "/:name/activate",
+  TokenAuthenticator.tokenAuthenticate,
+  QuestController.activateQuest
+);
+questApiRouter.put(
+  "/:name/reset",
+  TokenAuthenticator.tokenAuthenticate,
+  QuestController.resetQuest
 );
 questApiRouter.post(
   "/:name/puzzle/:puzzleName/activate",

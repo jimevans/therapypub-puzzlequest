@@ -94,13 +94,6 @@ export async function retrievePuzzle(req, res) {
     return;
   }
 
-  const viewName =
-    req.renderMode === RenderMode.DISPLAY ? "puzzleDetails" : "puzzleEdit";
-  if (req.renderMode === RenderMode.CREATE) {
-    res.render(viewName, { renderMode: req.renderMode, puzzle: null });
-    return;
-  }
-
   const puzzleResponse = await PuzzleService.getPuzzleByPuzzleName(
     req.params.name
   );
@@ -109,14 +102,6 @@ export async function retrievePuzzle(req, res) {
       status: "error",
       message: puzzleResponse.message
     }));
-    return;
-  }
-
-  if (req.renderMode) {
-    res.render(viewName, {
-      renderMode: req.renderMode,
-      puzzle: puzzleResponse.data,
-    });
     return;
   }
 
@@ -144,7 +129,10 @@ export async function updatePuzzle(req, res) {
   }
 
   if (!req.body) {
-    res.status(400).send(JSON.stringify({ error: "No request body" }));
+    res.status(400).send(JSON.stringify({
+      status: "error",
+      message: "No request body"
+    }));
     return;
   }
   const response = await PuzzleService.updatePuzzle(req.params.name, req.body);
@@ -179,7 +167,10 @@ export async function deletePuzzle(req, res) {
   }
 
   if (!req.body) {
-    res.status(400).send(JSON.stringify({ error: "No request body" }));
+    res.status(400).send(JSON.stringify({
+      status: "error",
+      message: "No request body"
+    }));
     return;
   }
   const response = await PuzzleService.deletePuzzle(req.params.name);
@@ -258,4 +249,48 @@ export function uploadBinaryData(req, res) {
       data: `/puzzleData/${req.file.filename}`,
     })
   );
+}
+
+export async function renderPuzzle(req, res) {
+  if (req.user === null) {
+    res.status(401).send(
+      JSON.stringify({
+        status: "error",
+        message: `User must be logged in to retrieve puzzles`,
+      })
+    );
+    return;
+  }
+  if (!AuthenticationService.isUserAdmin(req.user)) {
+    res.status(403).send(
+      JSON.stringify({
+        status: "error",
+        message: `User ${req.user.userName} not authorized to view puzzles`,
+      })
+    );
+    return;
+  }
+
+  const viewName =
+    req.renderMode === RenderMode.DISPLAY ? "puzzleDetails" : "puzzleEdit";
+  if (req.renderMode === RenderMode.CREATE) {
+    res.render(viewName, { renderMode: req.renderMode, puzzle: null });
+    return;
+  }
+
+  const puzzleResponse = await PuzzleService.getPuzzleByPuzzleName(
+    req.params.name
+  );
+  if (puzzleResponse.status === "error") {
+    res.status(puzzleResponse.statusCode).send(JSON.stringify({
+      status: "error",
+      message: puzzleResponse.message
+    }));
+    return;
+  }
+
+  res.render(viewName, {
+    renderMode: req.renderMode,
+    puzzle: puzzleResponse.data,
+  });
 }

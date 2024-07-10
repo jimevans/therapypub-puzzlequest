@@ -17,7 +17,10 @@ async function callDataApi(url, verb, body) {
 
 async function submitGuess(solutionGuess) {
   if (!solutionGuess) {
-    return { error: "No guess entered to submit" };
+    return {
+      status: "error",
+      message: "No guess entered to submit"
+    };
   }
   return await callDataApi(
     `/api/quest/${questName}/puzzle/${puzzleName}/solve`,

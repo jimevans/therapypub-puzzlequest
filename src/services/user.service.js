@@ -133,7 +133,10 @@ export async function authenticate(userName, password) {
 export async function getUserAndTeams(name) {
   const user = await User.findOne({ userName: name });
   if (user === null) {
-    return { error: `No user with user name ${name} found` };
+    return {
+      status: "error",
+      message: `No user with user name ${name} found`
+    };
   }
   const allNames = [
     { name: user.userName, displayName: user.displayName, type: "user" },

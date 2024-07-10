@@ -9,21 +9,21 @@ puzzleRouter.get(
   "/new",
   TokenAuthenticator.tokenAuthenticate,
   UseRenderMode.useRenderMode(UseRenderMode.RenderMode.CREATE),
-  PuzzleController.retrievePuzzle
+  PuzzleController.renderPuzzle
 );
 
 puzzleRouter.get(
   "/:name",
   TokenAuthenticator.tokenAuthenticate,
   UseRenderMode.useRenderMode(UseRenderMode.RenderMode.DISPLAY),
-  PuzzleController.retrievePuzzle
+  PuzzleController.renderPuzzle
 );
 
 puzzleRouter.get(
   "/:name/edit",
   TokenAuthenticator.tokenAuthenticate,
   UseRenderMode.useRenderMode(UseRenderMode.RenderMode.EDIT),
-  PuzzleController.retrievePuzzle
+  PuzzleController.renderPuzzle
 )
 
 

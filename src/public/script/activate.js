@@ -117,7 +117,7 @@ document.querySelector("#scan-code-button").addEventListener("click", async (e) 
     showError(activationResponse.message);
     startCamera();
   } else {
-    window.location.href = `/quest/${questName}`;
+    window.location.reload();
   }
 });
 
@@ -131,6 +131,6 @@ document.querySelector("#send-code-text-button").addEventListener("click", async
   if (activationResponse.status === "error") {
     showError(activationResponse.message);
   } else {
-    window.location.href = `/quest/${questName}`;
+    window.location.reload();
   }
 });

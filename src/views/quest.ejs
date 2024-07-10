@@ -20,7 +20,7 @@
         <% if (puzzle.status > 0) { %>
         <tr>
           <td>
-            <a href="/quest/<%=quest.name%>/puzzle/<%=puzzle.name%><%=puzzle.status === 1 ? "/activate" : "" %>"><%= puzzle.displayName %></a>
+            <a href="/quest/<%=quest.name%>/puzzle/<%=puzzle.name%>"><%= puzzle.displayName %></a>
           </td>
           <td>
             <%= puzzle.statusDescription %>

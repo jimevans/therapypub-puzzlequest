@@ -49,6 +49,45 @@ async function getQuestForUser(questName, userName, isUserAdmin) {
   };
 }
 
+async function getQuestPuzzle(user, questName, puzzleName) {
+  if (user === null) {
+    return {
+      status: "error",
+      statusCode: 401,
+      message: `User must be logged in to retrieve quests`,
+    };
+  }
+
+  const isUserAdmin = AuthenticationService.isUserAdmin(user);
+  const questResponse = await getQuestForUser(
+    questName,
+    user.userName,
+    isUserAdmin
+  );
+
+  if (questResponse.status === "error") {
+    return questResponse;
+  }
+
+  const quest = questResponse.data;
+  const filteredPuzzles = quest.puzzles.filter(
+    (puzzle) =>
+      puzzle.name === puzzleName &&
+      puzzle.status > QuestPuzzleStatus.UNAVAILABLE
+  );
+
+  if (filteredPuzzles.length === 0) {
+    return {
+      status: "error",
+      statusCode: 400,
+      message: `Invalid puzzle name for ${questName}`,
+    };
+  }
+
+  const puzzle = filteredPuzzles[0];
+  return { status: "success", data: puzzle };
+}
+
 export async function createQuest(req, res) {
   if (req.user === null) {
     res.status(401).send(
@@ -120,27 +159,6 @@ export async function retrieveQuest(req, res) {
     return;
   }
 
-  const isUserAdmin = AuthenticationService.isUserAdmin(req.user);
-  const viewName = isUserAdmin
-    ? req.renderMode === RenderMode.DISPLAY
-      ? "questDetails"
-      : "questEdit"
-    : "quest";
-
-  if (req.renderMode === RenderMode.CREATE) {
-    if (!isUserAdmin) {
-      res.status(403).send(
-        JSON.stringify({
-          status: "error",
-          message: `User ${req.user.userName} not authorized to create new quests`,
-        })
-      );
-      return;
-    }
-    res.render(viewName, { renderMode: req.renderMode, quest: null });
-    return;
-  }
-
   const questResponse = await getQuestForUser(
     req.params.name,
     req.user.userName,
@@ -154,15 +172,6 @@ export async function retrieveQuest(req, res) {
     });
     return;
   }
-
-  if (req.renderMode) {
-    res.render(viewName, {
-      renderMode: req.renderMode,
-      quest: questResponse.data,
-    });
-    return;
-  }
-
   res.send(JSON.stringify(questResponse));
 }
 
@@ -199,7 +208,8 @@ export async function updateQuest(req, res) {
   if (response.status === "error") {
     res.status(response.statusCode).send(
       JSON.stringify({
-        error: response.message,
+        status: "error",
+        message: response.message,
       })
     );
     return;
@@ -240,7 +250,8 @@ export async function deleteQuest(req, res) {
   if (response.status === "error") {
     res.status(response.statusCode).send(
       JSON.stringify({
-        error: response.message,
+        status: "error",
+        message: response.message,
       })
     );
   }
@@ -343,45 +354,6 @@ export async function resetQuest(req, res) {
     return;
   }
   res.send(JSON.stringify(resetQuestResponse));
-}
-
-async function getQuestPuzzle(user, questName, puzzleName) {
-  if (user === null) {
-    return {
-      status: "error",
-      statusCode: 401,
-      error: `User must be logged in to retrieve quests`,
-    };
-  }
-
-  const isUserAdmin = AuthenticationService.isUserAdmin(user);
-  const questResponse = await getQuestForUser(
-    questName,
-    user.userName,
-    isUserAdmin
-  );
-
-  if (questResponse.status === "error") {
-    return questResponse;
-  }
-
-  const quest = questResponse.data;
-  const filteredPuzzles = quest.puzzles.filter(
-    (puzzle) =>
-      puzzle.name === puzzleName &&
-      puzzle.status > QuestPuzzleStatus.UNAVAILABLE
-  );
-
-  if (filteredPuzzles.length === 0) {
-    return {
-      status: "error",
-      statusCode: 400,
-      message: `Invalid puzzle name for ${questName}`,
-    };
-  }
-
-  const puzzle = filteredPuzzles[0];
-  return { status: "success", data: puzzle };
 }
 
 export async function activateQuestPuzzle(req, res) {
@@ -556,36 +528,55 @@ export async function requestQuestPuzzleHint(req, res) {
   res.send(JSON.stringify(hintResult));
 }
 
-export async function renderQuestPuzzleActivation(req, res) {
-  const puzzleResponse = await getQuestPuzzle(
-    req.user,
+export async function renderQuest(req, res) {
+  if (req.user === null) {
+    res.status(401).send(
+      JSON.stringify({
+        status: "error",
+        message: `User must be logged in to retrieve quests`,
+      })
+    );
+    return;
+  }
+
+  const isUserAdmin = AuthenticationService.isUserAdmin(req.user);
+  const viewName = isUserAdmin
+    ? req.renderMode === RenderMode.DISPLAY
+      ? "questDetails"
+      : "questEdit"
+    : "quest";
+
+  if (req.renderMode === RenderMode.CREATE) {
+    if (!isUserAdmin) {
+      res.status(403).send(
+        JSON.stringify({
+          status: "error",
+          message: `User ${req.user.userName} not authorized to create new quests`,
+        })
+      );
+      return;
+    }
+    res.render(viewName, { renderMode: req.renderMode, quest: null });
+    return;
+  }
+
+  const questResponse = await getQuestForUser(
     req.params.name,
-    req.params.puzzleName
+    req.user.userName,
+    isUserAdmin
   );
-  if (puzzleResponse.status === "error") {
-    res.status(puzzleResponse.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: puzzleResponse.error,
-      })
-    );
+
+  if (questResponse.status === "error") {
+    res.status(questResponse.statusCode).send({
+      status: "error",
+      message: questResponse.message,
+    });
     return;
   }
 
-  const puzzle = puzzleResponse.data;
-  if (puzzle.status !== QuestPuzzleStatus.AWAITING_ACTIVATION) {
-    res.status(400).send(
-      JSON.stringify({
-        status: "error",
-        message: `Puzzle ${req.params.puzzleName} is already activated`,
-      })
-    );
-    return;
-  }
-
-  res.render("activate", {
-    quest: req.params.name,
-    puzzle: puzzleResponse.data,
+  res.render(viewName, {
+    renderMode: req.renderMode,
+    quest: questResponse.data,
   });
 }
 
@@ -607,6 +598,11 @@ export async function renderQuestPuzzle(req, res) {
 
   const puzzle = puzzleResponse.data;
   if (puzzle.status === QuestPuzzleStatus.AWAITING_ACTIVATION) {
+    res.render("activate", {
+      quest: req.params.name,
+      puzzle: puzzleResponse.data,
+    });
+    return;
   }
   if (puzzle.status < QuestPuzzleStatus.AWAITING_ACTIVATION) {
     res.status(400).send(
