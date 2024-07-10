@@ -113,8 +113,8 @@ document.querySelector("#scan-code-button").addEventListener("click", async (e) 
   formData.append("image", new Blob([imageData.data.buffer]));
   const activationResponse = await sendActivationData(formData);
   e.target.enabled = true;
-  if ("error" in activationResponse) {
-    showError(activationResponse.error);
+  if (activationResponse.status === "error") {
+    showError(activationResponse.message);
     startCamera();
   } else {
     window.location.href = `/quest/${questName}`;
@@ -128,8 +128,8 @@ document.querySelector("#send-code-text-button").addEventListener("click", async
   formData.append("activationCode", document.querySelector("#text-auth-code").value);
   const activationResponse = await sendActivationData(formData);
   e.target.enabled = true;
-  if ("error" in activationResponse) {
-    showError(activationResponse.error);
+  if (activationResponse.status === "error") {
+    showError(activationResponse.message);
   } else {
     window.location.href = `/quest/${questName}`;
   }

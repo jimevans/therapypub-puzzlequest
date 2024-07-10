@@ -1,5 +1,24 @@
 import { Schema, model } from "mongoose";
 
+/**
+ * @typedef {object} QuestPuzzle A puzzle that is assigned as part of a quest.
+ * @property {string} puzzleName the unique name of the puzzle
+ * @property {number} nextHintToDisplay the index into the puzzle's hint array that indicates the next hint to be displayed
+ * @property {number} status the status of the puzzle within the quest
+ * @property {Date} startTime the date and time when the puzzle was started
+ * @property {Date} endTime the date and time when the puzzle was solved
+ * @property {Date} activationTime the date and time when the puzzle was activated
+ */
+
+/**
+ * @typedef {object} Quest A quest containing puzzles.
+ * @property {string} name the unique name of the quest
+ * @property {string} displayName the display name of the quest
+ * @property {string} userName the user name or team name for which the quest is defined
+ * @property {number} status the status of the quest
+ * @property {QuestPuzzle[]} puzzles the puzzles that are part of the quest
+ */
+
 const QuestStatus = {
   NOT_STARTED: 0,
   IN_PROGRESS: 1,

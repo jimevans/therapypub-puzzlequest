@@ -56,9 +56,9 @@
       <div class="pq-header">
         Solution
       </div>
-      <div id="solution-text">
+      <p id="solution-text">
         <%= puzzle.status === 3 ? puzzle.solutionDisplayText : "" %>
-      </div>
+      </p>
     </div>
     <script type="text/javascript">
       const questName = <%- JSON.stringify(quest ? quest : null) %>;

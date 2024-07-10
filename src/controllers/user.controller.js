@@ -23,8 +23,11 @@ export async function login(req, res) {
     req.body.userName,
     req.body.password
   );
-  if ("error" in response) {
-    res.status(401).send(JSON.stringify(response));
+  if (response.status === "error") {
+    res.status(response.statusCode).send(JSON.stringify({
+      status: "error",
+      message: response.message
+    }));
     return;
   }
   res.send(JSON.stringify(response));
@@ -60,8 +63,11 @@ export async function createUser(req, res) {
     return;
   }
   const response = await UserService.createUser(req.body);
-  if ("error" in response) {
-    res.status(400).send(JSON.stringify(response));
+  if (response.status === "error") {
+    res.status(response.statusCode).send(JSON.stringify({
+      status: "error",
+      message: response.message
+    }));
     return;
   }
   res.send(JSON.stringify(response));
@@ -91,8 +97,11 @@ export async function retrieveUser(req, res) {
     return;
   }
   const userResponse = await UserService.getUserByUserName(req.params.userName);
-  if ("error" in userResponse) {
-    res.status(500).send(JSON.stringify(userResponse));
+  if (userResponse.status === "error") {
+    res.status(userResponse.statusCode).send(JSON.stringify({
+      status: "error",
+      message: userResponse.message
+    }));
     return;
   }
 
@@ -118,8 +127,11 @@ export async function updateUser(req, res) {
     return;
   }
   const response = await UserService.updateUser(req.params.userName, req.body);
-  if ("error" in response) {
-    res.status(500).send(JSON.stringify(response));
+  if (response.status === "error") {
+    res.status(response.statusCode).send(JSON.stringify({
+      status: "error",
+      message: response.message
+    }));
     return;
   }
   res.send(JSON.stringify(response));
@@ -135,8 +147,11 @@ export async function deleteUser(req, res) {
     return;
   }
   const response = await UserService.deleteUser(req.params.userName);
-  if ("error" in response) {
-    res.status(500).send(JSON.stringify(response));
+  if (response.status === "error") {
+    res.status(500).send(JSON.stringify({
+      status: "error",
+      message: response.message
+    }));
     return;
   }
   res.send(JSON.stringify(response));

@@ -9,17 +9,18 @@
     <link rel="icon" type="image/png" href="/image/pq-logo-192.png" sizes="192x192" />
   </head>
   <body>
-    <h2>Activate Puzzle: <%=puzzle.displayName %></h2>
+    <div class="pq-header">
+      <span class="pq-header-text"><%= puzzle.displayName %></span>
+      <a href="/quest/<%=quest%>" class="pq-menu-link pq-float-right">Return to quest</a>
+    </div>
     <div>
-      Activate by
+      Activate puzzle by
     </div>
     <div>
       <input type="radio" id="qr-code" name="auth-method" value="qr" />
       <label for="qr-code">Scanning QR code</label>
-    </div>
-    <div>
       <input type="radio" id="text-value" name="auth-method" value="text" />
-      <label for="text">Entering code text</label>
+      <label for="text-value">Entering code text</label>
     </div>
     <div id="qr-code-scanner" class="pq-hide">
       <div>

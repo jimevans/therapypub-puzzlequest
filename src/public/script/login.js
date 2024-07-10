@@ -14,10 +14,10 @@ document.querySelector("#login").addEventListener("click", async (e) => {
       body: JSON.stringify(data),
     });
     if (response.ok) {
-      const data = await response.json();
+      const result = await response.json();
       const tokenInput = document.createElement("input");
       tokenInput.name = "token"
-      tokenInput.value = data["token"];
+      tokenInput.value = result.data;
 
       const dynamicForm = document.createElement("form");
       dynamicForm.method = "post";

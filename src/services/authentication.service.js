@@ -3,10 +3,18 @@ import { UserModel as User, AuthorizationLevel } from "../models/user.model.js";
 export async function authenticate(userName, password) {
   const user = await User.findOne({ userName: userName }).lean();
   if (user === null) {
-    return { error: `No user with user name ${userName} found` };
+    return {
+      status: "error",
+      statusCode: 404,
+      message: `No user with user name ${userName} found`
+    };
   }
   if (!(await bcrypt.compare(password, user.password))) {
-    return { error: `Password for user ${userName} does not match` };
+    return {
+      status: "error",
+      statusCode: 401,
+      message: `Password for user ${userName} does not match`
+    };
   }
   const token = jwt.sign(
     {
@@ -21,7 +29,7 @@ export async function authenticate(userName, password) {
       expiresIn: "2h",
     }
   );
-  return { status: "success", token: token };
+  return { status: "success", statusCode: 200, data: token };
 }
 
 export function isUserAdmin(user) {

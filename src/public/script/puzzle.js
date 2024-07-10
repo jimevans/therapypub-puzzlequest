@@ -26,23 +26,23 @@ async function submitGuess(solutionGuess) {
   );
 }
 
-async function requestHint() {
+async function requestHint(requestHintElement) {
   const hintResponse = await callDataApi(
     `/api/quest/${questName}/puzzle/${puzzleName}/hint`,
     "put",
     {}
   );
-  if ("error" in hintResponse) {
+
+  if (hintResponse.status === "error") {
     console.log(hintResponse);
   }
-
-  if (hintResponse.isNextHintSolution) {
-    e.target.setAttribute("data-solution-warning", "true")
+  if (hintResponse.data.isNextHintSolution) {
+    requestHintElement.setAttribute("data-solution-warning", "true")
   }
 
-  displayHint(hintResponse.hintText);
-  if (!hintResponse.moreHints) {
-    displayNoMoreHints(e.target);
+  displayHint(hintResponse.data.hintText);
+  if (!hintResponse.data.moreHints) {
+    displayNoMoreHints(requestHintElement);
   }
 }
 
@@ -75,18 +75,18 @@ if (isSolveAvailable) {
     errorElement.classList.add("pq-hide");
     errorElement.innerText = "";
     const guessResult = await submitGuess(document.querySelector("#solution-guess").value);
-    if ("error" in guessResult) {
-      errorElement.innerText = guessResult.error;
+    if (guessResult.status === "error") {
+      errorElement.innerText = guessResult.message;
       errorElement.classList.remove("pq-hide");
     } else {
       document.querySelector("#solve").classList.add("pq-hide");
-      document.querySelector("#solution-text").innerText = guessResult.solution;
+      document.querySelector("#solution-text").innerText = guessResult.data;
       document.querySelector("#solution").classList.remove("pq-hide");
     }
   });
 }
 
-document.querySelector("#request-hint").addEventListener("click", async (e) => {
+document.querySelector("#request-hint")?.addEventListener("click", async (e) => {
   e.preventDefault();
   if (e.target.hasAttribute("href")) {
     if (e.target.hasAttribute("data-solution-warning")) {
@@ -99,7 +99,7 @@ document.querySelector("#request-hint").addEventListener("click", async (e) => {
       modal.setBodyContent(modalBody);
       modal.onConfirmButtonClick = async (e) => {
         modal.hide();
-        await requestHint();
+        await requestHint(e.target);
       };
       modal.onCancelButtonClick = (e) => {
         modal.hide();
@@ -107,6 +107,6 @@ document.querySelector("#request-hint").addEventListener("click", async (e) => {
       modal.show();
       return;
     }
-    await requestHint();
+    await requestHint(e.target);
   }
 });

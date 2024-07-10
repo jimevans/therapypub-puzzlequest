@@ -11,24 +11,36 @@ import { config } from "../config.js";
 export async function getUserByUserName(name) {
   const user = await User.findOne({ userName: name });
   if (user === null) {
-    return { error: `No user with user name ${name} found` };
+    return {
+      status: "error",
+      statusCode: 404,
+      message: `No user with user name ${name} found`
+    };
   }
-  return { status: "success", user: user };
+  return { status: "success", statusCode: 200, data: user };
 }
 
 export async function deleteUser(name) {
   const result = await User.findOneAndDelete({ userName: name });
   if (result === null) {
-    return { error: `User with user name ${name} does not exist` };
+    return {
+      status: "error",
+      statusCode: 404,
+      message: `User with user name ${name} does not exist`
+    };
   }
-  return { status: "success" };
+  return { status: "success", statusCode: 200 };
 }
 
 export async function createUser(user) {
   const existingUsers = await User.find({ userName: user.userName }).lean();
   const userExists = existingUsers.length !== 0;
   if (userExists) {
-    return { error: `User with user name ${user.userName} already exists` };
+    return {
+      status: "error",
+      statusCode: 400,
+      message: `User with user name ${user.userName} already exists`
+    };
   }
   let authLevel = user.authorizationLevel || AuthorizationLevel.USER;
   if ((await User.countDocuments()) === 0) {
@@ -47,15 +59,23 @@ export async function createUser(user) {
     });
     await newUser.save();
   } catch (err) {
-    return { error: `New user not created - ${err}` };
+    return {
+      status: "error",
+      statusCode: 500,
+      message: `New user not created - ${err}`
+    };
   }
-  return { status: "success" };
+  return { status: "success", statusCode: 200 };
 }
 
 export async function updateUser(name, userData) {
   const foundUser = await User.findOne({ userName: name });
   if (foundUser === null) {
-    return { error: `No user with user name ${name} found` };
+    return {
+      status: "error",
+      statusCode: 404,
+      message: `No user with user name ${name} found`
+    };
   }
   foundUser.displayName = userData.displayName || foundUser.displayName;
   if (userData.password) {
@@ -66,17 +86,33 @@ export async function updateUser(name, userData) {
   foundUser.sms = userData.sms || foundUser.sms;
   foundUser.authorizationLevel =
     userData.authorizationLevel || foundUser.authorizationLevel;
-  await foundUser.save();
-  return { status: "success" };
+  try {
+    await foundUser.save();
+  } catch (err) {
+    return {
+      status: "error",
+      statusCode: 500,
+      message: `User not updated - ${err}`
+    };
+  }
+  return { status: "success" , statusCode: 200};
 }
 
 export async function authenticate(userName, password) {
   const user = await User.findOne({ userName: userName }).lean();
   if (user === null) {
-    return { error: `No user with user name ${userName} found` };
+    return {
+      status: "error",
+      statusCode: 404,
+      message: `No user with user name ${userName} found`
+    };
   }
   if (!(await bcrypt.compare(password, user.password))) {
-    return { error: `Password for user ${userName} does not match` };
+    return {
+      status: "error",
+      statusCode: 401,
+      message: `Password for user ${userName} does not match`
+    };
   }
   const token = jwt.sign(
     {
@@ -91,7 +127,7 @@ export async function authenticate(userName, password) {
       expiresIn: "2h",
     }
   );
-  return { status: "success", token: token };
+  return { status: "success", statusCode: 200, data: token };
 }
 
 export async function getUserAndTeams(name) {
@@ -112,10 +148,10 @@ export async function getUserAndTeams(name) {
       type: "team",
     })
   );
-  return { status: "success", identifiers: allNames };
+  return { status: "success", statusCode: 200, data: allNames };
 }
 
 export async function listUsers() {
   const users = await User.find({});
-  return { status: "success", users: users };
+  return { status: "success", statusCode: 200, data: users };
 }

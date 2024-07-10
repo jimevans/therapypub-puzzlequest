@@ -1,5 +1,4 @@
 import { randomUUID } from "crypto";
-import jsQR from "jsqr";
 
 import { RenderMode } from "../middleware/useRenderMode.js";
 import * as AuthenticationService from "../services/authentication.service.js";
@@ -9,7 +8,8 @@ export async function createPuzzle(req, res) {
   if (req.user === null) {
     res.status(401).send(
       JSON.stringify({
-        error: `User must be logged in to create puzzles`,
+        status: "error",
+        message: `User must be logged in to create puzzles`,
       })
     );
     return;
@@ -17,33 +17,46 @@ export async function createPuzzle(req, res) {
   if (!AuthenticationService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
-        error: `User ${req.user.userName} not authorized to view puzzles`,
+        status: "error",
+        message: `User ${req.user.userName} not authorized to view puzzles`,
       })
     );
     return;
   }
 
   if (!req.body) {
-    res.status(400).send(JSON.stringify({ error: "No request body" }));
+    res.status(400).send(JSON.stringify({
+      status: "error",
+      message: "No request body"
+    }));
     return;
   }
   if (!("name" in req.body)) {
     res
       .status(400)
-      .send(JSON.stringify({ error: "No puzzle name in request body" }));
+      .send(JSON.stringify({
+        status: "error",
+        message: "No puzzle name in request body"
+      }));
     return;
   }
   if (!("solutionKeyword" in req.body)) {
     res
       .status(400)
-      .send(JSON.stringify({ error: "No solution keyword in request body" }));
+      .send(JSON.stringify({
+        status: "error",
+        message: "No solution keyword in request body"
+      }));
     return;
   }
   if (!("solutionDisplayText" in req.body)) {
     res
       .status(400)
       .send(
-        JSON.stringify({ error: "No solution display text in request body" })
+        JSON.stringify({
+          status: "error",
+          message: "No solution display text in request body"
+        })
       );
     return;
   }
@@ -51,8 +64,11 @@ export async function createPuzzle(req, res) {
     req.body.activationCode = randomUUID().replaceAll("-", "");
   }
   const response = await PuzzleService.createPuzzle(req.body);
-  if ("error" in response) {
-    res.status(400).send(JSON.stringify(response));
+  if (response.status === "error") {
+    res.status(response.statusCode).send(JSON.stringify({
+      status: "error",
+      message: response.message
+    }));
     return;
   }
   res.send(JSON.stringify(response));
@@ -62,7 +78,8 @@ export async function retrievePuzzle(req, res) {
   if (req.user === null) {
     res.status(401).send(
       JSON.stringify({
-        error: `User must be logged in to retrieve puzzles`,
+        status: "error",
+        message: `User must be logged in to retrieve puzzles`,
       })
     );
     return;
@@ -70,7 +87,8 @@ export async function retrievePuzzle(req, res) {
   if (!AuthenticationService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
-        error: `User ${req.user.userName} not authorized to view puzzles`,
+        status: "error",
+        message: `User ${req.user.userName} not authorized to view puzzles`,
       })
     );
     return;
@@ -86,15 +104,18 @@ export async function retrievePuzzle(req, res) {
   const puzzleResponse = await PuzzleService.getPuzzleByPuzzleName(
     req.params.name
   );
-  if ("error" in puzzleResponse) {
-    res.status(500).send(JSON.stringify(puzzleResponse));
+  if (puzzleResponse.status === "error") {
+    res.status(puzzleResponse.statusCode).send(JSON.stringify({
+      status: "error",
+      message: puzzleResponse.message
+    }));
     return;
   }
 
   if (req.renderMode) {
     res.render(viewName, {
       renderMode: req.renderMode,
-      puzzle: puzzleResponse.puzzle,
+      puzzle: puzzleResponse.data,
     });
     return;
   }
@@ -106,7 +127,8 @@ export async function updatePuzzle(req, res) {
   if (req.user === null) {
     res.status(401).send(
       JSON.stringify({
-        error: `User must be logged in to update puzzles`,
+        status: "error",
+        message: `User must be logged in to update puzzles`,
       })
     );
     return;
@@ -114,7 +136,8 @@ export async function updatePuzzle(req, res) {
   if (!AuthenticationService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
-        error: `User ${req.user.userName} not authorized to update puzzles`,
+        status: "error",
+        message: `User ${req.user.userName} not authorized to update puzzles`,
       })
     );
     return;
@@ -125,8 +148,11 @@ export async function updatePuzzle(req, res) {
     return;
   }
   const response = await PuzzleService.updatePuzzle(req.params.name, req.body);
-  if ("error" in response) {
-    res.status(500).send(JSON.stringify(response));
+  if (response.status === "error") {
+    res.status(response.statusCode).send(JSON.stringify({
+      status: "error",
+      message: response.message
+    }));
     return;
   }
   res.send(JSON.stringify(response));
@@ -136,7 +162,8 @@ export async function deletePuzzle(req, res) {
   if (req.user === null) {
     res.status(401).send(
       JSON.stringify({
-        error: `User must be logged in to delete puzzles`,
+        status: "error",
+        message: `User must be logged in to delete puzzles`,
       })
     );
     return;
@@ -144,7 +171,8 @@ export async function deletePuzzle(req, res) {
   if (!AuthenticationService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
-        error: `User ${req.user.userName} not authorized to delete puzzles`,
+        status: "error",
+        message: `User ${req.user.userName} not authorized to delete puzzles`,
       })
     );
     return;
@@ -155,8 +183,11 @@ export async function deletePuzzle(req, res) {
     return;
   }
   const response = await PuzzleService.deletePuzzle(req.params.name);
-  if ("error" in response) {
-    res.status(500).send(JSON.stringify(response));
+  if (response.status === "error") {
+    res.status(response.statusCode).send(JSON.stringify({
+      status: "error",
+      message: response.message
+    }));
     return;
   }
   res.send(JSON.stringify(response));
@@ -166,7 +197,8 @@ export async function listPuzzles(req, res) {
   if (req.user === null) {
     res.status(401).send(
       JSON.stringify({
-        error: `User must be logged in to list puzzles`,
+        status: "error",
+        message: `User must be logged in to list puzzles`,
       })
     );
     return;
@@ -174,7 +206,8 @@ export async function listPuzzles(req, res) {
   if (!AuthenticationService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
-        error: `User ${req.user.userName} not authorized to list puzzles`,
+        status: "error",
+        message: `User ${req.user.userName} not authorized to list puzzles`,
       })
     );
     return;
@@ -187,7 +220,8 @@ export function uploadBinaryData(req, res) {
   if (req.user === null) {
     res.status(401).send(
       JSON.stringify({
-        error: `User must be logged in to upload binary data`,
+        status: "error",
+        message: `User must be logged in to upload binary data`,
       })
     );
     return;
@@ -195,19 +229,24 @@ export function uploadBinaryData(req, res) {
   if (!AuthenticationService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
-        error: `User ${req.user.userName} not authorized to upload binary data`,
+        status: "error",
+        message: `User ${req.user.userName} not authorized to upload binary data`,
       })
     );
     return;
   }
   if (!req.body) {
-    res.status(400).send(JSON.stringify({ error: "No request body" }));
+    res.status(400).send(JSON.stringify({
+      status: "error",
+      message: "No request body"
+    }));
     return;
   }
   if (!req.file) {
     res.status(400).send(
       JSON.stringify({
-        error: `Request does not contain binary data`,
+        status: "error",
+        message: `Request does not contain binary data`,
       })
     );
     return;
@@ -216,7 +255,7 @@ export function uploadBinaryData(req, res) {
   res.send(
     JSON.stringify({
       status: "success",
-      location: `/puzzleData/${req.file.filename}`,
+      data: `/puzzleData/${req.file.filename}`,
     })
   );
 }

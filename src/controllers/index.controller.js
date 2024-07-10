@@ -15,8 +15,14 @@ export async function index(req, res) {
   }
 
   const quests = [];
-  const foundQuests = await QuestService.getQuests(req.user.userName);
-  foundQuests.quests.forEach((quest) => {
+  const foundQuestsResult = await QuestService.getQuests(req.user.userName);
+  if (foundQuestsResult.status === "error") {
+    res.status(foundQuestsResult.statusCode).send(JSON.stringify({
+      "error": foundQuestsResult.message
+    }))
+  }
+  const foundQuests = foundQuestsResult.data;
+  foundQuests.forEach((quest) => {
     const startTime = quest.puzzles.length ? quest.puzzles[0].startTime : "";
     const endTime = quest.puzzles.length ? quest.puzzles[quest.puzzles.length - 1].endTime : "";
     quests.push({

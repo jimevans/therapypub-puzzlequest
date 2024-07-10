@@ -12,9 +12,9 @@ async function getData(apiEndpoint) {
       return await response.json();
     } else {
       const responseData = await response.json();
-      if ("error" in responseData) {
+      if (responseData.status === "error") {
         console.log(
-          `${response.status} received with error ${responseData.error}`
+          `${response.status} received with error ${responseData.message}`
         );
       }
     }
@@ -43,7 +43,7 @@ document.querySelector("#users").addEventListener("click", async (e) => {
       },
     ];
     const grid = new DataGrid("Users", fieldDefinitions);
-    grid.render(userData.users);
+    grid.render(userData.data);
     grid.onAddDataRequested = (e) => {
       window.location.href = "/user/register";
     };
@@ -74,7 +74,7 @@ document.querySelector("#puzzles").addEventListener("click", async (e) => {
       },
     ];
     const grid = new DataGrid("Puzzles", fieldDefinitions);
-    grid.render(puzzleData.puzzles);
+    grid.render(puzzleData.data);
     grid.onAddDataRequested = (e) => {
       window.location.href = "/puzzle/new";
     };
@@ -105,9 +105,13 @@ document.querySelector("#quests").addEventListener("click", async (e) => {
         fieldName: "userName",
         title: "User Name"
       },
+      {
+        fieldName: "statusDescription",
+        title: "Status"
+      }
     ];
     const grid = new DataGrid("Quests", fieldDefinitions);
-    grid.render(questData.quests);
+    grid.render(questData.data);
     grid.onAddDataRequested = (e) => {
       window.location.href = "/quest/new";
     };

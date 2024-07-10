@@ -30,9 +30,9 @@ class Lookup extends Modal {
         return await response.json();
       } else {
         const responseData = await response.json();
-        if ("error" in responseData) {
+        if (responseData.status === "error") {
           console.log(
-            `${response.status} received with error ${responseData.error}`
+            `${response.status} received with error ${responseData.message}`
           );
         }
       }

@@ -27,6 +27,11 @@ questApiRouter.put(
   TokenAuthenticator.tokenAuthenticate,
   QuestController.activateQuest
 );
+questApiRouter.put(
+  "/:name/reset",
+  TokenAuthenticator.tokenAuthenticate,
+  QuestController.resetQuest
+);
 questApiRouter.delete(
   "/:name",
   TokenAuthenticator.tokenAuthenticate,

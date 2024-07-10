@@ -19,18 +19,48 @@ document.querySelector("#activate")?.addEventListener("click", async (e) => {
       body: "",
     });
     if (response.ok) {
-      return await response.json();
+      const returnedData = await response.json();
+      if (returnedData.status !== "success") {
+        console.log(`unexpected error: ${returnedData.message}`);
+      }
     } else {
       const responseData = await response.json();
-      if ("error" in responseData) {
+      if (responseData.status === "error") {
         console.log(
-          `${response.status} received with error ${responseData.error}`
+          `${response.status} received with error ${responseData.message}`
         );
       }
-      return responseData;
     }
   } catch (err) {
     console.log("error: " + err);
+  }
+  window.location.href = "/";
+});
+document.querySelector("#reset")?.addEventListener("click", async (e) => {
+  e.preventDefault();
+  try {
+    const response = await fetch(`/api/quest/${quest.name}/reset`, {
+      method: "put",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: "",
+    });
+    if (response.ok) {
+      const returnedData = await response.json();
+      if (returnedData.status !== "success") {
+        console.log(`unexpected error: ${returnedData.message}`);
+      }
+    } else {
+      const responseData = await response.json();
+      if (responseData.status === "error") {
+        console.log(
+          `${response.status} received with error ${responseData.message}`
+        );
+      }
+    }
+  } catch (err) {
+    console.log("error: " + err.message);
   }
   window.location.href = "/";
 });

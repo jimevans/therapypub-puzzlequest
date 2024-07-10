@@ -3,24 +3,36 @@ import { PuzzleModel as Puzzle, PuzzleType } from "../models/puzzle.model.js";
 export async function getPuzzleByPuzzleName(name) {
   const puzzle = await Puzzle.findOne({ name: name });
   if (puzzle === null) {
-    return { error: `No puzzle with puzzle name ${name} found` };
+    return {
+      status: "error",
+      statusCode: 404,
+      message: `No puzzle with puzzle name ${name} found`
+    };
   }
-  return { status: "success", puzzle: puzzle };
+  return { status: "success", statusCode: 200, data: puzzle };
 }
 
 export async function deletePuzzle(name) {
   const result = await Puzzle.findOneAndDelete({ name: name });
   if (result === null) {
-    return { error: `Puzzle with puzzle name ${name} does not exist` };
+    return {
+      status: error,
+      statusCode: 404,
+      message: `Puzzle with puzzle name ${name} does not exist`
+    };
   }
-  return { status: "success" };
+  return { status: "success", statusCode: 200 };
 }
 
 export async function createPuzzle(puzzle) {
   const existingPuzzles = await Puzzle.find({ name: puzzle.name }).lean();
   const puzzleExists = existingPuzzles.length !== 0;
   if (puzzleExists) {
-    return { error: `Puzzle with puzzle name ${puzzle.name} already exists` };
+    return {
+      status: error,
+      statusCode: 400,
+      message: `Puzzle with puzzle name ${puzzle.name} already exists`
+    };
   }
 
   try {
@@ -37,15 +49,23 @@ export async function createPuzzle(puzzle) {
     });
     await newPuzzle.save();
   } catch (err) {
-    return { error: `New puzzle not created - ${err}` };
+    return {
+      status: "error",
+      statusCode: 500,
+      message: `New puzzle not created - ${err}`
+    };
   }
-  return { status: "success" };
+  return { status: "success", statusCode: 200 };
 }
 
 export async function updatePuzzle(name, puzzleData) {
   const foundPuzzle = await Puzzle.findOne({ name: name });
   if (foundPuzzle === null) {
-    return { error: `No puzzle with puzzle name ${name} found` };
+    return {
+      status: "error",
+      statusCode: 404,
+      message: `No puzzle with puzzle name ${name} found`
+    };
   }
   foundPuzzle.displayName = puzzleData.displayName || foundPuzzle.displayName;
   foundPuzzle.type = puzzleData.type || foundPuzzle.type;
@@ -56,10 +76,10 @@ export async function updatePuzzle(name, puzzleData) {
   foundPuzzle.activationCode = puzzleData.activationCode || foundPuzzle.activationCode;
   foundPuzzle.hints = puzzleData.hints || foundPuzzle.hints;
   await foundPuzzle.save();
-  return { status: "success" };
+  return { status: "success", statusCode: 200 };
 }
 
 export async function listPuzzles() {
   const puzzles = await Puzzle.find({});
-  return { status: "success", puzzles: puzzles };
+  return { status: "success", statusCode: 200, data: puzzles };
 }

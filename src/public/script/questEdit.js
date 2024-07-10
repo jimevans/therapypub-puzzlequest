@@ -28,9 +28,9 @@ async function callDataApi(apiEndPoint, method, data) {
       return await response.json();
     } else {
       const responseData = await response.json();
-      if ("error" in responseData) {
+      if (responseData.status === "error") {
         console.log(
-          `${response.status} received with error ${responseData.error}`
+          `${response.status} received with error ${responseData.message}`
         );
       }
       return responseData;
@@ -202,8 +202,8 @@ document.querySelector("#save").addEventListener("click", async (e) => {
       : `/api/quest/create`;
 
   const dataReturn = await callDataApi(dataApiUrl, dataApiVerb, questData);
-  if ("error" in dataReturn) {
-    showError(dataReturn.error);
+  if (dataReturn.status === "error") {
+    showError(dataReturn.message);
     return;
   }
   window.location.href = `/quest/${questData.name}`;
