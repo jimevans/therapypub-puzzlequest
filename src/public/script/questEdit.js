@@ -43,7 +43,7 @@ async function callDataApi(apiEndPoint, method, data) {
 const puzzleGridOptions = {
   allowCreation: true,
   allowRowDeleting: true,
-  allowRowEditing: true,
+  allowRowEditing: false,
   allowRowReordering: true,
   allowRowSelecting: false
 }
@@ -105,9 +105,13 @@ puzzleGrid.onAddDataRequested = () => {
     });
   }
 
-  puzzleLookup.render("/api/puzzle/list", "puzzles");
+  puzzleLookup.render("/api/puzzle/list", "data");
   puzzleLookup.show();
 }
+
+puzzleGrid.onDeleteDataRequested = (e) => {
+  puzzleGrid.deleteDataRow(e.target.parentNode.parentNode.rowIndex - 1);
+};
 
 document.querySelector("#set-user-button").addEventListener("click", (e) => {
   e.stopPropagation();
@@ -129,7 +133,7 @@ document.querySelector("#set-user-button").addEventListener("click", (e) => {
       document.querySelector("#user-name").value = selectedUser[0].userName;
     }
   }
-  userLookup.render("/api/user/list", "users");
+  userLookup.render("/api/user/list", "data");
   userLookup.show();
 });
 

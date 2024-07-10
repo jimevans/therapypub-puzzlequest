@@ -37,11 +37,6 @@ const questPuzzleSchema = new Schema({
     type: String,
     required: true,
   },
-  questOrder: {
-    type: Number,
-    required: true,
-    default: 0,
-  },
   nextHintToDisplay: {
     type: Number,
     required: true,

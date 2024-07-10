@@ -34,6 +34,7 @@ document.querySelector("#users").addEventListener("click", async (e) => {
         fieldName: "userName",
         title: "User Name",
         width: "25%",
+        type: "link",
         linkTemplate: "/user/:userName"
       },
       {
@@ -65,6 +66,7 @@ document.querySelector("#puzzles").addEventListener("click", async (e) => {
         fieldName: "name",
         title: "Puzzle Name",
         width: "25%",
+        type: "link",
         linkTemplate: "/puzzle/:name"
       },
       {
@@ -95,6 +97,7 @@ document.querySelector("#quests").addEventListener("click", async (e) => {
       {
         fieldName: "name",
         title: "Quest Name",
+        type: "link",
         linkTemplate: "/quest/:name"
       },
       {

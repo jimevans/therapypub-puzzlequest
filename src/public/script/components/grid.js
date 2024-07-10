@@ -177,6 +177,15 @@ class DataGrid {
     // Create filler column with delete button at end.
     if (this.allowRowDeleting || this.allowRowEditing) {
       const fillerColumnDataCell = document.createElement("td");
+      if (this.allowRowEditing) {
+        const editButton = document.createElement("button");
+        editButton.innerText = "Edit";
+        editButton.addEventListener("click", (e) => {
+          e.preventDefault();
+          this.onRowEditRequested(e);
+        });
+        fillerColumnDataCell.appendChild(editButton);
+      }
       if (this.allowRowDeleting) {
         const deleteButton = document.createElement("button");
         deleteButton.innerText = "Delete";
@@ -217,7 +226,7 @@ class DataGrid {
         `td[data-field-name='${columnDefinition.fieldName}']`
       );
       if (dataCell) {
-        if (columnDefinition.linkTemplate) {
+        if (columnDefinition.type === "link") {
           const itemLinkUrl = columnDefinition.linkTemplate.replace(
             `:${columnDefinition.fieldName}`,
             dataItem[columnDefinition.fieldName]
@@ -226,12 +235,89 @@ class DataGrid {
           link.href = itemLinkUrl;
           link.innerText = dataItem[columnDefinition.fieldName];
           dataCell.appendChild(link);
+        } else if (columnDefinition.type === "boolean") {
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.readOnly = true;
+          checkbox.checked = dataItem[columnDefinition.fieldName];
+          checkbox.addEventListener("click", (e) => e.preventDefault());
+          dataCell.appendChild(checkbox);
         } else {
           dataCell.innerText = dataItem[columnDefinition.fieldName];
         }
       }
     });
     this.#tableBody.appendChild(tableRow);
+  }
+
+  /**
+   * Deletes a data row from the grid.
+   * @param {number} rowIndex the index of the row to delete.
+   */
+  deleteDataRow(rowIndex) {
+    if (this.allowRowDeleting) {
+      this.#gridData.splice(rowIndex, 1);
+      const row = this.#tableBody.querySelector(`tr:nth-of-type(${rowIndex + 1})`);
+      this.#tableBody.removeChild(row);
+    }
+  }
+
+  /**
+   * Sets a data row to edit mode
+   * @param {number} rowIndex the index of the row to edit
+   */
+  editDataRow(rowIndex) {
+    if (this.allowRowEditing) {
+      const row = this.#tableBody.querySelector(`tr:nth-of-type(${rowIndex + 1})`);
+      const dataItem = this.#gridData[rowIndex];
+      this.#columnDefinitions.forEach((columnDef) => {
+        const cell = row.querySelector(`td[data-field-name='${columnDef.fieldName}']`);
+        if (columnDef.editable) {
+          if (columnDef.type === "boolean") {
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.checked = dataItem[columnDef.fieldName];
+            cell.replaceChildren(checkbox);
+          } else {
+            const textBox = document.createElement("input");
+            textBox.value = dataItem[columnDef.fieldName];
+            cell.replaceChildren(textBox);
+          }
+        }
+      });
+      const fillerCell = row.querySelector("td:last-of-type");
+      [...fillerCell.querySelectorAll("button")].forEach(button => {
+        button.classList.add("pq-hide");
+      });
+      const saveButton = document.createElement("button");
+      saveButton.innerText = "Save";
+      saveButton.addEventListener("click", (e) => {
+        e.preventDefault();
+        this.#columnDefinitions.forEach((columnDef) => {
+          const cell = row.querySelector(`td[data-field-name='${columnDef.fieldName}']`);
+          if (columnDef.editable) {
+            if (columnDef.type === "boolean") {
+              dataItem[columnDef.fieldName] = cell.querySelector("input").checked;
+              const checkbox = document.createElement("input");
+              checkbox.type = "checkbox";
+              checkbox.checked = dataItem[columnDef.fieldName];
+              checkbox.addEventListener("click", (e) => e.preventDefault());
+              cell.replaceChildren(checkbox);
+            } else {
+              const textBox = cell.querySelector("input");
+              dataItem[columnDef.fieldName] = textBox.value;
+              cell.removeChild(textBox);
+              cell.innerText = dataItem[columnDef.fieldName];
+            }
+          }
+        });
+        fillerCell.removeChild(e.target);
+        [...fillerCell.querySelectorAll("button")].forEach(button => {
+          button.classList.remove("pq-hide");
+        });
+      });
+      fillerCell.appendChild(saveButton);
+    }
   }
 
   #clearData() {
@@ -256,7 +342,13 @@ class DataGrid {
    * Callback called when addition of a new data row is requested.
    * @param {*} e
    */
-  onAddDataRequested = (e) => {};
+  onAddDataRequested = (e) => { };
+
+  /**
+   * Callback called when edit of a data row is requested.
+   * @param {*} e
+   */
+  onRowEditRequested = (e) => { };
 
   /**
    * Renders the data to the grid. Will delete existing data in the grid when called.
@@ -295,6 +387,14 @@ class DataGrid {
    */
   setTitleText(text) {
     this.#titleTextElement.innerText = text;
+  }
+
+  /**
+   * Gets the number of data rows in the grid.
+   * @returns {number} the number of rows in the grid.
+   */
+  getDataRowCount() {
+    return this.#gridData.length;
   }
 
   /**

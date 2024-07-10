@@ -1,3 +1,4 @@
+import { DataGrid } from "./components/grid.js";
 import { PuzzleRenderer } from "./components/puzzleRenderer.js";
 
 function clearError() {
@@ -93,6 +94,7 @@ function getPuzzleData() {
   if (puzzleData.type === 0) {
     puzzleData.text = renderer.getPuzzleData();
   }
+  puzzleData.hints = hintGrid.getData();
   return puzzleData;
 }
 
@@ -102,8 +104,66 @@ document
   .querySelector("#puzzle-content")
   .replaceChildren(renderer.getElement());
 
+
+const hintGridOptions = {
+  allowCreation: true,
+  allowRowDeleting: true,
+  allowRowEditing: true,
+  allowRowReordering: true,
+  allowRowSelecting: false
+};
+
+const columnDefinitions = [
+  {
+    fieldName: "text",
+    title: "Hint Text",
+    editable: true
+  },
+  {
+    fieldName: "solutionWarning",
+    title: "Does Hint Give Solution?",
+    type: "boolean",
+    editable: true
+  },
+  {
+    fieldName: "timePenalty",
+    title: "Time Penalty (sec)",
+    editable: true
+  }
+];
+
+const hintGrid = new DataGrid("Hints", columnDefinitions, hintGridOptions);
+hintGrid.setAddNewDataLinkText("Add hint");
+hintGrid.onDeleteDataRequested = (e) => {
+  hintGrid.deleteDataRow(e.target.parentNode.parentNode.rowIndex - 1);
+};
+hintGrid.onRowEditRequested = (e) => {
+  hintGrid.editDataRow(e.target.parentNode.parentNode.rowIndex - 1);
+};
+hintGrid.onAddDataRequested = (e) => {
+  const rowCount = hintGrid.getDataRowCount();
+  hintGrid.addDataRow({
+    text: "",
+    solutionWarning: false,
+    timePenalty: 0
+  });
+  hintGrid.editDataRow(rowCount);
+}
+
+hintGrid.render(puzzle ? puzzle.hints : []);
+document.querySelector("#hints").replaceChildren(hintGrid.getElement());
+
+
 document.querySelector("#puzzle-type").addEventListener("change", (e) => {
   renderer.render(parseInt(e.target.value), "", true);
+});
+document.querySelector("#cancel").addEventListener("click", (e) => {
+  e.preventDefault();
+  if (puzzle) {
+    window.location.href = `/puzzle/${puzzle.name}`;
+  } else {
+    window.location.href = "/";
+  }
 });
 document.querySelector("#save").addEventListener("click", async (e) => {
   e.preventDefault();
@@ -149,12 +209,4 @@ document.querySelector("#save").addEventListener("click", async (e) => {
     return;
   }
   window.location.href = "/";
-});
-document.querySelector("#cancel").addEventListener("click", (e) => {
-  e.preventDefault();
-  if (puzzle) {
-    window.location.href = `/puzzle/${puzzle.name}`;
-  } else {
-    window.location.href = "/";
-  }
 });

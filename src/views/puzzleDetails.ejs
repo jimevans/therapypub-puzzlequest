@@ -72,14 +72,13 @@
         <%= puzzle.activationCode %>
       </div>
     </div>
-    <div>
-      Hints
-    </div>
     <% if (!puzzle.hints.length) { %>
     <div>
       No hints to display
     </div>
     <% } else { %>
+    <div id="hints">
+    </div>
     <% } %>
     <div class="pq-form-element">
       <button id="edit" class="pq-button">Edit</button>
@@ -91,7 +90,7 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script type="text/javascript">
       const renderMode = "<%=renderMode%>";
-      const puzzle = <%- JSON.stringify( puzzle ? { "name": puzzle.name, "type": puzzle.type, "content": puzzle.text } : null) %>;
+      const puzzle = <%- JSON.stringify( puzzle ? { "name": puzzle.name, "type": puzzle.type, "content": puzzle.text, "hints": puzzle.hints } : null) %>;
     </script>
     <script type="module" src="/script/puzzleDetails.js"></script>
   </body>

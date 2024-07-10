@@ -13,11 +13,6 @@ const hintSchema = new Schema({
     default: "",
     required: true,
   },
-  order: {
-    type: Number,
-    required: true,
-    default: 0,
-  },
   solutionWarning: {
     type: Boolean,
     required: true,
