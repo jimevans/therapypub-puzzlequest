@@ -64,10 +64,6 @@ const columnDefinitions = [
   {
     fieldName: "nextHintToDisplay",
     title: "Next Hint Number"
-  },
-  {
-    fieldName: "statusDescription",
-    title: "Status"
   }
 ];
 const puzzleGrid = new DataGrid("Quest Puzzles", columnDefinitions, puzzleGridOptions);

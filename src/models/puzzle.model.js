@@ -58,11 +58,6 @@ const puzzleSchema = new Schema({
     type: String,
     default: "",
   },
-  activationCode: {
-    type: String,
-    default: "",
-    required: true,
-  },
   hints: [hintSchema],
 });
 

@@ -47,6 +47,11 @@ const questPuzzleSchema = new Schema({
     required: true,
     default: 0,
   },
+  activationCode: {
+    type: String,
+    default: "",
+    required: true,
+  },
   startTime: {
     type: Date,
   },

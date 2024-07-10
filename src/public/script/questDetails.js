@@ -85,6 +85,10 @@ const puzzleGridColumnDefinitions = [
   {
     fieldName: "statusDescription",
     title: "Status"
+  },
+  {
+    fieldName: "activationCode",
+    title: "Activation Code"
   }
 ]
 const puzzleGridOptions = {

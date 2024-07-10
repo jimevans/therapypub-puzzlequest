@@ -44,7 +44,6 @@ export async function createPuzzle(puzzle) {
       solutionKeyword: puzzle.solutionKeyword || "",
       solutionDisplayText: puzzle.solutionDisplayText || "",
       resourcePath: puzzle.resourcePath || "",
-      activationCode: puzzle.activationCode || "",
       hints: puzzle.hints || [],
     });
     await newPuzzle.save();
@@ -73,7 +72,6 @@ export async function updatePuzzle(name, puzzleData) {
   foundPuzzle.solutionKeyword = puzzleData.solutionKeyword || foundPuzzle.solutionKeyword;
   foundPuzzle.solutionDisplayText = puzzleData.solutionDisplayText || foundPuzzle.solutionDisplayText;
   foundPuzzle.resourcePath = puzzleData.resourcePath || foundPuzzle.resourcePath;
-  foundPuzzle.activationCode = puzzleData.activationCode || foundPuzzle.activationCode;
   foundPuzzle.hints = puzzleData.hints || foundPuzzle.hints;
   await foundPuzzle.save();
   return { status: "success", statusCode: 200 };

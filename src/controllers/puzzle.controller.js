@@ -1,5 +1,3 @@
-import { randomUUID } from "crypto";
-
 import { RenderMode } from "../middleware/useRenderMode.js";
 import * as AuthenticationService from "../services/authentication.service.js";
 import * as PuzzleService from "../services/puzzle.service.js";
@@ -59,9 +57,6 @@ export async function createPuzzle(req, res) {
         })
       );
     return;
-  }
-  if (!("activationCode" in req.body)) {
-    req.body.activationCode = randomUUID().replaceAll("-", "");
   }
   const response = await PuzzleService.createPuzzle(req.body);
   if (response.status === "error") {

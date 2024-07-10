@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import {
   QuestModel as Quest,
   QuestStatus,
@@ -60,9 +61,9 @@ export async function createQuest(questDefinition) {
     questDefinition.puzzles.forEach((puzzleDefinition) => {
       const puzzle = {
         puzzleName: puzzleDefinition.puzzleName,
-        questOrder: puzzleCount,
         nextHintToDisplay: 0,
         status: QuestPuzzleStatus.UNAVAILABLE,
+        activationCode: randomUUID().replaceAll("-", "")
       };
       quest.puzzles.push(puzzle);
       puzzleCount++;
@@ -290,7 +291,7 @@ export async function getQuest(name, omitUnavailablePuzzles = false) {
       startTime: puzzle.startTime,
       endTime: puzzle.endTime,
       activationTime: puzzle.activationTime,
-      activationCode: detail.activationCode,
+      activationCode: puzzle.activationCode,
     });
   });
   return { status: "success", statusCode: 200, data: questData };
@@ -390,12 +391,7 @@ export async function activatePuzzle(questName, puzzleName, activationCode) {
       message: `Puzzle ${puzzleName} in quest ${questName} is not awaiting activation`
     };
   }
-  const puzzleResult = await PuzzleService.getPuzzleByPuzzleName(puzzleName);
-  if (puzzleResult.status === "error") {
-    return puzzleResult;
-  }
-  const foundPuzzle = puzzleResult.data;
-  if (foundPuzzle.activationCode !== activationCode) {
+  if (currentPuzzle.activationCode !== activationCode) {
     return {
       status: "error",
       statusCode: 406,
