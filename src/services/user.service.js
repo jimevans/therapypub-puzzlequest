@@ -8,6 +8,11 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { config } from "../config.js";
 
+/**
+ * Gets a user by its user name.
+ * @param {string} name the name of the user to get
+ * @returns {object} a response object containing a status, status code, and data
+ */
 export async function getUserByUserName(name) {
   const user = await User.findOne({ userName: name });
   if (user === null) {
@@ -20,6 +25,11 @@ export async function getUserByUserName(name) {
   return { status: "success", statusCode: 200, data: user };
 }
 
+/**
+ * Gets a read-only copy of a user, including team membership information.
+ * @param {string} name the name of the user to retrieve data for
+ * @returns {object} a response object containing a status, status code, and data
+ */
 export async function getUserInfo(name) {
   const userResponse = await getUserByUserName(name);
   if (userResponse.status === "error") {
@@ -49,6 +59,11 @@ export async function getUserInfo(name) {
   return { status: "success", statusCode: 200, data: userInfo };
 }
 
+/**
+ * Deletes a user by its user name.
+ * @param {string} name the name of the user to delete
+ * @returns {object} a response object containing a status, status code, and data
+ */
 export async function deleteUser(name) {
   const result = await User.findOneAndDelete({ userName: name });
   if (result === null) {
@@ -61,6 +76,11 @@ export async function deleteUser(name) {
   return { status: "success", statusCode: 200 };
 }
 
+/**
+ * Creates a new user.
+ * @param {object} user the definition of the user to create
+ * @returns {object} a response object containing a status, status code, and data
+ */
 export async function createUser(user) {
   const existingUsers = await User.find({ userName: user.userName }).lean();
   const userExists = existingUsers.length !== 0;
@@ -97,6 +117,12 @@ export async function createUser(user) {
   return { status: "success", statusCode: 200 };
 }
 
+/**
+ * Updates a user.
+ * @param {string} name the name of the user to update
+ * @param {object} userData the data to update the user definition with
+ * @returns {object} a response object containing a status, status code, and data
+ */
 export async function updateUser(name, userData) {
   const foundUser = await User.findOne({ userName: name });
   if (foundUser === null) {
@@ -127,6 +153,12 @@ export async function updateUser(name, userData) {
   return { status: "success" , statusCode: 200};
 }
 
+/**
+ * Authenticates a user.
+ * @param {string} userName the user name to authenticate
+ * @param {string} password the encrypted password to use to authenticate the user
+ * @returns {object} a response object containing a status, status code, and data
+ */
 export async function authenticate(userName, password) {
   const user = await User.findOne({ userName: userName }).lean();
   if (user === null) {
@@ -159,29 +191,10 @@ export async function authenticate(userName, password) {
   return { status: "success", statusCode: 200, data: token };
 }
 
-export async function getUserAndTeams(name) {
-  const user = await User.findOne({ userName: name });
-  if (user === null) {
-    return {
-      status: "error",
-      message: `No user with user name ${name} found`
-    };
-  }
-  const allNames = [
-    { name: user.userName, displayName: user.displayName, type: "user" },
-  ];
-  const teamsContainingUserResponse = await TeamService.getTeamNamesForUser(user.userName);
-  const teamsContainingUser = teamsContainingUserResponse.data;
-  teamsContainingUser.forEach((team) =>
-    allNames.push({
-      name: team.teamName,
-      displayName: team.displayName,
-      type: "team",
-    })
-  );
-  return { status: "success", statusCode: 200, data: allNames };
-}
-
+/**
+ * Gets a list of all of the user definitions.
+ * @returns {object} a response object containing a status, status code, and data
+ */
 export async function listUsers() {
   const users = await User.find({});
   return { status: "success", statusCode: 200, data: users };

@@ -1,4 +1,3 @@
-
 const PuzzleKind = {
   Text: 0,
   Image: 1,
@@ -6,10 +5,16 @@ const PuzzleKind = {
   Video: 3
 }
 
+/**
+ * Renders a puzzle during authoring.
+ */
 class PuzzleRenderer {
   #rendererElement = document.createElement("div");
   #puzzleKind = PuzzleKind.Text;
 
+  /**
+   * Initializes a new instance of the PuzzleRenderer class.
+   */
   constructor() {
   }
 
@@ -119,6 +124,12 @@ class PuzzleRenderer {
      return this.#rendererElement.querySelector("textarea").value;
   }
 
+  /**
+   * Renders the puzzle definition during authoring.
+   * @param {number} puzzleType the type of the puzzle
+   * @param {string} puzzleContent the content of the puzzle definition
+   * @param {boolean} isEditable true if the puzzle definition is editable; otherwise false
+   */
   render(puzzleType = 0, puzzleContent = "", isEditable = false) {
     this.#puzzleKind = puzzleType;
     const renderElements = [];
@@ -138,6 +149,10 @@ class PuzzleRenderer {
     this.#rendererElement.replaceChildren(...renderElements);
   }
 
+  /**
+   * Gets the root element of the puzzle renderer.
+   * @returns {Element} the root element of the puzzle renderer
+   */
   getElement() {
     return this.#rendererElement;
   }

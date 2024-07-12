@@ -1,5 +1,23 @@
 import { Schema, model } from "mongoose";
 
+/**
+ * @typedef {object} Puzzle A puzzle definition.
+ * @property {string} name the unique name of the puzzle
+ * @property {string} displayName the display name or title of the puzzle
+ * @property {number} type the type of the puzzle
+ * @property {string} text the text containing the definition of the puzzle
+ * @property {string} solutionKeyword a comma-delimited string that solutions must contain
+ * @property {string} solutionDisplayText the text shown as the solution to the puzzle
+ * @property {Hint[]} hints an array of hints defined for the puzzle
+ */
+
+/**
+ * @typedef {object} Hint A hint for a puzzle.
+ * @property {string} text the text of the hint
+ * @property {boolean} solutionWarning true if revealing this hint would substantially reveal the puzzle solution; otherwise, false
+ * @property {number} timePenalty the time penalty in seconds when the hint is used by a user
+ */
+
 const PuzzleType = {
   TEXT: 0,
   IMAGE: 1,
@@ -53,10 +71,6 @@ const puzzleSchema = new Schema({
     type: String,
     default: "",
     required: true,
-  },
-  resourcePath: {
-    type: String,
-    default: "",
   },
   hints: [hintSchema],
 });

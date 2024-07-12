@@ -8,9 +8,38 @@ import * as PuzzleService from "./puzzle.service.js";
 import * as UserService from "./user.service.js";
 
 /**
+ * Queries the data store for the quest with the given name, returning all puzzle data.
+ * @param {string} name the name of the quest for which to retrieve the data
+ * @returns {object} a response object containing a status, status code, and data
+ */
+async function queryForQuest(name) {
+  const foundQuests = await Quest.aggregate([
+    { $match: { name: name } },
+    { $limit: 1 },
+    {
+      $lookup: {
+        from: "puzzles",
+        localField: "puzzles.puzzleName",
+        foreignField: "name",
+        as: "puzzleDetails",
+      },
+    },
+  ]);
+  if (foundQuests.length === 0) {
+    return {
+      status: "error",
+      statusCode: 404,
+      message: `no quest with name ${name}`
+    };
+  }
+  // We should only ever have one here, so take the 0th one.
+  return { status: "success", statusCode: 200, data: foundQuests[0] };
+}
+
+/**
  * Creates a quest in the data store.
  * @param {object} questDefinition the definition of the quest to create.
- * @returns {object} a response object
+ * @returns {object} a response object containing a status, status code, and data
  */
 export async function createQuest(questDefinition) {
   let questName = "";
@@ -80,7 +109,7 @@ export async function createQuest(questDefinition) {
 /**
  * Deletes a quest from the data store.
  * @param {string} name the name of the quest to delete
- * @returns {object} a response object
+ * @returns {object} a response object containing a status, status code, and data
  */
 export async function deleteQuest(name) {
   const result = await Quest.findOneAndDelete({ name: name });
@@ -98,7 +127,7 @@ export async function deleteQuest(name) {
  * Updates a quest in the data store.
  * @param {string} name name of the quest to update
  * @param {object} questDefinition quest definition containing the updated data
- * @returns {object} a response object
+ * @returns {object} a response object containing a status, status code, and data
  */
 export async function updateQuest(name, questDefinition) {
   const foundQuest = await Quest.findOne({ name: name });
@@ -138,23 +167,24 @@ export async function updateQuest(name, questDefinition) {
 
 /**
  * Gets quests in the data store.
- * @param {object | null} user an object representing the user for which to get quests; if null, matches all users
+ * @param {string} userName an object representing the user for which to get quests; if null, matches all users
  * @param {number} status status to retrieve any quests with status greater than or equal to; if -1, matches all statuses
- * @returns {object} a response object
+ * @returns {object} a response object containing a status, status code, and data
  */
-export async function getQuests(user = null, status = -1) {
+export async function getQuests(userName = null, status = -1) {
   const questFilter = {};
   if (status >= QuestStatus.NOT_STARTED) {
     questFilter.status = { $gte: status };
   }
-  if (user) {
-    const userNameResponse = await UserService.getUserAndTeams(user);
+  if (userName) {
+    const userNameResponse = await UserService.getUserInfo(userName);
     if (userNameResponse.status === "error") {
       return userNameResponse;
     }
-    const validUsers = userNameResponse.data.map(
-      (identifier) => identifier.name
+    const validUsers = userNameResponse.data.teams.map(
+      (identifier) => identifier.teamName
     );
+    validUsers.push(userName);
     questFilter.userName = { $in: validUsers };
   }
   const foundQuests = await Quest.find(questFilter);
@@ -173,15 +203,16 @@ export async function isQuestForUser(questName, userName) {
     return { status: "success", statusCode: 200, data: false };
   }
   const quest = questResponse.data;
-  const userNameResponse = await UserService.getUserAndTeams(userName);
+  const userNameResponse = await UserService.getUserInfo(userName);
   if (userNameResponse.status === "error") {
     // Getting an error on getting the users and teams can be ignored;
     // it just means we return false.
     return { status: "success", statusCode: 200, data: false };
   }
-  const userAndTeams = userNameResponse.data.map(
-    (identifier) => identifier.name
+  const userAndTeams = userNameResponse.data.teams.map(
+    (identifier) => identifier.teamName
   );
+  userAndTeams.push(userName);
   const isQuestForUser = userAndTeams.includes(quest.userName);
   return {
     status: "success",
@@ -194,39 +225,10 @@ export async function isQuestForUser(questName, userName) {
 }
 
 /**
- * Queries the data store for the quest with the given name, returning all puzzle data.
- * @param {string} name the name of the quest for which to retrieve the data
- * @returns {object} a response object
- */
-async function queryForQuest(name) {
-  const foundQuests = await Quest.aggregate([
-    { $match: { name: name } },
-    { $limit: 1 },
-    {
-      $lookup: {
-        from: "puzzles",
-        localField: "puzzles.puzzleName",
-        foreignField: "name",
-        as: "puzzleDetails",
-      },
-    },
-  ]);
-  if (foundQuests.length === 0) {
-    return {
-      status: "error",
-      statusCode: 404,
-      message: `no quest with name ${name}`
-    };
-  }
-  // We should only ever have one here, so take the 0th one.
-  return { status: "success", statusCode: 200, data: foundQuests[0] };
-}
-
-/**
- * Gets a read-only copy of a quest.
+ * Gets a read-only copy of a quest, including all puzzle data.
  * @param {string} name the name of the quest to retrieve data for
  * @param {boolean} omitUnavailablePuzzles true to omit puzzles unavailable to the user in the retrieved quest; otherwise, false
- * @returns {object} a response object
+ * @returns {object} a response object containing a status, status code, and data
  */
 export async function getQuest(name, omitUnavailablePuzzles = false) {
   const queryResponse = await queryForQuest(name);
@@ -251,8 +253,7 @@ export async function getQuest(name, omitUnavailablePuzzles = false) {
       ) {
         return puzzle;
       }
-    })
-    .sort((a, b) => a.questOrder - b.questOrder);
+    });
   foundPuzzles.forEach((puzzle) => {
     let statusDescription = "";
     switch (puzzle.status) {
@@ -290,7 +291,6 @@ export async function getQuest(name, omitUnavailablePuzzles = false) {
       type: detail.type,
       text: detail.text,
       solutionDisplayText: detail.solutionDisplayText,
-      questOrder: puzzle.questOrder,
       hints: hints,
       nextHintToDisplay: puzzle.nextHintToDisplay,
       nextHintTimePenalty: nextHintTimePenalty,
@@ -309,7 +309,7 @@ export async function getQuest(name, omitUnavailablePuzzles = false) {
 /**
  * Starts a quest, making the first puzzle available for activation.
  * @param {string} name the name of the quest to start
- * @returns {object} a response object
+ * @returns {object} a response object containing a status, status code, and data
  */
 export async function startQuest(name) {
   const foundQuest = await Quest.findOne({ name: name });
@@ -353,7 +353,7 @@ export async function startQuest(name) {
  * @param {string} questName the name of the quest for which to activate the puzzle
  * @param {string} puzzleName the name of the puzzle within the quest to activate
  * @param {string} activationCode the activation code of the puzzle
- * @returns {object} a response object
+ * @returns {object} a response object containing a status, status code, and data
  */
 export async function activatePuzzle(questName, puzzleName, activationCode) {
   const quest = await Quest.findOne({ name: questName });
@@ -423,7 +423,7 @@ export async function activatePuzzle(questName, puzzleName, activationCode) {
  * @param {string} questName the name of the quest containing the puzzle to finish
  * @param {string} puzzleName the name of the puzzle to finish
  * @param {string} solutionGuess the guess for the solution of the puzzle
- * @returns {object} a response object
+ * @returns {object} a response object containing a status, status code, and data
  */
 export async function finishPuzzle(questName, puzzleName, solutionGuess) {
   const quest = await Quest.findOne({ name: questName });
@@ -511,6 +511,12 @@ export async function finishPuzzle(questName, puzzleName, solutionGuess) {
   };
 }
 
+/**
+ * Gets the next hint in the named puzzle for the specified quest.
+ * @param {string} questName the name of the quest
+ * @param {string} puzzleName the name of the puzzle for which to get the next hint
+ * @returns {object} a response object containing a status, status code, and data
+ */
 export async function getPuzzleHint(questName, puzzleName) {
   const quest = await Quest.findOne({ name: questName });
   if (quest === null) {
@@ -563,10 +569,7 @@ export async function getPuzzleHint(questName, puzzleName) {
   if (currentPuzzle.nextHintToDisplay >= foundPuzzle.hints.length) {
     return { status: "success", statusCode: 200, data: false };
   }
-  const sortedHints = foundPuzzle.hints.toSorted(
-    (first, second) => first.order - second.order
-  );
-  const nextHint = sortedHints[currentPuzzle.nextHintToDisplay];
+  const nextHint = foundPuzzle.hints[currentPuzzle.nextHintToDisplay];
   currentPuzzle.nextHintToDisplay += 1;
   const solutionWarning =
     currentPuzzle.nextHintToDisplay >= foundPuzzle.hints.length
@@ -589,6 +592,11 @@ export async function getPuzzleHint(questName, puzzleName) {
   };
 }
 
+/**
+ * Resets a quest to its initial state.
+ * @param {string} questName the name of the quest
+ * @returns {object} a response object containing a status, status code, and data
+ */
 export async function resetQuest(questName) {
   const quest = await Quest.findOne({ name: questName });
   if (quest === null) {

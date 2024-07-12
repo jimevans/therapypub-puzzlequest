@@ -49,8 +49,8 @@ class DataGrid {
 
   /**
    * Creates the grid title element.
-   * @param {String} titleText the text of the grid title
-   * @param {String | undefined} createItemUrl the URL for creating a new data item in the grid
+   * @param {string} titleText the text of the grid title
+   * @param {string | undefined} createItemUrl the URL for creating a new data item in the grid
    */
   #createGrid() {
     const gridTitleElement = document.createElement("div");
@@ -354,25 +354,25 @@ class DataGrid {
 
   /**
    * Callback called when deletion of a row is requested.
-   * @param {*} e
+   * @param {Event} e the event data from the click event of the commit button
    */
   onDeleteDataRequested = (e) => {};
 
   /**
    * Callback called when addition of a new data row is requested.
-   * @param {*} e
+   * @param {Event} e the event data from the click event of the commit button
    */
   onAddDataRequested = (e) => { };
 
   /**
    * Callback called when edit of a data row is requested.
-   * @param {*} e
+   * @param {Event} e the event data from the click event of the commit button
    */
   onRowEditRequested = (e) => { };
 
   /**
    * Callback called when edit of a data row is saved.
-   * @param {*} e
+   * @param {Event} e the event data from the click event of the commit button
    */
   onRowEditCommit = (e) => { };
 

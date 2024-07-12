@@ -1,5 +1,10 @@
 import { PuzzleModel as Puzzle, PuzzleType } from "../models/puzzle.model.js";
 
+/**
+ * Gets a puzzle by its puzzle name.
+ * @param {string} name the name of the puzzle to get
+ * @returns {object} a response object containing a status, status code, and data
+ */
 export async function getPuzzleByPuzzleName(name) {
   const puzzle = await Puzzle.findOne({ name: name });
   if (puzzle === null) {
@@ -12,6 +17,11 @@ export async function getPuzzleByPuzzleName(name) {
   return { status: "success", statusCode: 200, data: puzzle };
 }
 
+/**
+ * Deletes a puzzle by its puzzle name.
+ * @param {string} name the name of the puzzle to delete
+ * @returns {object} a response object containing a status, status code, and data
+ */
 export async function deletePuzzle(name) {
   const result = await Puzzle.findOneAndDelete({ name: name });
   if (result === null) {
@@ -24,6 +34,11 @@ export async function deletePuzzle(name) {
   return { status: "success", statusCode: 200 };
 }
 
+/**
+ * Creates a new puzzle.
+ * @param {object} puzzle the definition of the puzzle to create
+ * @returns {object} a response object containing a status, status code, and data
+ */
 export async function createPuzzle(puzzle) {
   const existingPuzzles = await Puzzle.find({ name: puzzle.name }).lean();
   const puzzleExists = existingPuzzles.length !== 0;
@@ -57,6 +72,12 @@ export async function createPuzzle(puzzle) {
   return { status: "success", statusCode: 200 };
 }
 
+/**
+ * Updates a puzzle.
+ * @param {string} name the name of the puzzle to update
+ * @param {object} puzzleData the data to update the puzzle definition with
+ * @returns {object} a response object containing a status, status code, and data
+ */
 export async function updatePuzzle(name, puzzleData) {
   const foundPuzzle = await Puzzle.findOne({ name: name });
   if (foundPuzzle === null) {
@@ -77,6 +98,10 @@ export async function updatePuzzle(name, puzzleData) {
   return { status: "success", statusCode: 200 };
 }
 
+/**
+ * Gets a list of all of the puzzle definitions.
+ * @returns {object} a response object containing a status, status code, and data
+ */
 export async function listPuzzles() {
   const puzzles = await Puzzle.find({});
   return { status: "success", statusCode: 200, data: puzzles };

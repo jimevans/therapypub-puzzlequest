@@ -41,7 +41,6 @@ function stopCamera() {
   }
   document.querySelector("#scan-code-button").classList.add("pq-hide");
   document.querySelector("#camera-image").classList.add("pq-hide");
-  document.querySelector("#start-button").classList.remove("pq-hide");
 }
 
 async function sendActivationData(formData) {
@@ -79,11 +78,12 @@ document.querySelector("video").addEventListener("play", (e) => {
       e.preventDefault();
       if (e.target.value === "qr") {
         clearError();
+        startCamera();
         document.querySelector("#text-entry").classList.add("pq-hide");
         document.querySelector("#qr-code-scanner").classList.remove("pq-hide");
       } else if (e.target.value === "text") {
-        stopCamera();
         clearError();
+        stopCamera();
         document.querySelector("#qr-code-scanner").classList.add("pq-hide");
         document.querySelector("#text-entry").classList.remove("pq-hide");
       } else {
@@ -94,12 +94,6 @@ document.querySelector("video").addEventListener("play", (e) => {
     });
   }
 );
-
-document.querySelector("#start-button").addEventListener("click", (e) => {
-  e.preventDefault();
-  startCamera();
-  e.target.classList.add("pq-hide");
-});
 
 document.querySelector("#scan-code-button").addEventListener("click", async (e) => {
   e.preventDefault();

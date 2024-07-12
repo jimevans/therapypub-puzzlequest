@@ -5,6 +5,7 @@ import { Schema, model } from "mongoose";
  * @property {string} puzzleName the unique name of the puzzle
  * @property {number} nextHintToDisplay the index into the puzzle's hint array that indicates the next hint to be displayed
  * @property {number} status the status of the puzzle within the quest
+ * @property {string} activationCode the activation code for this puzzle during this quest
  * @property {Date} startTime the date and time when the puzzle was started
  * @property {Date} endTime the date and time when the puzzle was solved
  * @property {Date} activationTime the date and time when the puzzle was activated

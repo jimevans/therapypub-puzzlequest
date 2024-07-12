@@ -1,3 +1,6 @@
+/**
+ * Renders a modal dialog in the web page.
+ */
 class Modal {
   #overlayElement;
   #modal;
@@ -7,6 +10,10 @@ class Modal {
   #modalFooter;
   #buttonCount;
 
+  /**
+   * Initializes a new instance of the Modal class.
+   * @param {number} buttonCount the number of buttons in the footer of the dialog
+   */
   constructor(buttonCount = 2) {
     this.#buttonCount = buttonCount;
     this.#overlayElement = document.querySelector(".pq-modal-overlay");
@@ -54,7 +61,7 @@ class Modal {
     this.#modalFooter = document.createElement("footer");
     this.#modalFooter.classList.add("pq-modal-footer");
     const confirmButton = document.createElement("button");
-    confirmButton.classList.add("pq-button");
+    confirmButton.classList.add("pq-modal-footer-button");
     confirmButton.setAttribute("data-action", "confirm")
     confirmButton.innerText = "OK";
     confirmButton.addEventListener("click", (e) => {
@@ -81,30 +88,60 @@ class Modal {
     this.#modal.appendChild(this.#modalFooter);
   }
 
+  /**
+   * Callback called when the confirm button is clicked.
+   * @param {Event} e the event data from the click event of the confirm button
+   */
   onConfirmButtonClick = (e) => { };
 
+  /**
+   * Callback called when the cancel button is clicked.
+   * @param {Event} e the event data from the click event of the cancel button
+   */
   onCancelButtonClick = (e) => { };
 
+  /**
+   * Sets the title of the modal dialog.
+   * @param {string} title the title of the modal dialog
+   */
   setTitle(title) {
     this.#modalTitleElement.innerText = title;
   }
 
+  /**
+   * Sets the text of the confirm button.
+   * @param {string} text the text of the confirm button
+   */
   setConfirmButtonText(text) {
     this.#modalFooter.querySelector("button.pq-button[data-action='confirm']").innerText = text;
   }
 
+  /**
+   * Sets the text of the cancel button.
+   * @param {string} text the text of the cancel button
+   */
   setCancelButtonText(text) {
     this.#modalFooter.querySelector("button.pq-button[data-action='cancel']").innerText = text;
   }
 
+  /**
+   * Sets the body content of the modal dialog.
+   * @param {Element} bodyElement the element containing the body content of the modal dialog
+   */
   setBodyContent(bodyElement) {
     this.#modalBody.replaceChildren(bodyElement);
   }
 
+  /**
+   * Shows the modal dialog.
+   */
   show() {
     this.#overlayElement.classList.add("pq-modal-overlay-open");
   }
 
+  /**
+   * Hides the modal dialog.
+   */
   hide() {
     this.#overlayElement.classList.remove("pq-modal-overlay-open");
   }
