@@ -34,6 +34,9 @@ app.use("/api/puzzle", PuzzleApiRouter);
 import { QuestApiRouter } from "./routes/api.quest.js";
 app.use("/api/quest", QuestApiRouter);
 
+import { TeamApiRouter } from "./routes/api.team.js";
+app.use("/api/team", TeamApiRouter);
+
 //UI routes for data display
 import { UserRouter } from "./routes/user.js";
 app.use("/user", UserRouter);

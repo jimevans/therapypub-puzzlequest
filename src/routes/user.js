@@ -9,21 +9,21 @@ userRouter.get(
   "/register",
   TokenAuthenticator.tokenAuthenticate,
   UseRenderMode.useRenderMode(UseRenderMode.RenderMode.CREATE),
-  UserController.retrieveUser
+  UserController.renderUser
 );
 
 userRouter.get(
   "/:userName",
   TokenAuthenticator.tokenAuthenticate,
   UseRenderMode.useRenderMode(UseRenderMode.RenderMode.DISPLAY),
-  UserController.retrieveUser
+  UserController.renderUser
 );
 
 userRouter.get(
   "/:userName/edit",
   TokenAuthenticator.tokenAuthenticate,
   UseRenderMode.useRenderMode(UseRenderMode.RenderMode.EDIT),
-  UserController.retrieveUser
+  UserController.renderUser
 )
 
 export { userRouter as UserRouter }

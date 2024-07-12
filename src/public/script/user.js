@@ -1,3 +1,6 @@
+import { DataGrid } from "./components/grid.js";
+import { Lookup } from "./components/lookup.js";
+
 function clearError() {
   const errorNotifier = document.querySelector(".pq-error");
   const errorMessage = errorNotifier.querySelector("span");
@@ -12,6 +15,28 @@ function showError(errorMessage) {
   errorNotifier.classList.remove("pq-hide");
 }
 
+function createAdditionalLookupBody() {
+  const wrapper = document.createElement("div");
+  wrapper.classList.add("pq-form-element");
+
+  const labelDiv = document.createElement("div");
+  labelDiv.classList.add("pq-label");
+  const label = document.createElement("label")
+  label.htmlFor = "join-code";
+  label.innerText = "Join code:";
+  labelDiv.appendChild(label);
+
+  const textBoxDiv = document.createElement("div");
+  textBoxDiv.classList.add("pq-input");
+  const input = document.createElement("input");
+  input.id = "join-code";
+  textBoxDiv.appendChild(input);
+
+  wrapper.appendChild(labelDiv);
+  wrapper.appendChild(textBoxDiv);
+  return wrapper;
+}
+
 async function callDataApi(apiEndPoint, method, data) {
   try {
     const response = await fetch(apiEndPoint, {
@@ -19,7 +44,7 @@ async function callDataApi(apiEndPoint, method, data) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
     });
     if (response.ok) {
       return await response.json();
@@ -61,9 +86,16 @@ function validateInput(userData, renderMode) {
 }
 
 if (renderMode === "display") {
+  document.querySelector("#allow-sms").addEventListener("click", (e) => {
+    e.preventDefault();
+  });
   document.querySelector("#edit").addEventListener("click", (e) => {
     e.preventDefault();
-    window.location.href = `/user/${userName}/edit`;
+    window.location.href = `/user/${user.name}/edit`;
+  });
+  document.querySelector("#close").addEventListener("click", (e) => {
+    e.preventDefault();
+    window.location.href = "/";
   });
 } else if (renderMode === "edit") {
   document.querySelector("#save").addEventListener("click", async (e) => {
@@ -72,7 +104,8 @@ if (renderMode === "display") {
       userName: document.querySelector("#user-name").value,
       displayName: document.querySelector("#display-name").value,
       email: document.querySelector("#email").value,
-      sms: document.querySelector("#sms").value,
+      phone: document.querySelector("#phone").value,
+      sms: document.querySelector("#allow-sms").checked
     };
     const authLevelElement = document.querySelector("#auth-level");
     if (authLevelElement) {
@@ -83,7 +116,11 @@ if (renderMode === "display") {
       showError(dataErrors.join(", "));
       return;
     }
-    const dataReturn = await callDataApi(`/api/user/${userData.userName}`, "put", userData);
+    const dataReturn = await callDataApi(
+      `/api/user/${user.name}`,
+      "put",
+      userData
+    );
     if (dataReturn.status === "error") {
       showError(dataReturn.message);
       return;
@@ -92,7 +129,7 @@ if (renderMode === "display") {
   });
   document.querySelector("#cancel").addEventListener("click", (e) => {
     e.preventDefault();
-    window.location.href = `/user/${userName}`;
+    window.location.href = `/user/${user.name}`;
   });
 } else if (renderMode === "create") {
   document.querySelector("#save").addEventListener("click", async (e) => {
@@ -102,7 +139,8 @@ if (renderMode === "display") {
       displayName: document.querySelector("#display-name").value,
       password: document.querySelector("#password").value,
       email: document.querySelector("#email").value,
-      sms: document.querySelector("#sms").value,
+      phone: document.querySelector("#sms").value,
+      sms: document.querySelector("#allow-sms").checked
     };
     const dataErrors = validateInput(userData, renderMode);
     if (dataErrors.length) {
@@ -126,3 +164,86 @@ document.querySelector("#more-info-link").addEventListener("click", (e) => {
   e.preventDefault();
   document.querySelector("#more-info").classList.remove("pq-hide");
 });
+
+const gridColumnDefinitions = [
+  {
+    fieldName: "displayName",
+    title: "Team Name",
+  },
+];
+
+const gridOptions = {
+  allowCreation: renderMode !== "display",
+  allowRowDeleting: renderMode !== "display",
+  allowRowEditing: false,
+  allowRowReordering: false,
+  allowRowSelecting: false,
+};
+
+const teamsGrid = new DataGrid("Teams", gridColumnDefinitions, gridOptions);
+user.teams.forEach((team) => {
+  teamsGrid.addDataRow(team);
+});
+teamsGrid.setAddNewDataLinkText("Join new team");
+teamsGrid.onDeleteDataRequested = async (e) => {
+  e.preventDefault();
+  const itemIndex = e.target.parentNode.parentNode.rowIndex - 1;
+  const teamName = teamsGrid.getData()[itemIndex].teamName;
+  const leaveResponse = await callDataApi(
+    `/api/team/${teamName}/member/${user.name}`,
+    "delete",
+    {}
+  );
+  if (leaveResponse.status === "error") {
+    showError(leaveResponse.message);
+    return;
+  }
+  teamsGrid.deleteDataRow(e.target.parentNode.parentNode.rowIndex - 1);
+};
+teamsGrid.onAddDataRequested = async (e) => {
+  e.preventDefault();
+  const lookupGridColumnDefs = [
+    {
+      fieldName: "teamName",
+      title: "Team ID"
+    },
+    {
+      fieldName: "displayName",
+      title: "Team Name"
+    }
+  ];
+
+  const teamLookup = new Lookup("Select Team", lookupGridColumnDefs, false);
+  await teamLookup.render(`/api/team/list`, "data");
+  teamLookup.setConfirmButtonText("Join team");
+  teamLookup.setAdditionalBodyContent(createAdditionalLookupBody());
+  teamLookup.onCancelButtonClick = (e) => {
+    teamLookup.hide();
+  };
+  teamLookup.onConfirmButtonClick = async (e) => {
+    teamLookup.hide();
+    const selectedData = teamLookup.getSelectedData();
+    if (!selectedData.length) {
+      showError("No team selected");
+      return;
+    }
+    const teamName = teamLookup.getSelectedData()[0].teamName;
+    const joinCode = teamLookup.getAdditionalBodyElement().querySelector("#join-code").value;
+    if (!joinCode) {
+      showError("No join code entered");
+      return;
+    }
+    const joinResponse = await callDataApi(
+      `/api/team/${teamName}/member/${user.name}`,
+      "put",
+      {
+        joinCode: joinCode
+      }
+    );
+    if (joinResponse.status === "error") {
+      showError(joinResponse.message);
+    }
+  }
+  teamLookup.show();
+};
+document.querySelector("#teams").replaceChildren(teamsGrid.getElement());

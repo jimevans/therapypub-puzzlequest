@@ -3,6 +3,7 @@ import { Modal } from "./modal.js";
 
 class Lookup extends Modal {
   #grid;
+  #additionalBody = document.createElement("div");
 
   constructor(lookupCaption, columnDefinitions, selectMultiple) {
     super();
@@ -45,10 +46,21 @@ class Lookup extends Modal {
     const gridDataResponse = await this.#getData(dataRetrievalUri);
     if (gridDataResponse && gridDataResponse.status === "success") {
       if (responseDataField in gridDataResponse) {
+        const wrapper = document.createElement("div");
         this.#grid.render(gridDataResponse[responseDataField]);
-        this.setBodyContent(this.#grid.getElement());
+        wrapper.appendChild(this.#grid.getElement());
+        wrapper.appendChild(this.#additionalBody);
+        this.setBodyContent(wrapper);
       }
     }
+  }
+
+  setAdditionalBodyContent(additionalBodyElement) {
+    this.#additionalBody.replaceChildren(additionalBodyElement);
+  }
+
+  getAdditionalBodyElement() {
+    return this.#additionalBody;
   }
 
   getSelectedData() {

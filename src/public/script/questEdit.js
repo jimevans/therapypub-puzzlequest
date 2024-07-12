@@ -36,7 +36,7 @@ async function callDataApi(apiEndPoint, method, data) {
       return responseData;
     }
   } catch (err) {
-    console.log("error: " + err);
+    console.log(`error: ${err.message}`);
   }
 }
 
@@ -64,6 +64,10 @@ const columnDefinitions = [
   {
     fieldName: "nextHintToDisplay",
     title: "Next Hint Number"
+  },
+  {
+    fieldName: "activationCode",
+    title: "Activation Code"
   }
 ];
 const puzzleGrid = new DataGrid("Quest Puzzles", columnDefinitions, puzzleGridOptions);
@@ -133,6 +137,30 @@ document.querySelector("#set-user-button").addEventListener("click", (e) => {
   userLookup.show();
 });
 
+document.querySelector("#set-team-button").addEventListener("click", (e) => {
+  e.stopPropagation();
+   const lookupColumnDefinitions = [
+    {
+      fieldName: "teamName",
+      title: "Team name"
+    },
+    {
+      fieldName: "displayName",
+      title: "Display name"
+    }
+  ];
+  const userLookup = new Lookup("Select team", lookupColumnDefinitions);
+  userLookup.onConfirmButtonClick = (e) => {
+    const selectedTeam = userLookup.getSelectedData();
+    userLookup.hide();
+    if (selectedTeam.length > 0) {
+      document.querySelector("#user-name").value = selectedTeam[0].teamName;
+    }
+  }
+  userLookup.render("/api/team/list", "data");
+  userLookup.show();
+});
+
 document.querySelector("#quest-puzzles").replaceChildren(puzzleGrid.getElement());
 
 document.querySelector("#cancel").addEventListener("click", (e) => {
@@ -151,9 +179,9 @@ function getQuestData() {
   puzzleGrid.getData().forEach(questPuzzle => {
     questPuzzles.push({
       puzzleName: questPuzzle.name,
-      questOrder: puzzleIndex,
       nextHintToDisplay: questPuzzle.nextHintToDisplay,
-      status: questPuzzle.status
+      status: questPuzzle.status,
+      activationCode: questPuzzle.activationCode
     });
     puzzleIndex++;
   })

@@ -118,11 +118,20 @@ export async function updateQuest(name, questDefinition) {
   }
   foundQuest.userName = questDefinition.userName || foundQuest.userName;
   foundQuest.status = questDefinition.status || foundQuest.status;
+  if (questDefinition.puzzles.length) {
+    foundQuest.puzzles = [];
+    questDefinition.puzzles.forEach((puzzle) => {
+      if (!puzzle.activationCode) {
+        puzzle.activationCode = randomUUID().replaceAll("-", "");
+      }
+      foundQuest.puzzles.push(puzzle);
+    })
+  }
   foundQuest.puzzles = questDefinition.puzzles || foundQuest.puzzles;
   try {
     await foundQuest.save();
   } catch (err) {
-    return { status: "error", statusCode: 500, message: err };
+    return { status: "error", statusCode: 500, message: err.message };
   }
   return { status: "success", statusCode: 200 };
 }

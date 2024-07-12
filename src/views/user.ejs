@@ -56,16 +56,16 @@
     </div>
     <div class="pq-form-element">
       <div class="pq-label">
-        <label for="sms">Phone number:</label>
+        <label for="phone">Phone number:</label>
       </div>
       <div class="pq-input">
-        <input id="sms" value="<%= renderMode !== "create" ? user.sms : "" %>" <%= renderMode === "display" ? "readonly" : "" %> />
+        <input id="phone" value="<%= renderMode !== "create" ? user.phone : "" %>" <%= renderMode === "display" ? "readonly" : "" %> />
       </div>
     </div>
     <div class="pq-form-element">
       <div class="pq-label">
         <label for="allow-sms">Allow sending of SMS messages:</label>
-        <input id="allow-sms" type="checkbox" />&nbsp;<a id="more-info-link" class="pq-link">More info</a>
+        <input id="allow-sms" type="checkbox" <%= user.sms ? "checked=\"checked\"" : "" %>/>&nbsp;<a id="more-info-link" class="pq-link">More info</a>
       </div>
       <div id="more-info" class="pq-hide pq-label">
         Checking this box gives The PuzzleQuest Game consent to send you mobile text (SMS) messages.<br>
@@ -96,9 +96,12 @@
       <% } %>
     </div>
     <% } %>
+    <div id="teams">
+    </div>
     <% if (renderMode === "display") { %>
     <div class="pq-form-element">
       <button id="edit" class="pq-button">Edit</button>
+      <button id="close" class="pq-button">Close</button>
     </div>
     <% } else { %>
     <div class="pq-form-element">
@@ -111,8 +114,8 @@
     </div>
     <script type="text/javascript">
       const renderMode = "<%=renderMode%>";
-      const userName = <%- JSON.stringify(user ? user.userName : null) %>;
+      const user = <%- JSON.stringify(user ? { "name" : user.userName, "teams": user.teams } : null) %>;
     </script>
-    <script type="text/javascript" src="/script/user.js"></script>
+    <script type="module" src="/script/user.js"></script>
   </body>
 </html>

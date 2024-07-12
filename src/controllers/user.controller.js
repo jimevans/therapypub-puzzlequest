@@ -53,6 +53,16 @@ function isUserAuthorized(userNameToBeModified, user) {
 }
 
 export async function createUser(req, res) {
+  if (!req.user) {
+    res.status(401).send(
+      JSON.stringify({
+        status: "error",
+        message: `User must be logged in to create user`,
+      })
+    );
+    return;
+  }
+
   if (!req.body) {
     res.status(400).send(JSON.stringify({
       status: "error",
@@ -99,24 +109,13 @@ export async function createUser(req, res) {
 }
 
 export async function retrieveUser(req, res) {
-  if (req.renderMode && req.renderMode === RenderMode.CREATE) {
-    if (
-      req.user == null ||
-      (req.user && AuthenticationService.isUserAdmin(req.user))
-    ) {
-      res.render("user", {
-        renderMode: req.renderMode,
-        currentUser: req.user,
-        user: null,
-      });
-    } else {
-      res.status(403).send(
-        JSON.stringify({
-          status: "error",
-          message: `User ${req.user.userName} not authorized to create new users`,
-        })
-      );
-    }
+  if (!req.user) {
+    res.status(401).send(
+      JSON.stringify({
+        status: "error",
+        message: `User must be logged in to retrieve user`,
+      })
+    );
     return;
   }
 
@@ -140,19 +139,20 @@ export async function retrieveUser(req, res) {
     return;
   }
 
-  if (req.renderMode) {
-    res.render("user", {
-      renderMode: req.renderMode,
-      currentUser: req.user,
-      user: userResponse.user,
-    });
-    return;
-  }
-
   res.send(JSON.stringify(userResponse));
 }
 
 export async function updateUser(req, res) {
+  if (!req.user) {
+    res.status(401).send(
+      JSON.stringify({
+        status: "error",
+        message: `User must be logged in to update user`,
+      })
+    );
+    return;
+  }
+
   if (!req.body) {
     res.status(400).send(JSON.stringify({
       status: "error",
@@ -183,6 +183,15 @@ export async function updateUser(req, res) {
 }
 
 export async function deleteUser(req, res) {
+  if (!req.user) {
+    res.status(401).send(
+      JSON.stringify({
+        status: "error",
+        message: `User must be logged in to delete user`,
+      })
+    );
+    return;
+  }
   if (!isUserAuthorized(req.params.userName, req.user)) {
     res.status(403).send(
       JSON.stringify({
@@ -206,6 +215,16 @@ export async function deleteUser(req, res) {
 }
 
 export async function listUsers(req, res) {
+  if (!req.user) {
+    res.status(401).send(
+      JSON.stringify({
+        status: "error",
+        message: `User must be logged in to list users`,
+      })
+    );
+    return;
+  }
+
   if (!AuthenticationService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
@@ -217,4 +236,64 @@ export async function listUsers(req, res) {
   }
   const response = await UserService.listUsers();
   res.send(JSON.stringify(response));
+}
+
+export async function renderUser(req, res) {
+  if (!req.user) {
+    res.status(401).send(
+      JSON.stringify({
+        status: "error",
+        message: `User must be logged in to view user`,
+      })
+    );
+    return;
+  }
+
+  if (req.renderMode && req.renderMode === RenderMode.CREATE) {
+    if (
+      req.user == null ||
+      (req.user && AuthenticationService.isUserAdmin(req.user))
+    ) {
+      res.render("user", {
+        renderMode: req.renderMode,
+        currentUser: req.user,
+        user: null,
+      });
+    } else {
+      res.status(403).send(
+        JSON.stringify({
+          status: "error",
+          message: `User ${req.user.userName} not authorized to create new users`,
+        })
+      );
+    }
+    return;
+  }
+
+  if (!isUserAuthorized(req.params.userName, req.user)) {
+    res.status(403).send(
+      JSON.stringify({
+        status: "error",
+        message: `User ${req.params.userName} not authorized to retrieve user ${req.params.userName}`,
+      })
+    );
+    return;
+  }
+
+  const userResponse = await UserService.getUserInfo(req.params.userName);
+  if (userResponse.status === "error") {
+    res.status(userResponse.statusCode).send(
+      JSON.stringify({
+        status: "error",
+        message: userResponse.message,
+      })
+    );
+    return;
+  }
+
+  res.render("user", {
+    renderMode: req.renderMode,
+    currentUser: req.user,
+    user: userResponse.data,
+  });
 }

@@ -78,6 +78,19 @@ class DataGrid {
     this.#gridElement.appendChild(this.#gridTable);
   }
 
+  #createIcon(imagePath) {
+    const svgElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svgElement.classList.add("pq-icon");
+    svgElement.setAttribute("viewBox", "0 0 512 512");
+
+    const useElement = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    useElement.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", imagePath);
+    useElement.setAttribute("href", imagePath);
+    svgElement.appendChild(useElement);
+
+    return svgElement;
+  }
+
   /**
    * Creates the grid columns.
    */
@@ -178,8 +191,10 @@ class DataGrid {
     if (this.allowRowDeleting || this.allowRowEditing) {
       const fillerColumnDataCell = document.createElement("td");
       if (this.allowRowEditing) {
+        const editIconElement = this.#createIcon("/image/edit.svg#edit");
         const editButton = document.createElement("button");
-        editButton.innerText = "Edit";
+        editButton.classList.add("pq-icon-button");
+        editButton.appendChild(editIconElement);
         editButton.addEventListener("click", (e) => {
           e.preventDefault();
           this.onRowEditRequested(e);
@@ -187,8 +202,10 @@ class DataGrid {
         fillerColumnDataCell.appendChild(editButton);
       }
       if (this.allowRowDeleting) {
+        const deleteIconElement = this.#createIcon("/image/trash.svg#trash");
         const deleteButton = document.createElement("button");
-        deleteButton.innerText = "Delete";
+        deleteButton.classList.add("pq-icon-button");
+        deleteButton.appendChild(deleteIconElement);
         deleteButton.addEventListener("click", (e) => {
           e.preventDefault();
           this.onDeleteDataRequested(e);
@@ -289,8 +306,10 @@ class DataGrid {
       [...fillerCell.querySelectorAll("button")].forEach(button => {
         button.classList.add("pq-hide");
       });
+      const saveButtonIcon = this.#createIcon("/image/save.svg#save");
       const saveButton = document.createElement("button");
-      saveButton.innerText = "Save";
+      saveButton.classList.add("pq-icon-button");
+      saveButton.appendChild(saveButtonIcon);
       saveButton.addEventListener("click", (e) => {
         e.preventDefault();
         this.#columnDefinitions.forEach((columnDef) => {
@@ -311,7 +330,8 @@ class DataGrid {
             }
           }
         });
-        fillerCell.removeChild(e.target);
+        this.onRowEditCommit(e);
+        fillerCell.removeChild(e.currentTarget);
         [...fillerCell.querySelectorAll("button")].forEach(button => {
           button.classList.remove("pq-hide");
         });
@@ -349,6 +369,12 @@ class DataGrid {
    * @param {*} e
    */
   onRowEditRequested = (e) => { };
+
+  /**
+   * Callback called when edit of a data row is saved.
+   * @param {*} e
+   */
+  onRowEditCommit = (e) => { };
 
   /**
    * Renders the data to the grid. Will delete existing data in the grid when called.

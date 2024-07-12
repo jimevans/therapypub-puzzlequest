@@ -21,9 +21,13 @@ const userSchema = new Schema({
     unique: true,
     required: true,
   },
-  sms: {
+  phone: {
     type: String,
     default: "",
+  },
+  sms: {
+    type: Boolean,
+    default: false
   },
   password: {
     type: String,

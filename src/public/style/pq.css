@@ -24,6 +24,22 @@ button.pq-button:active {
   background-color: #2878ad;
 }
 
+.pq-icon {
+  fill: #ffffff;
+}
+
+.pq-icon-button {
+  border: 0;
+  background-color: #3498db;
+  color: #ffffff;
+  outline: 0;
+  padding: .25em .25em .25em .25em;
+  margin: 2px 2px 2px 2px;
+  width: 24px;
+  height: 24px;
+}
+
+
 nav {
   background-color: #3498db;
   color: #ffffff;

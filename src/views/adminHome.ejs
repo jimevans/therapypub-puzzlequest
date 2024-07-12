@@ -44,13 +44,16 @@
             Users
           </a>
         </li>
-        <li><a id="teams" class="pq-menu-link" href="#" data-api-endpoint="/api/teams/list">Teams</a></li>
+        <li><a id="teams" class="pq-menu-link" href="#" data-api-endpoint="/api/team/list">Teams</a></li>
         <li><a class="pq-menu-link" href="/logout">Logout</a></li>
       </ul>
     </nav>
     <p>Welcome back <%=user.displayName %></p>
     <p>You are logged in with administrative privileges.</p>
     <div id="data-grid" class="pq-hide"></div>
+    <div class="pq-error">
+      <span></span>
+    </div>
     <script type="module" src="/script/admin.js"></script>
   </body>
 </html>

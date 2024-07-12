@@ -39,7 +39,16 @@
       </div>
       <div class="pq-input">
         <input id="user-name" value="<%= renderMode !== "create" ? quest.userName : "" %>" readonly />
-        <button id="set-user-button" class="pq-button">Set user</button>
+        <button id="set-user-button" class="pq-icon-button">
+          <svg class="pq-icon" viewBox="0 0 512 512">
+            <use xlink:href="/image/user.svg#user" href="/image/user.svg#user"></use>
+          </svg>
+        </button>
+        <button id="set-team-button" class="pq-icon-button">
+          <svg class="pq-icon" viewBox="0 0 512 512">
+            <use xlink:href="/image/team.svg#team" href="/image/team.svg#team"></use>
+          </svg>
+        </button>
       </div>
     </div>
     <div class="pq-form-element">

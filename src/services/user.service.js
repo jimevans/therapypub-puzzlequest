@@ -1,8 +1,8 @@
 import {
-  TeamModel as Team,
   UserModel as User,
   AuthorizationLevel,
 } from "../models/user.model.js";
+import * as TeamService from "./team.service.js";
 
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -18,6 +18,35 @@ export async function getUserByUserName(name) {
     };
   }
   return { status: "success", statusCode: 200, data: user };
+}
+
+export async function getUserInfo(name) {
+  const userResponse = await getUserByUserName(name);
+  if (userResponse.status === "error") {
+    return userResponse;
+  }
+  const teamNames = [];
+  const teamResponse = await TeamService.getTeamNamesForUser(name);
+  const teamsContainingUser = teamResponse.data;
+  teamsContainingUser.forEach((team) =>
+    teamNames.push({
+      teamName: team.teamName,
+      displayName: team.displayName
+    })
+  );
+
+  const foundUser = userResponse.data;
+  const userInfo = {
+    userName: foundUser.userName,
+    displayName: foundUser.displayName,
+    email: foundUser.email,
+    phone: foundUser.phone,
+    sms: foundUser.sms,
+    authorizationLevel: foundUser.authorizationLevel,
+    authorizationLevelDescription: foundUser.authorizationLevelDescription,
+    teams: teamNames
+  }
+  return { status: "success", statusCode: 200, data: userInfo };
 }
 
 export async function deleteUser(name) {
@@ -141,9 +170,8 @@ export async function getUserAndTeams(name) {
   const allNames = [
     { name: user.userName, displayName: user.displayName, type: "user" },
   ];
-  const teamsContainingUser = await Team.find({
-    memberNames: { $elemMatch: { $eq: name } },
-  });
+  const teamsContainingUserResponse = await TeamService.getTeamNamesForUser(user.userName);
+  const teamsContainingUser = teamsContainingUserResponse.data;
   teamsContainingUser.forEach((team) =>
     allNames.push({
       name: team.teamName,
