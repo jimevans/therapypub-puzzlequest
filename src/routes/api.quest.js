@@ -59,5 +59,10 @@ questApiRouter.put(
   TokenAuthenticator.tokenAuthenticate,
   QuestController.requestQuestPuzzleHint
 );
+questApiRouter.get(
+  "/:name/puzzle/:puzzleName/qrCode",
+  TokenAuthenticator.tokenAuthenticate,
+  QuestController.generatePuzzleActivationQRCode
+);
 
 export { questApiRouter as QuestApiRouter };

@@ -50,11 +50,7 @@ export function logout(req, res) {
   // prevent tokens from logged out sessions from potentially
   // being hijacked.
   if (TokenAuthenticator.TOKEN_COOKIE_NAME in req.cookies) {
-    res.cookie(TokenAuthenticator.TOKEN_COOKIE_NAME, "", {
-      httpOnly: true,
-      secure: config.PQ_RUNTIME_ENVIRONMENT !== "development",
-      expires: new Date(0),
-    });
+    res.clearCookie(TokenAuthenticator.TOKEN_COOKIE_NAME);
   }
   res.redirect("/");
 }

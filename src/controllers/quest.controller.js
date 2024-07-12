@@ -356,6 +356,46 @@ export async function resetQuest(req, res) {
   res.send(JSON.stringify(resetQuestResponse));
 }
 
+export async function generatePuzzleActivationQRCode(req, res) {
+  if (req.user === null) {
+    res.status(401).send(
+      JSON.stringify({
+        status: "error",
+        message: `User must be logged in to generate puzzle activation QR codes`,
+      })
+    );
+    return;
+  }
+  if (!AuthenticationService.isUserAdmin(req.user)) {
+    res.status(403).send(
+      JSON.stringify({
+        status: "error",
+        message: `User ${req.user.userName} not authorized to generate puzzle activation QR codes`,
+      })
+    );
+    return;
+  }
+  const qrCodeResponse = await QuestService.getPuzzleActivationQrCode(
+    req.params.name,
+    req.params.puzzleName
+  );
+  if (qrCodeResponse.status === "error") {
+    res.status(qrCodeResponse.statusCode).send(
+      JSON.stringify({
+        status: "error",
+        message: qrCodeResponse.message,
+      })
+    );
+  }
+  res.send(
+    JSON.stringify({
+      status: "success",
+      statusCode: 200,
+      data: qrCodeResponse.data,
+    })
+  );
+}
+
 export async function activateQuestPuzzle(req, res) {
   if (!(req.qrCodeData || req.body?.activationCode)) {
     res.status(400).send(

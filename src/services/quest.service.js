@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import QRCode from "qrcode";
 import {
   QuestModel as Quest,
   QuestStatus,
@@ -29,7 +30,7 @@ async function queryForQuest(name) {
     return {
       status: "error",
       statusCode: 404,
-      message: `no quest with name ${name}`
+      message: `no quest with name ${name}`,
     };
   }
   // We should only ever have one here, so take the 0th one.
@@ -51,7 +52,7 @@ export async function createQuest(questDefinition) {
     return {
       status: "error",
       statusCode: 400,
-      message: "Quest definition must contain a name or display name"
+      message: "Quest definition must contain a name or display name",
     };
   }
   if (!("userName" in questDefinition)) {
@@ -62,7 +63,7 @@ export async function createQuest(questDefinition) {
     return {
       status: "error",
       statusCode: 400,
-      message: "Quest definition must contain a user name"
+      message: "Quest definition must contain a user name",
     };
   }
   const questExists = (await Quest.find({ name: questName })).length !== 0;
@@ -70,7 +71,7 @@ export async function createQuest(questDefinition) {
     return {
       status: "error",
       statusCode: 400,
-      message: `Quest with name ${questName} already exists`
+      message: `Quest with name ${questName} already exists`,
     };
   }
   const quest = new Quest({
@@ -92,7 +93,7 @@ export async function createQuest(questDefinition) {
         puzzleName: puzzleDefinition.puzzleName,
         nextHintToDisplay: 0,
         status: QuestPuzzleStatus.UNAVAILABLE,
-        activationCode: randomUUID().replaceAll("-", "")
+        activationCode: randomUUID().replaceAll("-", ""),
       };
       quest.puzzles.push(puzzle);
       puzzleCount++;
@@ -117,7 +118,7 @@ export async function deleteQuest(name) {
     return {
       status: "error",
       statusCode: 404,
-      message: `Quest with name ${name} does not exist`
+      message: `Quest with name ${name} does not exist`,
     };
   }
   return { status: "success", statusCode: 200 };
@@ -135,7 +136,7 @@ export async function updateQuest(name, questDefinition) {
     return {
       status: "error",
       statusCode: 404,
-      message: `No quest with quest name ${name} found`
+      message: `No quest with quest name ${name} found`,
     };
   }
   if (questDefinition.name || questDefinition.displayName) {
@@ -154,7 +155,7 @@ export async function updateQuest(name, questDefinition) {
         puzzle.activationCode = randomUUID().replaceAll("-", "");
       }
       foundQuest.puzzles.push(puzzle);
-    })
+    });
   }
   foundQuest.puzzles = questDefinition.puzzles || foundQuest.puzzles;
   try {
@@ -219,8 +220,8 @@ export async function isQuestForUser(questName, userName) {
     statusCode: 200,
     data: {
       isQuestForUser: isQuestForUser,
-      quest: isQuestForUser ? quest : null
-    }
+      quest: isQuestForUser ? quest : null,
+    },
   };
 }
 
@@ -244,16 +245,15 @@ export async function getQuest(name, omitUnavailablePuzzles = false) {
     status: foundQuest.status,
     puzzles: [],
   };
-  const foundPuzzles = foundQuest.puzzles
-    .filter((puzzle) => {
-      if (
-        !omitUnavailablePuzzles ||
-        (omitUnavailablePuzzles &&
-          puzzle.status >= QuestPuzzleStatus.AWAITING_ACTIVATION)
-      ) {
-        return puzzle;
-      }
-    });
+  const foundPuzzles = foundQuest.puzzles.filter((puzzle) => {
+    if (
+      !omitUnavailablePuzzles ||
+      (omitUnavailablePuzzles &&
+        puzzle.status >= QuestPuzzleStatus.AWAITING_ACTIVATION)
+    ) {
+      return puzzle;
+    }
+  });
   foundPuzzles.forEach((puzzle) => {
     let statusDescription = "";
     switch (puzzle.status) {
@@ -273,18 +273,13 @@ export async function getQuest(name, omitUnavailablePuzzles = false) {
     const detail = foundQuest.puzzleDetails.filter(
       (puzzleDetail) => puzzle.puzzleName === puzzleDetail.name
     )[0];
-    const hints = detail.hints
-      .filter((hint) => hint.order < puzzle.nextHintToDisplay)
-      .sort((first, second) => first.order - second.order);
-    const nextHintCandidate = detail.hints.filter(
-      (hint) => hint.order === puzzle.nextHintToDisplay
-    );
-    const nextHintTimePenalty = nextHintCandidate.length
-      ? nextHintCandidate[0].timePenalty
-      : 0;
-    const isNextHintSolution = nextHintCandidate.length
-      ? nextHintCandidate[0].solutionWarning
-      : undefined;
+    const hints = detail.hints.slice(0, puzzle.nextHintToDisplay);
+    const nextHint =
+      puzzle.nextHintToDisplay < detail.hints.length
+        ? detail.hints[puzzle.nextHintToDisplay]
+        : undefined;
+    const nextHintTimePenalty = nextHint ? nextHint.timePenalty : 0;
+    const isNextHintSolution = nextHint ? nextHint.solutionWarning : undefined;
     questData.puzzles.push({
       name: puzzle.puzzleName,
       displayName: detail.displayName,
@@ -317,7 +312,7 @@ export async function startQuest(name) {
     return {
       status: "error",
       statusCode: 404,
-      message: `No quest with quest name ${name} found`
+      message: `No quest with quest name ${name} found`,
     };
   }
 
@@ -349,6 +344,36 @@ export async function startQuest(name) {
 }
 
 /**
+ * Resets a quest to its initial state.
+ * @param {string} questName the name of the quest
+ * @returns {object} a response object containing a status, status code, and data
+ */
+export async function resetQuest(questName) {
+  const quest = await Quest.findOne({ name: questName });
+  if (quest === null) {
+    return {
+      status: "error",
+      statusCode: 404,
+      message: `No quest with quest name ${questName} found`,
+    };
+  }
+  quest.status = QuestStatus.NOT_STARTED;
+  quest.puzzles.forEach((puzzle) => {
+    puzzle.status = QuestPuzzleStatus.UNAVAILABLE;
+    puzzle.nextHintToDisplay = 0;
+    puzzle.startTime = undefined;
+    puzzle.endTime = undefined;
+    puzzle.activationTime = undefined;
+  });
+  try {
+    await quest.save();
+  } catch (err) {
+    return { status: "error", statusCode: 500, message: err.message };
+  }
+  return { status: "success", statusCode: 200 };
+}
+
+/**
  * Activates a puzzle in the quest, moving it from "awaiting activation" to "in progress"
  * @param {string} questName the name of the quest for which to activate the puzzle
  * @param {string} puzzleName the name of the puzzle within the quest to activate
@@ -361,7 +386,7 @@ export async function activatePuzzle(questName, puzzleName, activationCode) {
     return {
       status: "error",
       statusCode: 404,
-      message: `No quest with quest name ${questName} found`
+      message: `No quest with quest name ${questName} found`,
     };
   }
 
@@ -369,25 +394,27 @@ export async function activatePuzzle(questName, puzzleName, activationCode) {
     return {
       status: "error",
       statusCode: 400,
-      message: `Quest ${questName} is already completed`
+      message: `Quest ${questName} is already completed`,
     };
   } else if (quest.status < QuestStatus.NOT_STARTED) {
     return {
       status: "error",
       statusCode: 400,
-      message: `Quest ${questName} is not yet started`
+      message: `Quest ${questName} is not yet started`,
     };
   }
 
   const pendingPuzzles = quest.puzzles.filter(
-    (puzzle) => puzzle.puzzleName === puzzleName && puzzle.status > QuestPuzzleStatus.UNAVAILABLE
+    (puzzle) =>
+      puzzle.puzzleName === puzzleName &&
+      puzzle.status > QuestPuzzleStatus.UNAVAILABLE
   );
 
   if (!pendingPuzzles.length) {
     return {
       status: "error",
       statusCode: 404,
-      message: `No puzzle with name ${puzzleName} in quest ${questName}`
+      message: `No puzzle with name ${puzzleName} in quest ${questName}`,
     };
   }
 
@@ -397,14 +424,14 @@ export async function activatePuzzle(questName, puzzleName, activationCode) {
     return {
       status: "error",
       statusCode: 400,
-      message: `Puzzle ${puzzleName} in quest ${questName} is not awaiting activation`
+      message: `Puzzle ${puzzleName} in quest ${questName} is not awaiting activation`,
     };
   }
   if (currentPuzzle.activationCode !== activationCode) {
     return {
       status: "error",
       statusCode: 406,
-      message: "Incorrect activation code for puzzle"
+      message: "Incorrect activation code for puzzle",
     };
   }
 
@@ -431,7 +458,7 @@ export async function finishPuzzle(questName, puzzleName, solutionGuess) {
     return {
       status: "error",
       statusCode: 404,
-      message: `No quest with quest name ${questName} found`
+      message: `No quest with quest name ${questName} found`,
     };
   }
 
@@ -439,25 +466,27 @@ export async function finishPuzzle(questName, puzzleName, solutionGuess) {
     return {
       status: "error",
       statusCode: 400,
-      message: `Quest ${questName} is already completed`
+      message: `Quest ${questName} is already completed`,
     };
   } else if (quest.status < QuestStatus.NOT_STARTED) {
     return {
       status: "error",
       statusCode: 400,
-      message: `Quest ${questName} is not yet started`
+      message: `Quest ${questName} is not yet started`,
     };
   }
 
   const inProgressPuzzles = quest.puzzles.filter(
-    (puzzle) => puzzle.puzzleName === puzzleName && puzzle.status > QuestPuzzleStatus.UNAVAILABLE
+    (puzzle) =>
+      puzzle.puzzleName === puzzleName &&
+      puzzle.status > QuestPuzzleStatus.UNAVAILABLE
   );
 
   if (!inProgressPuzzles.length) {
     return {
       status: "error",
       statusCode: 404,
-      message: `No puzzle with name ${puzzleName} in quest ${questName}`
+      message: `No puzzle with name ${puzzleName} in quest ${questName}`,
     };
   }
 
@@ -467,7 +496,7 @@ export async function finishPuzzle(questName, puzzleName, solutionGuess) {
     return {
       status: "error",
       statusCode: 400,
-      message: `Puzzle ${puzzleName} in quest ${questName} is not in progress`
+      message: `Puzzle ${puzzleName} in quest ${questName} is not in progress`,
     };
   }
   const puzzleResult = await PuzzleService.getPuzzleByPuzzleName(puzzleName);
@@ -483,7 +512,7 @@ export async function finishPuzzle(questName, puzzleName, solutionGuess) {
     return {
       status: "error",
       statusCode: 406,
-      message: "Incorrect guess for puzzle solution"
+      message: "Incorrect guess for puzzle solution",
     };
   }
 
@@ -507,7 +536,7 @@ export async function finishPuzzle(questName, puzzleName, solutionGuess) {
   return {
     status: "success",
     statusCode: 200,
-    data: foundPuzzle.solutionDisplayText
+    data: foundPuzzle.solutionDisplayText,
   };
 }
 
@@ -523,7 +552,7 @@ export async function getPuzzleHint(questName, puzzleName) {
     return {
       status: "error",
       statusCode: 404,
-      message: `No quest with quest name ${questName} found`
+      message: `No quest with quest name ${questName} found`,
     };
   }
 
@@ -531,24 +560,26 @@ export async function getPuzzleHint(questName, puzzleName) {
     return {
       status: "error",
       statusCode: 400,
-      message: `Quest ${questName} is already completed`
+      message: `Quest ${questName} is already completed`,
     };
   } else if (quest.status < QuestStatus.NOT_STARTED) {
     return {
       status: "error",
       statusCode: 400,
-      message: `Quest ${questName} is not yet started`
+      message: `Quest ${questName} is not yet started`,
     };
   }
 
   const inProgressPuzzles = quest.puzzles.filter(
-    (puzzle) => puzzle.puzzleName === puzzleName && puzzle.status > QuestPuzzleStatus.UNAVAILABLE
+    (puzzle) =>
+      puzzle.puzzleName === puzzleName &&
+      puzzle.status > QuestPuzzleStatus.UNAVAILABLE
   );
   if (!inProgressPuzzles.length) {
     return {
       status: "error",
       statusCode: 404,
-      message: `No puzzle with name ${puzzleName} in quest ${questName}`
+      message: `No puzzle with name ${puzzleName} in quest ${questName}`,
     };
   }
 
@@ -558,7 +589,7 @@ export async function getPuzzleHint(questName, puzzleName) {
     return {
       status: "error",
       statusCode: 400,
-      message: `Puzzle ${puzzleName} in quest ${questName} is not in progress`
+      message: `Puzzle ${puzzleName} in quest ${questName} is not in progress`,
     };
   }
   const puzzleResult = await PuzzleService.getPuzzleByPuzzleName(puzzleName);
@@ -587,37 +618,48 @@ export async function getPuzzleHint(questName, puzzleName) {
       hintText: nextHint.text,
       moreHints: currentPuzzle.nextHintToDisplay < foundPuzzle.hints.length,
       timePenalty: nextHint.timePenalty,
-      isNextHintSolution: solutionWarning
-    }
+      isNextHintSolution: solutionWarning,
+    },
   };
 }
 
 /**
- * Resets a quest to its initial state.
- * @param {string} questName the name of the quest
+ * Generates a QR code for activating the specified puzzle.
+ * @param {string} questName the quest containing the puzzle
+ * @param {string} puzzleName the puzzle for which to generate the activation QR code
  * @returns {object} a response object containing a status, status code, and data
  */
-export async function resetQuest(questName) {
+export async function getPuzzleActivationQrCode(questName, puzzleName) {
   const quest = await Quest.findOne({ name: questName });
   if (quest === null) {
     return {
       status: "error",
       statusCode: 404,
-      message: `No quest with quest name ${questName} found`
+      message: `No quest with quest name ${questName} found`,
     };
   }
-  quest.status = QuestStatus.NOT_STARTED;
-  quest.puzzles.forEach((puzzle) => {
-    puzzle.status = QuestPuzzleStatus.UNAVAILABLE;
-    puzzle.nextHintToDisplay = 0;
-    puzzle.startTime = undefined;
-    puzzle.endTime = undefined;
-    puzzle.activationTime = undefined;
-  });
-  try {
-    await quest.save();
-  } catch (err) {
-    return { status: "error", statusCode: 500, message: err.message };
+
+  const puzzles = quest.puzzles.filter(
+    (puzzle) => puzzle.puzzleName === puzzleName
+  );
+  if (!puzzles.length) {
+    return {
+      status: "error",
+      statusCode: 404,
+      message: `No puzzle with name ${puzzleName} in quest ${questName}`,
+    };
   }
-  return { status: "success", statusCode: 200 };
+
+  // Should only ever be one puzzle with this name, so get the first one.
+  const puzzle = puzzles[0];
+  try {
+    const qrCodeDataUrl = await QRCode.toDataURL(puzzle.activationCode);
+    return { status: "success", statusCode: 200, data: qrCodeDataUrl };
+  } catch (err) {
+    return {
+      status: "error",
+      statusCode: 500,
+      message: err.message
+    };
+  }
 }

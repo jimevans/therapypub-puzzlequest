@@ -235,3 +235,9 @@ button.pq-modal-footer-button {
   font-size: 1em;
   margin: 0 .25em 0 .25em;
 }
+
+.pq-qr-code {
+  height: 250px;
+  width: 250px;
+  object-fit: contain;
+}
