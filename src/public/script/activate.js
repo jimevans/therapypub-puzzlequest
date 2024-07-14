@@ -27,8 +27,6 @@ function startCamera() {
     videoElement.srcObject = stream;
     videoElement.onloadedmetadata = function (e) {
       videoElement.play();
-      document.querySelector("#scan-code-button").classList.remove("pq-hide");
-      document.querySelector("#camera-image").classList.remove("pq-hide");
     };
   });
 }
@@ -39,8 +37,6 @@ function stopCamera() {
     videoElement.srcObject.getTracks().forEach((track) => track.stop());
     videoElement.srcObject = null;
   }
-  document.querySelector("#scan-code-button").classList.add("pq-hide");
-  document.querySelector("#camera-image").classList.add("pq-hide");
 }
 
 async function sendActivationData(formData) {
@@ -95,7 +91,7 @@ document.querySelector("video").addEventListener("play", (e) => {
   }
 );
 
-document.querySelector("#scan-code-button").addEventListener("click", async (e) => {
+document.querySelector("#scan-code-button button").addEventListener("click", async (e) => {
   e.preventDefault();
   e.target.enabled = false;
   const videoElement = document.querySelector("video");

@@ -241,3 +241,28 @@ button.pq-modal-footer-button {
   width: 250px;
   object-fit: contain;
 }
+
+.pq-code-scanner {
+  display: flex;
+}
+
+.pq-camera-image {
+  display: flex;
+  justify-content: center;
+  position: relative;
+}
+
+.pq-scan-code-button {
+  z-index: 100;
+  position: absolute;
+  bottom: 15px;
+}
+
+.pq-scan-code-button button {
+  height: 100px;
+  width: 100px;
+  border: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  fill: #ffffff;
+  color: #ffffff;
+}

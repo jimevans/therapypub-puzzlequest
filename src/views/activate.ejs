@@ -23,12 +23,18 @@
       <label for="text-value">Entering code text</label>
     </div>
     <div id="qr-code-scanner" class="pq-hide">
-      <div>
-        <button id="scan-code-button" class="pq-hide">Scan code</button>
-      </div>
-      <div id="camera-image" class="pq-hide">
-        <video id="video" muted="muted" playsinline="playsinline" class="pq-hide">Video stream not available.</video>
-        <canvas id="canvas"></canvas>
+      <div class="pq-code-scanner">
+        <div id="camera-image" class="pq-camera-image">
+          <video id="video" muted="muted" playsinline="playsinline" class="pq-hide">Video stream not available.</video>
+          <canvas id="canvas"></canvas>
+          <div id="scan-code-button" class="pq-scan-code-button">
+            <button>
+              <svg viewBox="0 0 24 24">
+                <use xlink:href="/image/qr.svg#qr" href="/image/qr.svg#qr"></use>
+              </svg>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
     <div id="text-entry" class="pq-hide">
