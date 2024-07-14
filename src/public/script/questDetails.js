@@ -24,28 +24,13 @@ function addGeneratorButtons(gridElement) {
     useElement.setAttribute("href", "/image/qr.svg#qr");
     svgElement.appendChild(useElement);
 
-    const qrGenerateButton = document.createElement("button");
-    qrGenerateButton.classList.add("pq-icon-button");
-    qrGenerateButton.appendChild(svgElement);
-    qrGenerateButton.addEventListener("click", async (e) => {
-      e.preventDefault();
-      const row = e.currentTarget.parentNode.parentNode;
-      const puzzleName = row.querySelector("td[data-field-name='name']").innerText;
-      const qrCodeResponse = await callDataApi(
-        `/api/quest/${quest.name}/puzzle/${puzzleName}/qrCode`,
-        "get"
-      );
-      if (qrCodeResponse.status === "error") {
-        console.log(
-          `Error received generating activation QR code ${qrCodeResponse.message}`
-        );
-        return;
-      }
-      const imageElement = document.querySelector("#qr-code");
-      imageElement.src = qrCodeResponse.data;
-      imageElement.classList.remove("pq-hide");
-    });
-    cell.appendChild(qrGenerateButton);
+    const row = cell.parentNode;
+    const puzzleName = row.querySelector("td[data-field-name='name']").innerText;
+    const qrGenerationLink = document.createElement("a");
+    qrGenerationLink.classList.add("pq-icon-link");
+    qrGenerationLink.href = `/quest/${quest.name}/puzzle/${puzzleName}/qrCode`;
+    qrGenerationLink.appendChild(svgElement);
+    cell.appendChild(qrGenerationLink);
   });
 }
 

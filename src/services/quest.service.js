@@ -627,9 +627,10 @@ export async function getPuzzleHint(questName, puzzleName) {
  * Generates a QR code for activating the specified puzzle.
  * @param {string} questName the quest containing the puzzle
  * @param {string} puzzleName the puzzle for which to generate the activation QR code
+ * @param {Stream} stream writable stream to which to write the QR code
  * @returns {object} a response object containing a status, status code, and data
  */
-export async function getPuzzleActivationQrCode(questName, puzzleName) {
+export async function getPuzzleActivationQrCode(questName, puzzleName, stream) {
   const quest = await Quest.findOne({ name: questName });
   if (quest === null) {
     return {
@@ -653,7 +654,8 @@ export async function getPuzzleActivationQrCode(questName, puzzleName) {
   // Should only ever be one puzzle with this name, so get the first one.
   const puzzle = puzzles[0];
   try {
-    const qrCodeDataUrl = await QRCode.toDataURL(puzzle.activationCode);
+    // const qrCodeDataUrl = await QRCode.toDataURL(puzzle.activationCode);
+    const qrCodeDataUrl = await QRCode.toBuffer(puzzle.activationCode);
     return { status: "success", statusCode: 200, data: qrCodeDataUrl };
   } catch (err) {
     return {

@@ -40,6 +40,18 @@ button.pq-button:active {
 }
 
 
+.pq-icon-link {
+  border: 0;
+  background-color: #3498db;
+  color: #ffffff;
+  outline: 0;
+  padding: .25em .25em .25em .25em;
+  margin: 2px 2px 2px 2px;
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+}
+
 nav {
   background-color: #3498db;
   color: #ffffff;

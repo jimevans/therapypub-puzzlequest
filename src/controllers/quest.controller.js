@@ -1,3 +1,4 @@
+import { PassThrough } from "stream";
 import { marked } from "marked";
 import { RenderMode } from "../middleware/useRenderMode.js";
 import { PuzzleType } from "../models/puzzle.model.js";
@@ -386,14 +387,9 @@ export async function generatePuzzleActivationQRCode(req, res) {
         message: qrCodeResponse.message,
       })
     );
+    return;
   }
-  res.send(
-    JSON.stringify({
-      status: "success",
-      statusCode: 200,
-      data: qrCodeResponse.data,
-    })
-  );
+  res.send({ status: "success", data: qrCodeResponse.data });
 }
 
 export async function activateQuestPuzzle(req, res) {
@@ -674,4 +670,45 @@ export async function renderQuestPuzzle(req, res) {
     puzzle: puzzleResponse.data,
     rendered: renderedPuzzle,
   });
+}
+
+export async function renderPuzzleActivationQRCode(req, res) {
+  if (req.user === null) {
+    res.status(401).send(
+      JSON.stringify({
+        status: "error",
+        message: `User must be logged in to generate puzzle activation QR codes`,
+      })
+    );
+    return;
+  }
+  if (!AuthenticationService.isUserAdmin(req.user)) {
+    res.status(403).send(
+      JSON.stringify({
+        status: "error",
+        message: `User ${req.user.userName} not authorized to generate puzzle activation QR codes`,
+      })
+    );
+    return;
+  }
+  const qrCodeResponse = await QuestService.getPuzzleActivationQrCode(
+    req.params.name,
+    req.params.puzzleName
+  );
+  if (qrCodeResponse.status === "error") {
+    res.status(qrCodeResponse.statusCode).send(
+      JSON.stringify({
+        status: "error",
+        message: qrCodeResponse.message,
+      })
+    );
+  }
+  const qrStream = new PassThrough();
+  qrStream.end(qrCodeResponse.data);
+  res.set(
+    "Content-Disposition",
+    `attachment; filename=puzzlequest-${req.params.name}-${req.params.puzzleName}-activation`
+  );
+  res.set("Content-Type", "image/png");
+  qrStream.pipe(res);
 }
