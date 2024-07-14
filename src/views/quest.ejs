@@ -9,10 +9,32 @@
     <link rel="icon" type="image/png" href="/image/pq-logo-192.png" sizes="192x192" />
   </head>
   <body>
-    <div class="pq-header">
-      <span class="pq-header-text"><%= quest.displayName %></span>
-      <a href="/" class="pq-menu-link pq-float-right">Return to dashboard</a>
-    </div>
+    <nav class="pq-navigation-header">
+      <input id="nav-checkbox" type="checkbox" class="pq-nav-checkbox"/>
+      <ul class="pq-navigation-title">
+        <li><%= quest.displayName %></li>
+      </ul>
+      <label for="nav-checkbox">
+        <div class="pq-nav-menu">
+          <svg viewBox="0 0 512 512">
+            <use xlink:href="/image/menu-burger.svg#menu" href="/image/menu-burger.svg#menu"></use>
+          </svg>
+        </div>
+      </label>
+      <div class="pq-menu">
+        <ul>
+          <li>
+            <a href="/" class="pq-menu-link">Return to dashboard</a>
+          </li>
+          <li>
+            <a href="/user/<%=userName%>" class="pq-menu-link">View user profile</a>
+          </li>
+          <li>
+            <a href="/logout" class="pq-menu-link">Sign out</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
     <p>Puzzles</p>
     <table>
       <% const dateFormatter = Intl.DateTimeFormat(undefined, { month: "short", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }); %>

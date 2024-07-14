@@ -1,4 +1,3 @@
-import { config } from "../config.js";
 import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
 import * as AuthorizationService from "../services/authentication.service.js";
 import * as QuestService from "../services/quest.service.js";
@@ -15,7 +14,7 @@ export async function index(req, res) {
   }
 
   const quests = [];
-  const foundQuestsResult = await QuestService.getQuests(req.user.userName);
+  const foundQuestsResult = await QuestService.getQuests(req.user.userName, 1);
   if (foundQuestsResult.status === "error") {
     res.status(foundQuestsResult.statusCode).send(JSON.stringify({
       "error": foundQuestsResult.message
@@ -34,7 +33,7 @@ export async function index(req, res) {
       endTime: endTime || ""
     })
   });
-  res.render("home", { user: req.user, quests: quests });
+  res.render("home", { userName: req.user.userName, quests: quests });
 }
 
 export function login(req, res) {

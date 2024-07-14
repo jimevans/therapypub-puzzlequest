@@ -39,7 +39,6 @@ button.pq-button:active {
   height: 24px;
 }
 
-
 .pq-icon-link {
   border: 0;
   background-color: #3498db;
@@ -52,18 +51,57 @@ button.pq-button:active {
   display: inline-block;
 }
 
-nav {
+nav.pq-navigation-header {
   background-color: #3498db;
   color: #ffffff;
   display: flex;
   justify-content: space-between;
+  align-items: center;
+}
+
+nav ul.pq-navigation-title {
+  font-size: 1.25em;
+  list-style-type: none;
+  padding-inline-start: .75em;
+}
+
+input.pq-nav-checkbox {
+  display: none;
+}
+
+.pq-nav-menu {
+  width: 32px;
+  height: 32px;
+  fill: #ffffff;
+  margin: 0 1em 0 1em;
+}
+
+.pq-menu {
+  background-color: #3498db;
+  color: #ffffff;
+  display: none;
+  position: fixed;
+  top: 3.5em;
+  right: 8px;
+}
+
+.pq-menu ul {
+  padding-inline-start: .75em;
+}
+
+.pq-menu ul li {
+  margin: 0.25em 2.5em 0.25em .25em;
+}
+
+input.pq-nav-checkbox:checked ~ .pq-menu {
+  display: block;
 }
 
 nav ul {
   list-style-type: none;
 }
 
-nav ul li {
+nav ul li.pq-menu-item {
   display: inline-flex;
   margin: 0.3em 1em;
 }

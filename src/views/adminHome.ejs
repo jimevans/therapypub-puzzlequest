@@ -5,26 +5,36 @@
     <meta name="viewport" content="width=device-width" />
     <title>PuzzleQuest</title>
     <link rel="stylesheet" type="text/css" href="/style/pq.css" />
-    <link rel="icon" type="image/png" href="/image/pq-logo-64.png" sizes="64x64 32x32 24x24 16x16" />
-    <link rel="icon" type="image/png" href="/image/pq-logo-192.png" sizes="192x192" />
+    <link
+      rel="icon"
+      type="image/png"
+      href="/image/pq-logo-64.png"
+      sizes="64x64 32x32 24x24 16x16"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      href="/image/pq-logo-192.png"
+      sizes="192x192"
+    />
   </head>
   <body>
-    <nav>
-      <ul>
+    <nav class="pq-navigation-header">
+      <ul class="pq-navigation-title">
         <li><%=user.displayName %></li>
       </ul>
       <ul>
-        <li data-api-endpoint="">
-         <a
-          id="quests"
-          class="pq-menu-link"
-          href="#"
-          data-api-endpoint="/api/quest/list"
-        >
-          Quests
-         </a>
+        <li class="pq-menu-item">
+          <a
+            id="quests"
+            class="pq-menu-link"
+            href="#"
+            data-api-endpoint="/api/quest/list"
+          >
+            Quests
+          </a>
         </li>
-        <li data-api-endpoint="">
+        <li class="pq-menu-item">
           <a
             id="puzzles"
             class="pq-menu-link"
@@ -34,7 +44,7 @@
             Puzzles
           </a>
         </li>
-        <li>
+        <li class="pq-menu-item">
           <a
             id="users"
             class="pq-menu-link"
@@ -44,8 +54,18 @@
             Users
           </a>
         </li>
-        <li><a id="teams" class="pq-menu-link" href="#" data-api-endpoint="/api/team/list">Teams</a></li>
-        <li><a class="pq-menu-link" href="/logout">Logout</a></li>
+        <li class="pq-menu-item">
+          <a
+            id="teams"
+            class="pq-menu-link"
+            href="#"
+            data-api-endpoint="/api/team/list"
+            >Teams</a
+          >
+        </li>
+        <li class="pq-menu-item">
+          <a class="pq-menu-link" href="/logout">Logout</a>
+        </li>
       </ul>
     </nav>
     <p>Welcome back <%=user.displayName %></p>

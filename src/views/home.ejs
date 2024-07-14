@@ -9,13 +9,32 @@
     <link rel="icon" type="image/png" href="/image/pq-logo-192.png" sizes="192x192" />
   </head>
   <body>
-    <div class="pq-header">
-      <span class="pq-header-text">Dashboard</span>
-      <a href="/logout" class="pq-menu-link pq-float-right">Logout</a>
-    </div>
-    <div>
+    <nav class="pq-navigation-header">
+      <input id="nav-checkbox" type="checkbox" class="pq-nav-checkbox"/>
+      <ul class="pq-navigation-title">
+        <li>Dashboard</li>
+      </ul>
+      <label for="nav-checkbox">
+        <div class="pq-nav-menu">
+          <svg viewBox="0 0 512 512">
+            <use xlink:href="/image/menu-burger.svg#menu" href="/image/menu-burger.svg#menu"></use>
+          </svg>
+        </div>
+      </label>
+      <div class="pq-menu">
+        <ul>
+          <li>
+            <a href="/user/<%=userName%>" class="pq-menu-link">View user profile</a>
+          </li>
+          <li>
+            <a href="/logout" class="pq-menu-link">Sign out</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <p>
       Quests
-    </div>
+    </p>
     <div id="quests">
       <% if (quests && quests.length) { %>
         <table>

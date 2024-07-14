@@ -611,6 +611,7 @@ export async function renderQuest(req, res) {
   }
 
   res.render(viewName, {
+    userName: req.user.userName,
     renderMode: req.renderMode,
     quest: questResponse.data,
   });
@@ -635,6 +636,7 @@ export async function renderQuestPuzzle(req, res) {
   const puzzle = puzzleResponse.data;
   if (puzzle.status === QuestPuzzleStatus.AWAITING_ACTIVATION) {
     res.render("activate", {
+      userName: req.user.userName,
       quest: req.params.name,
       puzzle: puzzleResponse.data,
     });
@@ -666,6 +668,7 @@ export async function renderQuestPuzzle(req, res) {
   }
 
   res.render("puzzle", {
+    userName: req.user.userName,
     quest: req.params.name,
     puzzle: puzzleResponse.data,
     rendered: renderedPuzzle,
