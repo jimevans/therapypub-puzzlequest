@@ -103,7 +103,8 @@ export async function createUser(user) {
       displayName: user.displayName || user.userName,
       password: password,
       email: user.email.toLowerCase(),
-      sms: user.sms || "",
+      phone: user.phone || "",
+      sms: user.sms || false,
       authorizationLevel: authLevel,
     });
     await newUser.save();
@@ -138,6 +139,7 @@ export async function updateUser(name, userData) {
     foundUser.password = password;
   }
   foundUser.email = userData.email.toLowerCase() || foundUser.email;
+  foundUser.phone = userData.phone || foundUser.phone;
   foundUser.sms = userData.sms || foundUser.sms;
   foundUser.authorizationLevel =
     userData.authorizationLevel || foundUser.authorizationLevel;
@@ -180,6 +182,7 @@ export async function authenticate(userName, password) {
       userName: user.userName,
       displayName: user.displayName,
       email: user.email,
+      phone: user.phone,
       sms: user.sms,
       authorizationLevel: user.authorizationLevel,
     },
