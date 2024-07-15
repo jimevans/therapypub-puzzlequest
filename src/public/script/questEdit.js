@@ -110,7 +110,7 @@ puzzleGrid.onAddDataRequested = () => {
 }
 
 puzzleGrid.onDeleteDataRequested = (e) => {
-  puzzleGrid.deleteDataRow(e.target.parentNode.parentNode.rowIndex - 1);
+  puzzleGrid.deleteDataRow(e.currentTarget.parentNode.parentNode.rowIndex - 1);
 };
 
 document.querySelector("#set-user-button").addEventListener("click", (e) => {

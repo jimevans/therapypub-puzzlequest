@@ -135,10 +135,10 @@ const columnDefinitions = [
 const hintGrid = new DataGrid("Hints", columnDefinitions, hintGridOptions);
 hintGrid.setAddNewDataLinkText("Add hint");
 hintGrid.onDeleteDataRequested = (e) => {
-  hintGrid.deleteDataRow(e.target.parentNode.parentNode.rowIndex - 1);
+  hintGrid.deleteDataRow(e.currentTarget.parentNode.parentNode.rowIndex - 1);
 };
 hintGrid.onRowEditRequested = (e) => {
-  hintGrid.editDataRow(e.target.parentNode.parentNode.rowIndex - 1);
+  hintGrid.editDataRow(e.currentTarget.parentNode.parentNode.rowIndex - 1);
 };
 hintGrid.onAddDataRequested = (e) => {
   const rowCount = hintGrid.getDataRowCount();

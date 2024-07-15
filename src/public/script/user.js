@@ -189,7 +189,7 @@ if (user) {
 teamsGrid.setAddNewDataLinkText("Join new team");
 teamsGrid.onDeleteDataRequested = async (e) => {
   e.preventDefault();
-  const itemIndex = e.target.parentNode.parentNode.rowIndex - 1;
+  const itemIndex = e.currentTarget.parentNode.parentNode.rowIndex - 1;
   const teamName = teamsGrid.getData()[itemIndex].teamName;
   const leaveResponse = await callDataApi(
     `/api/team/${teamName}/member/${user.name}`,
@@ -200,7 +200,7 @@ teamsGrid.onDeleteDataRequested = async (e) => {
     showError(leaveResponse.message);
     return;
   }
-  teamsGrid.deleteDataRow(e.target.parentNode.parentNode.rowIndex - 1);
+  teamsGrid.deleteDataRow(e.currentTarget.parentNode.parentNode.rowIndex - 1);
 };
 teamsGrid.onAddDataRequested = async (e) => {
   e.preventDefault();
