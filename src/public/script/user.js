@@ -181,9 +181,11 @@ const gridOptions = {
 };
 
 const teamsGrid = new DataGrid("Teams", gridColumnDefinitions, gridOptions);
-user.teams.forEach((team) => {
-  teamsGrid.addDataRow(team);
-});
+if (user) {
+  user.teams.forEach((team) => {
+    teamsGrid.addDataRow(team);
+  });
+}
 teamsGrid.setAddNewDataLinkText("Join new team");
 teamsGrid.onDeleteDataRequested = async (e) => {
   e.preventDefault();
