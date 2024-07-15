@@ -139,7 +139,7 @@ if (renderMode === "display") {
       displayName: document.querySelector("#display-name").value,
       password: document.querySelector("#password").value,
       email: document.querySelector("#email").value,
-      phone: document.querySelector("#sms").value,
+      phone: document.querySelector("#phone").value,
       sms: document.querySelector("#allow-sms").checked
     };
     const dataErrors = validateInput(userData, renderMode);
