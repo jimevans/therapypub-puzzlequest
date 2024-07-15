@@ -53,16 +53,6 @@ function isUserAuthorized(userNameToBeModified, user) {
 }
 
 export async function createUser(req, res) {
-  if (!req.user) {
-    res.status(401).send(
-      JSON.stringify({
-        status: "error",
-        message: `User must be logged in to create user`,
-      })
-    );
-    return;
-  }
-
   if (!req.body) {
     res.status(400).send(JSON.stringify({
       status: "error",
@@ -95,6 +85,7 @@ export async function createUser(req, res) {
     }));
     return;
   }
+
   const response = await UserService.createUser(req.body);
   if (response.status === "error") {
     res.status(response.statusCode).send(
@@ -239,16 +230,6 @@ export async function listUsers(req, res) {
 }
 
 export async function renderUser(req, res) {
-  if (!req.user) {
-    res.status(401).send(
-      JSON.stringify({
-        status: "error",
-        message: `User must be logged in to view user`,
-      })
-    );
-    return;
-  }
-
   if (req.renderMode && req.renderMode === RenderMode.CREATE) {
     if (
       req.user == null ||
@@ -267,6 +248,16 @@ export async function renderUser(req, res) {
         })
       );
     }
+    return;
+  }
+
+  if (!req.user) {
+    res.status(401).send(
+      JSON.stringify({
+        status: "error",
+        message: `User must be logged in to view user`,
+      })
+    );
     return;
   }
 

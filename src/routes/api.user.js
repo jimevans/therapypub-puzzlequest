@@ -25,7 +25,6 @@ userApiRouter.delete(
 );
 userApiRouter.post(
   "/create",
-  TokenAuthenticator.tokenAuthenticate,
   UserController.createUser
 );
 userApiRouter.post("/login", UserController.login);
