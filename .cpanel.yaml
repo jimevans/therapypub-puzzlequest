@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/thepuzzlequest/puzzlequest
+    - /bin/cp -R . $DEPLOYPATH
