@@ -32,7 +32,7 @@ export async function authenticate(userName, password) {
     },
     config.PQ_SECRET_KEY,
     {
-      expiresIn: "2h",
+      expiresIn: "12h",
     }
   );
   return { status: "success", statusCode: 200, data: token };
