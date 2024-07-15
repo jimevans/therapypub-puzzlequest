@@ -13,6 +13,7 @@ if ("error" in result) {
   console.log("loaded config from process.env");
   for (const key in process.env) {
     if (key.startsWith("PQ")) {
+      console.loq(`loading environment variable: ${key}=${process.env[key]}`);
       config[key] = process.env[key];
     }
   }
