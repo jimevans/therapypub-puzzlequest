@@ -72,7 +72,7 @@ class Modal {
     this.#modalFooter.appendChild(confirmButton);
 
     const cancelButton = document.createElement("button");
-    cancelButton.classList.add("pq-button");
+    cancelButton.classList.add("pq-modal-footer-button");
     if (this.#buttonCount < 2) {
       cancelButton.classList.add("pq-hide");
     }
@@ -113,7 +113,7 @@ class Modal {
    * @param {string} text the text of the confirm button
    */
   setConfirmButtonText(text) {
-    this.#modalFooter.querySelector("button.pq-button[data-action='confirm']").innerText = text;
+    this.#modalFooter.querySelector("button.pq-modal-footer-button[data-action='confirm']").innerText = text;
   }
 
   /**
@@ -121,7 +121,7 @@ class Modal {
    * @param {string} text the text of the cancel button
    */
   setCancelButtonText(text) {
-    this.#modalFooter.querySelector("button.pq-button[data-action='cancel']").innerText = text;
+    this.#modalFooter.querySelector("button.pq-modal-footer-button[data-action='cancel']").innerText = text;
   }
 
   /**

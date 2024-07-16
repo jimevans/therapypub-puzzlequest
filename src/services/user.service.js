@@ -26,6 +26,23 @@ export async function getUserByUserName(name) {
 }
 
 /**
+ * Gets all users having the given phone number.
+ * @param {string} phoneNumber the phone number of the user to get
+ * @returns {object} a response object containing a status, status code, and data
+ */
+export async function getUsersByPhoneNumber(phoneNumber) {
+  const users = await User.find({ phone: phoneNumber });
+  if (!users.length) {
+    return {
+      status: "error",
+      statusCode: 404,
+      message: `No user with phone number ${phoneNumber} found`
+    };
+  }
+  return { status: "success", statusCode: 200, data: users };
+}
+
+/**
  * Gets a read-only copy of a user, including team membership information.
  * @param {string} name the name of the user to retrieve data for
  * @returns {object} a response object containing a status, status code, and data

@@ -37,6 +37,9 @@ app.use("/api/quest", QuestApiRouter);
 import { TeamApiRouter } from "./routes/api.team.js";
 app.use("/api/team", TeamApiRouter);
 
+import { MessagingApiRouter } from "./routes/api.messaging.js";
+app.use("/api/messaging", MessagingApiRouter);
+
 //UI routes for data display
 import { UserRouter } from "./routes/user.js";
 app.use("/user", UserRouter);
