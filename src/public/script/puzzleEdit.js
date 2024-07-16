@@ -198,7 +198,7 @@ document.querySelector("#save").addEventListener("click", async (e) => {
       );
       return;
     }
-    puzzleData.text = uploadResponse.location;
+    puzzleData.text = uploadResponse.data;
   } else {
     puzzleData.text = renderedPuzzleData;
   }
