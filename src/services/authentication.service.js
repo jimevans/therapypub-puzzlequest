@@ -24,9 +24,10 @@ export async function authenticate(userName, password) {
   }
   const token = jwt.sign(
     {
-      userName: user.userName,
+      userName: user.userName.toLowerCase(),
       displayName: user.displayName,
       email: user.email,
+      phone: user.phone,
       sms: user.sms,
       authorizationLevel: user.authorizationLevel,
     },

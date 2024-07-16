@@ -115,7 +115,7 @@ export async function createUser(user) {
   }
   const password = await bcrypt.hash(user.password, 10);
   const userData = {
-    userName: user.userName,
+    userName: user.userName.toLowerCase(),
     displayName: user.displayName || user.userName,
     password: password,
     email: user.email.toLowerCase(),
@@ -204,7 +204,7 @@ export async function authenticate(userName, password) {
   }
   const token = jwt.sign(
     {
-      userName: user.userName,
+      userName: user.userName.toLowerCase(),
       displayName: user.displayName,
       email: user.email,
       phone: user.phone,
@@ -213,7 +213,7 @@ export async function authenticate(userName, password) {
     },
     config.PQ_SECRET_KEY,
     {
-      expiresIn: "2h",
+      expiresIn: "12h",
     }
   );
   return { status: "success", statusCode: 200, data: token };

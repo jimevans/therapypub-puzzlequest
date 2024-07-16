@@ -28,7 +28,6 @@ export async function receiveVoiceCall(req, res) {
           }
         );
       }
-      console.log(`found user ${user.userName}`);
     });
   }
 }

@@ -29,7 +29,7 @@ export async function login(req, res) {
     return;
   }
   const response = await UserService.authenticate(
-    req.body.userName,
+    req.body.userName.toLowerCase(),
     req.body.password
   );
   if (response.status === "error") {
