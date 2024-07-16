@@ -97,22 +97,27 @@ export async function createUser(user) {
     authLevel = AuthorizationLevel.ADMIN;
   }
   const password = await bcrypt.hash(user.password, 10);
+  const userData = {
+    userName: user.userName,
+    displayName: user.displayName || user.userName,
+    password: password,
+    email: user.email.toLowerCase(),
+    phone: user.phone || "",
+    sms: user.sms || false,
+    authorizationLevel: authLevel,
+  };
+  if (user.phone) {
+    const phone = user.phone.replace(/[^\d]/g, "");
+    userData.phone = phone.startsWith("1") ? phone.substring(1) : phone;
+  }
   try {
-    const newUser = new User({
-      userName: user.userName,
-      displayName: user.displayName || user.userName,
-      password: password,
-      email: user.email.toLowerCase(),
-      phone: user.phone || "",
-      sms: user.sms || false,
-      authorizationLevel: authLevel,
-    });
+    const newUser = new User(userData);
     await newUser.save();
   } catch (err) {
     return {
       status: "error",
       statusCode: 500,
-      message: `New user not created - ${err}`
+      message: `New user not created - ${err.message}`
     };
   }
   return { status: "success", statusCode: 200 };
@@ -139,7 +144,10 @@ export async function updateUser(name, userData) {
     foundUser.password = password;
   }
   foundUser.email = userData.email.toLowerCase() || foundUser.email;
-  foundUser.phone = userData.phone || foundUser.phone;
+  if (userData.phone) {
+    const phone = userData.phone.replace(/[^\d]/g, "");
+    foundUser.phone = phone.startsWith("1") ? phone.substring(1) : phone;
+  }
   foundUser.sms = userData.sms || foundUser.sms;
   foundUser.authorizationLevel =
     userData.authorizationLevel || foundUser.authorizationLevel;
@@ -149,7 +157,7 @@ export async function updateUser(name, userData) {
     return {
       status: "error",
       statusCode: 500,
-      message: `User not updated - ${err}`
+      message: `User not updated - ${err.message}`
     };
   }
   return { status: "success" , statusCode: 200};
