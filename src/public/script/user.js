@@ -181,11 +181,6 @@ const gridOptions = {
 };
 
 const teamsGrid = new DataGrid("Teams", gridColumnDefinitions, gridOptions);
-if (user) {
-  user.teams.forEach((team) => {
-    teamsGrid.addDataRow(team);
-  });
-}
 teamsGrid.setAddNewDataLinkText("Join new team");
 teamsGrid.onDeleteDataRequested = async (e) => {
   e.preventDefault();
@@ -200,7 +195,7 @@ teamsGrid.onDeleteDataRequested = async (e) => {
     showError(leaveResponse.message);
     return;
   }
-  teamsGrid.deleteDataRow(e.currentTarget.parentNode.parentNode.rowIndex - 1);
+  teamsGrid.deleteDataRow(itemIndex);
 };
 teamsGrid.onAddDataRequested = async (e) => {
   e.preventDefault();
@@ -244,8 +239,15 @@ teamsGrid.onAddDataRequested = async (e) => {
     );
     if (joinResponse.status === "error") {
       showError(joinResponse.message);
+      return;
     }
+    teamsGrid.addDataRow({
+      displayName: teamLookup.getSelectedData()[0].displayName
+    });
   }
   teamLookup.show();
 };
+if (user) {
+  teamsGrid.render(user.teams);
+}
 document.querySelector("#teams").replaceChildren(teamsGrid.getElement());
