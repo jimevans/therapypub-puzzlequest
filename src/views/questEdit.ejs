@@ -3,12 +3,38 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
-    <title>Puzzle Details</title>
+    <title>Quest Details</title>
     <link rel="stylesheet" type="text/css" href="/style/pq.css" />
     <link rel="icon" type="image/png" href="/image/pq-logo-64.png" sizes="64x64 32x32 24x24 16x16" />
     <link rel="icon" type="image/png" href="/image/pq-logo-192.png" sizes="192x192" />
   </head>
   <body>
+    <nav class="pq-navigation-header">
+      <input id="nav-checkbox" type="checkbox" class="pq-nav-checkbox"/>
+      <ul class="pq-navigation-title">
+        <li>Quest Details</li>
+      </ul>
+      <label for="nav-checkbox">
+        <div class="pq-nav-menu">
+          <svg viewBox="0 0 512 512">
+            <use xlink:href="/image/menu-burger.svg#menu" href="/image/menu-burger.svg#menu"></use>
+          </svg>
+        </div>
+      </label>
+      <div class="pq-menu">
+        <ul>
+          <li>
+            <a id="save-link" class="pq-menu-link" href=<%= quest ? "/quest/" + quest.name : "/" %>>Save</a>
+          </li>
+          <li>
+            <a id="cancel-link" class="pq-menu-link" href=<%= quest ? "/quest/" + quest.name : "/" %>>Cancel</a>
+          </li>
+          <li>
+            <a class="pq-menu-link" href="/logout">Logout</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
     <div class="pq-form-element">
       <div class="pq-label">
         <% if (renderMode !== "create") { %>
@@ -66,10 +92,6 @@
     <div class="pq-form-element">
       <div id="quest-puzzles">
       </div>
-    </div>
-    <div class="pq-form-element">
-      <button id="save" class="pq-button">Save</button>&nbsp;
-      <button id="cancel" class="pq-button">Cancel</button>
     </div>
     <div class="pq-error pq-hide">
       <span id="error-message"></span>

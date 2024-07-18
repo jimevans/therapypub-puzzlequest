@@ -97,6 +97,8 @@ class PuzzleRenderer {
     const renderElements = [];
     if (isEditable) {
       const textAreaElement = document.createElement("textarea");
+      textAreaElement.cols = 80;
+      textAreaElement.rows = 10;
       textAreaElement.value = puzzleContent;
       textAreaElement.addEventListener("input", (e) => {
         marked.use({ gfm: true });
@@ -121,7 +123,7 @@ class PuzzleRenderer {
         return uploadElement.files[0];
       }
     }
-     return this.#rendererElement.querySelector("textarea").value;
+    return this.#rendererElement.querySelector("textarea").value;
   }
 
   /**

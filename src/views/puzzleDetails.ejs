@@ -9,6 +9,32 @@
     <link rel="icon" type="image/png" href="/image/pq-logo-192.png" sizes="192x192" />
   </head>
   <body>
+    <nav class="pq-navigation-header">
+      <input id="nav-checkbox" type="checkbox" class="pq-nav-checkbox"/>
+      <ul class="pq-navigation-title">
+        <li>Puzzle Details</li>
+      </ul>
+      <label for="nav-checkbox">
+        <div class="pq-nav-menu">
+          <svg viewBox="0 0 512 512">
+            <use xlink:href="/image/menu-burger.svg#menu" href="/image/menu-burger.svg#menu"></use>
+          </svg>
+        </div>
+      </label>
+      <div class="pq-menu">
+        <ul>
+          <li>
+            <a id="edit-link" class="pq-menu-link" href="/puzzle/<%=puzzle.name%>/edit">Edit</a>
+          </li>
+          <li>
+            <a id="close-link" class="pq-menu-link" href="/">Close</a>
+          </li>
+          <li>
+            <a class="pq-menu-link" href="/logout">Logout</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
     <div class="pq-form-element">
       <div class="pq-label">
         Puzzle name:
@@ -72,10 +98,6 @@
     <div id="hints">
     </div>
     <% } %>
-    <div class="pq-form-element">
-      <button id="edit" class="pq-button">Edit</button>
-      <button id="close" class="pq-button">Close</button>
-    </div>
     <div class="pq-error pq-hide">
       <span id="error-message"></span>
     </div>

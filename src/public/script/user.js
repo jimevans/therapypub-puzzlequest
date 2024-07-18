@@ -89,17 +89,8 @@ if (renderMode === "display") {
   document.querySelector("#allow-sms").addEventListener("click", (e) => {
     e.preventDefault();
   });
-  document.querySelector("#edit").addEventListener("click", (e) => {
-    e.preventDefault();
-    window.location.href = `/user/${user.name}/edit`;
-  });
-  document.querySelector("#close").addEventListener("click", (e) => {
-    e.preventDefault();
-    window.location.href = "/";
-  });
 } else if (renderMode === "edit") {
-  document.querySelector("#save").addEventListener("click", async (e) => {
-    e.preventDefault();
+  document.querySelector("#save-link").addEventListener("click", async (e) => {
     const userData = {
       userName: document.querySelector("#user-name").value,
       displayName: document.querySelector("#display-name").value,
@@ -114,6 +105,7 @@ if (renderMode === "display") {
     const dataErrors = validateInput(userData, renderMode);
     if (dataErrors.length) {
       showError(dataErrors.join(", "));
+      e.preventDefault();
       return;
     }
     const dataReturn = await callDataApi(
@@ -123,17 +115,12 @@ if (renderMode === "display") {
     );
     if (dataReturn.status === "error") {
       showError(dataReturn.message);
+      e.preventDefault();
       return;
     }
-    window.location.href = "/";
-  });
-  document.querySelector("#cancel").addEventListener("click", (e) => {
-    e.preventDefault();
-    window.location.href = `/user/${user.name}`;
   });
 } else if (renderMode === "create") {
-  document.querySelector("#save").addEventListener("click", async (e) => {
-    e.preventDefault();
+  document.querySelector("#save-link").addEventListener("click", async (e) => {
     const userData = {
       userName: document.querySelector("#user-name").value,
       displayName: document.querySelector("#display-name").value,
@@ -145,18 +132,15 @@ if (renderMode === "display") {
     const dataErrors = validateInput(userData, renderMode);
     if (dataErrors.length) {
       showError(dataErrors.join(", "));
+      e.preventDefault();
       return;
     }
     const dataReturn = await callDataApi("/api/user/create", "post", userData);
     if (dataReturn.status === "error") {
       showError(dataReturn.message);
+      e.preventDefault();
       return;
     }
-    window.location.href = "/";
-  });
-  document.querySelector("#cancel").addEventListener("click", (e) => {
-    e.preventDefault();
-    window.location.href = "/";
   });
 }
 

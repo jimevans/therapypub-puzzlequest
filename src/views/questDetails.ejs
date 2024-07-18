@@ -35,20 +35,20 @@
         <ul>
           <% if (quest.status === 0) { %>
           <li>
-            <a id="activateLink" class="pq-menu-link" href="/">Activate</a>
+            <a id="activate-link" class="pq-menu-link" href="/">Activate</a>
           </li>
           <% } %>
           <li>
-            <a id="resetLink" class="pq-menu-link" href="/">Reset</a>
+            <a id="reset-link" class="pq-menu-link" href="/">Reset</a>
           </li>
           <li>
-            <a id="downloadLink" class="pq-menu-link" href="/quest/<%=quest.name%>/pdf">Download run book</a>
+            <a id="download-link" class="pq-menu-link" href="/quest/<%=quest.name%>/pdf">Download run book</a>
           </li>
           <li>
-            <a id="editLink" class="pq-menu-link" href="/quest/<%=quest.name%>/edit">Edit</a>
+            <a id="edit-link" class="pq-menu-link" href="/quest/<%=quest.name%>/edit">Edit</a>
           </li>
           <li>
-            <a id="closeLink" class="pq-menu-link" href="/">Close</a>
+            <a id="close-link" class="pq-menu-link" href="/">Close</a>
           </li>
           <li>
             <a class="pq-menu-link" href="/logout">Logout</a>
@@ -81,15 +81,6 @@
     <% } else { %>
     <div id="puzzles"></div>
     <% } %>
-    <div class="pq-form-element">
-      <% if (quest.status === 0) { %>
-      <button id="activate" class="pq-button">Activate</button>
-      <% } %>
-      <button id="reset" class="pq-button">Reset</button>
-      <button id="download" class="pq-button">Download run book</button>
-      <button id="edit" class="pq-button">Edit</button>
-      <button id="close" class="pq-button">Close</button>
-    </div>
     <div class="pq-error pq-hide">
       <span id="error-message"></span>
     </div>

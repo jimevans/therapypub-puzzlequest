@@ -55,7 +55,7 @@ async function callDataApi(dataUrl, method, body = undefined) {
   }
 }
 
-document.querySelector("#activateLink")?.addEventListener("click", async (e) => {
+document.querySelector("#activate-link")?.addEventListener("click", async (e) => {
   const activationResponse = await callDataApi(
     `/api/quest/${quest.name}/activate`,
     "put",
@@ -69,7 +69,7 @@ document.querySelector("#activateLink")?.addEventListener("click", async (e) => 
   }
 });
 
-document.querySelector("#resetLink")?.addEventListener("click", async (e) => {
+document.querySelector("#reset-link")?.addEventListener("click", async (e) => {
   const resetResponse = await callDataApi(
     `/api/quest/${quest.name}/reset`,
     "put",
@@ -81,43 +81,6 @@ document.querySelector("#resetLink")?.addEventListener("click", async (e) => {
       `Error received resetting quest ${resetResponse.message}`
     );
   }
-});
-
-document.querySelector("#edit").addEventListener("click", (e) => {
-  e.preventDefault();
-  window.location.href = `/quest/${quest.name}/edit`;
-});
-document.querySelector("#close").addEventListener("click", (e) => {
-  e.preventDefault();
-  window.location.href = `/`;
-});
-document.querySelector("#activate")?.addEventListener("click", async (e) => {
-  e.preventDefault();
-  const activationResponse = await callDataApi(
-    `/api/quest/${quest.name}/activate`,
-    "put",
-    {}
-  );
-  if (activationResponse.status === "error") {
-    console.log(
-      `Error received activating quest: ${activationResponse.message}`
-    );
-  }
-  window.location.href = "/";
-});
-document.querySelector("#reset")?.addEventListener("click", async (e) => {
-  e.preventDefault();
-  const resetResponse = await callDataApi(
-    `/api/quest/${quest.name}/reset`,
-    "put",
-    {}
-  );
-  if (resetResponse.status === "error") {
-    console.log(
-      `Error received resetting quest ${resetResponse.message}`
-    );
-  }
-  window.location.href = "/";
 });
 
 const puzzleGridColumnDefinitions = [

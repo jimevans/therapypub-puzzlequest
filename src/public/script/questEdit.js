@@ -163,16 +163,6 @@ document.querySelector("#set-team-button").addEventListener("click", (e) => {
 
 document.querySelector("#quest-puzzles").replaceChildren(puzzleGrid.getElement());
 
-document.querySelector("#cancel").addEventListener("click", (e) => {
-  e.preventDefault();
-  if (quest) {
-    window.location.href = `/quest/${quest.name}`;
-  } else {
-    window.location.href = "/";
-  }
-});
-
-
 function getQuestData() {
   let puzzleIndex = 0;
   const questPuzzles = [];
@@ -213,8 +203,7 @@ function validateInput(questData) {
   return dataErrors;
 }
 
-document.querySelector("#save").addEventListener("click", async (e) => {
-  e.preventDefault();
+document.querySelector("#save-link").addEventListener("click", async (e) => {
   clearError();
   const questData = getQuestData();
   const dataErrors = validateInput(questData, renderMode);
@@ -231,8 +220,8 @@ document.querySelector("#save").addEventListener("click", async (e) => {
 
   const dataReturn = await callDataApi(dataApiUrl, dataApiVerb, questData);
   if (dataReturn.status === "error") {
+    e.preventDefault();
     showError(dataReturn.message);
     return;
   }
-  window.location.href = `/quest/${questData.name}`;
 });

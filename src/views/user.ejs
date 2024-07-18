@@ -9,15 +9,51 @@
     <link rel="icon" type="image/png" href="/image/pq-logo-192.png" sizes="192x192" />
   </head>
   <body>
-    <div class="pq-header">
-      <span class="pq-header-text"><%= renderMode !== "create" ? "User details" : "Sign up" %></span>
-    </div>
+    <nav class="pq-navigation-header">
+      <input id="nav-checkbox" type="checkbox" class="pq-nav-checkbox"/>
+      <ul class="pq-navigation-title">
+        <li><%= renderMode !== "create" ? "User details" : "Sign up" %></li>
+      </ul>
+      <label for="nav-checkbox">
+        <div class="pq-nav-menu">
+          <svg viewBox="0 0 512 512">
+            <use xlink:href="/image/menu-burger.svg#menu" href="/image/menu-burger.svg#menu"></use>
+          </svg>
+        </div>
+      </label>
+      <div class="pq-menu">
+        <ul>
+          <% if (renderMode !== "display") { %>
+          <li>
+            <a id="save-link" class="pq-menu-link" href="/">Save</a>
+          </li>
+          <% } %>
+          <% if (renderMode === "display") { %>
+          <li>
+            <a id="edit-link" class="pq-menu-link" href="/user/<%=user.userName%>/edit">Edit</a>
+          </li>
+          <% } %>
+          <li>
+            <a id="cancel-link" class="pq-menu-link" href="/"><%= renderMode !== "display" ? "Cancel" : "Close" %></a>
+          </li>
+          <% if (renderMode !== "create") { %>
+          <li>
+            <a class="pq-menu-link" href="/logout">Logout</a>
+          </li>
+          <% } %>
+        </ul>
+      </div>
+    </nav>
     <div class="pq-form-element">
       <div class="pq-label">
         <label for="user-name">User name:</label>
       </div>
       <div class="pq-input">
-        <input id="user-name" value="<%= renderMode !== "create" ? user.userName : "" %>" <%= renderMode !== "create" ? "readonly" : "" %> />
+        <% if (renderMode !== "create") { %>
+        <%= user.userName %>
+        <% } else { %>
+        <input id="user-name" />
+        <% } %>
       </div>
     </div>
     <div class="pq-form-element">
@@ -25,7 +61,11 @@
         <label for="display-name">Display name:</label>
       </div>
       <div class="pq-input">
-        <input id="display-name" value="<%= renderMode !== "create" ? user.displayName : "" %>" <%= renderMode === "display" ? "readonly" : "" %> />
+        <% if (renderMode === "display") { %>
+        <%= user.displayName %>
+        <% } else { %>
+        <input id="display-name" value="<%= renderMode !== "create" ? user.displayName : "" %>" />
+        <% } %>
       </div>
     </div>
     <% if (renderMode === "create") { %>
@@ -51,7 +91,11 @@
         <label for="email">Email:</label>
       </div>
       <div class="pq-input">
-        <input id="email" value="<%= renderMode !== "create" ? user.email : "" %>" <%= renderMode === "display" ? "readonly" : "" %> />
+        <% if (renderMode === "display") { %>
+        <%= user.email %>
+        <% } else { %>
+        <input id="email" value="<%= renderMode !== "create" ? user.email : "" %>" />
+        <% } %>
       </div>
     </div>
     <div class="pq-form-element">
@@ -59,7 +103,11 @@
         <label for="phone">Phone number:</label>
       </div>
       <div class="pq-input">
-        <input id="phone" value="<%= renderMode !== "create" ? user.phone : "" %>" <%= renderMode === "display" ? "readonly" : "" %> />
+        <% if (renderMode === "display") { %>
+        <%= user.phone %>
+        <% } else { %>
+        <input id="phone" value="<%= renderMode !== "create" ? user.phone : "" %>" />
+        <% } %>
       </div>
     </div>
     <div class="pq-form-element">
@@ -83,7 +131,7 @@
       </div>
       <% if (renderMode === "display") { %>
       <div class="pq-input">
-        <input id="auth-level" value="<%= user.authorizationLevelDescription %>" readonly />
+      <%= user.authorizationLevelDescription %>
       </div>
       <% } else { %>
       <div class="pq-select">
@@ -98,17 +146,6 @@
     <% } %>
     <div id="teams">
     </div>
-    <% if (renderMode === "display") { %>
-    <div class="pq-form-element">
-      <button id="edit" class="pq-button">Edit</button>
-      <button id="close" class="pq-button">Close</button>
-    </div>
-    <% } else { %>
-    <div class="pq-form-element">
-      <button id="save" class="pq-button">Save</button>&nbsp;
-      <button id="cancel" class="pq-button">Cancel</button>
-    </div>
-    <% } %>
     <div class="pq-error pq-hide">
       <span id="error-message"></span>
     </div>

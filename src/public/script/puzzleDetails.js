@@ -7,15 +7,6 @@ document
   .querySelector("#puzzle-content")
   .replaceChildren(renderer.getElement());
 
-document.querySelector("#edit").addEventListener("click", (e) => {
-  e.preventDefault();
-  window.location.href = `/puzzle/${puzzle.name}/edit`;
-});
-document.querySelector("#close").addEventListener("click", (e) => {
-  e.preventDefault();
-  window.location.href = `/`;
-});
-
 const hintGridColumnDefinitions = [
   {
     fieldName: "text",

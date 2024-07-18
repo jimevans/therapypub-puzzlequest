@@ -9,6 +9,32 @@
     <link rel="icon" type="image/png" href="/image/pq-logo-192.png" sizes="192x192" />
   </head>
   <body>
+    <nav class="pq-navigation-header">
+      <input id="nav-checkbox" type="checkbox" class="pq-nav-checkbox"/>
+      <ul class="pq-navigation-title">
+        <li>Puzzle Details</li>
+      </ul>
+      <label for="nav-checkbox">
+        <div class="pq-nav-menu">
+          <svg viewBox="0 0 512 512">
+            <use xlink:href="/image/menu-burger.svg#menu" href="/image/menu-burger.svg#menu"></use>
+          </svg>
+        </div>
+      </label>
+      <div class="pq-menu">
+        <ul>
+          <li>
+            <a id="save-link" class="pq-menu-link" href=<%= puzzle ? "/puzzle/" + puzzle.name : "/" %>>Save</a>
+          </li>
+          <li>
+            <a id="cancel-link" class="pq-menu-link" href=<%= puzzle ? "/puzzle/" + puzzle.name : "/" %>>Cancel</a>
+          </li>
+          <li>
+            <a class="pq-menu-link" href="/logout">Logout</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
     <div class="pq-form-element">
       <div class="pq-label">
         <% if (renderMode !== "create") { %>
@@ -72,10 +98,6 @@
     <div class="pq-form-element">
       <div id="hints">
       </div>
-    </div>
-    <div class="pq-form-element">
-      <button id="save" class="pq-button">Save</button>&nbsp;
-      <button id="cancel" class="pq-button">Cancel</button>
     </div>
     <div class="pq-error pq-hide">
       <span id="error-message"></span>

@@ -157,21 +157,13 @@ document.querySelector("#hints").replaceChildren(hintGrid.getElement());
 document.querySelector("#puzzle-type").addEventListener("change", (e) => {
   renderer.render(parseInt(e.target.value), "", true);
 });
-document.querySelector("#cancel").addEventListener("click", (e) => {
-  e.preventDefault();
-  if (puzzle) {
-    window.location.href = `/puzzle/${puzzle.name}`;
-  } else {
-    window.location.href = "/";
-  }
-});
-document.querySelector("#save").addEventListener("click", async (e) => {
-  e.preventDefault();
+document.querySelector("#save-link").addEventListener("click", async (e) => {
   clearError();
   const puzzleData = getPuzzleData();
   const dataErrors = validateInput(puzzleData, renderMode);
   if (dataErrors.length) {
     showError(dataErrors.join(", "));
+    e.preventDefault();
     return;
   }
 
@@ -196,6 +188,7 @@ document.querySelector("#save").addEventListener("click", async (e) => {
       showError(
         `An error occurred uploading the binary data: ${uploadResponse.message}`
       );
+      e.preventDefault();
       return;
     }
     puzzleData.text = uploadResponse.data;
@@ -206,7 +199,7 @@ document.querySelector("#save").addEventListener("click", async (e) => {
   const dataReturn = await callDataApi(dataApiUrl, dataApiVerb, puzzleData);
   if (dataReturn.status === "error") {
     showError(dataReturn.message);
+    e.preventDefault();
     return;
   }
-  window.location.href = "/";
 });
