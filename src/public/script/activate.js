@@ -6,26 +6,31 @@ function drawToCanvas(videoElement, context, width, height) {
     return false;
   }
 
-  context.drawImage(videoElement, 0, 0, width, height);
+  const startX = videoElement.videoWidth / 2 - width / 2;
+  const startY = videoElement.videoHeight / 2 - height / 2;
+  context.drawImage(videoElement, startX, startY, width, height, 0, 0, width, height);
   setTimeout(drawToCanvas, 20, videoElement, context, width, height);
 }
 
 function startCamera() {
   const videoElement = document.querySelector("video");
   navigator.mediaDevices.getUserMedia({
-    video: { facingMode: "environment" },
+    video: {
+      height: { min: 480, ideal: 1080 },
+      facingMode: "environment"
+    },
     audio: false,
   })
   .then((stream) => {
+    const boundingRect = document.querySelector("#activation-mode").getBoundingClientRect();
     const tracks = stream
       .getTracks()
       .filter((track) => track.kind === "video");
-    const isPortrait = screen.height > screen.width;
-    const settings = tracks[0].getSettings();
-    canvas.width = isPortrait ? settings.height : settings.width;
-    canvas.height = isPortrait ? settings.width : settings.height;
     videoElement.srcObject = stream;
     videoElement.onloadedmetadata = function (e) {
+      const settings = tracks[0].getSettings();
+      canvas.width = Math.min(boundingRect.width, settings.width);
+      canvas.height = Math.min(window.innerHeight - boundingRect.bottom, settings.height);
       videoElement.play();
     };
   });
