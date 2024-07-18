@@ -55,6 +55,34 @@ async function callDataApi(dataUrl, method, body = undefined) {
   }
 }
 
+document.querySelector("#activateLink")?.addEventListener("click", async (e) => {
+  const activationResponse = await callDataApi(
+    `/api/quest/${quest.name}/activate`,
+    "put",
+    {}
+  );
+  if (activationResponse.status === "error") {
+    e.preventDefault();
+    console.log(
+      `Error received activating quest: ${activationResponse.message}`
+    );
+  }
+});
+
+document.querySelector("#resetLink")?.addEventListener("click", async (e) => {
+  const resetResponse = await callDataApi(
+    `/api/quest/${quest.name}/reset`,
+    "put",
+    {}
+  );
+  if (resetResponse.status === "error") {
+    e.preventDefault();
+    console.log(
+      `Error received resetting quest ${resetResponse.message}`
+    );
+  }
+});
+
 document.querySelector("#edit").addEventListener("click", (e) => {
   e.preventDefault();
   window.location.href = `/quest/${quest.name}/edit`;

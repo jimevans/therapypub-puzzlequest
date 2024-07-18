@@ -1,8 +1,11 @@
+import path from "path";
+import { fileURLToPath } from "url";
 import { PassThrough } from "stream";
 import { marked } from "marked";
 import { RenderMode } from "../middleware/useRenderMode.js";
 import { PuzzleType } from "../models/puzzle.model.js";
 import { QuestPuzzleStatus } from "../models/quest.model.js";
+import PDFDocument from "pdfkit";
 import * as AuthenticationService from "../services/authentication.service.js";
 import * as QuestService from "../services/quest.service.js";
 
@@ -160,6 +163,7 @@ export async function retrieveQuest(req, res) {
     return;
   }
 
+  const isUserAdmin = AuthenticationService.isUserAdmin(req.user);
   const questResponse = await getQuestForUser(
     req.params.name,
     req.user.userName,
@@ -714,4 +718,87 @@ export async function renderPuzzleActivationQRCode(req, res) {
   );
   res.set("Content-Type", "image/png");
   qrStream.pipe(res);
+}
+
+export async function renderQuestRunBook(req, res) {
+  if (req.user === null) {
+    res.status(401).send(JSON.stringify({
+      status: "error",
+      message: `User must be logged in to retrieve quests`
+    }));
+    return;
+  }
+
+  const isUserAdmin = AuthenticationService.isUserAdmin(req.user);
+  const questResponse = await getQuestForUser(
+    req.params.name,
+    req.user.userName,
+    isUserAdmin
+  );
+  if (questResponse.status === "error") {
+    res.status(questResponse.statusCode).send(JSON.stringify(
+      {
+        status: "error",
+        message: questResponse.message
+      })
+    );
+    return;
+  }
+
+  const quest = questResponse.data;
+  const buffers = [];
+  const pdfDoc = new PDFDocument({ autoFirstPage: false, bufferPages: true, });
+  pdfDoc.on("data", buffers.push.bind(buffers));
+  pdfDoc.on("end", () => {
+    const pdfBuffer = Buffer.concat(buffers);
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename=${quest.name}.pdf`,
+      "Content-Length": Buffer.byteLength(pdfBuffer)
+    }).end(pdfBuffer);
+  });
+
+  quest.puzzles.forEach((puzzle) => {
+    pdfDoc.addPage({ margins: { top: 72, left: 72, right: 72, bottom: 36 } });
+    pdfDoc.fontSize(18);
+    pdfDoc.text(puzzle.displayName, { align: "center" });
+    pdfDoc.fontSize(10);
+    pdfDoc.moveDown();
+    if (puzzle.type === 0) {
+      new marked.Lexer({ gfm: true })
+        .lex(puzzle.text)
+        .forEach((token) => processMarkdownToken(token, pdfDoc));
+      pdfDoc.text("");
+    } else if (puzzle.type === 1) {
+      const dirname = path.dirname(fileURLToPath(import.meta.url));
+      const image = path.join(dirname, "..", "public", puzzle.text);
+      pdfDoc.image(image, { fit: [72 * 6.5, 72 * 8.5], align: 'center', valign: 'center' });
+    } else {
+      pdfDoc.text("Puzzle content is audio or video and cannot be rendered on paper.");
+    }
+  });
+  pdfDoc.end();
+}
+
+function processMarkdownToken(token, pdfDoc) {
+  if (token.type === "paragraph" || token.type === "space") {
+    pdfDoc.text("");
+    pdfDoc.moveDown();
+  }
+  if (token.type === "codespan") {
+    pdfDoc.font("Courier").text(token.text, { continued: true }).font("Helvetica");
+  }
+  if (token.type === "code") {
+    pdfDoc.font("Courier").text(token.text, { align: "center" }).font("Helvetica").fontSize(10);
+  }
+  if (token.type === "text" || token.type === "escape") {
+    const text = token.text.replace(/&#x([\dA-Fa-f]+);/gi, function(match, numStr) {
+      var num = parseInt(numStr, 16);
+      return String.fromCharCode(num);
+    });
+    pdfDoc.text(text, { continued: true });
+  }
+  token.tokens?.forEach((token) => {
+    processMarkdownToken(token, pdfDoc);
+  })
 }

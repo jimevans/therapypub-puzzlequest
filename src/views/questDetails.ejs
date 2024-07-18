@@ -5,61 +5,88 @@
     <meta name="viewport" content="width=device-width" />
     <title>Quest Details</title>
     <link rel="stylesheet" type="text/css" href="/style/pq.css" />
-    <link rel="icon" type="image/png" href="/image/pq-logo-64.png" sizes="64x64 32x32 24x24 16x16" />
-    <link rel="icon" type="image/png" href="/image/pq-logo-192.png" sizes="192x192" />
+    <link
+      rel="icon"
+      type="image/png"
+      href="/image/pq-logo-64.png"
+      sizes="64x64 32x32 24x24 16x16"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      href="/image/pq-logo-192.png"
+      sizes="192x192"
+    />
   </head>
   <body>
+    <nav class="pq-navigation-header">
+      <input id="nav-checkbox" type="checkbox" class="pq-nav-checkbox"/>
+      <ul class="pq-navigation-title">
+        <li>Quest Details</li>
+      </ul>
+      <label for="nav-checkbox">
+        <div class="pq-nav-menu">
+          <svg viewBox="0 0 512 512">
+            <use xlink:href="/image/menu-burger.svg#menu" href="/image/menu-burger.svg#menu"></use>
+          </svg>
+        </div>
+      </label>
+      <div class="pq-menu">
+        <ul>
+          <% if (quest.status === 0) { %>
+          <li>
+            <a id="activateLink" class="pq-menu-link" href="/">Activate</a>
+          </li>
+          <% } %>
+          <li>
+            <a id="resetLink" class="pq-menu-link" href="/">Reset</a>
+          </li>
+          <li>
+            <a id="downloadLink" class="pq-menu-link" href="/quest/<%=quest.name%>/pdf">Download run book</a>
+          </li>
+          <li>
+            <a id="editLink" class="pq-menu-link" href="/quest/<%=quest.name%>/edit">Edit</a>
+          </li>
+          <li>
+            <a id="closeLink" class="pq-menu-link" href="/">Close</a>
+          </li>
+          <li>
+            <a class="pq-menu-link" href="/logout">Logout</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
     <div class="pq-form-element">
-      <div class="pq-label">
-        Quest name:
-      </div>
-      <div class="pq-input">
-        <%= quest.name %>
-      </div>
+      <div class="pq-label">Quest name:</div>
+      <div class="pq-input"><%= quest.name %></div>
     </div>
     <div class="pq-form-element">
-      <div class="pq-label">
-        Display name:
-      </div>
-      <div class="pq-input">
-        <%= quest.displayName %>
-      </div>
+      <div class="pq-label">Display name:</div>
+      <div class="pq-input"><%= quest.displayName %></div>
     </div>
     <div class="pq-form-element">
-      <div class="pq-label">
-        User or team:
-      </div>
-      <div class="pq-input">
-        <%= quest.userName %>
-      </div>
+      <div class="pq-label">User or team:</div>
+      <div class="pq-input"><%= quest.userName %></div>
     </div>
     <div class="pq-form-element">
-      <div class="pq-label">
-        Status:
-      </div>
+      <div class="pq-label">Status:</div>
       <div class="pq-input">
-        <% if (quest.status === 0) { %>
-        Not started
-        <% } else if (quest.status === 1) { %>
-        In progress
-        <% } else if (quest.status === 2) { %>
-        Completed
+        <% if (quest.status === 0) { %> Not started <% } else if (quest.status
+        === 1) { %> In progress <% } else if (quest.status === 2) { %> Completed
         <% } %>
       </div>
     </div>
     <% if (!quest.puzzles.length) { %>
-    <div>
-    No puzzles to display
-    </div>
+    <div>No puzzles to display</div>
     <% } else { %>
-    <div id="puzzles">
-    </div>
+    <div id="puzzles"></div>
     <% } %>
     <div class="pq-form-element">
       <% if (quest.status === 0) { %>
       <button id="activate" class="pq-button">Activate</button>
       <% } %>
       <button id="reset" class="pq-button">Reset</button>
+      <button id="download" class="pq-button">Download run book</button>
       <button id="edit" class="pq-button">Edit</button>
       <button id="close" class="pq-button">Close</button>
     </div>
