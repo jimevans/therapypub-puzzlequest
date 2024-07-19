@@ -320,3 +320,46 @@ button.pq-modal-footer-button:disabled {
   fill: #ffffff;
   color: #ffffff;
 }
+
+.pq-quest-puzzle {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  row-gap: .5em;
+  margin: 1em 0 1em 0;
+}
+
+.pq-quest-puzzle:nth-of-type(odd) {
+  background-color: #ffffff;
+}
+
+.pq-quest-puzzle:nth-of-type(even) {
+  background-color: #dbeaf4;
+}
+
+.pq-quest-puzzle-link {
+  grid-column-start: 1;
+  grid-column-end: 3;
+  grid-row-start: 1;
+  grid-row-end: 1;
+}
+
+.pq-quest-puzzle-status {
+  grid-column-start: 4;
+  text-align: right;
+  grid-row-start: 1;
+  grid-row-end: 1;
+}
+
+.pq-quest-puzzle-time {
+  font-size: .75em;
+  align-self: center;
+  grid-row-start: 2;
+  grid-row-end: 2;
+}
+
+.pq-quest-puzzle-solution {
+  grid-column-start: 1;
+  grid-column-end: -1;
+  grid-row-start: 3;
+  grid-row-end: 3;
+}

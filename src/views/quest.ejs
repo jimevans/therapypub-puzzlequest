@@ -36,32 +36,41 @@
       </div>
     </nav>
     <p>Puzzles</p>
-    <table>
-      <% const dateFormatter = Intl.DateTimeFormat(undefined, { month: "short", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }); %>
-      <% quest.puzzles.forEach((puzzle) => { %>
-        <% if (puzzle.status > 0) { %>
-        <tr>
-          <td>
-            <a href="/quest/<%=quest.name%>/puzzle/<%=puzzle.name%>"><%= puzzle.displayName %></a>
-          </td>
-          <td>
-            <%= puzzle.statusDescription %>
-          </td>
-          <td>
-            <%= puzzle.startTime ? dateFormatter.format(puzzle.startTime) : "" %>
-          </td>
-          <td>
-            <%= puzzle.activationTime ? dateFormatter.format(puzzle.activationTime) : "" %>
-          </td>
-          <td>
-            <%= puzzle.endTime ? dateFormatter.format(puzzle.endTime) : "" %>
-          </td>
-          <td>
-            <%= puzzle.status >= 3 ? puzzle.solutionDisplayText : "" %>
-          </td>
-        </tr>
+    <% const dateFormatter = Intl.DateTimeFormat(undefined, { month: "short", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }); %>
+    <% quest.puzzles.filter((puzzle) => puzzle.status > 0).forEach((puzzle) => { %>
+    <div class="pq-quest-puzzle">
+      <div class="pq-quest-puzzle-link">
+        <a href="/quest/<%=quest.name%>/puzzle/<%=puzzle.name%>"><%= puzzle.displayName %></a>
+      </div>
+      <div class="pq-quest-puzzle-status">
+        <%= puzzle.statusDescription %>
+      </div>
+      <div class="pq-quest-puzzle-time">
+        <% if (puzzle.startTime) { %>
+        <strong>Start time:</strong><br><%= dateFormatter.format(puzzle.startTime) %>
         <% } %>
-      <% }); %>
-    </table>
+      </div>
+      <div class="pq-quest-puzzle-time">
+        <% if (puzzle.activationTime) { %>
+        <strong>Activation time:</strong><br><%= dateFormatter.format(puzzle.activationTime) %>
+        <% } %>
+      </div>
+      <div class="pq-quest-puzzle-time">
+        <% if (puzzle.endTime) { %>
+        <strong>Solution time:</strong><br><%= dateFormatter.format(puzzle.endTime) %>
+        <% } %>
+      </div>
+      <div class="pq-quest-puzzle-time">
+        <% if (puzzle.endTime) { %>
+        <strong>Elapsed time:</strong><br><%= (puzzle.endTime - puzzle.startTime) / 1000 %>
+        <% } %>
+      </div>
+      <div class="pq-quest-puzzle-solution">
+        <% if (puzzle.status >= 3) {%>
+        <strong>Solution:</strong>&nbsp; <%= puzzle.solutionDisplayText %>
+        <% } %>
+      </div>
+    </div>
+    <% }); %>
   </body>
 </html>
