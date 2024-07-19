@@ -1,4 +1,6 @@
 import { DataGrid } from "./components/grid.js";
+import { Modal } from "./components/modal.js";
+import { TextMessageComposer } from "./components/textMessageComposer.js";
 
 function addGeneratorButtons(gridElement) {
   const buttonCells = [
@@ -81,6 +83,52 @@ document.querySelector("#reset-link")?.addEventListener("click", async (e) => {
       `Error received resetting quest ${resetResponse.message}`
     );
   }
+});
+
+document.querySelector("#notify-link")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  const modal = new Modal(2);
+  const composer = new TextMessageComposer();
+
+  modal.setTitle("Compose Text Message");
+  modal.setBodyContent(composer.getElement());
+  modal.setConfirmButtonText("Send message");
+  modal.setCancelButtonText("Cancel");
+  modal.onCancelButtonClick = (e) => modal.hide();
+  modal.onConfirmButtonClick = async (e) => {
+    e.target.disabled = true;
+    const message = composer.getMessage();
+    const expectedResponse = composer.getExpectedResponse();
+    const responseConfirmation = composer.getResponseConfirmation();
+    if (message.length === 0) {
+      e.target.disabled = false;
+      return;
+    }
+    const messagePayload = {
+      questName: quest.name,
+      message: message
+    }
+    if (expectedResponse) {
+      if (!responseConfirmation) {
+        composer.setError("An expected response requires a response confirmation");
+        return;
+      }
+      messagePayload.expectedResponse = expectedResponse;
+      messagePayload.responseConfirmation = responseConfirmation;
+    }
+    const sendMessageResponse = await callDataApi(
+      "/api/messaging/outgoing/text",
+      "post",
+      messagePayload);
+    if (sendMessageResponse.status === "error") {
+      composer.setError(sendMessageResponse.message);
+      e.target.disabled = false;
+      return;
+    }
+    modal.hide();
+    e.target.disabled = false;
+  };
+  modal.show();
 });
 
 const puzzleGridColumnDefinitions = [

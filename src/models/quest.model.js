@@ -99,6 +99,14 @@ const questSchema = new Schema({
     required: true,
     default: 0,
   },
+  textResponse: {
+    type: String,
+    default: ""
+  },
+  textResponseConfirmation: {
+    type: String,
+    default: ""
+  },
   puzzles: [questPuzzleSchema],
 });
 

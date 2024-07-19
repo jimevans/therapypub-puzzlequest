@@ -286,6 +286,10 @@ button.pq-modal-footer-button {
   margin: 0 .25em 0 .25em;
 }
 
+button.pq-modal-footer-button:disabled {
+  background-color: #777777;
+}
+
 .pq-qr-code {
   height: 250px;
   width: 250px;

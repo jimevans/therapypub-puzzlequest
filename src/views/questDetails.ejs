@@ -38,6 +38,11 @@
             <a id="activate-link" class="pq-menu-link" href="/">Activate</a>
           </li>
           <% } %>
+          <% if (quest.status === 1) { %>
+          <li>
+            <a id="notify-link" class="pq-menu-link" href="/quest/<%=quest.name%>">Notify</a>
+          </li>
+          <% } %>
           <li>
             <a id="reset-link" class="pq-menu-link" href="/">Reset</a>
           </li>

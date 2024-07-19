@@ -627,10 +627,9 @@ export async function getPuzzleHint(questName, puzzleName) {
  * Generates a QR code for activating the specified puzzle.
  * @param {string} questName the quest containing the puzzle
  * @param {string} puzzleName the puzzle for which to generate the activation QR code
- * @param {Stream} stream writable stream to which to write the QR code
  * @returns {object} a response object containing a status, status code, and data
  */
-export async function getPuzzleActivationQrCode(questName, puzzleName, stream) {
+export async function getPuzzleActivationQrCode(questName, puzzleName) {
   const quest = await Quest.findOne({ name: questName });
   if (quest === null) {
     return {
@@ -664,4 +663,78 @@ export async function getPuzzleActivationQrCode(questName, puzzleName, stream) {
       message: err.message
     };
   }
+}
+
+/**
+ * Sets the expected response from an incoming text message and the corresponding confirmation.
+ * @param {string} questName name of the quest for which to set the expected response
+ * @param {string} expectedResponse expected text message response from a quest user
+ * @param {string} responseConfirmation the confirmation to send when the correct response is received
+ * @returns {object} a response object containing a status, status code, and data
+ */
+export async function setExpectedTextResponse(questName, expectedResponse, responseConfirmation) {
+  const quest = await Quest.findOne({ name: questName });
+  if (quest === null) {
+    return {
+      status: "error",
+      statusCode: 404,
+      message: `No quest with quest name ${questName} found`,
+    };
+  }
+  quest.textResponse = expectedResponse;
+  quest.textResponseConfirmation = responseConfirmation;
+  try {
+    await quest.save();
+  } catch (err) {
+    return {
+      status: "error",
+      statusCode: 500,
+      message: err.message
+    };
+  }
+  return { status: "success", statusCode: 200 };
+}
+
+/**
+ * Validates the text response sent by a user, case insensitively.
+ * @param {string} questName the name of the quest to check for the text response
+ * @param {string} textResponse the text response to validate
+ * @returns {object} a response object containing a status, status code, and data
+ */
+export async function validateExpectedTextResponse(questName, textResponse) {
+  const quest = await Quest.findOne({ name: questName });
+  if (quest === null) {
+    return {
+      status: "error",
+      statusCode: 404,
+      message: `No quest with quest name ${questName} found`,
+    };
+  }
+  if (!quest.textResponse) {
+    return {
+      status: "error",
+      statusCode: 418,
+      message: `Quest is not expecting a text response`,
+    };
+  }
+  if (!quest.textResponseConfirmation) {
+    return {
+      status: "error",
+      statusCode: 418,
+      message: `Quest is not expecting a text response`,
+    };
+  }
+  const questTextResponse = quest.textResponse.toLowerCase();
+  const questTextResponseConfirmation = quest.textResponseConfirmation;
+  if (questTextResponse !== textResponse.toLowerCase()) {
+    return {
+      status: "error",
+      statusCode: 400,
+      message: `Expected response does not match`,
+    };
+  }
+  quest.textResponse = "";
+  quest.textResponseConfirmation = "";
+  await quest.save();
+  return { status: "success", statusCode: 200, data: questTextResponseConfirmation };
 }
