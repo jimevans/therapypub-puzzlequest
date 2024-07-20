@@ -326,13 +326,8 @@ button.pq-modal-footer-button:disabled {
   grid-template-columns: 1fr 1fr 1fr 1fr;
   row-gap: .5em;
   margin: 1em 0 1em 0;
-}
-
-.pq-quest-puzzle:nth-of-type(odd) {
-  background-color: #ffffff;
-}
-
-.pq-quest-puzzle:nth-of-type(even) {
+  border: solid #3498db;
+  border-radius: 5px;
   background-color: #dbeaf4;
 }
 
@@ -341,6 +336,7 @@ button.pq-modal-footer-button:disabled {
   grid-column-end: 3;
   grid-row-start: 1;
   grid-row-end: 1;
+  padding: .25em;
 }
 
 .pq-quest-puzzle-status {
@@ -348,6 +344,7 @@ button.pq-modal-footer-button:disabled {
   text-align: right;
   grid-row-start: 1;
   grid-row-end: 1;
+  padding: .25em;
 }
 
 .pq-quest-puzzle-time {
@@ -355,6 +352,7 @@ button.pq-modal-footer-button:disabled {
   align-self: center;
   grid-row-start: 2;
   grid-row-end: 2;
+  padding: .25em;
 }
 
 .pq-quest-puzzle-solution {
@@ -362,4 +360,5 @@ button.pq-modal-footer-button:disabled {
   grid-column-end: -1;
   grid-row-start: 3;
   grid-row-end: 3;
+  padding: .25em;
 }
