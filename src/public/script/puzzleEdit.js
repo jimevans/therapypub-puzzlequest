@@ -158,12 +158,12 @@ document.querySelector("#puzzle-type").addEventListener("change", (e) => {
   renderer.render(parseInt(e.target.value), "", true);
 });
 document.querySelector("#save-link").addEventListener("click", async (e) => {
+  e.preventDefault();
   clearError();
   const puzzleData = getPuzzleData();
   const dataErrors = validateInput(puzzleData, renderMode);
   if (dataErrors.length) {
     showError(dataErrors.join(", "));
-    e.preventDefault();
     return;
   }
 
@@ -188,7 +188,6 @@ document.querySelector("#save-link").addEventListener("click", async (e) => {
       showError(
         `An error occurred uploading the binary data: ${uploadResponse.message}`
       );
-      e.preventDefault();
       return;
     }
     puzzleData.text = uploadResponse.data;
@@ -199,7 +198,7 @@ document.querySelector("#save-link").addEventListener("click", async (e) => {
   const dataReturn = await callDataApi(dataApiUrl, dataApiVerb, puzzleData);
   if (dataReturn.status === "error") {
     showError(dataReturn.message);
-    e.preventDefault();
     return;
   }
+  window.location.href = e.target.href;
 });

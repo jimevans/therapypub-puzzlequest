@@ -607,10 +607,15 @@ export async function renderQuest(req, res) {
     return;
   }
 
+  const inProgressStartTimes = questResponse.data.puzzles
+    .filter(puzzle => puzzle.status > 0 && puzzle.status < 3)
+    .map(puzzle => puzzle.startTime);
+  const currentPuzzleStartTime = inProgressStartTimes.length ? inProgressStartTimes[0] : undefined;
   res.render(viewName, {
     userName: req.user.userName,
     renderMode: req.renderMode,
     quest: questResponse.data,
+    currentPuzzleStartTime
   });
 }
 

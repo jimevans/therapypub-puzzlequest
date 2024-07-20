@@ -36,7 +36,7 @@ export async function index(req, res) {
 }
 
 export function login(req, res) {
-  res.render("login");
+  res.render("login", { requestingUrl: "/" });
 }
 
 export function authenticate(req, res) {
