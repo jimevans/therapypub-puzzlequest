@@ -91,6 +91,7 @@ if (renderMode === "display") {
   });
 } else if (renderMode === "edit") {
   document.querySelector("#save-link").addEventListener("click", async (e) => {
+    e.preventDefault();
     const userData = {
       userName: document.querySelector("#user-name").value,
       displayName: document.querySelector("#display-name").value,
@@ -105,8 +106,7 @@ if (renderMode === "display") {
     const dataErrors = validateInput(userData, renderMode);
     if (dataErrors.length) {
       showError(dataErrors.join(", "));
-      e.preventDefault();
-      return;
+       return;
     }
     const dataReturn = await callDataApi(
       `/api/user/${user.name}`,
@@ -115,12 +115,13 @@ if (renderMode === "display") {
     );
     if (dataReturn.status === "error") {
       showError(dataReturn.message);
-      e.preventDefault();
       return;
     }
+    window.location.href = e.target.href;
   });
 } else if (renderMode === "create") {
   document.querySelector("#save-link").addEventListener("click", async (e) => {
+    e.preventDefault();
     const userData = {
       userName: document.querySelector("#user-name").value,
       displayName: document.querySelector("#display-name").value,
@@ -132,15 +133,14 @@ if (renderMode === "display") {
     const dataErrors = validateInput(userData, renderMode);
     if (dataErrors.length) {
       showError(dataErrors.join(", "));
-      e.preventDefault();
       return;
     }
     const dataReturn = await callDataApi("/api/user/create", "post", userData);
     if (dataReturn.status === "error") {
       showError(dataReturn.message);
-      e.preventDefault();
       return;
     }
+    window.location.href = e.target.href;
   });
 }
 
@@ -149,89 +149,91 @@ document.querySelector("#more-info-link").addEventListener("click", (e) => {
   document.querySelector("#more-info").classList.remove("pq-hide");
 });
 
-const gridColumnDefinitions = [
-  {
-    fieldName: "displayName",
-    title: "Team Name",
-  },
-];
-
-const gridOptions = {
-  allowCreation: renderMode !== "display",
-  allowRowDeleting: renderMode !== "display",
-  allowRowEditing: false,
-  allowRowReordering: false,
-  allowRowSelecting: false,
-};
-
-const teamsGrid = new DataGrid("Teams", gridColumnDefinitions, gridOptions);
-teamsGrid.setAddNewDataLinkText("Join new team");
-teamsGrid.onDeleteDataRequested = async (e) => {
-  e.preventDefault();
-  const itemIndex = e.currentTarget.parentNode.parentNode.rowIndex - 1;
-  const teamName = teamsGrid.getData()[itemIndex].teamName;
-  const leaveResponse = await callDataApi(
-    `/api/team/${teamName}/member/${user.name}`,
-    "delete",
-    {}
-  );
-  if (leaveResponse.status === "error") {
-    showError(leaveResponse.message);
-    return;
-  }
-  teamsGrid.deleteDataRow(itemIndex);
-};
-teamsGrid.onAddDataRequested = async (e) => {
-  e.preventDefault();
-  const lookupGridColumnDefs = [
-    {
-      fieldName: "teamName",
-      title: "Team ID"
-    },
+if (renderMode !== "create") {
+  const gridColumnDefinitions = [
     {
       fieldName: "displayName",
-      title: "Team Name"
-    }
+      title: "Team Name",
+    },
   ];
 
-  const teamLookup = new Lookup("Select Team", lookupGridColumnDefs, false);
-  await teamLookup.render(`/api/team/list`, "data");
-  teamLookup.setConfirmButtonText("Join team");
-  teamLookup.setAdditionalBodyContent(createAdditionalLookupBody());
-  teamLookup.onCancelButtonClick = (e) => {
-    teamLookup.hide();
+  const gridOptions = {
+    allowCreation: renderMode !== "display",
+    allowRowDeleting: renderMode !== "display",
+    allowRowEditing: false,
+    allowRowReordering: false,
+    allowRowSelecting: false,
   };
-  teamLookup.onConfirmButtonClick = async (e) => {
-    teamLookup.hide();
-    const selectedData = teamLookup.getSelectedData();
-    if (!selectedData.length) {
-      showError("No team selected");
-      return;
-    }
-    const teamName = teamLookup.getSelectedData()[0].teamName;
-    const joinCode = teamLookup.getAdditionalBodyElement().querySelector("#join-code").value;
-    if (!joinCode) {
-      showError("No join code entered");
-      return;
-    }
-    const joinResponse = await callDataApi(
+
+  const teamsGrid = new DataGrid("Teams", gridColumnDefinitions, gridOptions);
+  teamsGrid.setAddNewDataLinkText("Join new team");
+  teamsGrid.onDeleteDataRequested = async (e) => {
+    e.preventDefault();
+    const itemIndex = e.currentTarget.parentNode.parentNode.rowIndex - 1;
+    const teamName = teamsGrid.getData()[itemIndex].teamName;
+    const leaveResponse = await callDataApi(
       `/api/team/${teamName}/member/${user.name}`,
-      "put",
-      {
-        joinCode: joinCode
-      }
+      "delete",
+      {}
     );
-    if (joinResponse.status === "error") {
-      showError(joinResponse.message);
+    if (leaveResponse.status === "error") {
+      showError(leaveResponse.message);
       return;
     }
-    teamsGrid.addDataRow({
-      displayName: teamLookup.getSelectedData()[0].displayName
-    });
+    teamsGrid.deleteDataRow(itemIndex);
+  };
+  teamsGrid.onAddDataRequested = async (e) => {
+    e.preventDefault();
+    const lookupGridColumnDefs = [
+      {
+        fieldName: "teamName",
+        title: "Team ID"
+      },
+      {
+        fieldName: "displayName",
+        title: "Team Name"
+      }
+    ];
+
+    const teamLookup = new Lookup("Select Team", lookupGridColumnDefs, false);
+    await teamLookup.render(`/api/team/list`, "data");
+    teamLookup.setConfirmButtonText("Join team");
+    teamLookup.setAdditionalBodyContent(createAdditionalLookupBody());
+    teamLookup.onCancelButtonClick = (e) => {
+      teamLookup.hide();
+    };
+    teamLookup.onConfirmButtonClick = async (e) => {
+      teamLookup.hide();
+      const selectedData = teamLookup.getSelectedData();
+      if (!selectedData.length) {
+        showError("No team selected");
+        return;
+      }
+      const teamName = teamLookup.getSelectedData()[0].teamName;
+      const joinCode = teamLookup.getAdditionalBodyElement().querySelector("#join-code").value;
+      if (!joinCode) {
+        showError("No join code entered");
+        return;
+      }
+      const joinResponse = await callDataApi(
+        `/api/team/${teamName}/member/${user.name}`,
+        "put",
+        {
+          joinCode: joinCode
+        }
+      );
+      if (joinResponse.status === "error") {
+        showError(joinResponse.message);
+        return;
+      }
+      teamsGrid.addDataRow({
+        displayName: teamLookup.getSelectedData()[0].displayName
+      });
+    }
+    teamLookup.show();
+  };
+  if (user) {
+    teamsGrid.render(user.teams);
   }
-  teamLookup.show();
-};
-if (user) {
-  teamsGrid.render(user.teams);
+  document.querySelector("#teams").replaceChildren(teamsGrid.getElement());
 }
-document.querySelector("#teams").replaceChildren(teamsGrid.getElement());
