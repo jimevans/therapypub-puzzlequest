@@ -653,9 +653,8 @@ export async function getPuzzleActivationQrCode(questName, puzzleName) {
   // Should only ever be one puzzle with this name, so get the first one.
   const puzzle = puzzles[0];
   try {
-    // const qrCodeDataUrl = await QRCode.toDataURL(puzzle.activationCode);
-    const qrCodeDataUrl = await QRCode.toBuffer(puzzle.activationCode);
-    return { status: "success", statusCode: 200, data: qrCodeDataUrl };
+    const qrCodeData = await QRCode.toBuffer(puzzle.activationCode);
+    return { status: "success", statusCode: 200, data: qrCodeData };
   } catch (err) {
     return {
       status: "error",

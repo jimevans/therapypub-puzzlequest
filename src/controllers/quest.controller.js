@@ -83,7 +83,7 @@ async function getQuestPuzzle(user, questName, puzzleName) {
   if (filteredPuzzles.length === 0) {
     return {
       status: "error",
-      statusCode: 400,
+      statusCode: 404,
       message: `Invalid puzzle name for ${questName}`,
     };
   }
@@ -570,12 +570,7 @@ export async function requestQuestPuzzleHint(req, res) {
 
 export async function renderQuest(req, res) {
   if (req.user === null) {
-    res.status(401).send(
-      JSON.stringify({
-        status: "error",
-        message: `User must be logged in to retrieve quests`,
-      })
-    );
+    res.render("login", { requestingUrl: req.url });
     return;
   }
 
@@ -588,11 +583,12 @@ export async function renderQuest(req, res) {
 
   if (req.renderMode === RenderMode.CREATE) {
     if (!isUserAdmin) {
-      res.status(403).send(
-        JSON.stringify({
-          status: "error",
-          message: `User ${req.user.userName} not authorized to create new quests`,
-        })
+      res.render(
+        "error",
+        {
+          errorTitle: "Unauthorized",
+          errorDetails: `User ${req.user.userName} not authorized to create new quests`
+        }
       );
       return;
     }
@@ -607,10 +603,7 @@ export async function renderQuest(req, res) {
   );
 
   if (questResponse.status === "error") {
-    res.status(questResponse.statusCode).send({
-      status: "error",
-      message: questResponse.message,
-    });
+    res.render("error", { errorTitle: "Unauthorized", errorDetails: questResponse.message });
     return;
   }
 
@@ -628,12 +621,15 @@ export async function renderQuestPuzzle(req, res) {
     req.params.puzzleName
   );
   if (puzzleResponse.status === "error") {
-    res.status(puzzleResponse.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: puzzleResponse.message,
-      })
-    );
+    if (puzzleResponse.statusCode === 401) {
+      res.render("login", { requestingUrl: req.url });
+    } else if (puzzleResponse.statusCode === 403) {
+      res.render("error", { errorTitle: "Unauthorized", errorDetails: puzzleResponse.message });
+    } else if (puzzleResponse.statusCode === 404) {
+      res.render("error", { errorTitle: "Not found", errorDetails: puzzleResponse.message });
+    } else {
+      res.render("error", { errorTitle: "Unexpected error", errorDetails: puzzleResponse.message });
+    }
     return;
   }
 
@@ -647,11 +643,12 @@ export async function renderQuestPuzzle(req, res) {
     return;
   }
   if (puzzle.status < QuestPuzzleStatus.AWAITING_ACTIVATION) {
-    res.status(400).send(
-      JSON.stringify({
-        status: "error",
-        message: `Puzzle ${puzzleName} requires activation`,
-      })
+    res.render(
+      "error",
+      {
+        errorTitle: "Not found",
+        errorDetails: `Puzzle ${puzzleName} is not part of quest ${req.params.name}`
+      }
     );
     return;
   }
@@ -681,20 +678,16 @@ export async function renderQuestPuzzle(req, res) {
 
 export async function renderPuzzleActivationQRCode(req, res) {
   if (req.user === null) {
-    res.status(401).send(
-      JSON.stringify({
-        status: "error",
-        message: `User must be logged in to generate puzzle activation QR codes`,
-      })
-    );
+    res.render("login", { requestingUrl: req.url.replace(/\/qrcode$/i, "") });
     return;
   }
   if (!AuthenticationService.isUserAdmin(req.user)) {
-    res.status(403).send(
-      JSON.stringify({
-        status: "error",
-        message: `User ${req.user.userName} not authorized to generate puzzle activation QR codes`,
-      })
+    res.render(
+      "error",
+      {
+        errorTitle: "Forbidden",
+        errorDetails: `User ${req.user.userName} not authorized to generate puzzle activation QR codes`
+      }
     );
     return;
   }
@@ -703,12 +696,10 @@ export async function renderPuzzleActivationQRCode(req, res) {
     req.params.puzzleName
   );
   if (qrCodeResponse.status === "error") {
-    res.status(qrCodeResponse.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: qrCodeResponse.message,
-      })
-    );
+    const errorTitle = qrCodeResponse.statusCode === 404 ? "Not found" : "Unexpected error";
+    const errorDetails = qrCodeResponse.message;
+    res.render("error", { errorTitle, errorDetails });
+    return;
   }
   const qrStream = new PassThrough();
   qrStream.end(qrCodeResponse.data);
@@ -722,26 +713,28 @@ export async function renderPuzzleActivationQRCode(req, res) {
 
 export async function renderQuestRunBook(req, res) {
   if (req.user === null) {
-    res.status(401).send(JSON.stringify({
-      status: "error",
-      message: `User must be logged in to retrieve quests`
-    }));
+    res.render("login", { requestingUrl: req.url.replace(/\/pdf$/i, "") });
     return;
   }
 
   const isUserAdmin = AuthenticationService.isUserAdmin(req.user);
+  if (isUserAdmin) {
+    res.render(
+      "error",
+      {
+        errorTitle: "Unauthorized",
+        errorDetails: `User ${req.user.userName} not authorized to generate puzzle activation QR codes`
+      }
+    );
+    return;
+  }
   const questResponse = await getQuestForUser(
     req.params.name,
     req.user.userName,
     isUserAdmin
   );
   if (questResponse.status === "error") {
-    res.status(questResponse.statusCode).send(JSON.stringify(
-      {
-        status: "error",
-        message: questResponse.message
-      })
-    );
+    res.render("error", { errorTitle: "Unauthorized", errorDetails: questResponse.message });
     return;
   }
 

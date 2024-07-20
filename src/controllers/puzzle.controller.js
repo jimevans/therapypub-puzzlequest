@@ -248,20 +248,16 @@ export function uploadBinaryData(req, res) {
 
 export async function renderPuzzle(req, res) {
   if (req.user === null) {
-    res.status(401).send(
-      JSON.stringify({
-        status: "error",
-        message: `User must be logged in to retrieve puzzles`,
-      })
-    );
+    res.render("login", { requestingUrl: req.url });
     return;
   }
   if (!AuthenticationService.isUserAdmin(req.user)) {
-    res.status(403).send(
-      JSON.stringify({
-        status: "error",
-        message: `User ${req.user.userName} not authorized to view puzzles`,
-      })
+    res.render(
+      "error",
+      {
+        errorTitle: "Unauthorized",
+        errorDetails: `User ${req.user.userName} not authorized to view puzzles`
+      }
     );
     return;
   }
@@ -277,10 +273,13 @@ export async function renderPuzzle(req, res) {
     req.params.name
   );
   if (puzzleResponse.status === "error") {
-    res.status(puzzleResponse.statusCode).send(JSON.stringify({
-      status: "error",
-      message: puzzleResponse.message
-    }));
+    res.render(
+      "error",
+      {
+        errorTitle: "Not found",
+        errorDetails: puzzleResponse.message
+      }
+    );
     return;
   }
 

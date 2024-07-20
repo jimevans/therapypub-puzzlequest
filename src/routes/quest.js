@@ -34,7 +34,7 @@ questRouter.get(
 );
 
 questRouter.get(
-  "/:name/puzzle/:puzzleName/qrCode",
+  "/:name/puzzle/:puzzleName/qroode",
   TokenAuthenticator.tokenAuthenticate,
   QuestController.renderPuzzleActivationQRCode
 )

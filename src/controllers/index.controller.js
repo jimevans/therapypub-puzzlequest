@@ -16,9 +16,8 @@ export async function index(req, res) {
   const quests = [];
   const foundQuestsResult = await QuestService.getQuests(req.user.userName, 1);
   if (foundQuestsResult.status === "error") {
-    res.status(foundQuestsResult.statusCode).send(JSON.stringify({
-      "error": foundQuestsResult.message
-    }))
+    res.render("error", { errorTitle: "Unexpected error", errorDetails: foundQuestsResult.message });
+    return;
   }
   const foundQuests = foundQuestsResult.data;
   foundQuests.forEach((quest) => {

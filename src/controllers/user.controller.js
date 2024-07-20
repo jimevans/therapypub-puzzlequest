@@ -241,43 +241,41 @@ export async function renderUser(req, res) {
         user: null,
       });
     } else {
-      res.status(403).send(
-        JSON.stringify({
-          status: "error",
-          message: `User ${req.user.userName} not authorized to create new users`,
-        })
+      res.render(
+        "error",
+        {
+          errorTitle: "Unauthorized",
+          errorDetails: `User ${req.user.userName} not authorized to create new users`,
+        }
       );
     }
     return;
   }
 
   if (!req.user) {
-    res.status(401).send(
-      JSON.stringify({
-        status: "error",
-        message: `User must be logged in to view user`,
-      })
-    );
+    res.render("login", { requestingUrl: req.url });
     return;
   }
 
   if (!isUserAuthorized(req.params.userName, req.user)) {
-    res.status(403).send(
-      JSON.stringify({
-        status: "error",
-        message: `User ${req.params.userName} not authorized to retrieve user ${req.params.userName}`,
-      })
+    res.render(
+      "error",
+      {
+        errorTitle: "Unauthorized",
+        errorDetails: `User ${req.params.userName} not authorized to retrieve user ${req.params.userName}`
+      }
     );
     return;
   }
 
   const userResponse = await UserService.getUserInfo(req.params.userName);
   if (userResponse.status === "error") {
-    res.status(userResponse.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: userResponse.message,
-      })
+    res.render(
+      "error",
+      {
+        errorTitle: "Not found",
+        errorDetails: userResponse.message
+      }
     );
     return;
   }

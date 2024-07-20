@@ -30,7 +30,7 @@ function addGeneratorButtons(gridElement) {
     const puzzleName = row.querySelector("td[data-field-name='name']").innerText;
     const qrGenerationLink = document.createElement("a");
     qrGenerationLink.classList.add("pq-icon-link");
-    qrGenerationLink.href = `/quest/${quest.name}/puzzle/${puzzleName}/qrCode`;
+    qrGenerationLink.href = `/quest/${quest.name}/puzzle/${puzzleName}/qrcode`;
     qrGenerationLink.appendChild(svgElement);
     cell.appendChild(qrGenerationLink);
   });
