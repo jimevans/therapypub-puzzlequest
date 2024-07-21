@@ -321,6 +321,15 @@ button.pq-modal-footer-button:disabled {
   color: #ffffff;
 }
 
+.pq-puzzle-video-content {
+  display: flex;
+  justify-content: center;
+}
+
+.pq-puzzle-video-content video {
+  width: 320px;
+}
+
 .pq-quest {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;

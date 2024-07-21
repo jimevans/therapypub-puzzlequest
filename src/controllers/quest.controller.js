@@ -667,7 +667,7 @@ export async function renderQuestPuzzle(req, res) {
       renderedPuzzle = `<audio src="${puzzle.text}" />`;
       break;
     case PuzzleType.VIDEO:
-      renderedPuzzle = `<video src="${puzzle.text}" />`;
+      renderedPuzzle = `<div class="pq-puzzle-video-content"><video src="${puzzle.text}" type="video/mp4" playsinline controls /></div>`;
       break;
     default:
       renderedPuzzle = await marked.parse(puzzle.text, { gfm: true });
