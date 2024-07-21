@@ -723,7 +723,7 @@ export async function renderQuestRunBook(req, res) {
   }
 
   const isUserAdmin = UserService.isUserAdmin(req.user);
-  if (isUserAdmin) {
+  if (!isUserAdmin) {
     res.render(
       "error",
       {
