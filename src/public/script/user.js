@@ -93,7 +93,6 @@ if (renderMode === "display") {
   document.querySelector("#save-link").addEventListener("click", async (e) => {
     e.preventDefault();
     const userData = {
-      userName: document.querySelector("#user-name").value,
       displayName: document.querySelector("#display-name").value,
       email: document.querySelector("#email").value,
       phone: document.querySelector("#phone").value,
