@@ -605,7 +605,7 @@ export async function getPuzzleHint(questName, puzzleName) {
   const solutionWarning =
     currentPuzzle.nextHintToDisplay >= foundPuzzle.hints.length
       ? false
-      : sortedHints[currentPuzzle.nextHintToDisplay].solutionWarning;
+      : foundPuzzle.hints[currentPuzzle.nextHintToDisplay].solutionWarning;
   try {
     await quest.save();
   } catch (err) {
