@@ -9,16 +9,23 @@ import * as UserService from "../services/user.service.js";
 
 export async function receiveVoiceCall(req, res) {
   const fromNumber = req.body.From.replace(/[^\d]/g, "").substring(1);
+  const voiceResponse = new Twilio.twiml.VoiceResponse();
+  if (!fromNumber) {
+    // If there are no users with the incoming phone number, reject the call.
+    voiceResponse.reject({ reason: "rejected" });
+    res.type("text/xml");
+    res.send(voiceResponse.toString());
+    return;
+  }
+
   const getUserResponse = await UserService.getUsersByPhoneNumber(fromNumber);
   if (getUserResponse.status === "error") {
     // If there are no users with the incoming phone number, reject the call.
-    const rejection = new Twilio.twiml.VoiceResponse();
     voiceResponse.reject({ reason: "rejected" });
     res.type("text/xml");
-    res.send(rejection.toString());
+    res.send(voiceResponse.toString());
     return;
   }
-  const voiceResponse = new Twilio.twiml.VoiceResponse();
   const questNames = []
   for (const user of getUserResponse.data) {
     // Gets all quests for user and any teams the user is a member of.
