@@ -1,4 +1,7 @@
-import { UserModel as User, AuthorizationLevel } from "../models/user.model.js";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import { config } from "../config.js";
+import * as UserService from "./user.service.js";
 
 /**
  * Authenticates a user.
@@ -7,14 +10,11 @@ import { UserModel as User, AuthorizationLevel } from "../models/user.model.js";
  * @returns {object} a response object containing a status, status code, and data
  */
 export async function authenticate(userName, password) {
-  const user = await User.findOne({ userName: userName }).lean();
-  if (user === null) {
-    return {
-      status: "error",
-      statusCode: 404,
-      message: `No user with user name ${userName} found`
-    };
+  const userResponse = await UserService.getUserByUserName(userName);
+  if (userResponse.status === "error") {
+    return userResponse;
   }
+  const user = userResponse.data;
   if (!(await bcrypt.compare(password, user.password))) {
     return {
       status: "error",
@@ -40,20 +40,10 @@ export async function authenticate(userName, password) {
 }
 
 /**
- * Gets a value indicating wither the user is a user with administrative privileges.
- * @param {User} user and object representing a user
- * @returns {boolean} true if the user is an admin user; otherwise, false
+ * Encrypts a password for storage in the data store.
+ * @param {string} plainTextPassword the plain text password
+ * @returns {string} the encrypted password
  */
-export function isUserAdmin(user) {
-  return user && user.authorizationLevel === AuthorizationLevel.ADMIN;
-}
-
-/**
- * Gets a value indicating whether a user name is the currently logged in user.
- * @param {string} userName the user name to check
- * @param {User} currentUser the currently logged in user
- * @returns {boolean} true if the user name is the currently logged in user; otherwise, false
- */
-export function isCurrentUser(userName, currentUser) {
-  return userName === currentUser.userName;
+export async function encryptPassword(plainTextPassword) {
+  return await bcrypt.hash(plainTextPassword, 10);
 }

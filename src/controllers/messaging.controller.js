@@ -2,7 +2,7 @@ import { setTimeout } from 'timers/promises'
 import Twilio from "twilio";
 import { config } from "../config.js";
 import { QuestStatus } from "../models/quest.model.js";
-import * as AuthenticationService from "../services/authentication.service.js";
+import { AuthorizationLevel } from '../models/user.model.js';
 import * as QuestService from "../services/quest.service.js";
 import * as TeamService from "../services/team.service.js";
 import * as UserService from "../services/user.service.js";
@@ -88,7 +88,6 @@ export async function receiveTextMessage(req, res) {
   res.type("text/xml").send(messageResponse.toString());
 }
 
-
 export async function sendTextMessage(req, res) {
   if (req.user === null) {
     res.status(401).send(
@@ -99,7 +98,7 @@ export async function sendTextMessage(req, res) {
     );
     return;
   }
-  if (!AuthenticationService.isUserAdmin(req.user)) {
+  if (!UserService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
         status: "error",

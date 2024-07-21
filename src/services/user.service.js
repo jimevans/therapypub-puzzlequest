@@ -2,11 +2,8 @@ import {
   UserModel as User,
   AuthorizationLevel,
 } from "../models/user.model.js";
+import * as AuthorizationService from "./authentication.service.js";
 import * as TeamService from "./team.service.js";
-
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import { config } from "../config.js";
 
 /**
  * Gets a user by its user name.
@@ -113,7 +110,7 @@ export async function createUser(user) {
     // First user created must be an admin user
     authLevel = AuthorizationLevel.ADMIN;
   }
-  const password = await bcrypt.hash(user.password, 10);
+  const password = await AuthorizationService.encryptPassword(user.password);
   const userData = {
     userName: user.userName.toLowerCase(),
     displayName: user.displayName || user.userName,
@@ -157,7 +154,7 @@ export async function updateUser(name, userData) {
   }
   foundUser.displayName = userData.displayName || foundUser.displayName;
   if (userData.password) {
-    const password = await bcrypt.hash(userData.password, 10);
+    const password = await AuthorizationService.encryptPassword(userData.password);
     foundUser.password = password;
   }
   foundUser.email = userData.email.toLowerCase() || foundUser.email;
@@ -181,49 +178,29 @@ export async function updateUser(name, userData) {
 }
 
 /**
- * Authenticates a user.
- * @param {string} userName the user name to authenticate
- * @param {string} password the encrypted password to use to authenticate the user
- * @returns {object} a response object containing a status, status code, and data
- */
-export async function authenticate(userName, password) {
-  const user = await User.findOne({ userName: userName }).lean();
-  if (user === null) {
-    return {
-      status: "error",
-      statusCode: 404,
-      message: `No user with user name ${userName} found`
-    };
-  }
-  if (!(await bcrypt.compare(password, user.password))) {
-    return {
-      status: "error",
-      statusCode: 401,
-      message: `Password for user ${userName} does not match`
-    };
-  }
-  const token = jwt.sign(
-    {
-      userName: user.userName.toLowerCase(),
-      displayName: user.displayName,
-      email: user.email,
-      phone: user.phone,
-      sms: user.sms,
-      authorizationLevel: user.authorizationLevel,
-    },
-    config.PQ_SECRET_KEY,
-    {
-      expiresIn: "12h",
-    }
-  );
-  return { status: "success", statusCode: 200, data: token };
-}
-
-/**
  * Gets a list of all of the user definitions.
  * @returns {object} a response object containing a status, status code, and data
  */
 export async function listUsers() {
   const users = await User.find({});
   return { status: "success", statusCode: 200, data: users };
+}
+
+/**
+ * Gets a value indicating wither the user is a user with administrative privileges.
+ * @param {User} user and object representing a user
+ * @returns {boolean} true if the user is an admin user; otherwise, false
+ */
+export function isUserAdmin(user) {
+  return user && user.authorizationLevel === AuthorizationLevel.ADMIN;
+}
+
+/**
+ * Gets a value indicating whether a user name is the currently logged in user.
+ * @param {string} userName the user name to check
+ * @param {User} currentUser the currently logged in user
+ * @returns {boolean} true if the user name is the currently logged in user; otherwise, false
+ */
+export function isCurrentUser(userName, currentUser) {
+  return userName === currentUser.userName;
 }

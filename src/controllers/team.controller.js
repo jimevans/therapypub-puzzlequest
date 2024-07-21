@@ -1,11 +1,11 @@
-import * as AuthenticationService from "../services/authentication.service.js";
 import * as TeamService from "../services/team.service.js";
+import * as UserService from "../services/user.service.js";
 
 function isUserAuthorized(userNameToBeModified, user) {
   return (
     user &&
-    (AuthenticationService.isCurrentUser(userNameToBeModified, user) ||
-      AuthenticationService.isUserAdmin(user))
+    (UserService.isCurrentUser(userNameToBeModified, user) ||
+      UserService.isUserAdmin(user))
   );
 }
 
@@ -19,7 +19,7 @@ export async function createTeam(req, res) {
     );
     return;
   }
-  if (!AuthenticationService.isUserAdmin(req.user)) {
+  if (!UserService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -69,16 +69,16 @@ export async function updateTeam(req, res) {
     res.status(401).send(
       JSON.stringify({
         status: "error",
-        message: `User must be logged in to create teams`,
+        message: `User must be logged in to update teams`,
       })
     );
     return;
   }
-  if (!AuthenticationService.isUserAdmin(req.user)) {
+  if (!UserService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
-        message: `User ${req.user.userName} not authorized to create teams`,
+        message: `User ${req.user.userName} not authorized to update teams`,
       })
     );
     return;
@@ -117,7 +117,7 @@ export async function deleteTeam(req, res) {
     );
     return;
   }
-  if (!AuthenticationService.isUserAdmin(req.user)) {
+  if (!UserService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
         status: "error",

@@ -1,18 +1,21 @@
 import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
-import * as AuthorizationService from "../services/authentication.service.js";
+import * as UserService from "../services/user.service.js";
 import * as QuestService from "../services/quest.service.js";
 
 export async function index(req, res) {
+  // Case 1: No user logged in.
   if (req.user === null) {
     res.render("index");
     return;
   }
 
-  if (AuthorizationService.isUserAdmin(req.user)) {
+  // Case 2: Logged in user is an admin.
+  if (UserService.isUserAdmin(req.user)) {
     res.render("adminHome", { user: req.user });
     return;
   }
 
+  // Case 3: Logged in user is a valid end user.
   const quests = [];
   const foundQuestsResult = await QuestService.getQuests(req.user.userName, 1);
   if (foundQuestsResult.status === "error") {
@@ -40,6 +43,8 @@ export function login(req, res) {
 }
 
 export function authenticate(req, res) {
+  // Authentication happens in the middleware layer for JWT verification,
+  // so all we need to do is redirect back to the root.
   res.redirect("/");
 }
 

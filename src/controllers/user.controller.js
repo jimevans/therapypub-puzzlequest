@@ -28,7 +28,7 @@ export async function login(req, res) {
       }));
     return;
   }
-  const response = await UserService.authenticate(
+  const response = await AuthenticationService.authenticate(
     req.body.userName.toLowerCase(),
     req.body.password
   );
@@ -47,8 +47,8 @@ export async function login(req, res) {
 function isUserAuthorized(userNameToBeModified, user) {
   return (
     user &&
-    (AuthenticationService.isCurrentUser(userNameToBeModified, user) ||
-      AuthenticationService.isUserAdmin(user))
+    (UserService.isCurrentUser(userNameToBeModified, user) ||
+      UserService.isUserAdmin(user))
   );
 }
 
@@ -216,7 +216,7 @@ export async function listUsers(req, res) {
     return;
   }
 
-  if (!AuthenticationService.isUserAdmin(req.user)) {
+  if (!UserService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -233,7 +233,7 @@ export async function renderUser(req, res) {
   if (req.renderMode && req.renderMode === RenderMode.CREATE) {
     if (
       req.user == null ||
-      (req.user && AuthenticationService.isUserAdmin(req.user))
+      (req.user && UserService.isUserAdmin(req.user))
     ) {
       res.render("user", {
         renderMode: req.renderMode,

@@ -6,8 +6,8 @@ import { RenderMode } from "../middleware/useRenderMode.js";
 import { PuzzleType } from "../models/puzzle.model.js";
 import { QuestPuzzleStatus } from "../models/quest.model.js";
 import PDFDocument from "pdfkit";
-import * as AuthenticationService from "../services/authentication.service.js";
 import * as QuestService from "../services/quest.service.js";
+import * as UserService from "../services/user.service.js";
 
 async function getQuestForUser(questName, userName, isUserAdmin) {
   if (isUserAdmin) {
@@ -62,7 +62,7 @@ async function getQuestPuzzle(user, questName, puzzleName) {
     };
   }
 
-  const isUserAdmin = AuthenticationService.isUserAdmin(user);
+  const isUserAdmin = UserService.isUserAdmin(user);
   const questResponse = await getQuestForUser(
     questName,
     user.userName,
@@ -102,7 +102,7 @@ export async function createQuest(req, res) {
     );
     return;
   }
-  if (!AuthenticationService.isUserAdmin(req.user)) {
+  if (!UserService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -163,7 +163,7 @@ export async function retrieveQuest(req, res) {
     return;
   }
 
-  const isUserAdmin = AuthenticationService.isUserAdmin(req.user);
+  const isUserAdmin = UserService.isUserAdmin(req.user);
   const questResponse = await getQuestForUser(
     req.params.name,
     req.user.userName,
@@ -190,7 +190,7 @@ export async function updateQuest(req, res) {
     );
     return;
   }
-  if (!AuthenticationService.isUserAdmin(req.user)) {
+  if (!UserService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -232,7 +232,7 @@ export async function deleteQuest(req, res) {
     );
     return;
   }
-  if (!AuthenticationService.isUserAdmin(req.user)) {
+  if (!UserService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -273,7 +273,7 @@ export async function listQuests(req, res) {
     );
     return;
   }
-  if (!AuthenticationService.isUserAdmin(req.user)) {
+  if (!UserService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -305,7 +305,7 @@ export async function activateQuest(req, res) {
     );
     return;
   }
-  if (!AuthenticationService.isUserAdmin(req.user)) {
+  if (!UserService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -338,7 +338,7 @@ export async function resetQuest(req, res) {
     );
     return;
   }
-  if (!AuthenticationService.isUserAdmin(req.user)) {
+  if (!UserService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -371,7 +371,7 @@ export async function generatePuzzleActivationQRCode(req, res) {
     );
     return;
   }
-  if (!AuthenticationService.isUserAdmin(req.user)) {
+  if (!UserService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -574,7 +574,7 @@ export async function renderQuest(req, res) {
     return;
   }
 
-  const isUserAdmin = AuthenticationService.isUserAdmin(req.user);
+  const isUserAdmin = UserService.isUserAdmin(req.user);
   const viewName = isUserAdmin
     ? req.renderMode === RenderMode.DISPLAY
       ? "questDetails"
@@ -686,7 +686,7 @@ export async function renderPuzzleActivationQRCode(req, res) {
     res.render("login", { requestingUrl: req.url.replace(/\/qrcode$/i, "") });
     return;
   }
-  if (!AuthenticationService.isUserAdmin(req.user)) {
+  if (!UserService.isUserAdmin(req.user)) {
     res.render(
       "error",
       {
@@ -722,13 +722,13 @@ export async function renderQuestRunBook(req, res) {
     return;
   }
 
-  const isUserAdmin = AuthenticationService.isUserAdmin(req.user);
+  const isUserAdmin = UserService.isUserAdmin(req.user);
   if (isUserAdmin) {
     res.render(
       "error",
       {
         errorTitle: "Unauthorized",
-        errorDetails: `User ${req.user.userName} not authorized to generate puzzle activation QR codes`
+        errorDetails: `User ${req.user.userName} not authorized to generate quest PDFs`
       }
     );
     return;

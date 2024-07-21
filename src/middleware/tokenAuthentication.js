@@ -39,6 +39,7 @@ export async function tokenAuthenticate(req, res, next) {
         userName: decoded.userName,
         displayName: decoded.displayName,
         email: decoded.email,
+        phone: decoded.phone,
         sms: decoded.sms,
         authorizationLevel: decoded.authorizationLevel,
       };

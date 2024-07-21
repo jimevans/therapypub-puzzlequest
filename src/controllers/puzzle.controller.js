@@ -1,6 +1,6 @@
 import { RenderMode } from "../middleware/useRenderMode.js";
-import * as AuthenticationService from "../services/authentication.service.js";
 import * as PuzzleService from "../services/puzzle.service.js";
+import * as UserService from "../services/user.service.js";
 
 export async function createPuzzle(req, res) {
   if (req.user === null) {
@@ -12,7 +12,7 @@ export async function createPuzzle(req, res) {
     );
     return;
   }
-  if (!AuthenticationService.isUserAdmin(req.user)) {
+  if (!UserService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -79,7 +79,7 @@ export async function retrievePuzzle(req, res) {
     );
     return;
   }
-  if (!AuthenticationService.isUserAdmin(req.user)) {
+  if (!UserService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -113,7 +113,7 @@ export async function updatePuzzle(req, res) {
     );
     return;
   }
-  if (!AuthenticationService.isUserAdmin(req.user)) {
+  if (!UserService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -151,7 +151,7 @@ export async function deletePuzzle(req, res) {
     );
     return;
   }
-  if (!AuthenticationService.isUserAdmin(req.user)) {
+  if (!UserService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -161,13 +161,6 @@ export async function deletePuzzle(req, res) {
     return;
   }
 
-  if (!req.body) {
-    res.status(400).send(JSON.stringify({
-      status: "error",
-      message: "No request body"
-    }));
-    return;
-  }
   const response = await PuzzleService.deletePuzzle(req.params.name);
   if (response.status === "error") {
     res.status(response.statusCode).send(JSON.stringify({
@@ -189,7 +182,7 @@ export async function listPuzzles(req, res) {
     );
     return;
   }
-  if (!AuthenticationService.isUserAdmin(req.user)) {
+  if (!UserService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -212,7 +205,7 @@ export function uploadBinaryData(req, res) {
     );
     return;
   }
-  if (!AuthenticationService.isUserAdmin(req.user)) {
+  if (!UserService.isUserAdmin(req.user)) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -251,7 +244,7 @@ export async function renderPuzzle(req, res) {
     res.render("login", { requestingUrl: req.url });
     return;
   }
-  if (!AuthenticationService.isUserAdmin(req.user)) {
+  if (!UserService.isUserAdmin(req.user)) {
     res.render(
       "error",
       {
