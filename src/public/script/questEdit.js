@@ -204,6 +204,7 @@ function validateInput(questData) {
 }
 
 document.querySelector("#save-link").addEventListener("click", async (e) => {
+  e.preventDefault();
   clearError();
   const questData = getQuestData();
   const dataErrors = validateInput(questData, renderMode);
@@ -220,8 +221,8 @@ document.querySelector("#save-link").addEventListener("click", async (e) => {
 
   const dataReturn = await callDataApi(dataApiUrl, dataApiVerb, questData);
   if (dataReturn.status === "error") {
-    e.preventDefault();
     showError(dataReturn.message);
     return;
   }
+  window.location.href = e.target.href;
 });
