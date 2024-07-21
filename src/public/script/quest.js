@@ -9,12 +9,15 @@ function calculateElapsed(startTime) {
   return `${numberFormatter.format(hours)}:${numberFormatter.format(minutes)}:${numberFormatter.format(seconds)}`;
 }
 
-function updateTime(startTime) {
-  const currentTime = document.querySelector("#current");
-  if (startTime && currentTime) {
-    currentTime.innerText = calculateElapsed(startTime);
-    setTimeout(updateTime, 1000, startTime);
+function updateTime(startTime, currentTimeElement) {
+  if (startTime && currentTimeElement) {
+    currentTimeElement.innerText = calculateElapsed(startTime);
+    setTimeout(updateTime, 1000, startTime, currentTimeElement);
   }
 }
 
-updateTime(currentPuzzleStartTime);
+const currentTimeElement = document.querySelector("[data-puzzle-start]");
+if (currentTimeElement) {
+  const startTime = Date.parse(currentTimeElement.getAttribute("data-puzzle-start"));
+  updateTime(startTime, currentTimeElement);
+}

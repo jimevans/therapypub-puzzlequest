@@ -35,37 +35,44 @@
     <p>
       Quests
     </p>
-    <div id="quests">
-      <% if (quests && quests.length) { %>
-        <table>
-          <thead>
-            <tr>
-              <th>Quest Name</th>
-              <th>Quest Status</th>
-              <th>Quest Start</th>
-              <th>Quest End</th>
-            </tr>
-          </thead>
-          <tbody>
-          <% for (let i = 0; i < quests.length; i++) { %>
-            <tr>
-              <td>
-                <% if (quests[i].status >= 1) { %>
-                <a href="/quest/<%=quests[i].name%>"><%= quests[i].displayName %></a>
-                <% } else { %>
-                  <%= quests[i].displayName %>
-                <% } %>
-              </td>
-              <td><%= quests[i].statusDescription %></td>
-              <td><%= quests[i].startTime %></td>
-              <td><%= quests[i].endTime %></td>
-            </tr>
+    <% if (quests && quests.length) { %>
+      <% const dateFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }); %>
+      <% const numberFormatter = new Intl.NumberFormat("en", {minimumIntegerDigits: 2}); %>
+      <% quests.filter((quest) => quest.status > 0).forEach((quest) => { %>
+      <div class="pq-quest">
+        <div class="pq-quest-link">
+          <a href="/quest/<%=quest.name%>"><%= quest.displayName %></a>
+        </div>
+        <div class="pq-quest-status">
+          <%= quest.statusDescription %>
+        </div>
+        <div class="pq-quest-time">
+          <strong>Start time:</strong><br>
+          <%= quest.startTime ? dateFormatter.format(quest.startTime) : "-" %>
+        </div>
+        <div class="pq-quest-time">
+          <strong>End time:</strong><br>
+          <%= quest.endTime ? dateFormatter.format(quest.endTime) : "-" %>
+        </div>
+        <div class="pq-quest-time">
+          <strong>Elapsed time:</strong><br>
+          <% const elapsedSeconds = quest.endTime ? Math.trunc((quest.endTime - quest.startTime) / 1000) : Math.trunc((Date.now() - quest.startTime) / 1000); %>
+          <% const hours = numberFormatter.format(Math.trunc(elapsedSeconds / 3600)); %>
+          <% const minutes = numberFormatter.format(Math.trunc((elapsedSeconds % 3600) / 60)); %>
+          <% const seconds = numberFormatter.format(Math.trunc((elapsedSeconds % 3600) % 60)); %>
+          <% if (quest.status > 0 && quest.status < 2) { %>
+          <span data-quest-id="<%=quest.name%>" data-quest-start=<%-JSON.stringify(quest.startTime)%>>
           <% } %>
-          </tbody>
-        </table>
-      <% } else { %>
-        <div>You have no quests.</div>
-      <% } %>
-    </div>
+          <%= hours + ":" + minutes + ":" + seconds %>
+          <% if (quest.status > 0 && quest.status < 2) { %>
+          </span>
+          <% } %>
+        </div>
+      </div>
+      <% }); %>
+    <% } else { %>
+      There are no quests to display for you.
+    <% } %>
+   <script type="text/javascript" src="/script/home.js"></script>
   </body>
 </html>

@@ -35,7 +35,6 @@
         </ul>
       </div>
     </nav>
-    <p>Puzzles</p>
     <% const dateFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }); %>
     <% const numberFormatter = new Intl.NumberFormat("en", {minimumIntegerDigits: 2}); %>
     <% quest.puzzles.filter((puzzle) => puzzle.status > 0).forEach((puzzle) => { %>
@@ -65,7 +64,7 @@
         <% const minutes = numberFormatter.format(Math.trunc((elapsedSeconds % 3600) / 60)); %>
         <% const seconds = numberFormatter.format(Math.trunc((elapsedSeconds % 3600) % 60)); %>
         <% if (puzzle.status > 0 && puzzle.status < 3) { %>
-        <span id="current">
+        <span data-puzzle-start=<%- JSON.stringify(currentPuzzleStartTime) %>>
         <% } %>
         <%= hours + ":" + minutes + ":" + seconds %>
         <% if (puzzle.status > 0 && puzzle.status < 3) { %>
@@ -79,9 +78,6 @@
       </div>
     </div>
     <% }); %>
-    <script type="text/javascript">
-      const currentPuzzleStartTime = Date.parse(<%- JSON.stringify(currentPuzzleStartTime) %>);
-    </script>
     <script type="text/javascript" src="/script/quest.js"></script>
   </body>
 </html>

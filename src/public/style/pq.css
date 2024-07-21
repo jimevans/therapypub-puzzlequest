@@ -321,6 +321,41 @@ button.pq-modal-footer-button:disabled {
   color: #ffffff;
 }
 
+.pq-quest {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  row-gap: .5em;
+  margin: 1em 0 1em 0;
+  border: solid #3498db;
+  border-radius: 5px;
+  background-color: #dbeaf4;
+}
+
+.pq-quest-link {
+  grid-column-start: 1;
+  grid-column-end: 3;
+  grid-row-start: 1;
+  grid-row-end: 1;
+  display: flex;
+  padding: .25em;
+}
+
+.pq-quest-status {
+  grid-column-start: 3;
+  text-align: right;
+  grid-row-start: 1;
+  grid-row-end: 1;
+  padding: .25em;
+}
+
+.pq-quest-time {
+  font-size: .75em;
+  align-self: start;
+  grid-row-start: 2;
+  grid-row-end: 2;
+  padding: .25em;
+}
+
 .pq-quest-puzzle {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr 1fr;
@@ -333,9 +368,10 @@ button.pq-modal-footer-button:disabled {
 
 .pq-quest-puzzle-link {
   grid-column-start: 1;
-  grid-column-end: 3;
+  grid-column-end: 4;
   grid-row-start: 1;
   grid-row-end: 1;
+  display: flex;
   padding: .25em;
 }
 
@@ -349,7 +385,7 @@ button.pq-modal-footer-button:disabled {
 
 .pq-quest-puzzle-time {
   font-size: .75em;
-  align-self: center;
+  align-self: start;
   grid-row-start: 2;
   grid-row-end: 2;
   padding: .25em;
@@ -360,5 +396,6 @@ button.pq-modal-footer-button:disabled {
   grid-column-end: -1;
   grid-row-start: 3;
   grid-row-end: 3;
+  display: flex;
   padding: .25em;
 }
