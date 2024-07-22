@@ -32,6 +32,7 @@ function startCamera() {
       canvas.width = Math.min(boundingRect.width, settings.width);
       canvas.height = Math.min(window.innerHeight - boundingRect.bottom, settings.height);
       videoElement.play();
+      document.querySelector("#scan-code-button").classList.remove("pq-hide");
     };
   });
 }
@@ -42,6 +43,7 @@ function stopCamera() {
     videoElement.srcObject.getTracks().forEach((track) => track.stop());
     videoElement.srcObject = null;
   }
+  document.querySelector("#scan-code-button").classList.add("pq-hide");
 }
 
 async function sendActivationData(formData) {
