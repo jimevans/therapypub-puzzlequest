@@ -9,33 +9,44 @@
     <link rel="icon" type="image/png" href="/image/pq-logo-192.png" sizes="192x192" />
   </head>
   <body>
-    <nav class="pq-navigation-header">
-      <input id="nav-checkbox" type="checkbox" class="pq-nav-checkbox"/>
-      <ul class="pq-navigation-title">
-        <li><%= puzzle.displayName %></li>
-      </ul>
-      <label for="nav-checkbox">
-        <div class="pq-nav-menu">
-          <svg viewBox="0 0 512 512">
-            <use xlink:href="/image/menu-burger.svg#menu" href="/image/menu-burger.svg#menu"></use>
-          </svg>
-        </div>
-      </label>
-      <div class="pq-menu">
-        <ul>
-          <li>
-            <a href="/quest/<%=quest%>" class="pq-menu-link">Return to quest</a>
-          </li>
-          <li>
-            <a href="/" class="pq-menu-link">Return to dashboard</a>
-          </li>
-          <li>
-            <a href="/user/<%=userName%>" class="pq-menu-link">View user profile</a>
-          </li>
-          <li>
-            <a href="/logout" class="pq-menu-link">Sign out</a>
-          </li>
+    <nav class="pq-navigation">
+      <div class="pq-navigation-header">
+        <input id="nav-checkbox" type="checkbox" class="pq-nav-checkbox"/>
+        <label for="nav-checkbox">
+          <div class="pq-nav-icon-button">
+            <svg viewBox="0 0 512 512">
+              <use xlink:href="/image/menu-burger.svg#menu" href="/image/menu-burger.svg#menu"></use>
+            </svg>
+          </div>
+        </label>
+        <ul class="pq-navigation-title">
+          <li><%= puzzle.displayName %></li>
         </ul>
+        <div class="pq-menu">
+          <ul>
+            <li>
+              <a href="/quest/<%=quest%>" class="pq-menu-link">Return to quest</a>
+            </li>
+            <li>
+              <a href="/" class="pq-menu-link">Return to dashboard</a>
+            </li>
+            <li>
+              <a href="/user/<%=userName%>" class="pq-menu-link">View user profile</a>
+            </li>
+            <li>
+              <a href="/logout" class="pq-menu-link">Sign out</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="pq-nav-button-bar">
+        <a href="/quest/<%=quest%>">
+          <div class="pq-nav-icon-button">
+            <svg viewBox="0 0 512 512">
+              <use xlink:href="/image/arrow-left.svg#arrow-left" href="/image/arrow-left.svg#arrow-left"></use>
+            </svg>
+          </div>
+        </a>
       </div>
     </nav>
     <div id="puzzle-content">

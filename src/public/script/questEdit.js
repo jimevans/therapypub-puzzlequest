@@ -203,14 +203,13 @@ function validateInput(questData) {
   return dataErrors;
 }
 
-document.querySelector("#save-link").addEventListener("click", async (e) => {
-  e.preventDefault();
+async function saveQuest() {
   clearError();
   const questData = getQuestData();
   const dataErrors = validateInput(questData, renderMode);
   if (dataErrors.length) {
     showError(dataErrors.join(", "));
-    return;
+    return false;
   }
 
   const dataApiVerb = renderMode === "edit" ? "put" : "post";
@@ -222,7 +221,22 @@ document.querySelector("#save-link").addEventListener("click", async (e) => {
   const dataReturn = await callDataApi(dataApiUrl, dataApiVerb, questData);
   if (dataReturn.status === "error") {
     showError(dataReturn.message);
-    return;
+    return false;
   }
-  window.location.href = e.target.href;
+  return true;
+}
+
+document.querySelector("#save-button").addEventListener("click", async (e) => {
+  const returnUrl = e.currentTarget.href;
+  e.preventDefault();
+  if (await saveQuest()) {
+    window.location.href = returnUrl;
+  }
+});
+
+document.querySelector("#save-link").addEventListener("click", async (e) => {
+  e.preventDefault();
+  if (await saveQuest()) {
+    window.location.href = e.target.href;
+  }
 });

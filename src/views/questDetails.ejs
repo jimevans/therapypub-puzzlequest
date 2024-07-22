@@ -19,46 +19,64 @@
     />
   </head>
   <body>
-    <nav class="pq-navigation-header">
-      <input id="nav-checkbox" type="checkbox" class="pq-nav-checkbox"/>
-      <ul class="pq-navigation-title">
-        <li>Quest Details</li>
-      </ul>
-      <label for="nav-checkbox">
-        <div class="pq-nav-menu">
-          <svg viewBox="0 0 512 512">
-            <use xlink:href="/image/menu-burger.svg#menu" href="/image/menu-burger.svg#menu"></use>
-          </svg>
-        </div>
-      </label>
-      <div class="pq-menu">
-        <ul>
-          <% if (quest.status === 0) { %>
-          <li>
-            <a id="activate-link" class="pq-menu-link" href="/">Activate</a>
-          </li>
-          <% } %>
-          <% if (quest.status === 1) { %>
-          <li>
-            <a id="notify-link" class="pq-menu-link" href="/quest/<%=quest.name%>">Notify</a>
-          </li>
-          <% } %>
-          <li>
-            <a id="reset-link" class="pq-menu-link" href="/">Reset</a>
-          </li>
-          <li>
-            <a id="download-link" class="pq-menu-link" href="/quest/<%=quest.name%>/pdf">Download run book</a>
-          </li>
-          <li>
-            <a id="edit-link" class="pq-menu-link" href="/quest/<%=quest.name%>/edit">Edit</a>
-          </li>
-          <li>
-            <a id="close-link" class="pq-menu-link" href="/">Close</a>
-          </li>
-          <li>
-            <a class="pq-menu-link" href="/logout">Logout</a>
-          </li>
+    <nav class="pq-navigation">
+      <div class="pq-navigation-header">
+        <input id="nav-checkbox" type="checkbox" class="pq-nav-checkbox"/>
+        <label for="nav-checkbox">
+          <div class="pq-nav-icon-button">
+            <svg viewBox="0 0 512 512">
+              <use xlink:href="/image/menu-burger.svg#menu" href="/image/menu-burger.svg#menu"></use>
+            </svg>
+          </div>
+        </label>
+        <ul class="pq-navigation-title">
+          <li>Quest Details</li>
         </ul>
+        <div class="pq-menu">
+          <ul>
+            <% if (quest.status === 0) { %>
+            <li>
+              <a id="activate-link" class="pq-menu-link" href="/">Activate</a>
+            </li>
+            <% } %>
+            <% if (quest.status === 1) { %>
+            <li>
+              <a id="notify-link" class="pq-menu-link" href="/quest/<%=quest.name%>">Notify</a>
+            </li>
+            <% } %>
+            <li>
+              <a id="reset-link" class="pq-menu-link" href="/">Reset</a>
+            </li>
+            <li>
+              <a id="download-link" class="pq-menu-link" href="/quest/<%=quest.name%>/pdf">Download run book</a>
+            </li>
+            <li>
+              <a id="edit-link" class="pq-menu-link" href="/quest/<%=quest.name%>/edit">Edit</a>
+            </li>
+            <li>
+              <a id="close-link" class="pq-menu-link" href="/">Close</a>
+            </li>
+            <li>
+              <a class="pq-menu-link" href="/logout">Logout</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="pq-nav-button-bar">
+        <a href="/quest/<%=quest.name%>/edit">
+          <div class="pq-nav-icon-button">
+            <svg viewBox="0 0 512 512">
+              <use xlink:href="/image/edit.svg#edit" href="/image/edit.svg#edit"></use>
+            </svg>
+          </div>
+        </a>
+        <a href="/">
+          <div class="pq-nav-icon-button">
+            <svg viewBox="0 0 512 512">
+              <use xlink:href="/image/arrow-left.svg#arrow-left" href="/image/arrow-left.svg#arrow-left"></use>
+            </svg>
+          </div>
+        </a>
       </div>
     </nav>
     <div class="pq-form-element">

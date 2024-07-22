@@ -9,39 +9,70 @@
     <link rel="icon" type="image/png" href="/image/pq-logo-192.png" sizes="192x192" />
   </head>
   <body>
-    <nav class="pq-navigation-header">
-      <input id="nav-checkbox" type="checkbox" class="pq-nav-checkbox"/>
-      <ul class="pq-navigation-title">
-        <li><%= renderMode !== "create" ? "User details" : "Sign up" %></li>
-      </ul>
-      <label for="nav-checkbox">
-        <div class="pq-nav-menu">
-          <svg viewBox="0 0 512 512">
-            <use xlink:href="/image/menu-burger.svg#menu" href="/image/menu-burger.svg#menu"></use>
-          </svg>
-        </div>
-      </label>
-      <div class="pq-menu">
-        <ul>
-          <% if (renderMode !== "display") { %>
-          <li>
-            <a id="save-link" class="pq-menu-link" href="/">Save</a>
-          </li>
-          <% } %>
-          <% if (renderMode === "display") { %>
-          <li>
-            <a id="edit-link" class="pq-menu-link" href="/user/<%=user.userName%>/edit">Edit</a>
-          </li>
-          <% } %>
-          <li>
-            <a id="cancel-link" class="pq-menu-link" href="/"><%= renderMode !== "display" ? "Cancel" : "Close" %></a>
-          </li>
-          <% if (renderMode !== "create") { %>
-          <li>
-            <a class="pq-menu-link" href="/logout">Logout</a>
-          </li>
-          <% } %>
+    <nav class="pq-navigation">
+      <div class="pq-navigation-header">
+        <input id="nav-checkbox" type="checkbox" class="pq-nav-checkbox"/>
+        <label for="nav-checkbox">
+          <div class="pq-nav-icon-button">
+            <svg viewBox="0 0 512 512">
+              <use xlink:href="/image/menu-burger.svg#menu" href="/image/menu-burger.svg#menu"></use>
+            </svg>
+          </div>
+        </label>
+        <ul class="pq-navigation-title">
+          <li><%= renderMode !== "create" ? "User details" : "Sign up" %></li>
         </ul>
+        <div class="pq-menu">
+          <ul>
+            <% if (renderMode !== "display") { %>
+            <li>
+              <a id="save-link" class="pq-menu-link" href="/">Save</a>
+            </li>
+            <% } %>
+            <% if (renderMode === "display") { %>
+            <li>
+              <a id="edit-link" class="pq-menu-link" href="/user/<%=user.userName%>/edit">Edit</a>
+            </li>
+            <% } %>
+            <li>
+              <a id="cancel-link" class="pq-menu-link" href="/"><%= renderMode !== "display" ? "Cancel" : "Close" %></a>
+            </li>
+            <% if (renderMode !== "create") { %>
+            <li>
+              <a class="pq-menu-link" href="/logout">Logout</a>
+            </li>
+            <% } %>
+          </ul>
+        </div>
+      </div>
+      <div class="pq-nav-button-bar">
+        <% if (renderMode === "display") { %>
+        <a href="/user/<%=user.userName%>/edit">
+          <div class="pq-nav-icon-button">
+            <svg viewBox="0 0 512 512">
+              <use xlink:href="/image/edit.svg#edit" href="/image/edit.svg#edit"></use>
+            </svg>
+          </div>
+        </a>
+        <% } else { %>
+        <a id="save-button" href="/<%= renderMode === "edit" ? "user/" + user.userName : "" %>">
+          <div class="pq-nav-icon-button">
+            <svg viewBox="0 0 512 512">
+              <use xlink:href="/image/save.svg#save" href="/image/save.svg#save"></use>
+            </svg>
+          </div>
+        </a>
+        <% } %>
+        <a href="/">
+          <div class="pq-nav-icon-button">
+            <svg viewBox="0 0 512 512">
+              <use
+                xlink:href=<%= renderMode === "display" ? "/image/arrow-left.svg#arrow-left" : "/image/cancel.svg#cancel" %>
+                href=<%= renderMode === "display" ? "/image/arrow-left.svg#arrow-left" : "/image/cancel.svg#cancel" %>>
+              </use>
+            </svg>
+          </div>
+        </a>
       </div>
     </nav>
     <div class="pq-form-element">
@@ -151,6 +182,9 @@
       <span id="error-message"></span>
     </div>
     <% } %>
+    <div class="pq-error pq-hide">
+      <span></span>
+    </div>
     <script type="text/javascript">
       const renderMode = "<%=renderMode%>";
       const user = <%- JSON.stringify(user ? { "name" : user.userName, "teams": user.teams } : null) %>;

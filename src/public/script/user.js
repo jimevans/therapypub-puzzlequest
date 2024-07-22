@@ -85,61 +85,58 @@ function validateInput(userData, renderMode) {
   return dataErrors;
 }
 
+async function saveUser() {
+  const userData = {
+    displayName: document.querySelector("#display-name").value,
+    email: document.querySelector("#email").value,
+    phone: document.querySelector("#phone").value,
+    sms: document.querySelector("#allow-sms").checked
+  };
+  const authLevelElement = document.querySelector("#auth-level");
+  if (authLevelElement) {
+    userData.authorizationLevel = authLevelElement.value;
+  }
+  if (renderMode === "create") {
+    userData.userName = document.querySelector("#user-name").value;
+    userData.password = document.querySelector("#password").value;
+  }
+  const dataErrors = validateInput(userData, renderMode);
+  if (dataErrors.length) {
+    showError(dataErrors.join(", "));
+     return false;
+  }
+  const uri = renderMode === "create" ? `/api/user/create` : `/api/user/${user.name}`;
+  const method = renderMode === "create" ? "post" : "put";
+  const dataReturn = await callDataApi(
+    uri,
+    method,
+    userData
+  );
+  if (dataReturn.status === "error") {
+    showError(dataReturn.message);
+    return false;
+  }
+  return true;
+}
+
+
 if (renderMode === "display") {
   document.querySelector("#allow-sms").addEventListener("click", (e) => {
     e.preventDefault();
   });
-} else if (renderMode === "edit") {
+} else {
   document.querySelector("#save-link").addEventListener("click", async (e) => {
     e.preventDefault();
-    const userData = {
-      displayName: document.querySelector("#display-name").value,
-      email: document.querySelector("#email").value,
-      phone: document.querySelector("#phone").value,
-      sms: document.querySelector("#allow-sms").checked
-    };
-    const authLevelElement = document.querySelector("#auth-level");
-    if (authLevelElement) {
-      userData.authorizationLevel = authLevelElement.value;
+    if (await saveUser()) {
+      window.location.href = e.target.href;
     }
-    const dataErrors = validateInput(userData, renderMode);
-    if (dataErrors.length) {
-      showError(dataErrors.join(", "));
-       return;
-    }
-    const dataReturn = await callDataApi(
-      `/api/user/${user.name}`,
-      "put",
-      userData
-    );
-    if (dataReturn.status === "error") {
-      showError(dataReturn.message);
-      return;
-    }
-    window.location.href = e.target.href;
   });
-} else if (renderMode === "create") {
-  document.querySelector("#save-link").addEventListener("click", async (e) => {
+  document.querySelector("#save-button").addEventListener("click", async (e) => {
+    const returnUrl = e.currentTarget.href;
     e.preventDefault();
-    const userData = {
-      userName: document.querySelector("#user-name").value,
-      displayName: document.querySelector("#display-name").value,
-      password: document.querySelector("#password").value,
-      email: document.querySelector("#email").value,
-      phone: document.querySelector("#phone").value,
-      sms: document.querySelector("#allow-sms").checked
-    };
-    const dataErrors = validateInput(userData, renderMode);
-    if (dataErrors.length) {
-      showError(dataErrors.join(", "));
-      return;
+    if (await saveUser()) {
+      window.location.href = returnUrl;
     }
-    const dataReturn = await callDataApi("/api/user/create", "post", userData);
-    if (dataReturn.status === "error") {
-      showError(dataReturn.message);
-      return;
-    }
-    window.location.href = e.target.href;
   });
 }
 

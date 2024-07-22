@@ -98,6 +98,51 @@ function getPuzzleData() {
   return puzzleData;
 }
 
+async function savePuzzle() {
+  clearError();
+  const puzzleData = getPuzzleData();
+  const dataErrors = validateInput(puzzleData, renderMode);
+  if (dataErrors.length) {
+    showError(dataErrors.join(", "));
+    return;
+  }
+
+  const renderedPuzzleData = renderer.getPuzzleData();
+  const dataApiVerb = renderMode === "edit" ? "put" : "post";
+  const dataApiUrl =
+    renderMode === "edit"
+      ? `/api/puzzle/${puzzleData.name}`
+      : `/api/puzzle/create`;
+  if (puzzleData.type !== 0 && renderedPuzzleData !== null) {
+    const fileName = renderedPuzzleData.name;
+
+    const uploadData = new FormData();
+    uploadData.append("puzzleName", puzzleData.name);
+    uploadData.append(
+      "fileExtension",
+      fileName.substring(fileName.lastIndexOf(".") + 1)
+    );
+    uploadData.append("binary", renderedPuzzleData);
+    const uploadResponse = await uploadBinary(uploadData);
+    if (uploadResponse.status === "error") {
+      showError(
+        `An error occurred uploading the binary data: ${uploadResponse.message}`
+      );
+      return false;
+    }
+    puzzleData.text = uploadResponse.data;
+  } else {
+    puzzleData.text = renderedPuzzleData;
+  }
+
+  const dataReturn = await callDataApi(dataApiUrl, dataApiVerb, puzzleData);
+  if (dataReturn.status === "error") {
+    showError(dataReturn.message);
+    return false;
+  }
+  return true;
+}
+
 const renderer = new PuzzleRenderer();
 renderer.render(puzzle?.type, puzzle?.content, true);
 document
@@ -159,46 +204,14 @@ document.querySelector("#puzzle-type").addEventListener("change", (e) => {
 });
 document.querySelector("#save-link").addEventListener("click", async (e) => {
   e.preventDefault();
-  clearError();
-  const puzzleData = getPuzzleData();
-  const dataErrors = validateInput(puzzleData, renderMode);
-  if (dataErrors.length) {
-    showError(dataErrors.join(", "));
-    return;
+  if (await savePuzzle()) {
+    window.location.href = e.target.href;
   }
-
-  const renderedPuzzleData = renderer.getPuzzleData();
-  const dataApiVerb = renderMode === "edit" ? "put" : "post";
-  const dataApiUrl =
-    renderMode === "edit"
-      ? `/api/puzzle/${puzzleData.name}`
-      : `/api/puzzle/create`;
-  if (puzzleData.type !== 0 && renderedPuzzleData !== null) {
-    const fileName = renderedPuzzleData.name;
-
-    const uploadData = new FormData();
-    uploadData.append("puzzleName", puzzleData.name);
-    uploadData.append(
-      "fileExtension",
-      fileName.substring(fileName.lastIndexOf(".") + 1)
-    );
-    uploadData.append("binary", renderedPuzzleData);
-    const uploadResponse = await uploadBinary(uploadData);
-    if (uploadResponse.status === "error") {
-      showError(
-        `An error occurred uploading the binary data: ${uploadResponse.message}`
-      );
-      return;
-    }
-    puzzleData.text = uploadResponse.data;
-  } else {
-    puzzleData.text = renderedPuzzleData;
+});
+document.querySelector("#save-button").addEventListener("click", async (e) => {
+  const returnUrl = e.currentTarget.href;
+  e.preventDefault();
+  if (await savePuzzle()) {
+    window.location.href = returnUrl;
   }
-
-  const dataReturn = await callDataApi(dataApiUrl, dataApiVerb, puzzleData);
-  if (dataReturn.status === "error") {
-    showError(dataReturn.message);
-    return;
-  }
-  window.location.href = e.target.href;
 });
