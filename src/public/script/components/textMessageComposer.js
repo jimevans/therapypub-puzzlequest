@@ -19,7 +19,7 @@ class TextMessageComposer {
 
   #createMessageElement() {
     this.#messageElement.rows = 5;
-    this.#messageElement.cols = 80;
+    this.#messageElement.cols = 60;
 
     const messageWrapper = document.createElement("div");
     messageWrapper.classList.add("pq-form-element");

@@ -26,7 +26,6 @@ class Modal {
     this.#modal = document.createElement("article");
     this.#modal.classList.add("pq-modal");
 
-    this.#createCloseButton();
     this.#createModalHeader();
     this.#createModalBody();
     this.#createModalFooter();
@@ -40,14 +39,15 @@ class Modal {
       e.stopPropagation();
       this.hide();
     });
-    this.#modal.appendChild(closeButton);
+    return closeButton;
   }
 
   #createModalHeader() {
     this.#modalHeader = document.createElement("header");
     this.#modalHeader.classList.add("pq-modal-header");
-    this.#modalTitleElement = document.createElement("h2");
+    this.#modalTitleElement = document.createElement("h4");
     this.#modalHeader.appendChild(this.#modalTitleElement);
+    this.#modalHeader.appendChild(this.#createCloseButton());
     this.#modal.appendChild(this.#modalHeader);
   }
 

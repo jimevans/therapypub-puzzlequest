@@ -195,14 +195,11 @@ nav ul li.pq-menu-item {
 }
 
 .pq-modal-overlay {
-  position: fixed;
   top: 0;
   left: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
+  width: 100vw;
   height: 0vh;
+  position: fixed;
   background-color: rgba(0, 0, 0, 0.5);
   overflow: hidden;
   z-index: 999;
@@ -213,22 +210,19 @@ nav ul li.pq-menu-item {
 }
 
 .pq-modal {
+  width: 95vw;
+  max-width: 600px;
+  max-height: 700px;
   position: relative;
+  overflow: hidden;
+  border-radius: 0.5em;
+  margin: 10% auto;
+  background-color: #ffffff;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  width: 50%;
-  margin: 0;
-  padding: 2.5rem;
-  background-color: white;
-  border-radius: 0.3125rem;
 }
 
 .pq-modal-close-button {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -258,26 +252,28 @@ nav ul li.pq-menu-item {
 }
 
 .pq-modal-header {
-  position: relative;
-  display: flex;
-  flex-direction: row;
+  min-height: 2.5rem;
+  height: 2.5rem;
+  display: grid;
+  padding-left: 1em;
+  padding-right: 1em;
   align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  margin: 0;
-  padding: 0 0 1.25rem;
+  grid-template-columns: auto 2.5rem;
 }
 
-.pq-modal-header h2 {
-  position: relative;
-  display: flex;
+.pq-modal-header h4 {
   font-size: 1.5rem;
   font-weight: bold;
+  margin: 0;
+  text-align: left;
 }
 
 .pq-modal-body {
-  font-size: 0.875rem;
-  line-height: 1.75;
+  flex: 1;
+  text-align: left;
+  align-self:center;
+  overflow: auto;
+  padding: 1em;
 }
 
 .pq-modal-content {
@@ -286,13 +282,14 @@ nav ul li.pq-menu-item {
 }
 
 .pq-modal-footer {
-  position: relative;
+  height: auto;
+  text-align: right;
+  border-top: solid 1px #cccccc;
+  padding: 1rem;
+  background-color: #fafafa;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  width: 100%;
-  margin: 0;
-  padding: 1.875rem 0 0;
 }
 
 button.pq-modal-footer-button {
