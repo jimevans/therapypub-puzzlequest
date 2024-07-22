@@ -11,8 +11,14 @@ export async function receiveVoiceCall(req, res) {
   const fromNumber = req.body.From.replace(/[^\d]/g, "").substring(1);
   const voiceResponse = new Twilio.twiml.VoiceResponse();
   if (!fromNumber) {
-    // If there are no users with the incoming phone number, reject the call.
-    voiceResponse.reject({ reason: "rejected" });
+    // If the number's caller ID is hidden, respond with an error message.
+    voiceResponse.say(
+      {
+        voice: "Polly.Emma",
+        language: "en-GB"
+      },
+      "Congratulations! You have reached the puzzle master. You may have quests awaiting activation, but you have hidden your phone number from caller ID. Please contact an administrator for assistance."
+    );
     res.type("text/xml");
     res.send(voiceResponse.toString());
     return;
