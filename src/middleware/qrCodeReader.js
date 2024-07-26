@@ -6,6 +6,7 @@ export async function readQRCode(req, res, next) {
     const code = jsQR(imageBuffer, req.body.width, req.body.height);
     if (code && code.data) {
       req.qrCodeData = code.data;
+      req.body.activationCode = code.data;
     }
   }
   next();

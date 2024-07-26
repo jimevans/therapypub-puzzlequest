@@ -164,17 +164,14 @@ document.querySelector("#set-team-button").addEventListener("click", (e) => {
 document.querySelector("#quest-puzzles").replaceChildren(puzzleGrid.getElement());
 
 function getQuestData() {
-  let puzzleIndex = 0;
-  const questPuzzles = [];
-  puzzleGrid.getData().forEach(questPuzzle => {
-    questPuzzles.push({
-      puzzleName: questPuzzle.name,
+  const questPuzzles = puzzleGrid.getData().map((questPuzzle) => {
+    return {
+      puzzleName: questPuzzle.puzzleName,
       nextHintToDisplay: questPuzzle.nextHintToDisplay,
       status: questPuzzle.status,
       activationCode: questPuzzle.activationCode
-    });
-    puzzleIndex++;
-  })
+    };
+  });
   const questName =
     renderMode === "create"
       ? document.querySelector("#quest-name").value

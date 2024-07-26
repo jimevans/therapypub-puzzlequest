@@ -1,4 +1,8 @@
 import { randomUUID } from "crypto";
+import path from "path";
+import { fileURLToPath } from "url";
+import { marked } from "marked";
+import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
 import {
   QuestModel,
@@ -9,11 +13,11 @@ import * as PuzzleService from "./puzzle.service.js";
 import * as UserService from "./user.service.js";
 
 /**
- * @typedef {Object} PuzzleResult
+ * @typedef {Object} QuestResult
  * @property {string} status the status of the operation
  * @property {number} statusCode the numeric status code of the operation
  * @property {string | undefined} message text of a message describing the result, especially in an error condition
- * @property {PuzzleService.Puzzle | PuzzleService.Puzzle[] | undefined} data the user returned in the result
+ * @property {Quest | Quest[] | undefined} data the user returned in the result
  */
 
 /**
@@ -457,7 +461,6 @@ export async function getQuestByQuestName(questName, user) {
   return { status: "success", statusCode: 200, data: queryResult.data[0] };
 }
 
-
 /**
  * Gets a quest with the specified name.
  * @param {string} questName the name of the quest to retrieve
@@ -480,8 +483,8 @@ export async function getQuestPuzzle(questName, puzzleName, user) {
     return {
       status: "error",
       statusCode: 404,
-      message: `No puzzle named ${puzzleName} found for quest ${questName}`
-    }
+      message: `No puzzle named ${puzzleName} found for quest ${questName}`,
+    };
   }
 
   // The filtered puzzles array should only contain one entry
@@ -489,7 +492,6 @@ export async function getQuestPuzzle(questName, puzzleName, user) {
   // just take the 0th entry.
   return { status: "success", statusCode: 200, data: filteredPuzzles[0] };
 }
-
 
 /**
  * Creates a quest in the data store.
@@ -616,7 +618,7 @@ export async function updateQuest(questDefinition) {
 /**
  * Starts a quest, making the first puzzle available for activation.
  * @param {string} name the name of the quest to start
- * @returns {Promise<PuzzleResult>} a response object containing a status, status code, and data
+ * @returns {Promise<QuestResult>} a response object containing a status, status code, and data
  */
 export async function startQuest(name) {
   const foundQuest = await QuestModel.findOne({ name: name });
@@ -658,7 +660,7 @@ export async function startQuest(name) {
 /**
  * Resets a quest to its initial state.
  * @param {string} questName the name of the quest
- * @returns {Promise<PuzzleResult>} a response object containing a status, status code, and data
+ * @returns {Promise<QuestResult>} a response object containing a status, status code, and data
  */
 export async function resetQuest(questName) {
   const quest = await QuestModel.findOne({ name: questName });
@@ -691,9 +693,14 @@ export async function resetQuest(questName) {
  * @param {string} puzzleName the name of the puzzle within the quest to activate
  * @param {string[]} userContexts an array of all of the contexts (user names and team names) for the user requesting activation
  * @param {string} activationCode the activation code of the puzzle
- * @returns {Promise<PuzzleResult>} a response object containing a status, status code, and data
+ * @returns {Promise<QuestResult>} a response object containing a status, status code, and data
  */
-export async function activatePuzzle(questName, puzzleName, userContexts, activationCode) {
+export async function activatePuzzle(
+  questName,
+  puzzleName,
+  userContexts,
+  activationCode
+) {
   const quest = await QuestModel.findOne({ name: questName });
   if (quest === null) {
     return {
@@ -772,9 +779,14 @@ export async function activatePuzzle(questName, puzzleName, userContexts, activa
  * @param {string} puzzleName the name of the puzzle to finish
  * @param {string[]} userContexts an array of all of the contexts (user names and team names) for the user attempting to solve
  * @param {string} solutionGuess the guess for the solution of the puzzle
- * @returns {Promise<PuzzleResult>} a response object containing a status, status code, and data
+ * @returns {Promise<QuestResult>} a response object containing a status, status code, and data
  */
-export async function finishPuzzle(questName, puzzleName, userContexts, solutionGuess) {
+export async function finishPuzzle(
+  questName,
+  puzzleName,
+  userContexts,
+  solutionGuess
+) {
   const quest = await QuestModel.findOne({ name: questName });
   if (quest === null) {
     return {
@@ -875,7 +887,7 @@ export async function finishPuzzle(questName, puzzleName, userContexts, solution
  * @param {string} questName the name of the quest
  * @param {string} puzzleName the name of the puzzle for which to get the next hint
  * @param {string[]} userContexts an array of all of the contexts (user names and team names) for the user attempting to solve
- * @returns {Promise<PuzzleResult>} a response object containing a status, status code, and data
+ * @returns {Promise<QuestResult>} a response object containing a status, status code, and data
  */
 export async function getPuzzleHint(questName, puzzleName, userContexts) {
   const quest = await QuestModel.findOne({ name: questName });
@@ -1001,6 +1013,102 @@ export async function getPuzzleActivationQrCode(questName, puzzleName) {
       message: err.message,
     };
   }
+}
+
+/**
+ * Gets the quest run book, a PDF containing the puzzles in printed form.
+ * @param {string} questName name of the quest for which to generate the run book
+ * @param {PDFDocument} pdfDoc the PDF document that will be populated with the quest information
+ * @return {Promise<QuestResult>} a promise resolving to the status of the operation
+ */
+export async function getQuestRunBook(questName, pdfDoc) {
+  const quest = await QuestModel.findOne({ name: questName });
+  if (quest === null) {
+    return {
+      status: "error",
+      statusCode: 404,
+      message: `No quest with quest name ${questName} found`,
+    };
+  }
+
+  try {
+    for (const puzzle of quest.puzzles) {
+      const puzzleResult = await PuzzleService.getPuzzleByPuzzleName(
+        puzzle.puzzleName
+      );
+      const puzzleDetail = puzzleResult.data;
+      pdfDoc.addPage({ margins: { top: 72, left: 72, right: 72, bottom: 36 } });
+      pdfDoc.fontSize(18);
+      pdfDoc.text(puzzleDetail.displayName, { align: "center" });
+      pdfDoc.fontSize(10);
+      pdfDoc.moveDown();
+      if (puzzleDetail.type === 0) {
+        new marked.Lexer({ gfm: true })
+          .lex(puzzleDetail.text)
+          .forEach((token) => processMarkdownToken(token, pdfDoc));
+        pdfDoc.text("");
+      } else if (puzzleDetail.type === 1) {
+        const dirname = path.dirname(fileURLToPath(import.meta.url));
+        const image = path.join(
+          dirname,
+          "..",
+          "public",
+          puzzleDetail.text
+        );
+        pdfDoc.image(image, {
+          fit: [72 * 6.5, 72 * 8.5],
+          align: "center",
+          valign: "center",
+        });
+      } else {
+        pdfDoc.text(
+          "Puzzle content is audio or video and cannot be rendered on paper."
+        );
+      }
+    }
+    pdfDoc.end();
+  } catch (err) {
+    return { status: "error", statusCode: 500, message: err.message };
+  }
+  return { status: "success", statusCode: 200 };
+}
+
+/**
+ * Recursively processes a markdown token for rendering in a PDF.
+ * @param {Token} token the markdown token to process
+ * @param {PDFDocument} pdfDoc the PDF document into which to render the token
+ */
+function processMarkdownToken(token, pdfDoc) {
+  if (token.type === "paragraph" || token.type === "space") {
+    pdfDoc.text("");
+    pdfDoc.moveDown();
+  }
+  if (token.type === "codespan") {
+    pdfDoc
+      .font("Courier")
+      .text(token.text, { continued: true })
+      .font("Helvetica");
+  }
+  if (token.type === "code") {
+    pdfDoc
+      .font("Courier")
+      .text(token.text, { align: "center" })
+      .font("Helvetica")
+      .fontSize(10);
+  }
+  if (token.type === "text" || token.type === "escape") {
+    const text = token.text.replace(
+      /&#x([\dA-Fa-f]+);/gi,
+      function (match, numStr) {
+        var num = parseInt(numStr, 16);
+        return String.fromCharCode(num);
+      }
+    );
+    pdfDoc.text(text, { continued: true });
+  }
+  token.tokens?.forEach((token) => {
+    processMarkdownToken(token, pdfDoc);
+  });
 }
 
 /**

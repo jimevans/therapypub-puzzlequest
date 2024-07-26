@@ -1,61 +1,32 @@
-import path from "path";
-import { fileURLToPath } from "url";
 import { PassThrough } from "stream";
 import { marked } from "marked";
+import PDFDocument from "pdfkit";
 import { RenderMode } from "../middleware/useRenderMode.js";
 import { PuzzleType } from "../models/puzzle.model.js";
 import { QuestPuzzleStatus } from "../models/quest.model.js";
-import PDFDocument from "pdfkit";
 import * as QuestService from "../services/quest.service.js";
 import * as UserService from "../services/user.service.js";
+import * as RequestValidationService from "../services/requestValidation.service.js";
 
 export async function createQuest(req, res) {
-  const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser) {
-    res.status(401).send(
+  const validation = RequestValidationService.validateRequest(
+    {
+      requiresUser: true,
+      requiresAdmin: true,
+      requiresBody: true,
+      requiredBodyProperties: ["name", "displayName", "userName"],
+    },
+    req
+  );
+  if (validation.status === "error") {
+    res.status(validation.statusCode).send(
       JSON.stringify({
         status: "error",
-        message: `User must be logged in to create quests`,
+        message: validation.message,
       })
     );
     return;
-  }
-  if (!loggedInUser.isAdmin()) {
-    res.status(403).send(
-      JSON.stringify({
-        status: "error",
-        message: `User ${loggedInUser.userName} not authorized to create quests`,
-      })
-    );
-    return;
-  }
 
-  if (!req.body) {
-    res.status(400).send(
-      JSON.stringify({
-        status: "error",
-        message: "No request body",
-      })
-    );
-    return;
-  }
-  if (!("name" in req.body) && !("displayName" in req.body)) {
-    res.status(400).send(
-      JSON.stringify({
-        status: "error",
-        message: "No quest name in request body",
-      })
-    );
-    return;
-  }
-  if (!("userName" in req.body)) {
-    res.status(400).send(
-      JSON.stringify({
-        status: "error",
-        message: "No assigned user name in request body",
-      })
-    );
-    return;
   }
   const response = await QuestService.createQuest(req.body);
   if (response.status === "error") {
@@ -71,25 +42,28 @@ export async function createQuest(req, res) {
 }
 
 export async function retrieveQuest(req, res) {
-  const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser) {
-    res.status(401).send(
+  const validation = RequestValidationService.validateRequest(
+    {
+      requiresUser: true,
+    },
+    req
+  );
+  if (validation.status === "error") {
+    res.status(validation.statusCode).send(
       JSON.stringify({
         status: "error",
-        message: `User must be logged in to retrieve quests`,
+        message: validation.message,
       })
     );
     return;
+
   }
 
-  const questFindParams = {
-    questName: req.params.name,
-  };
-  if (!loggedInUser.isAdmin()) {
-    questFindParams.userName = await loggedInUser.getAllUserContexts();
-  }
-
-  const questResponse = await QuestService.findQuests(questFindParams);
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  const questResponse = await QuestService.getQuestByQuestName(
+    req.params.name,
+    loggedInUser
+  );
   if (questResponse.status === "error") {
     res.status(questResponse.statusCode).send({
       status: "error",
@@ -97,51 +71,34 @@ export async function retrieveQuest(req, res) {
     });
     return;
   }
-  res.send(JSON.stringify({
-    status: "success",
-    data: questResponse.data[0]
-  }));
+  res.send(
+    JSON.stringify({
+      status: "success",
+      data: questResponse.data[0],
+    })
+  );
 }
 
 export async function updateQuest(req, res) {
-  const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser) {
-    res.status(401).send(
+  const validation = RequestValidationService.validateRequest(
+    {
+      requiresUser: true,
+      requiresAdmin: true,
+      requiresBody: true,
+      requiredBodyProperties: ["name"],
+    },
+    req
+  );
+  if (validation.status === "error") {
+    res.status(validation.statusCode).send(
       JSON.stringify({
         status: "error",
-        message: `User must be logged in to update quest`,
-      })
-    );
-    return;
-  }
-  if (!loggedInUser.isAdmin()) {
-    res.status(403).send(
-      JSON.stringify({
-        status: "error",
-        message: `User ${req.user.userName} not authorized to update quest`,
+        message: validation.message,
       })
     );
     return;
   }
 
-  if (!req.body) {
-    res.status(400).send(
-      JSON.stringify({
-        status: "error",
-        message: "No request body",
-      })
-    );
-    return;
-  }
-  if (!("name" in req.body)) {
-    res.status(400).send(
-      JSON.stringify({
-        status: "error",
-        message: "No quest name in request body",
-      })
-    );
-    return;
-  }
   const questToUpdate = QuestService.Quest(req.body);
   const response = await QuestService.updateQuest(questToUpdate);
   if (response.status === "error") {
@@ -157,21 +114,18 @@ export async function updateQuest(req, res) {
 }
 
 export async function deleteQuest(req, res) {
-  const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser) {
-    res.status(401).send(
+  const validation = RequestValidationService.validateRequest(
+    {
+      requiresUser: true,
+      requiresAdmin: true,
+    },
+    req
+  );
+  if (validation.status === "error") {
+    res.status(validation.statusCode).send(
       JSON.stringify({
         status: "error",
-        message: `User must be logged in to delete quests`,
-      })
-    );
-    return;
-  }
-  if (!loggedInUser.isAdmin()) {
-    res.status(403).send(
-      JSON.stringify({
-        status: "error",
-        message: `User ${req.user.userName} not authorized to delete quests`,
+        message: validation.message,
       })
     );
     return;
@@ -190,25 +144,23 @@ export async function deleteQuest(req, res) {
 }
 
 export async function listQuests(req, res) {
-  const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser) {
-    res.status(401).send(
+  const validation = RequestValidationService.validateRequest(
+    {
+      requiresUser: true,
+      requiresAdmin: true,
+    },
+    req
+  );
+  if (validation.status === "error") {
+    res.status(validation.statusCode).send(
       JSON.stringify({
         status: "error",
-        message: `User must be logged in to create puzzles`,
+        message: validation.message,
       })
     );
     return;
   }
-  if (!loggedInUser.isAdmin()) {
-    res.status(403).send(
-      JSON.stringify({
-        status: "error",
-        message: `User ${loggedInUser.userName} not authorized to list quests`,
-      })
-    );
-    return;
-  }
+
   const response = await QuestService.findQuests();
   if (response.status === "error") {
     res.status(response.statusCode).send(
@@ -223,21 +175,18 @@ export async function listQuests(req, res) {
 }
 
 export async function activateQuest(req, res) {
-  const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser) {
-    res.status(401).send(
+  const validation = RequestValidationService.validateRequest(
+    {
+      requiresUser: true,
+      requiresAdmin: true,
+    },
+    req
+  );
+  if (validation.status === "error") {
+    res.status(validation.statusCode).send(
       JSON.stringify({
         status: "error",
-        message: `User must be logged in to activate quests`,
-      })
-    );
-    return;
-  }
-  if (!loggedInUser.isAdmin()) {
-    res.status(403).send(
-      JSON.stringify({
-        status: "error",
-        message: `User ${loggedInUser.userName} not authorized to activate quests`,
+        message: validation.message,
       })
     );
     return;
@@ -257,21 +206,18 @@ export async function activateQuest(req, res) {
 }
 
 export async function resetQuest(req, res) {
-  const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser) {
-    res.status(401).send(
+  const validation = RequestValidationService.validateRequest(
+    {
+      requiresUser: true,
+      requiresAdmin: true,
+    },
+    req
+  );
+  if (validation.status === "error") {
+    res.status(validation.statusCode).send(
       JSON.stringify({
         status: "error",
-        message: `User must be logged in to reset quests`,
-      })
-    );
-    return;
-  }
-  if (!loggedInUser.isAdmin()) {
-    res.status(403).send(
-      JSON.stringify({
-        status: "error",
-        message: `User ${loggedInUser.userName} not authorized to reset quests`,
+        message: validation.message,
       })
     );
     return;
@@ -291,25 +237,23 @@ export async function resetQuest(req, res) {
 }
 
 export async function generatePuzzleActivationQRCode(req, res) {
-  const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser) {
-    res.status(401).send(
+  const validation = RequestValidationService.validateRequest(
+    {
+      requiresUser: true,
+      requiresAdmin: true,
+    },
+    req
+  );
+  if (validation.status === "error") {
+    res.status(validation.statusCode).send(
       JSON.stringify({
         status: "error",
-        message: `User must be logged in to generate puzzle activation QR codes`,
+        message: validation.message,
       })
     );
     return;
   }
-  if (!loggedInUser.isAdmin()) {
-    res.status(403).send(
-      JSON.stringify({
-        status: "error",
-        message: `User ${req.user.userName} not authorized to generate puzzle activation QR codes`,
-      })
-    );
-    return;
-  }
+
   const qrCodeResponse = await QuestService.getPuzzleActivationQrCode(
     req.params.name,
     req.params.puzzleName
@@ -327,28 +271,26 @@ export async function generatePuzzleActivationQRCode(req, res) {
 }
 
 export async function activateQuestPuzzle(req, res) {
+  const validation = RequestValidationService.validateRequest(
+    {
+      requiresUser: true,
+      requiresBody: true,
+      requiredBodyProperties: ["activationCode"],
+    },
+    req
+  );
+  if (validation.status === "error") {
+    res.status(validation.statusCode).send(
+      JSON.stringify({
+        status: "error",
+        message: validation.message,
+      })
+    );
+    return;
+  }
+
   const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser) {
-    res.status(401).send(
-      JSON.stringify({
-        status: "error",
-        message: `User must be logged in to activate a quest puzzle`,
-      })
-    );
-    return;
-  }
   const userContexts = await loggedInUser.getAllUserContexts();
-
-  if (!(req.qrCodeData || req.body?.activationCode)) {
-    res.status(400).send(
-      JSON.stringify({
-        status: "error",
-        message: "No activation code sent in request",
-      })
-    );
-    return;
-  }
-
   const activationCode = req.qrCodeData
     ? req.qrCodeData
     : req.body.activationCode;
@@ -372,35 +314,34 @@ export async function activateQuestPuzzle(req, res) {
 }
 
 export async function solveQuestPuzzle(req, res) {
+  const validation = RequestValidationService.validateRequest(
+    {
+      requiresUser: true,
+      requiresBody: true,
+      requiredBodyProperties: ["guess"],
+    },
+    req
+  );
+  if (validation.status === "error") {
+    res.status(validation.statusCode).send(
+      JSON.stringify({
+        status: "error",
+        message: validation.message,
+      })
+    );
+    return;
+  }
+
   const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser) {
-    res.status(401).send(
-      JSON.stringify({
-        status: "error",
-        message: `User must be logged in to solve a quest puzzle`,
-      })
-    );
-    return;
-  }
   const userContexts = await loggedInUser.getAllUserContexts();
-
-  if (!req.body?.guess) {
-    res.status(400).send(
-      JSON.stringify({
-        status: "error",
-        message: "No solution guess sent in request",
-      })
-    );
-    return;
-  }
   const solutionGuess = req.body.guess;
-
   const solutionResult = await QuestService.finishPuzzle(
     req.params.name,
     req.params.puzzleName,
     userContexts,
     solutionGuess
   );
+
   if (solutionResult.status === "error") {
     res.status(solutionResult.statusCode).send(
       JSON.stringify({
@@ -414,18 +355,24 @@ export async function solveQuestPuzzle(req, res) {
 }
 
 export async function requestQuestPuzzleHint(req, res) {
-  const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser) {
-    res.status(401).send(
+  const validation = RequestValidationService.validateRequest(
+    {
+      requiresUser: true,
+    },
+    req
+  );
+  if (validation.status === "error") {
+    res.status(validation.statusCode).send(
       JSON.stringify({
         status: "error",
-        message: `User must be logged in to solve a quest puzzle`,
+        message: validation.message,
       })
     );
     return;
   }
-  const userContexts = await loggedInUser.getAllUserContexts();
 
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  const userContexts = await loggedInUser.getAllUserContexts();
   const hintResult = await QuestService.getPuzzleHint(
     req.params.name,
     req.params.puzzleName,
@@ -626,20 +573,6 @@ export async function renderQuestRunBook(req, res) {
     });
     return;
   }
-
-  const questResponse = await QuestService.getQuestByQuestName(
-    req.params.name,
-    loggedInUser
-  );
-  if (questResponse.status === "error") {
-    res.status(404).render("error", {
-      errorTitle: "Not found",
-      errorDetails: questResponse.message,
-    });
-    return;
-  }
-
-  const quest = questResponse.data[0];
   const buffers = [];
   const pdfDoc = new PDFDocument({ autoFirstPage: false, bufferPages: true });
   pdfDoc.on("data", buffers.push.bind(buffers));
@@ -648,74 +581,18 @@ export async function renderQuestRunBook(req, res) {
     res
       .set({
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename=${quest.name}.pdf`,
+        "Content-Disposition": `attachment; filename=${req.params.name}.pdf`,
         "Content-Length": Buffer.byteLength(pdfBuffer),
       })
       .end(pdfBuffer);
   });
 
-  quest.puzzles.forEach((puzzle) => {
-    pdfDoc.addPage({ margins: { top: 72, left: 72, right: 72, bottom: 36 } });
-    pdfDoc.fontSize(18);
-    pdfDoc.text(puzzle.puzzleDetail.displayName, { align: "center" });
-    pdfDoc.fontSize(10);
-    pdfDoc.moveDown();
-    if (puzzle.puzzleDetail.type === 0) {
-      new marked.Lexer({ gfm: true })
-        .lex(puzzle.puzzleDetail.text)
-        .forEach((token) => processMarkdownToken(token, pdfDoc));
-      pdfDoc.text("");
-    } else if (puzzle.puzzleDetail.type === 1) {
-      const dirname = path.dirname(fileURLToPath(import.meta.url));
-      const image = path.join(
-        dirname,
-        "..",
-        "public",
-        puzzle.puzzleDetail.text
-      );
-      pdfDoc.image(image, {
-        fit: [72 * 6.5, 72 * 8.5],
-        align: "center",
-        valign: "center",
-      });
-    } else {
-      pdfDoc.text(
-        "Puzzle content is audio or video and cannot be rendered on paper."
-      );
-    }
-  });
-  pdfDoc.end();
-}
-
-function processMarkdownToken(token, pdfDoc) {
-  if (token.type === "paragraph" || token.type === "space") {
-    pdfDoc.text("");
-    pdfDoc.moveDown();
+  const pdfResult = await QuestService.getQuestRunBook(req.params.name, pdfDoc);
+  if (pdfResult.status === "error") {
+    // No need to render for the success case; the "end" event handler will render
+    res.render("error", {
+      errorTitle: "Unexpected error",
+      errorDetails: pdfResult.message,
+    });
   }
-  if (token.type === "codespan") {
-    pdfDoc
-      .font("Courier")
-      .text(token.text, { continued: true })
-      .font("Helvetica");
-  }
-  if (token.type === "code") {
-    pdfDoc
-      .font("Courier")
-      .text(token.text, { align: "center" })
-      .font("Helvetica")
-      .fontSize(10);
-  }
-  if (token.type === "text" || token.type === "escape") {
-    const text = token.text.replace(
-      /&#x([\dA-Fa-f]+);/gi,
-      function (match, numStr) {
-        var num = parseInt(numStr, 16);
-        return String.fromCharCode(num);
-      }
-    );
-    pdfDoc.text(text, { continued: true });
-  }
-  token.tokens?.forEach((token) => {
-    processMarkdownToken(token, pdfDoc);
-  });
 }

@@ -1,31 +1,23 @@
 import * as AuthenticationService from "../services/authentication.service.js";
 import * as UserService from "../services/user.service.js";
+import * as RequestValidationService from "../services/requestValidation.service.js";
 import { RenderMode } from "../middleware/useRenderMode.js";
 
 export async function login(req, res) {
-  if (!req.body) {
-    res.status(400).send(JSON.stringify({
-      status: "error",
-      message: "No request body"
-    }));
-    return;
-  }
-  if (!("userName" in req.body)) {
-    res
-      .status(400)
-      .send(JSON.stringify({
+  const validation = RequestValidationService.validateRequest(
+    {
+      requiresBody: true,
+      requiredBodyProperties: ["userName", "password"],
+    },
+    req
+  );
+  if (validation.status === "error") {
+    res.status(validation.statusCode).send(
+      JSON.stringify({
         status: "error",
-        message: "No user name in request body"
-      }));
-    return;
-  }
-  if (!("password" in req.body)) {
-    res
-      .status(400)
-      .send(JSON.stringify({
-        status: "error",
-        message: "No password in request body"
-      }));
+        message: validation.message,
+      })
+    );
     return;
   }
   const response = await AuthenticationService.authenticate(
@@ -45,36 +37,20 @@ export async function login(req, res) {
 }
 
 export async function createUser(req, res) {
-  if (!req.body) {
-    res.status(400).send(JSON.stringify({
-      status: "error",
-      message: "No request body"
-    }));
-    return;
-  }
-  if (!("userName" in req.body)) {
-    res
-      .status(400)
-      .send(JSON.stringify({
+  const validation = RequestValidationService.validateRequest(
+    {
+      requiresBody: true,
+      requiredBodyProperties: ["userName", "password", "email"],
+    },
+    req
+  );
+  if (validation.status === "error") {
+    res.status(validation.statusCode).send(
+      JSON.stringify({
         status: "error",
-        message: "No user name in request body"
-      }));
-    return;
-  }
-  if (!("password" in req.body)) {
-    res
-      .status(400)
-      .send(JSON.stringify({
-        status: "error",
-        message: "No password in request body"
-      }));
-    return;
-  }
-  if (!("email" in req.body)) {
-    res.status(400).send(JSON.stringify({
-      status: "error",
-      message: "No email in request body"
-    }));
+        message: validation.message,
+      })
+    );
     return;
   }
 
@@ -93,18 +69,23 @@ export async function createUser(req, res) {
 }
 
 export async function retrieveUser(req, res) {
-  const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser) {
-    res.status(401).send(
+  const validation = RequestValidationService.validateRequest(
+    {
+      requiresUser: true,
+    },
+    req
+  );
+  if (validation.status === "error") {
+    res.status(validation.statusCode).send(
       JSON.stringify({
         status: "error",
-        message: `User must be logged in to retrieve user`,
+        message: validation.message,
       })
     );
     return;
   }
-
-  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin()) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -128,24 +109,24 @@ export async function retrieveUser(req, res) {
 }
 
 export async function updateUser(req, res) {
-  const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser) {
-    res.status(401).send(
+  const validation = RequestValidationService.validateRequest(
+    {
+      requiresUser: true,
+      requiresAdmin: true,
+      requiresBody: true,
+    },
+    req
+  );
+  if (validation.status === "error") {
+    res.status(validation.statusCode).send(
       JSON.stringify({
         status: "error",
-        message: `User must be logged in to update user`,
+        message: validation.message,
       })
     );
     return;
   }
-
-  if (!req.body) {
-    res.status(400).send(JSON.stringify({
-      status: "error",
-      message: "No request body"
-    }));
-    return;
-  }
+  const loggedInUser = UserService.getLoggedInUser(req.user);
   if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin) {
     res.status(403).send(
       JSON.stringify({
@@ -170,16 +151,23 @@ export async function updateUser(req, res) {
 }
 
 export async function deleteUser(req, res) {
-  const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser) {
-    res.status(401).send(
+  const validation = RequestValidationService.validateRequest(
+    {
+      requiresUser: true,
+    },
+    req
+  );
+  if (validation.status === "error") {
+    res.status(validation.statusCode).send(
       JSON.stringify({
         status: "error",
-        message: `User must be logged in to delete user`,
+        message: validation.message,
       })
     );
     return;
   }
+
+  const loggedInUser = UserService.getLoggedInUser(req.user);
   if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin) {
     res.status(403).send(
       JSON.stringify({
@@ -203,22 +191,18 @@ export async function deleteUser(req, res) {
 }
 
 export async function listUsers(req, res) {
-  const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser) {
-    res.status(401).send(
+  const validation = RequestValidationService.validateRequest(
+    {
+      requiresUser: true,
+      requiresAdmin: true
+    },
+    req
+  );
+  if (validation.status === "error") {
+    res.status(validation.statusCode).send(
       JSON.stringify({
         status: "error",
-        message: `User must be logged in to list users`,
-      })
-    );
-    return;
-  }
-
-  if (!loggedInUser.isAdmin()) {
-    res.status(403).send(
-      JSON.stringify({
-        status: "error",
-        message: `User ${loggedInUser.userName} not authorized to list users`,
+        message: validation.message,
       })
     );
     return;
