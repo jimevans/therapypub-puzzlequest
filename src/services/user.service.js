@@ -105,7 +105,7 @@ export class User {
    * Gets or sets the list of teams to which the user belongs.
    * @type {UserTeam[]}
    */
-  #teams;
+  teams;
 
   /**
    * Initializes a new instance of the User class.
@@ -145,12 +145,12 @@ export class User {
    * @returns {Promise<UserTeam[]>} a promise resolving to the list of teams to which the user belongs.
    */
   async getTeams() {
-    if (!this.#teams) {
+    if (!this.teams) {
       const teamResponse = await TeamService.getTeamsForUser(this.userName);
       const teamsContainingUser = teamResponse.data;
-      this.#teams = teamsContainingUser.map((team) => new UserTeam(team));
+      this.teams = teamsContainingUser.map((team) => new UserTeam(team));
     }
-    return this.#teams;
+    return this.teams;
   }
 
   /**
@@ -179,7 +179,7 @@ export class User {
       sms: this.allowSmsMessages,
       authorizationLevel: this.authorizationLevel,
       authorizationLevelDescription: this.authorizationLevelDescription,
-      teams: this.#teams,
+      teams: this.teams,
     };
   }
 }

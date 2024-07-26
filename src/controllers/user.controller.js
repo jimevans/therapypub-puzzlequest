@@ -253,7 +253,7 @@ export async function renderUser(req, res) {
     return;
   }
 
-  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin) {
+  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin()) {
     res.render(
       "error",
       {
