@@ -50,7 +50,7 @@ const puzzleGridOptions = {
 
 const columnDefinitions = [
   {
-    fieldName: "name",
+    fieldName: "puzzleName",
     title: "Puzzle Name",
   },
   {
@@ -95,7 +95,7 @@ puzzleGrid.onAddDataRequested = () => {
     puzzleLookup.hide();
     selectedPuzzles.forEach((puzzle) => {
       const questPuzzle = {
-        name: puzzle.name,
+        puzzleName: puzzle.name,
         displayName: puzzle.displayName,
         solutionDisplayText: puzzle.solutionDisplayText,
         nextHintToDisplay: 0,

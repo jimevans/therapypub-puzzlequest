@@ -44,14 +44,6 @@ export async function login(req, res) {
   res.send(JSON.stringify(response));
 }
 
-function isUserAuthorized(userNameToBeModified, user) {
-  return (
-    user &&
-    (UserService.isCurrentUser(userNameToBeModified, user) ||
-      UserService.isUserAdmin(user))
-  );
-}
-
 export async function createUser(req, res) {
   if (!req.body) {
     res.status(400).send(JSON.stringify({
@@ -86,7 +78,8 @@ export async function createUser(req, res) {
     return;
   }
 
-  const response = await UserService.createUser(req.body);
+  const userToCreate = new UserService.User(req.body);
+  const response = await UserService.createUser(userToCreate);
   if (response.status === "error") {
     res.status(response.statusCode).send(
       JSON.stringify({
@@ -100,7 +93,8 @@ export async function createUser(req, res) {
 }
 
 export async function retrieveUser(req, res) {
-  if (!req.user) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.status(401).send(
       JSON.stringify({
         status: "error",
@@ -110,11 +104,11 @@ export async function retrieveUser(req, res) {
     return;
   }
 
-  if (!isUserAuthorized(req.params.userName, req.user)) {
+  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
-        message: `User ${req.user.userName} not authorized to retrieve user ${req.params.userName}`,
+        message: `User ${loggedInUser.userName} not authorized to retrieve user ${req.params.userName}`,
       })
     );
     return;
@@ -130,11 +124,12 @@ export async function retrieveUser(req, res) {
     return;
   }
 
-  res.send(JSON.stringify(userResponse));
+  res.send(JSON.stringify(userResponse))
 }
 
 export async function updateUser(req, res) {
-  if (!req.user) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.status(401).send(
       JSON.stringify({
         status: "error",
@@ -151,16 +146,17 @@ export async function updateUser(req, res) {
     }));
     return;
   }
-  if (!isUserAuthorized(req.params.userName, req.user)) {
+  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
-        message: `User ${req.user.userName} not authorized to update user ${req.params.userName}`,
+        message: `User ${loggedInUser.userName} not authorized to update user ${req.params.userName}`,
       })
     );
     return;
   }
-  const response = await UserService.updateUser(req.params.userName, req.body);
+  const updatedUser = new UserService.User(req.body);
+  const response = await UserService.updateUser(req.params.userName, updatedUser);
   if (response.status === "error") {
     res.status(response.statusCode).send(
       JSON.stringify({
@@ -174,7 +170,8 @@ export async function updateUser(req, res) {
 }
 
 export async function deleteUser(req, res) {
-  if (!req.user) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.status(401).send(
       JSON.stringify({
         status: "error",
@@ -183,11 +180,11 @@ export async function deleteUser(req, res) {
     );
     return;
   }
-  if (!isUserAuthorized(req.params.userName, req.user)) {
+  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
-        message: `User ${req.user.userName} not authorized to delete user ${req.params.userName}`,
+        message: `User ${loggedInUser.userName} not authorized to delete user ${req.params.userName}`,
       })
     );
     return;
@@ -206,7 +203,8 @@ export async function deleteUser(req, res) {
 }
 
 export async function listUsers(req, res) {
-  if (!req.user) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.status(401).send(
       JSON.stringify({
         status: "error",
@@ -216,11 +214,11 @@ export async function listUsers(req, res) {
     return;
   }
 
-  if (!UserService.isUserAdmin(req.user)) {
+  if (!loggedInUser.isAdmin()) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
-        message: `User ${req.user.userName} not authorized to list users`,
+        message: `User ${loggedInUser.userName} not authorized to list users`,
       })
     );
     return;
@@ -230,14 +228,12 @@ export async function listUsers(req, res) {
 }
 
 export async function renderUser(req, res) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
   if (req.renderMode && req.renderMode === RenderMode.CREATE) {
-    if (
-      req.user == null ||
-      (req.user && UserService.isUserAdmin(req.user))
-    ) {
+    if (!loggedInUser || loggedInUser.isAdmin()) {
       res.render("user", {
         renderMode: req.renderMode,
-        currentUser: req.user,
+        currentUser: loggedInUser,
         user: null,
       });
     } else {
@@ -245,19 +241,19 @@ export async function renderUser(req, res) {
         "error",
         {
           errorTitle: "Unauthorized",
-          errorDetails: `User ${req.user.userName} not authorized to create new users`,
+          errorDetails: `User ${loggedInUser.userName} not authorized to create new users`,
         }
       );
     }
     return;
   }
 
-  if (!req.user) {
+  if (!loggedInUser) {
     res.render("login", { requestingUrl: req.url });
     return;
   }
 
-  if (!isUserAuthorized(req.params.userName, req.user)) {
+  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin) {
     res.render(
       "error",
       {
@@ -268,7 +264,7 @@ export async function renderUser(req, res) {
     return;
   }
 
-  const userResponse = await UserService.getUserInfo(req.params.userName);
+  const userResponse = await UserService.getUserByUserName(req.params.userName, true);
   if (userResponse.status === "error") {
     res.render(
       "error",
@@ -282,7 +278,7 @@ export async function renderUser(req, res) {
 
   res.render("user", {
     renderMode: req.renderMode,
-    currentUser: req.user,
+    currentUser: loggedInUser,
     user: userResponse.data,
   });
 }

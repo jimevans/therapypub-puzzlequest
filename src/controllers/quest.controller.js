@@ -9,91 +9,9 @@ import PDFDocument from "pdfkit";
 import * as QuestService from "../services/quest.service.js";
 import * as UserService from "../services/user.service.js";
 
-async function getQuestForUser(questName, userName, isUserAdmin) {
-  if (isUserAdmin) {
-    const adminQuestResponse = await QuestService.getQuest(questName);
-    if (adminQuestResponse.status === "error") {
-      return adminQuestResponse;
-    }
-    return {
-      status: "success",
-      statusCode: 200,
-      data: adminQuestResponse.data,
-    };
-  }
-  const isAuthorizedUserResponse = await QuestService.isQuestForUser(
-    questName,
-    userName
-  );
-  if (isAuthorizedUserResponse.status === "error") {
-    return isAuthorizedUserResponse;
-  }
-  const isQuestForUser = isAuthorizedUserResponse.data.isQuestForUser;
-  if (!isQuestForUser && !isUserAdmin) {
-    if (!isUserAdmin) {
-      return {
-        status: "error",
-        statusCode: 403,
-        message: `User ${req.user.userName} not authorized to view quests`,
-      };
-    }
-
-    if (!isQuestForUser) {
-      return {
-        status: "error",
-        statusCode: 403,
-        message: `User ${req.user.userName} not authorized for quest ${isAuthorizedUserResponse.data.quest.name}`,
-      };
-    }
-  }
-  return {
-    status: "success",
-    statusCode: 200,
-    data: isAuthorizedUserResponse.data.quest,
-  };
-}
-
-async function getQuestPuzzle(user, questName, puzzleName) {
-  if (user === null) {
-    return {
-      status: "error",
-      statusCode: 401,
-      message: `User must be logged in to retrieve quests`,
-    };
-  }
-
-  const isUserAdmin = UserService.isUserAdmin(user);
-  const questResponse = await getQuestForUser(
-    questName,
-    user.userName,
-    isUserAdmin
-  );
-
-  if (questResponse.status === "error") {
-    return questResponse;
-  }
-
-  const quest = questResponse.data;
-  const filteredPuzzles = quest.puzzles.filter(
-    (puzzle) =>
-      puzzle.name === puzzleName &&
-      puzzle.status > QuestPuzzleStatus.UNAVAILABLE
-  );
-
-  if (filteredPuzzles.length === 0) {
-    return {
-      status: "error",
-      statusCode: 404,
-      message: `Invalid puzzle name for ${questName}`,
-    };
-  }
-
-  const puzzle = filteredPuzzles[0];
-  return { status: "success", data: puzzle };
-}
-
 export async function createQuest(req, res) {
-  if (req.user === null) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.status(401).send(
       JSON.stringify({
         status: "error",
@@ -102,11 +20,11 @@ export async function createQuest(req, res) {
     );
     return;
   }
-  if (!UserService.isUserAdmin(req.user)) {
+  if (!loggedInUser.isAdmin()) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
-        message: `User ${req.user.userName} not authorized to create quests`,
+        message: `User ${loggedInUser.userName} not authorized to create quests`,
       })
     );
     return;
@@ -153,7 +71,8 @@ export async function createQuest(req, res) {
 }
 
 export async function retrieveQuest(req, res) {
-  if (req.user === null) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.status(401).send(
       JSON.stringify({
         status: "error",
@@ -163,13 +82,14 @@ export async function retrieveQuest(req, res) {
     return;
   }
 
-  const isUserAdmin = UserService.isUserAdmin(req.user);
-  const questResponse = await getQuestForUser(
-    req.params.name,
-    req.user.userName,
-    isUserAdmin
-  );
+  const questFindParams = {
+    questName: req.params.name,
+  };
+  if (!loggedInUser.isAdmin()) {
+    questFindParams.userName = await loggedInUser.getAllUserContexts();
+  }
 
+  const questResponse = await QuestService.findQuests(questFindParams);
   if (questResponse.status === "error") {
     res.status(questResponse.statusCode).send({
       status: "error",
@@ -177,11 +97,15 @@ export async function retrieveQuest(req, res) {
     });
     return;
   }
-  res.send(JSON.stringify(questResponse));
+  res.send(JSON.stringify({
+    status: "success",
+    data: questResponse.data[0]
+  }));
 }
 
 export async function updateQuest(req, res) {
-  if (req.user === null) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.status(401).send(
       JSON.stringify({
         status: "error",
@@ -190,7 +114,7 @@ export async function updateQuest(req, res) {
     );
     return;
   }
-  if (!UserService.isUserAdmin(req.user)) {
+  if (!loggedInUser.isAdmin()) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -209,7 +133,17 @@ export async function updateQuest(req, res) {
     );
     return;
   }
-  const response = await QuestService.updateQuest(req.params.name, req.body);
+  if (!("name" in req.body)) {
+    res.status(400).send(
+      JSON.stringify({
+        status: "error",
+        message: "No quest name in request body",
+      })
+    );
+    return;
+  }
+  const questToUpdate = QuestService.Quest(req.body);
+  const response = await QuestService.updateQuest(questToUpdate);
   if (response.status === "error") {
     res.status(response.statusCode).send(
       JSON.stringify({
@@ -223,7 +157,8 @@ export async function updateQuest(req, res) {
 }
 
 export async function deleteQuest(req, res) {
-  if (req.user === null) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.status(401).send(
       JSON.stringify({
         status: "error",
@@ -232,7 +167,7 @@ export async function deleteQuest(req, res) {
     );
     return;
   }
-  if (!UserService.isUserAdmin(req.user)) {
+  if (!loggedInUser.isAdmin()) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -242,15 +177,6 @@ export async function deleteQuest(req, res) {
     return;
   }
 
-  if (!req.body) {
-    res.status(400).send(
-      JSON.stringify({
-        status: "error",
-        message: "No request body",
-      })
-    );
-    return;
-  }
   const response = await QuestService.deleteQuest(req.params.name);
   if (response.status === "error") {
     res.status(response.statusCode).send(
@@ -264,25 +190,26 @@ export async function deleteQuest(req, res) {
 }
 
 export async function listQuests(req, res) {
-  if (req.user === null) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.status(401).send(
       JSON.stringify({
         status: "error",
-        message: `User must be logged in to list quests`,
+        message: `User must be logged in to create puzzles`,
       })
     );
     return;
   }
-  if (!UserService.isUserAdmin(req.user)) {
+  if (!loggedInUser.isAdmin()) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
-        message: `User ${req.user.userName} not authorized to list quests`,
+        message: `User ${loggedInUser.userName} not authorized to list quests`,
       })
     );
     return;
   }
-  const response = await QuestService.getQuests();
+  const response = await QuestService.findQuests();
   if (response.status === "error") {
     res.status(response.statusCode).send(
       JSON.stringify({
@@ -296,7 +223,8 @@ export async function listQuests(req, res) {
 }
 
 export async function activateQuest(req, res) {
-  if (req.user === null) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.status(401).send(
       JSON.stringify({
         status: "error",
@@ -305,11 +233,11 @@ export async function activateQuest(req, res) {
     );
     return;
   }
-  if (!UserService.isUserAdmin(req.user)) {
+  if (!loggedInUser.isAdmin()) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
-        message: `User ${req.user.userName} not authorized to activate quests`,
+        message: `User ${loggedInUser.userName} not authorized to activate quests`,
       })
     );
     return;
@@ -329,7 +257,8 @@ export async function activateQuest(req, res) {
 }
 
 export async function resetQuest(req, res) {
-  if (req.user === null) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.status(401).send(
       JSON.stringify({
         status: "error",
@@ -338,11 +267,11 @@ export async function resetQuest(req, res) {
     );
     return;
   }
-  if (!UserService.isUserAdmin(req.user)) {
+  if (!loggedInUser.isAdmin()) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
-        message: `User ${req.user.userName} not authorized to reset quests`,
+        message: `User ${loggedInUser.userName} not authorized to reset quests`,
       })
     );
     return;
@@ -362,7 +291,8 @@ export async function resetQuest(req, res) {
 }
 
 export async function generatePuzzleActivationQRCode(req, res) {
-  if (req.user === null) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.status(401).send(
       JSON.stringify({
         status: "error",
@@ -371,7 +301,7 @@ export async function generatePuzzleActivationQRCode(req, res) {
     );
     return;
   }
-  if (!UserService.isUserAdmin(req.user)) {
+  if (!loggedInUser.isAdmin()) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -397,6 +327,18 @@ export async function generatePuzzleActivationQRCode(req, res) {
 }
 
 export async function activateQuestPuzzle(req, res) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
+    res.status(401).send(
+      JSON.stringify({
+        status: "error",
+        message: `User must be logged in to activate a quest puzzle`,
+      })
+    );
+    return;
+  }
+  const userContexts = await loggedInUser.getAllUserContexts();
+
   if (!(req.qrCodeData || req.body?.activationCode)) {
     res.status(400).send(
       JSON.stringify({
@@ -410,35 +352,11 @@ export async function activateQuestPuzzle(req, res) {
   const activationCode = req.qrCodeData
     ? req.qrCodeData
     : req.body.activationCode;
-  const puzzleResponse = await getQuestPuzzle(
-    req.user,
-    req.params.name,
-    req.params.puzzleName
-  );
-  if (puzzleResponse.status === "error") {
-    res.status(puzzleResponse.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: puzzleResponse.message,
-      })
-    );
-    return;
-  }
-
-  const puzzle = puzzleResponse.data;
-  if (puzzle.status !== QuestPuzzleStatus.AWAITING_ACTIVATION) {
-    res.status(400).send(
-      JSON.stringify({
-        status: "error",
-        message: `Puzzle ${req.params.puzzleName} is already activated`,
-      })
-    );
-    return;
-  }
 
   const activationResult = await QuestService.activatePuzzle(
     req.params.name,
     req.params.puzzleName,
+    userContexts,
     activationCode
   );
   if (activationResult.status === "error") {
@@ -454,6 +372,18 @@ export async function activateQuestPuzzle(req, res) {
 }
 
 export async function solveQuestPuzzle(req, res) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
+    res.status(401).send(
+      JSON.stringify({
+        status: "error",
+        message: `User must be logged in to solve a quest puzzle`,
+      })
+    );
+    return;
+  }
+  const userContexts = await loggedInUser.getAllUserContexts();
+
   if (!req.body?.guess) {
     res.status(400).send(
       JSON.stringify({
@@ -463,45 +393,12 @@ export async function solveQuestPuzzle(req, res) {
     );
     return;
   }
-
   const solutionGuess = req.body.guess;
-  const puzzleResponse = await getQuestPuzzle(
-    req.user,
-    req.params.name,
-    req.params.puzzleName
-  );
-  if (puzzleResponse.status === "error") {
-    res.status(puzzleResponse.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: puzzleResponse.message,
-      })
-    );
-    return;
-  }
-
-  const puzzle = puzzleResponse.data;
-  if (puzzle.status < QuestPuzzleStatus.IN_PROGRESS) {
-    res.status(400).send(
-      JSON.stringify({
-        status: "error",
-        message: `Puzzle ${puzzleName} is not yet activated`,
-      })
-    );
-    return;
-  } else if (puzzle.status > QuestPuzzleStatus.IN_PROGRESS) {
-    res.status(400).send(
-      JSON.stringify({
-        status: "error",
-        message: `Puzzle ${puzzleName} is already solved`,
-      })
-    );
-    return;
-  }
 
   const solutionResult = await QuestService.finishPuzzle(
     req.params.name,
     req.params.puzzleName,
+    userContexts,
     solutionGuess
   );
   if (solutionResult.status === "error") {
@@ -517,49 +414,28 @@ export async function solveQuestPuzzle(req, res) {
 }
 
 export async function requestQuestPuzzleHint(req, res) {
-  const puzzleResponse = await getQuestPuzzle(
-    req.user,
-    req.params.name,
-    req.params.puzzleName
-  );
-  if (puzzleResponse.status === "error") {
-    res.status(puzzleResponse.statusCode).send(
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
+    res.status(401).send(
       JSON.stringify({
         status: "error",
-        message: puzzleResponse.error,
+        message: `User must be logged in to solve a quest puzzle`,
       })
     );
     return;
   }
-
-  const puzzle = puzzleResponse.data;
-  if (puzzle.status < QuestPuzzleStatus.IN_PROGRESS) {
-    res.status(400).send(
-      JSON.stringify({
-        status: "error",
-        message: `Puzzle ${puzzleName} is not yet activated`,
-      })
-    );
-    return;
-  } else if (puzzle.status > QuestPuzzleStatus.IN_PROGRESS) {
-    res.status(400).send(
-      JSON.stringify({
-        status: "error",
-        message: `Puzzle ${puzzleName} is already solved`,
-      })
-    );
-    return;
-  }
+  const userContexts = await loggedInUser.getAllUserContexts();
 
   const hintResult = await QuestService.getPuzzleHint(
     req.params.name,
-    req.params.puzzleName
+    req.params.puzzleName,
+    userContexts
   );
   if (hintResult.status === "error") {
     res.status(hintResult.statusCode).send(
       JSON.stringify({
         status: "error",
-        message: hintResponse.message,
+        message: hintResult.message,
       })
     );
     return;
@@ -569,131 +445,148 @@ export async function requestQuestPuzzleHint(req, res) {
 }
 
 export async function renderQuest(req, res) {
-  if (req.user === null) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.render("login", { requestingUrl: req.url });
     return;
   }
 
-  const isUserAdmin = UserService.isUserAdmin(req.user);
-  const viewName = isUserAdmin
+  const viewName = loggedInUser.isAdmin()
     ? req.renderMode === RenderMode.DISPLAY
       ? "questDetails"
       : "questEdit"
     : "quest";
 
   if (req.renderMode === RenderMode.CREATE) {
-    if (!isUserAdmin) {
-      res.render(
-        "error",
-        {
-          errorTitle: "Unauthorized",
-          errorDetails: `User ${req.user.userName} not authorized to create new quests`
-        }
-      );
+    if (!loggedInUser.isAdmin()) {
+      res.render("error", {
+        errorTitle: "Unauthorized",
+        errorDetails: `User ${req.user.userName} not authorized to create new quests`,
+      });
       return;
     }
     res.render(viewName, { renderMode: req.renderMode, quest: null });
     return;
   }
 
-  const questResponse = await getQuestForUser(
+  const questResponse = await QuestService.getQuestByQuestName(
     req.params.name,
-    req.user.userName,
-    isUserAdmin
+    loggedInUser
   );
-
   if (questResponse.status === "error") {
-    res.render("error", { errorTitle: "Unauthorized", errorDetails: questResponse.message });
+    res.status(questResponse.statusCode).render("error", {
+      errorTitle: "Not found",
+      errorDetails: questResponse.message,
+    });
+  }
+  if (questResponse.status === "error") {
     return;
   }
+  const quest = questResponse.data;
 
-  const inProgressStartTimes = questResponse.data.puzzles
-    .filter(puzzle => puzzle.status > 0 && puzzle.status < 3)
-    .map(puzzle => puzzle.startTime);
-  const currentPuzzleStartTime = inProgressStartTimes.length ? inProgressStartTimes[0] : undefined;
+  // In general, there is only one active puzzle at a time. We
+  // already filter the returned puzzles to those being either
+  // awaiting activation, activated and in progress, or completed.
+  // So all that is left is to get the start time of the single
+  // puzzle, if any, that is not completed.
+  const inProgressStartTimes = quest.puzzles
+    .filter((puzzle) => puzzle.status < QuestPuzzleStatus.COMPLETED)
+    .map((puzzle) => puzzle.startTime);
+  const currentPuzzleStartTime = inProgressStartTimes.length
+    ? inProgressStartTimes[0]
+    : undefined;
   res.render(viewName, {
-    userName: req.user.userName,
+    userName: loggedInUser.userName,
     renderMode: req.renderMode,
-    quest: questResponse.data,
-    currentPuzzleStartTime
+    quest: quest,
+    currentPuzzleStartTime,
   });
 }
 
 export async function renderQuestPuzzle(req, res) {
-  const puzzleResponse = await getQuestPuzzle(
-    req.user,
-    req.params.name,
-    req.params.puzzleName
-  );
-  if (puzzleResponse.status === "error") {
-    if (puzzleResponse.statusCode === 401) {
-      res.render("login", { requestingUrl: req.url });
-    } else if (puzzleResponse.statusCode === 403) {
-      res.render("error", { errorTitle: "Unauthorized", errorDetails: puzzleResponse.message });
-    } else if (puzzleResponse.statusCode === 404) {
-      res.render("error", { errorTitle: "Not found", errorDetails: puzzleResponse.message });
-    } else {
-      res.render("error", { errorTitle: "Unexpected error", errorDetails: puzzleResponse.message });
-    }
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
+    res.render("login", { requestingUrl: req.url });
     return;
   }
 
-  const puzzle = puzzleResponse.data;
-  if (puzzle.status === QuestPuzzleStatus.AWAITING_ACTIVATION) {
-    res.render("activate", {
-      userName: req.user.userName,
-      quest: req.params.name,
-      puzzle: puzzleResponse.data,
+  const questName = req.params.name;
+  const questPuzzleResponse = await QuestService.getQuestPuzzle(
+    questName,
+    req.params.puzzleName,
+    loggedInUser
+  );
+  if (questPuzzleResponse.status === "error") {
+    res.status(questPuzzleResponse.statusCode).render("error", {
+      errorTitle: "Not found",
+      errorDetails: questPuzzleResponse.message,
     });
     return;
   }
-  if (puzzle.status < QuestPuzzleStatus.AWAITING_ACTIVATION) {
-    res.render(
-      "error",
-      {
-        errorTitle: "Not found",
-        errorDetails: `Puzzle ${puzzleName} is not part of quest ${req.params.name}`
-      }
-    );
+  const puzzle = questPuzzleResponse.data;
+
+  if (puzzle.status === QuestPuzzleStatus.AWAITING_ACTIVATION) {
+    res.render("activate", {
+      userName: loggedInUser.userName,
+      quest: questName,
+      puzzle: {
+        puzzleName: puzzle.puzzleName,
+        displayName: puzzle.puzzleDetail.displayName,
+      },
+    });
     return;
   }
 
   let renderedPuzzle;
-  switch (puzzle.type) {
+  switch (puzzle.puzzleDetail.type) {
     case PuzzleType.IMAGE:
-      renderedPuzzle = `<img src="${puzzle.text}" class="pq-puzzle-img" />`;
+      renderedPuzzle = `<img src="${puzzle.puzzleDetail.text}" class="pq-puzzle-img" />`;
       break;
     case PuzzleType.AUDIO:
-      renderedPuzzle = `<audio src="${puzzle.text}" />`;
+      renderedPuzzle = `<audio src="${puzzle.puzzleDetail.text}" />`;
       break;
     case PuzzleType.VIDEO:
-      renderedPuzzle = `<div class="pq-puzzle-video-content"><video src="${puzzle.text}" type="video/mp4" playsinline controls /></div>`;
+      renderedPuzzle = `<div class="pq-puzzle-video-content"><video src="${puzzle.puzzleDetail.text}" type="video/mp4" playsinline controls /></div>`;
       break;
     default:
-      renderedPuzzle = await marked.parse(puzzle.text, { gfm: true });
+      renderedPuzzle = await marked.parse(puzzle.puzzleDetail.text, {
+        gfm: true,
+      });
   }
 
+  const nextHint =
+    puzzle.nextHintToDisplay < puzzle.puzzleDetail.hints.length
+      ? puzzle.puzzleDetail.hints[puzzle.nextHintToDisplay]
+      : undefined;
+
   res.render("puzzle", {
-    userName: req.user.userName,
-    quest: req.params.name,
-    puzzle: puzzleResponse.data,
+    userName: loggedInUser.userName,
+    quest: questName,
+    puzzle: {
+      puzzleName: puzzle.puzzleName,
+      displayName: puzzle.puzzleDetail.displayName,
+      status: puzzle.status,
+      solutionDisplayText: puzzle.puzzleDetail.solutionDisplayText,
+      hints: puzzle.puzzleDetail.hints.slice(0, puzzle.nextHintToDisplay),
+      nextHintTimePenalty: nextHint ? nextHint.timePenalty : 0,
+      nextHintSolutionWarning: nextHint ? nextHint.solutionWarning : undefined,
+    },
     rendered: renderedPuzzle,
   });
 }
 
 export async function renderPuzzleActivationQRCode(req, res) {
-  if (req.user === null) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.render("login", { requestingUrl: req.url.replace(/\/qrcode$/i, "") });
     return;
   }
-  if (!UserService.isUserAdmin(req.user)) {
-    res.render(
-      "error",
-      {
-        errorTitle: "Forbidden",
-        errorDetails: `User ${req.user.userName} not authorized to generate puzzle activation QR codes`
-      }
-    );
+
+  if (!loggedInUser.isAdmin()) {
+    res.status(403).render("error", {
+      errorTitle: "Forbidden",
+      errorDetails: `User ${loggedInUser.userName} not authorized to generate puzzle activation QR codes`,
+    });
     return;
   }
   const qrCodeResponse = await QuestService.getPuzzleActivationQrCode(
@@ -701,9 +594,12 @@ export async function renderPuzzleActivationQRCode(req, res) {
     req.params.puzzleName
   );
   if (qrCodeResponse.status === "error") {
-    const errorTitle = qrCodeResponse.statusCode === 404 ? "Not found" : "Unexpected error";
+    const errorTitle =
+      qrCodeResponse.statusCode === 404 ? "Not found" : "Unexpected error";
     const errorDetails = qrCodeResponse.message;
-    res.render("error", { errorTitle, errorDetails });
+    res
+      .status(qrCodeResponse.statusCode)
+      .render("error", { errorTitle, errorDetails });
     return;
   }
   const qrStream = new PassThrough();
@@ -717,62 +613,75 @@ export async function renderPuzzleActivationQRCode(req, res) {
 }
 
 export async function renderQuestRunBook(req, res) {
-  if (req.user === null) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.render("login", { requestingUrl: req.url.replace(/\/pdf$/i, "") });
     return;
   }
 
-  const isUserAdmin = UserService.isUserAdmin(req.user);
-  if (!isUserAdmin) {
-    res.render(
-      "error",
-      {
-        errorTitle: "Unauthorized",
-        errorDetails: `User ${req.user.userName} not authorized to generate quest PDFs`
-      }
-    );
-    return;
-  }
-  const questResponse = await getQuestForUser(
-    req.params.name,
-    req.user.userName,
-    isUserAdmin
-  );
-  if (questResponse.status === "error") {
-    res.render("error", { errorTitle: "Unauthorized", errorDetails: questResponse.message });
+  if (!loggedInUser.isAdmin()) {
+    res.render("error", {
+      errorTitle: "Unauthorized",
+      errorDetails: `User ${loggedInUser.userName} not authorized to generate quest PDFs`,
+    });
     return;
   }
 
-  const quest = questResponse.data;
+  const questResponse = await QuestService.getQuestByQuestName(
+    req.params.name,
+    loggedInUser
+  );
+  if (questResponse.status === "error") {
+    res.status(404).render("error", {
+      errorTitle: "Not found",
+      errorDetails: questResponse.message,
+    });
+    return;
+  }
+
+  const quest = questResponse.data[0];
   const buffers = [];
-  const pdfDoc = new PDFDocument({ autoFirstPage: false, bufferPages: true, });
+  const pdfDoc = new PDFDocument({ autoFirstPage: false, bufferPages: true });
   pdfDoc.on("data", buffers.push.bind(buffers));
   pdfDoc.on("end", () => {
     const pdfBuffer = Buffer.concat(buffers);
-    res.set({
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename=${quest.name}.pdf`,
-      "Content-Length": Buffer.byteLength(pdfBuffer)
-    }).end(pdfBuffer);
+    res
+      .set({
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename=${quest.name}.pdf`,
+        "Content-Length": Buffer.byteLength(pdfBuffer),
+      })
+      .end(pdfBuffer);
   });
 
   quest.puzzles.forEach((puzzle) => {
     pdfDoc.addPage({ margins: { top: 72, left: 72, right: 72, bottom: 36 } });
     pdfDoc.fontSize(18);
-    pdfDoc.text(puzzle.displayName, { align: "center" });
+    pdfDoc.text(puzzle.puzzleDetail.displayName, { align: "center" });
     pdfDoc.fontSize(10);
     pdfDoc.moveDown();
-    if (puzzle.type === 0) {
+    if (puzzle.puzzleDetail.type === 0) {
       new marked.Lexer({ gfm: true })
-        .lex(puzzle.text)
+        .lex(puzzle.puzzleDetail.text)
         .forEach((token) => processMarkdownToken(token, pdfDoc));
       pdfDoc.text("");
-    } else if (puzzle.type === 1) {
+    } else if (puzzle.puzzleDetail.type === 1) {
       const dirname = path.dirname(fileURLToPath(import.meta.url));
-      const image = path.join(dirname, "..", "public", puzzle.text);
-      pdfDoc.image(image, { fit: [72 * 6.5, 72 * 8.5], align: 'center', valign: 'center' });
+      const image = path.join(
+        dirname,
+        "..",
+        "public",
+        puzzle.puzzleDetail.text
+      );
+      pdfDoc.image(image, {
+        fit: [72 * 6.5, 72 * 8.5],
+        align: "center",
+        valign: "center",
+      });
     } else {
-      pdfDoc.text("Puzzle content is audio or video and cannot be rendered on paper.");
+      pdfDoc.text(
+        "Puzzle content is audio or video and cannot be rendered on paper."
+      );
     }
   });
   pdfDoc.end();
@@ -784,19 +693,29 @@ function processMarkdownToken(token, pdfDoc) {
     pdfDoc.moveDown();
   }
   if (token.type === "codespan") {
-    pdfDoc.font("Courier").text(token.text, { continued: true }).font("Helvetica");
+    pdfDoc
+      .font("Courier")
+      .text(token.text, { continued: true })
+      .font("Helvetica");
   }
   if (token.type === "code") {
-    pdfDoc.font("Courier").text(token.text, { align: "center" }).font("Helvetica").fontSize(10);
+    pdfDoc
+      .font("Courier")
+      .text(token.text, { align: "center" })
+      .font("Helvetica")
+      .fontSize(10);
   }
   if (token.type === "text" || token.type === "escape") {
-    const text = token.text.replace(/&#x([\dA-Fa-f]+);/gi, function(match, numStr) {
-      var num = parseInt(numStr, 16);
-      return String.fromCharCode(num);
-    });
+    const text = token.text.replace(
+      /&#x([\dA-Fa-f]+);/gi,
+      function (match, numStr) {
+        var num = parseInt(numStr, 16);
+        return String.fromCharCode(num);
+      }
+    );
     pdfDoc.text(text, { continued: true });
   }
   token.tokens?.forEach((token) => {
     processMarkdownToken(token, pdfDoc);
-  })
+  });
 }

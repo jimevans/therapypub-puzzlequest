@@ -1,18 +1,153 @@
-import { PuzzleModel as Puzzle, PuzzleType } from "../models/puzzle.model.js";
+import { PuzzleModel, PuzzleType } from "../models/puzzle.model.js";
+
+/**
+ * @typedef {Object} PuzzleResult
+ * @property {string} status the status of the operation
+ * @property {number} statusCode the numeric status code of the operation
+ * @property {string | undefined} message text of a message describing the result, especially in an error condition
+ * @property {Puzzle | Puzzle[] | undefined} data the user returned in the result
+ */
+
+/**
+ * A data class describing a puzzle hint.
+ */
+export class PuzzleHint {
+  /**
+   * Gets or sets the text of the puzzle hint.
+   * @type {string}
+   */
+  text;
+
+  /**
+   * Gets or sets a value indicating whether the hint would reveal the puzzle solution
+   * @type {boolean}
+   */
+  solutionWarning;
+
+  /**
+   * Gets or sets the time penalty in seconds that revealing the hint costs the player.
+   */
+  timePenalty;
+
+  /**
+   * Initializes a new instance of the PuzzleHint class.
+   * @param {object} hintDefinition an object containing the definition of hint properties
+   */
+  constructor(hintDefinition) {
+    this.text = hintDefinition.text;
+    this.solutionWarning = hintDefinition.solutionWarning;
+    this.timePenalty = hintDefinition.timePenalty;
+  }
+
+  /**
+   * Gets an object that will be serialized to JSON as the serialized representation
+   * of this PuzzleHint.
+   * @returns {object} the object to be serialized to JSON
+   */
+  toJSON() {
+    return {
+      text: this.text,
+      solutionWarning: this.solutionWarning,
+      timePenalty: this.timePenalty
+    }
+  }
+}
+
+export class Puzzle {
+  /**
+   * Gets or sets the unique name of the puzzle.
+   * @type {string}
+   */
+  name;
+
+  /**
+   * Gets or sets the display name of the puzzle.
+   * @type {string}
+   */
+  displayName;
+
+  /**
+   * Gets or sets the type of puzzle.
+   * @type {number}
+   */
+  type;
+
+  /**
+   * Gets or sets the text of the puzzle.
+   * @type {string}
+   */
+  text;
+
+  /**
+   * Gets or sets a comma-delimited list of keywords a solution guess must
+   * contain to be a correct solution to the puzzle.
+   * @type {string}
+   */
+  solutionKeyword;
+
+  /**
+   * Gets or sets the display text for the solution of the puzzle.
+   * @type {string}
+   */
+  solutionDisplayText;
+
+  /**
+   * Gets or sets the list of hints for this puzzle.
+   * @type {PuzzleHint[]}
+   */
+  hints = []
+
+  /**
+   * Initializes a new instance of the Puzzle class.
+   * @param {object} puzzleDefinition  an object containing the definition of puzzle properties
+   */
+  constructor(puzzleDefinition) {
+    this.name = puzzleDefinition.name;
+    this.displayName = puzzleDefinition.displayName;
+    this.type = puzzleDefinition.type;
+    this.text = puzzleDefinition.text;
+    this.solutionKeyword = puzzleDefinition.solutionKeyword;
+    this.solutionDisplayText = puzzleDefinition.solutionDisplayText;
+    if (puzzleDefinition.hints) {
+      this.hints = puzzleDefinition.hints.map((hint) => new PuzzleHint(hint));
+    }
+  }
+
+  /**
+   * Gets an object that will be serialized to JSON as the serialized representation
+   * of this Puzzle.
+   * @returns {object} the object to be serialized to JSON
+   */
+  toJSON() {
+    return {
+      name: this.name,
+      displayName: this.displayName,
+      type: this.type,
+      text: this.text,
+      solutionKeyword: this.solutionKeyword,
+      solutionDisplayText: this.solutionDisplayText,
+      hints: this.hints
+    };
+  }
+}
 
 /**
  * Gets a puzzle by its puzzle name.
  * @param {string} name the name of the puzzle to get
- * @returns {object} a response object containing a status, status code, and data
+ * @returns {Promise<PuzzleResult>} a response object containing a status, status code, and data
  */
 export async function getPuzzleByPuzzleName(name) {
-  const puzzle = await Puzzle.findOne({ name: name });
-  if (puzzle === null) {
+  const foundPuzzle = await PuzzleModel.findOne({ name: name });
+  if (foundPuzzle === null) {
     return {
       status: "error",
       statusCode: 404,
       message: `No puzzle with puzzle name ${name} found`
     };
+  }
+  const puzzle = new Puzzle(foundPuzzle);
+  if (foundPuzzle.hints) {
+    puzzle.hints = foundPuzzle.hints.map((hint) => new PuzzleHint(hint));
   }
   return { status: "success", statusCode: 200, data: puzzle };
 }
@@ -20,10 +155,10 @@ export async function getPuzzleByPuzzleName(name) {
 /**
  * Deletes a puzzle by its puzzle name.
  * @param {string} name the name of the puzzle to delete
- * @returns {object} a response object containing a status, status code, and data
+ * @returns {Promise<PuzzleResult>} a response object containing a status, status code, and data
  */
 export async function deletePuzzle(name) {
-  const result = await Puzzle.findOneAndDelete({ name: name });
+  const result = await PuzzleModel.findOneAndDelete({ name: name });
   if (result === null) {
     return {
       status: error,
@@ -36,11 +171,11 @@ export async function deletePuzzle(name) {
 
 /**
  * Creates a new puzzle.
- * @param {object} puzzle the definition of the puzzle to create
- * @returns {object} a response object containing a status, status code, and data
+ * @param {Puzzle} puzzle the definition of the puzzle to create
+ * @returns {Promise<PuzzleResult>} a response object containing a status, status code, and data
  */
 export async function createPuzzle(puzzle) {
-  const existingPuzzles = await Puzzle.find({ name: puzzle.name }).lean();
+  const existingPuzzles = await PuzzleModel.find({ name: puzzle.name }).lean();
   const puzzleExists = existingPuzzles.length !== 0;
   if (puzzleExists) {
     return {
@@ -51,7 +186,7 @@ export async function createPuzzle(puzzle) {
   }
 
   try {
-    const newPuzzle = new Puzzle({
+    const newPuzzle = new PuzzleModel({
       name: puzzle.name,
       displayName: puzzle.displayName || puzzle.name,
       type: puzzle.type || PuzzleType.TEXT,
@@ -75,11 +210,11 @@ export async function createPuzzle(puzzle) {
 /**
  * Updates a puzzle.
  * @param {string} name the name of the puzzle to update
- * @param {object} puzzleData the data to update the puzzle definition with
- * @returns {object} a response object containing a status, status code, and data
+ * @param {Puzzle} puzzleData the data to update the puzzle definition with
+ * @returns {Promise<PuzzleResult>} a response object containing a status, status code, and data
  */
 export async function updatePuzzle(name, puzzleData) {
-  const foundPuzzle = await Puzzle.findOne({ name: name });
+  const foundPuzzle = await PuzzleModel.findOne({ name: name });
   if (foundPuzzle === null) {
     return {
       status: "error",
@@ -100,9 +235,14 @@ export async function updatePuzzle(name, puzzleData) {
 
 /**
  * Gets a list of all of the puzzle definitions.
- * @returns {object} a response object containing a status, status code, and data
+ * @returns {Promise<PuzzleResult>} a response object containing a status, status code, and data
  */
 export async function listPuzzles() {
-  const puzzles = await Puzzle.find({});
+  const foundPuzzles = await PuzzleModel.find({});
+  const puzzles = foundPuzzles.map((foundPuzzle) => {
+    const puzzle = new Puzzle(foundPuzzle);
+    puzzle.hints = foundPuzzle.hints.map((hint) => new PuzzleHint(hint));
+    return puzzle;
+  });
   return { status: "success", statusCode: 200, data: puzzles };
 }

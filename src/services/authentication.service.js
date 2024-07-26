@@ -42,7 +42,7 @@ export async function authenticate(userName, password) {
 /**
  * Encrypts a password for storage in the data store.
  * @param {string} plainTextPassword the plain text password
- * @returns {string} the encrypted password
+ * @returns {Promise<string>} a Promise resolving to the encrypted password
  */
 export async function encryptPassword(plainTextPassword) {
   return await bcrypt.hash(plainTextPassword, 10);

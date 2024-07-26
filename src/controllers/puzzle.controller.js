@@ -3,7 +3,8 @@ import * as PuzzleService from "../services/puzzle.service.js";
 import * as UserService from "../services/user.service.js";
 
 export async function createPuzzle(req, res) {
-  if (req.user === null) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.status(401).send(
       JSON.stringify({
         status: "error",
@@ -12,11 +13,11 @@ export async function createPuzzle(req, res) {
     );
     return;
   }
-  if (!UserService.isUserAdmin(req.user)) {
+  if (!loggedInUser.isAdmin()) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
-        message: `User ${req.user.userName} not authorized to view puzzles`,
+        message: `User ${loggedInUser.userName} not authorized to view puzzles`,
       })
     );
     return;
@@ -70,7 +71,8 @@ export async function createPuzzle(req, res) {
 }
 
 export async function retrievePuzzle(req, res) {
-  if (req.user === null) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.status(401).send(
       JSON.stringify({
         status: "error",
@@ -79,11 +81,11 @@ export async function retrievePuzzle(req, res) {
     );
     return;
   }
-  if (!UserService.isUserAdmin(req.user)) {
+  if (!loggedInUser.isAdmin()) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
-        message: `User ${req.user.userName} not authorized to view puzzles`,
+        message: `User ${loggedInUser.userName} not authorized to view puzzles`,
       })
     );
     return;
@@ -104,7 +106,8 @@ export async function retrievePuzzle(req, res) {
 }
 
 export async function updatePuzzle(req, res) {
-  if (req.user === null) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.status(401).send(
       JSON.stringify({
         status: "error",
@@ -113,11 +116,11 @@ export async function updatePuzzle(req, res) {
     );
     return;
   }
-  if (!UserService.isUserAdmin(req.user)) {
+  if (!loggedInUser.isAdmin()) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
-        message: `User ${req.user.userName} not authorized to update puzzles`,
+        message: `User ${loggedInUser.userName} not authorized to update puzzles`,
       })
     );
     return;
@@ -142,7 +145,8 @@ export async function updatePuzzle(req, res) {
 }
 
 export async function deletePuzzle(req, res) {
-  if (req.user === null) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.status(401).send(
       JSON.stringify({
         status: "error",
@@ -151,11 +155,11 @@ export async function deletePuzzle(req, res) {
     );
     return;
   }
-  if (!UserService.isUserAdmin(req.user)) {
+  if (!loggedInUser.isAdmin()) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
-        message: `User ${req.user.userName} not authorized to delete puzzles`,
+        message: `User ${loggedInUser.userName} not authorized to delete puzzles`,
       })
     );
     return;
@@ -173,7 +177,8 @@ export async function deletePuzzle(req, res) {
 }
 
 export async function listPuzzles(req, res) {
-  if (req.user === null) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.status(401).send(
       JSON.stringify({
         status: "error",
@@ -182,11 +187,11 @@ export async function listPuzzles(req, res) {
     );
     return;
   }
-  if (!UserService.isUserAdmin(req.user)) {
+  if (!loggedInUser.isAdmin()) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
-        message: `User ${req.user.userName} not authorized to list puzzles`,
+        message: `User ${loggedInUser.userName} not authorized to list puzzles`,
       })
     );
     return;
@@ -196,7 +201,8 @@ export async function listPuzzles(req, res) {
 }
 
 export function uploadBinaryData(req, res) {
-  if (req.user === null) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.status(401).send(
       JSON.stringify({
         status: "error",
@@ -205,11 +211,11 @@ export function uploadBinaryData(req, res) {
     );
     return;
   }
-  if (!UserService.isUserAdmin(req.user)) {
+  if (!loggedInUser.isAdmin()) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
-        message: `User ${req.user.userName} not authorized to upload binary data`,
+        message: `User ${loggedInUser.userName} not authorized to upload binary data`,
       })
     );
     return;
@@ -240,16 +246,17 @@ export function uploadBinaryData(req, res) {
 }
 
 export async function renderPuzzle(req, res) {
-  if (req.user === null) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.render("login", { requestingUrl: req.url });
     return;
   }
-  if (!UserService.isUserAdmin(req.user)) {
+  if (!loggedInUser.isAdmin()) {
     res.render(
       "error",
       {
         errorTitle: "Unauthorized",
-        errorDetails: `User ${req.user.userName} not authorized to view puzzles`
+        errorDetails: `User ${loggedInUser.userName} not authorized to view puzzles`
       }
     );
     return;

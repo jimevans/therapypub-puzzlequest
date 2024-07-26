@@ -38,6 +38,7 @@ async function requestHint(requestHintElement) {
 
   if (hintResponse.status === "error") {
     console.log(hintResponse);
+    return;
   }
   if (hintResponse.data.isNextHintSolution) {
     requestHintElement.setAttribute("data-solution-warning", "true")
@@ -83,6 +84,7 @@ if (isSolveAvailable) {
       errorElement.classList.remove("pq-hide");
     } else {
       document.querySelector("#solve").classList.add("pq-hide");
+      document.querySelector("#request-hint").classList.add("pq-hide");
       document.querySelector("#solution-text").innerText = guessResult.data;
       document.querySelector("#solution").classList.remove("pq-hide");
     }

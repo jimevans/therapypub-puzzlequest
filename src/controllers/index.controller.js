@@ -3,39 +3,46 @@ import * as UserService from "../services/user.service.js";
 import * as QuestService from "../services/quest.service.js";
 
 export async function index(req, res) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+
   // Case 1: No user logged in.
-  if (req.user === null) {
+  if (loggedInUser === null) {
     res.render("index");
     return;
   }
 
   // Case 2: Logged in user is an admin.
-  if (UserService.isUserAdmin(req.user)) {
-    res.render("adminHome", { user: req.user });
+  if (loggedInUser.isAdmin()) {
+    res.render("adminHome", { user: loggedInUser });
     return;
   }
 
   // Case 3: Logged in user is a valid end user.
-  const quests = [];
-  const foundQuestsResult = await QuestService.getQuests(req.user.userName, 1);
+  const userContexts = await loggedInUser.getAllUserContexts();
+  const findOptions = { userNames: userContexts, questStatus: 1 };
+  const foundQuestsResult = await QuestService.findQuests(findOptions);
   if (foundQuestsResult.status === "error") {
-    res.render("error", { errorTitle: "Unexpected error", errorDetails: foundQuestsResult.message });
+    res.render("error", {
+      errorTitle: "Unexpected error",
+      errorDetails: foundQuestsResult.message,
+    });
     return;
   }
-  const foundQuests = foundQuestsResult.data;
-  foundQuests.forEach((quest) => {
+  const quests = foundQuestsResult.data.map((quest) => {
     const startTime = quest.puzzles.length ? quest.puzzles[0].startTime : "";
-    const endTime = quest.puzzles.length ? quest.puzzles[quest.puzzles.length - 1].endTime : "";
-    quests.push({
+    const endTime = quest.puzzles.length
+      ? quest.puzzles[quest.puzzles.length - 1].endTime
+      : "";
+    return {
       name: quest.name,
       displayName: quest.displayName,
       status: quest.status,
       statusDescription: quest.statusDescription,
       startTime: startTime || "",
-      endTime: endTime || ""
-    })
+      endTime: endTime || "",
+    };
   });
-  res.render("home", { userName: req.user.userName, quests: quests });
+  res.render("home", { userName: loggedInUser.userName, quests: quests });
 }
 
 export function login(req, res) {

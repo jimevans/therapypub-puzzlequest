@@ -27,7 +27,7 @@ function addGeneratorButtons(gridElement) {
     svgElement.appendChild(useElement);
 
     const row = cell.parentNode;
-    const puzzleName = row.querySelector("td[data-field-name='name']").innerText;
+    const puzzleName = row.querySelector("td[data-field-name='puzzleName']").innerText;
     const qrGenerationLink = document.createElement("a");
     qrGenerationLink.classList.add("pq-icon-link");
     qrGenerationLink.href = `/quest/${quest.name}/puzzle/${puzzleName}/qrcode`;
@@ -137,7 +137,7 @@ document.querySelector("#notify-link")?.addEventListener("click", (e) => {
 
 const puzzleGridColumnDefinitions = [
   {
-    fieldName: "name",
+    fieldName: "puzzleName",
     title: "Puzzle Name",
   },
   {

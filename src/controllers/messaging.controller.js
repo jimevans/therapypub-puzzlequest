@@ -2,7 +2,6 @@ import { setTimeout } from 'timers/promises'
 import Twilio from "twilio";
 import { config } from "../config.js";
 import { QuestStatus } from "../models/quest.model.js";
-import { AuthorizationLevel } from '../models/user.model.js';
 import * as QuestService from "../services/quest.service.js";
 import * as TeamService from "../services/team.service.js";
 import * as UserService from "../services/user.service.js";
@@ -35,7 +34,9 @@ export async function receiveVoiceCall(req, res) {
   const questNames = []
   for (const user of getUserResponse.data) {
     // Gets all quests for user and any teams the user is a member of.
-    const getQuestsResponse = await QuestService.getQuests(user.userName);
+    const userContexts = await user.getAllUserContexts();
+    const findOptions = { userNames: userContexts };
+    const getQuestsResponse = await QuestService.findQuests(findOptions);
     if (getQuestsResponse.status === "success") {
       // Filter the quests so only those awaiting activation are selected.
       const quests = getQuestsResponse.data.filter((quest) => quest.status === 0);
@@ -76,7 +77,9 @@ export async function receiveTextMessage(req, res) {
   const users = getUserResult.data;
   for (const user of users) {
     // Gets all quests for user and any teams the user is a member of.
-    const getQuestsResult = await QuestService.getQuests(user.userName);
+    const userContexts = await user.getAllUserContexts();
+    const findOptions = { userNames: userContexts };
+    const getQuestsResult = await QuestService.findQuests(findOptions);
     if (getQuestsResult.status === "success") {
       // Filter the quests so only those awaiting activation are selected.
       const quests = getQuestsResult.data.filter((quest) =>
@@ -102,7 +105,8 @@ export async function receiveTextMessage(req, res) {
 }
 
 export async function sendTextMessage(req, res) {
-  if (req.user === null) {
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser) {
     res.status(401).send(
       JSON.stringify({
         status: "error",
@@ -111,11 +115,11 @@ export async function sendTextMessage(req, res) {
     );
     return;
   }
-  if (!UserService.isUserAdmin(req.user)) {
+  if (!loggedInUser.isAdmin()) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
-        message: `User ${req.user.userName} not authorized to send messages`,
+        message: `User ${loggedInUser.userName} not authorized to send messages`,
       })
     );
     return;

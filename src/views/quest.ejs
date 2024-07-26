@@ -51,7 +51,7 @@
     <% quest.puzzles.filter((puzzle) => puzzle.status > 0).forEach((puzzle) => { %>
     <div class="pq-quest-puzzle">
       <div class="pq-quest-puzzle-link">
-        <a href="/quest/<%=quest.name%>/puzzle/<%=puzzle.name%>"><%= puzzle.displayName %></a>
+        <a href="/quest/<%=quest.name%>/puzzle/<%=puzzle.puzzleName%>"><%= puzzle.puzzleDetail.displayName %></a>
       </div>
       <div class="pq-quest-puzzle-status">
         <%= puzzle.statusDescription %>
@@ -84,7 +84,7 @@
       </div>
       <div class="pq-quest-puzzle-solution">
         <% if (puzzle.status >= 3) {%>
-        <strong>Solution:</strong>&nbsp; <%= puzzle.solutionDisplayText %>
+        <strong>Solution:</strong>&nbsp; <%= puzzle.puzzleDetail.solutionDisplayText %>
         <% } %>
       </div>
     </div>
