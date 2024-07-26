@@ -1,5 +1,10 @@
 html {
   font-family: sans-serif;
+  font-size: 16px;
+}
+
+input, select, textarea {
+  font-size: 16px;
 }
 
 .pq-readonly {
