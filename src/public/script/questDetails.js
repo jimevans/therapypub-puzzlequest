@@ -59,6 +59,7 @@ async function callDataApi(dataUrl, method, body = undefined) {
 
 document.querySelector("#activate-link")?.addEventListener("click", async (e) => {
   e.preventDefault();
+  document.querySelector("#nav-checkbox").checked = false;
   const activationResponse = await callDataApi(
     `/api/quest/${quest.name}/activate`,
     "put",
@@ -75,6 +76,7 @@ document.querySelector("#activate-link")?.addEventListener("click", async (e) =>
 
 document.querySelector("#reset-link")?.addEventListener("click", async (e) => {
   e.preventDefault();
+  document.querySelector("#nav-checkbox").checked = false;
   const resetResponse = await callDataApi(
     `/api/quest/${quest.name}/reset`,
     "put",
@@ -91,6 +93,7 @@ document.querySelector("#reset-link")?.addEventListener("click", async (e) => {
 
 document.querySelector("#notify-link")?.addEventListener("click", (e) => {
   e.preventDefault();
+  document.querySelector("#nav-checkbox").checked = false;
   const modal = new Modal(2);
   const composer = new TextMessageComposer();
 
