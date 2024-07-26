@@ -1,5 +1,6 @@
 import { DataGrid } from "./components/grid.js";
 import { Lookup } from "./components/lookup.js";
+import { callDataApi } from "./fetch.js";
 
 function clearError() {
   const errorNotifier = document.querySelector(".pq-error");
@@ -35,31 +36,6 @@ function createAdditionalLookupBody() {
   wrapper.appendChild(labelDiv);
   wrapper.appendChild(textBoxDiv);
   return wrapper;
-}
-
-async function callDataApi(apiEndPoint, method, data) {
-  try {
-    const response = await fetch(apiEndPoint, {
-      method: method,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
-    if (response.ok) {
-      return await response.json();
-    } else {
-      const responseData = await response.json();
-      if (responseData.status === "error") {
-        console.log(
-          `${response.status} received with error ${responseData.message}`
-        );
-      }
-      return responseData;
-    }
-  } catch (err) {
-    console.log("error: " + err);
-  }
 }
 
 function validateInput(userData, renderMode) {

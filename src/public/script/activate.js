@@ -1,3 +1,4 @@
+import { callDataApi } from "./fetch.js";
 const canvas = document.querySelector("canvas");
 const context = canvas.getContext("2d");
 
@@ -47,16 +48,14 @@ function stopCamera() {
 }
 
 async function sendActivationData(formData) {
-  try {
-    const response = await fetch(`/api/quest/${questName}/puzzle/${puzzleName}/activate`, {
-      method: "post",
-      headers: {},
-      body: formData,
-    });
-    return response.json();
-  } catch (err) {
-    console.log("error: " + err);
-  }
+  const responseData = await callDataApi(
+    `/api/quest/${questName}/puzzle/${puzzleName}/activate`,
+    "post",
+    formData,
+    false,
+    {}
+  );
+  return responseData;
 }
 
 function clearError() {

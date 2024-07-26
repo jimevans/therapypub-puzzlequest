@@ -99,7 +99,7 @@ export async function updateQuest(req, res) {
     return;
   }
 
-  const questToUpdate = QuestService.Quest(req.body);
+  const questToUpdate = new QuestService.Quest(req.body);
   const response = await QuestService.updateQuest(questToUpdate);
   if (response.status === "error") {
     res.status(response.statusCode).send(

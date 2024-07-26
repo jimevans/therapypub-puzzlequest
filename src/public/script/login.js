@@ -1,23 +1,19 @@
+import { callDataApi } from "./fetch.js";
+
 document.querySelector("#login").addEventListener("click", async (e) => {
   e.preventDefault();
   document.querySelector(".pq-error").classList.add("pq-hide");
   try {
-    data = {
+    const data = {
       userName: document.querySelector("#user-name").value,
       password: document.querySelector("#password").value,
     };
-    const response = await fetch("/api/user/login", {
-      method: "post",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
-    if (response.ok) {
-      const result = await response.json();
+    const response = await callDataApi("/api/user/login", "post", data);
+    if (response.status === "success") {
+      const result = await response.data;
       const tokenInput = document.createElement("input");
       tokenInput.name = "token"
-      tokenInput.value = result.data;
+      tokenInput.value = result;
 
       const dynamicForm = document.createElement("form");
       dynamicForm.method = "post";

@@ -1,37 +1,11 @@
 import { DataGrid } from "./components/grid.js";
+import { callDataApi } from "./fetch.js";
 
 function showError(errorMessage) {
   const errorNotifier = document.querySelector(".pq-error");
   const errorDisplay = errorNotifier.querySelector("span");
   errorDisplay.innerText = errorMessage;
   errorNotifier.classList.remove("pq-hide");
-}
-
-async function callDataApi(apiEndpoint, method = "get", body = {}) {
-  const fetchArgs = {
-    method: method,
-    headers: {
-      "Content-Type": "application/json",
-    },
-  };
-  if (body && method !== "get") {
-    fetchArgs.body = JSON.stringify(body);
-  }
-  try {
-    const response = await fetch(apiEndpoint, fetchArgs);
-    if (response.ok) {
-      return await response.json();
-    } else {
-      const responseData = await response.json();
-      if (responseData.status === "error") {
-        console.log(
-          `${response.status} received with error ${responseData.message}`
-        );
-      }
-    }
-  } catch (err) {
-    console.log("error: " + err);
-  }
 }
 
 document.querySelector("#users").addEventListener("click", async (e) => {

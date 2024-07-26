@@ -1,6 +1,7 @@
 import { DataGrid } from "./components/grid.js";
 import { Modal } from "./components/modal.js";
 import { TextMessageComposer } from "./components/textMessageComposer.js";
+import { callDataApi } from "./fetch.js";
 
 function addGeneratorButtons(gridElement) {
   const buttonCells = [
@@ -34,27 +35,6 @@ function addGeneratorButtons(gridElement) {
     qrGenerationLink.appendChild(svgElement);
     cell.appendChild(qrGenerationLink);
   });
-}
-
-async function callDataApi(dataUrl, method, body = undefined) {
-  const fetchOptions = {
-    method: method,
-    headers: {
-      "Content-Type": "application/json",
-    },
-  };
-  if (body) {
-    fetchOptions.body = JSON.stringify(body);
-  }
-  try {
-    const response = await fetch(dataUrl, fetchOptions);
-    if (!response.ok) {
-      console.log(`${response.status} received calling URL ${dataUrl}`);
-    }
-    return await response.json();
-  } catch (err) {
-    console.log("error: " + err.message);
-  }
 }
 
 document.querySelector("#activate-link")?.addEventListener("click", async (e) => {

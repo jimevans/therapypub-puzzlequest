@@ -1,5 +1,6 @@
 import { DataGrid } from "./grid.js";
 import { Modal } from "./modal.js";
+import { callDataApi } from "../fetch.js";
 
 /**
  * A modal dialog that contains a data grid for selecting items.
@@ -31,26 +32,7 @@ class Lookup extends Modal {
   }
 
   async #getData(apiEndpoint) {
-    try {
-      const response = await fetch(apiEndpoint, {
-        method: "get",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      if (response.ok) {
-        return await response.json();
-      } else {
-        const responseData = await response.json();
-        if (responseData.status === "error") {
-          console.log(
-            `${response.status} received with error ${responseData.message}`
-          );
-        }
-      }
-    } catch (err) {
-      console.log("error: " + err);
-    }
+    return await callDataApi(apiEndpoint, "get");
   }
 
   /**

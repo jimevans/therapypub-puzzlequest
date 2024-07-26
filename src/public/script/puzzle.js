@@ -1,19 +1,5 @@
 import { Modal } from "../script/components/modal.js";
-
-async function callDataApi(url, verb, body) {
-  try {
-    const response = await fetch(url, {
-      method: verb,
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(body),
-    });
-    return response.json();
-  } catch (err) {
-    console.log("error: " + err);
-  }
-}
+import { callDataApi } from "./fetch.js";
 
 async function submitGuess(solutionGuess) {
   if (!solutionGuess) {

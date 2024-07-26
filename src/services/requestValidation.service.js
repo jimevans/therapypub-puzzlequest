@@ -54,7 +54,7 @@ export function validateRequest(validationOptions = {}, request = null) {
   }
 
   if (validationOptions.requiredBodyProperties) {
-    validationOptions.requiredBodyProperties.forEach(property => {
+    for (const property of validationOptions.requiredBodyProperties) {
       if (!(property in request.body)) {
         return {
           status: "error",
@@ -62,7 +62,7 @@ export function validateRequest(validationOptions = {}, request = null) {
           message: `Request body must contain a ${property} property`
         }
       }
-    });
+    }
   }
   return { status: "success", statusCode: 200 };
 }
