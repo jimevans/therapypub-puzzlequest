@@ -77,15 +77,17 @@
     </div>
     <% if (puzzle.status === 2) { %>
     <div id="solve">
-      <div class="pq-label">
-        <label for="solution">Solution</label>
-      </div>
-      <div class="pq-input">
-        <input id="solution-guess" />&nbsp;
-        <button id="submit-button" class="pq-button">Submit solution</button>
-      </div>
-      <div id="solution-errors" class="pq-hide">
-      </div>
+      <form>
+        <div class="pq-label">
+          <label for="solution">Solution</label>
+        </div>
+        <div class="pq-input">
+          <input id="solution-guess" />&nbsp;
+          <button id="submit-button" class="pq-button" type="submit">Submit solution</button>
+        </div>
+        <div id="solution-errors" class="pq-hide">
+        </div>
+      </form>
     </div>
     <% } %>
     <div id="solution" class="<%=puzzle.status !== 3 ? "pq-hide" : ""%>">

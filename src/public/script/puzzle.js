@@ -61,6 +61,7 @@ function displayNoMoreHints(hintRequestElement) {
 const isSolveAvailable = document.querySelector("#solve");
 if (isSolveAvailable) {
   document.querySelector("#submit-button").addEventListener("click", async (e) => {
+    e.preventDefault();
     const errorElement = document.querySelector("#solution-errors");
     errorElement.classList.add("pq-hide");
     errorElement.innerText = "";
