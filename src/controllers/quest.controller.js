@@ -6,6 +6,7 @@ import { PuzzleType } from "../models/puzzle.model.js";
 import { QuestPuzzleStatus } from "../models/quest.model.js";
 import * as QuestService from "../services/quest.service.js";
 import * as UserService from "../services/user.service.js";
+import * as WebSocketService from "../services/websocket.service.js";
 import * as RequestValidationService from "../services/requestValidation.service.js";
 
 export async function createQuest(req, res) {
@@ -311,6 +312,16 @@ export async function activateQuestPuzzle(req, res) {
     return;
   }
   res.send(JSON.stringify({ status: "success" }));
+  WebSocketService.notifyBrowsers(
+    `/quest/${req.params.name}`,
+    [],
+    {
+      message: "puzzleActivated",
+      questName: req.params.name,
+      puzzleName: req.params.puzzleName,
+      activationTime: activationResult.data.activationTime
+    }
+  );
 }
 
 export async function solveQuestPuzzle(req, res) {
@@ -335,6 +346,7 @@ export async function solveQuestPuzzle(req, res) {
   const loggedInUser = UserService.getLoggedInUser(req.user);
   const userContexts = await loggedInUser.getAllUserContexts();
   const solutionGuess = req.body.guess;
+  const connectionId = req.body.connectionId;
   const solutionResult = await QuestService.finishPuzzle(
     req.params.name,
     req.params.puzzleName,
@@ -351,13 +363,45 @@ export async function solveQuestPuzzle(req, res) {
     );
     return;
   }
-  res.send(JSON.stringify({ status: "success", data: solutionResult.data }));
+  res.send(JSON.stringify({
+    status: "success",
+    data: {
+      solutionText: solutionResult.data.solutionText,
+      questComplete: solutionResult.data.questComplete
+    }
+  }));
+  WebSocketService.notifyBrowsers(
+    `/quest/${req.params.name}`,
+    [connectionId],
+    {
+      message: "puzzleSolved",
+      questName: req.params.name,
+      puzzleName: req.params.puzzleName,
+      solutionText: solutionResult.data.solutionText,
+      endTime: solutionResult.data.endTime,
+      questComplete: solutionResult.data.questComplete
+    }
+  );
+  if (solutionResult.data.nextPuzzleName) {
+    WebSocketService.notifyBrowsers(
+      `/quest/${req.params.name}`,
+      [connectionId],
+      {
+        message: "puzzleStarted",
+        questName: req.params.name,
+        puzzleName: solutionResult.data.nextPuzzleName,
+        displayName: solutionResult.data.nextPuzzleDisplayName,
+        startTime: solutionResult.data.endTime
+      }
+    );
+  }
 }
 
 export async function requestQuestPuzzleHint(req, res) {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
+      requiresBody: true
     },
     req
   );
@@ -373,6 +417,7 @@ export async function requestQuestPuzzleHint(req, res) {
 
   const loggedInUser = UserService.getLoggedInUser(req.user);
   const userContexts = await loggedInUser.getAllUserContexts();
+  const connectionId = req.body.connectionId;
   const hintResult = await QuestService.getPuzzleHint(
     req.params.name,
     req.params.puzzleName,
@@ -388,6 +433,17 @@ export async function requestQuestPuzzleHint(req, res) {
     return;
   }
 
+  WebSocketService.notifyBrowsers(
+    `/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
+    [connectionId],
+    {
+      message: "hintRequested",
+      hintText: hintResult.data.hintText,
+      moreHints: hintResult.data.moreHints,
+      timePenalty: hintResult.data.timePenalty,
+      isNextHintSolution: hintResult.data.isNextHintSolution,
+    }
+  );
   res.send(JSON.stringify(hintResult));
 }
 

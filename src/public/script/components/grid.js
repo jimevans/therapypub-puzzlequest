@@ -146,7 +146,6 @@ class DataGrid {
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.dropEffect = "move";
         e.dataTransfer.setData("text/plain", e.currentTarget.rowIndex);
-        console.log(`starting drag of ${e.currentTarget.rowIndex}`);
       });
       dataRow.addEventListener("dragover", (e) => {
         e.preventDefault();

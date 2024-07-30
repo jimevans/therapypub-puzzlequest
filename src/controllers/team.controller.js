@@ -135,7 +135,6 @@ export async function listTeams(req, res) {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
-      requiresAdmin: true,
     },
     req
   );

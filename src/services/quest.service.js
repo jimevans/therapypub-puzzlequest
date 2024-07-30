@@ -763,14 +763,15 @@ export async function activatePuzzle(
     };
   }
 
-  currentPuzzle.activationTime = new Date(Date.now());
+  const activationTime = new Date(Date.now());
+  currentPuzzle.activationTime = activationTime;
   currentPuzzle.status = QuestPuzzleStatus.IN_PROGRESS;
   try {
     await quest.save();
   } catch (err) {
     return { status: "error", statusCode: 500, message: err };
   }
-  return { status: "success", statusCode: 200 };
+  return { status: "success", statusCode: 200, data: { activationTime: activationTime } };
 }
 
 /**
@@ -861,13 +862,22 @@ export async function finishPuzzle(
   const currentTime = new Date(Date.now());
   currentPuzzle.endTime = currentTime;
   currentPuzzle.status = QuestPuzzleStatus.COMPLETED;
+  const returnData = {
+    endTime: currentTime,
+    solutionText: foundPuzzle.solutionDisplayText
+  };
   const currentPuzzleIndex = quest.puzzles.indexOf(currentPuzzle);
   if (currentPuzzleIndex < quest.puzzles.length - 1) {
     quest.puzzles[currentPuzzleIndex + 1].status =
       QuestPuzzleStatus.AWAITING_ACTIVATION;
     quest.puzzles[currentPuzzleIndex + 1].startTime = currentTime;
+    const nextPuzzleName = quest.puzzles[currentPuzzleIndex + 1].puzzleName;
+    returnData.nextPuzzleName = nextPuzzleName;
+    const nextPuzzle = await PuzzleService.getPuzzleByPuzzleName(nextPuzzleName);
+    returnData.nextPuzzleDisplayName = nextPuzzle.data.displayName;
   } else {
     quest.status = QuestStatus.COMPLETED;
+    returnData.questComplete = true;
   }
   try {
     await quest.save();
@@ -878,7 +888,7 @@ export async function finishPuzzle(
   return {
     status: "success",
     statusCode: 200,
-    data: foundPuzzle.solutionDisplayText,
+    data: returnData
   };
 }
 

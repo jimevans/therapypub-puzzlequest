@@ -1,4 +1,5 @@
-import { Modal } from "../script/components/modal.js";
+import { FireworksOverlay } from "./components/fireworksOverlay.js";
+import { Modal } from "./components/modal.js";
 import { callDataApi } from "./fetch.js";
 
 async function submitGuess(solutionGuess) {
@@ -11,7 +12,7 @@ async function submitGuess(solutionGuess) {
   return await callDataApi(
     `/api/quest/${questName}/puzzle/${puzzleName}/solve`,
     "put",
-    { guess: solutionGuess }
+    { guess: solutionGuess, connectionId }
   );
 }
 
@@ -19,21 +20,27 @@ async function requestHint(requestHintElement) {
   const hintResponse = await callDataApi(
     `/api/quest/${questName}/puzzle/${puzzleName}/hint`,
     "put",
-    {}
+    { connectionId }
   );
 
   if (hintResponse.status === "error") {
-    console.log(hintResponse);
     return;
   }
-  if (hintResponse.data.isNextHintSolution) {
+  if (hintResponse.status === "success") {
+    updateHintDisplay(requestHintElement, hintResponse.data);
+  }
+}
+
+function updateHintDisplay(requestHintElement, hintDisplayData) {
+  if (hintDisplayData.isNextHintSolution) {
     requestHintElement.setAttribute("data-solution-warning", "true")
   }
 
-  displayHint(hintResponse.data.hintText);
-  if (!hintResponse.data.moreHints) {
+  const hintElement = displayHint(hintDisplayData.hintText);
+  if (!hintDisplayData.moreHints) {
     displayNoMoreHints(requestHintElement);
   }
+  return hintElement;
 }
 
 function displayHint(hintText) {
@@ -46,6 +53,7 @@ function displayHint(hintText) {
   } else {
     hintContainer.replaceChildren(hintElement);
   }
+  return hintElement;
 }
 
 function displayNoMoreHints(hintRequestElement) {
@@ -56,6 +64,25 @@ function displayNoMoreHints(hintRequestElement) {
   noMoreHintElement.innerText = "No available hints"
   headerElement.removeChild(hintRequestElement);
   headerElement.appendChild(noMoreHintElement);
+}
+
+function displaySolution(solutionText) {
+  document.querySelector("#solve").classList.add("pq-hide");
+  document.querySelector("#request-hint").classList.add("pq-hide");
+  document.querySelector("#solution-text").innerText = solutionText;
+  const solutionElement = document.querySelector("#solution");
+  solutionElement.classList.remove("pq-hide");
+  return solutionElement;
+}
+
+function removeHighlights() {
+  setTimeout(
+    () =>
+      [...document.querySelectorAll(".pq-data-highlight")]
+        .forEach((element) => element.classList.remove("pq-data-highlight")
+      ),
+    3000
+  );
 }
 
 const isSolveAvailable = document.querySelector("#solve");
@@ -70,10 +97,11 @@ if (isSolveAvailable) {
       errorElement.innerText = guessResult.message;
       errorElement.classList.remove("pq-hide");
     } else {
-      document.querySelector("#solve").classList.add("pq-hide");
-      document.querySelector("#request-hint").classList.add("pq-hide");
-      document.querySelector("#solution-text").innerText = guessResult.data;
-      document.querySelector("#solution").classList.remove("pq-hide");
+      displaySolution(guessResult.data.solutionText);
+      if (guessResult.data.questComplete) {
+        const fireworks = new FireworksOverlay();
+        fireworks.render("Congratulations! Your quest is complete!", 15000);
+      }
     }
   });
 }
@@ -100,5 +128,27 @@ document.querySelector("#request-hint")?.addEventListener("click", async (e) => 
       return;
     }
     await requestHint(e.target);
+  }
+});
+
+let connectionId = "";
+const worker = new Worker("/script/socket.js");
+worker.postMessage({ message: "init", url: window.location.href });
+worker.addEventListener("message", (evt) => {
+  const messageData = JSON.parse(evt.data);
+  if (messageData.message === "connection") {
+    connectionId = messageData.connectionId;
+  } else if (messageData.message === "puzzleSolved") {
+    const solutionElement = displaySolution(messageData.solutionText);
+    solutionElement.classList.add("pq-data-highlight");
+    removeHighlights();
+    if (messageData.questComplete) {
+      const fireworks = new FireworksOverlay();
+      fireworks.render("Congratulations! Your quest is complete!", 15000);
+    }
+  } else if (messageData.message === "hintRequested") {
+    const hintElement = updateHintDisplay(document.querySelector("#request-hint"), messageData);
+    hintElement.classList.add("pq-data-highlight");
+    removeHighlights();
   }
 });

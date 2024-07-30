@@ -130,8 +130,8 @@ if (renderMode !== "create") {
   ];
 
   const gridOptions = {
-    allowCreation: renderMode !== "display",
-    allowRowDeleting: renderMode !== "display",
+    allowCreation: true,
+    allowRowDeleting: true,
     allowRowEditing: false,
     allowRowReordering: false,
     allowRowSelecting: false,

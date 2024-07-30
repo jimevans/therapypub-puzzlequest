@@ -130,3 +130,12 @@ document.querySelector("#send-code-text-button").addEventListener("click", async
     window.location.reload();
   }
 });
+
+const worker = new Worker("/script/socket.js");
+worker.postMessage({ message: "init", url: window.location.href });
+worker.addEventListener("message", (evt) => {
+  const messageData = JSON.parse(evt.data);
+  if (messageData.message === "puzzleActivated") {
+    window.location.reload();
+  }
+});

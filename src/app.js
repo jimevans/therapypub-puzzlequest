@@ -1,5 +1,6 @@
 import path from "path";
 import express from "express";
+import * as http from "http";
 const app = express();
 const port = 3000;
 
@@ -53,6 +54,15 @@ app.use("/quest", QuestRouter);
 app.set("views", path.join(import.meta.dirname, "views"));
 app.set("view engine", "ejs");
 
-app.listen(port, () => {
+const server = http.createServer(app);
+
+import * as WebSocketService from "./services/websocket.service.js";
+const socketServer = WebSocketService.initialize();
+
+server.on("upgrade", (req, socket, header) => {
+  socketServer.handleUpgrade(req, socket, header, (ws) => socketServer.emit("connection", ws, req));
+});
+
+server.listen(port, () => {
   console.log(`Therapy Pub and Co. PuzzleQuest app listening on port ${port}!`);
 });

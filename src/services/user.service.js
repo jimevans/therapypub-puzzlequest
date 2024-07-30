@@ -325,7 +325,11 @@ export async function updateUser(name, userData) {
     const phone = userData.phone.replace(/[^\d]/g, "");
     foundUser.phone = phone.startsWith("1") ? phone.substring(1) : phone;
   }
-  foundUser.sms = userData.sms || foundUser.sms;
+  foundUser.sms =
+    userData.allowSmsMessages === undefined ||
+    userData.allowSmsMessages === null
+      ? foundUser.sms
+      : userData.allowSmsMessages;
   foundUser.authorizationLevel =
     userData.authorizationLevel || foundUser.authorizationLevel;
   try {

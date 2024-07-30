@@ -144,7 +144,7 @@
     <div class="pq-form-element">
       <div class="pq-label">
         <label for="allow-sms">Allow sending of SMS messages:</label>
-        <input id="allow-sms" type="checkbox" <%= renderMode !== "create" && user.sms ? "checked=\"checked\"" : "" %>/>&nbsp;<a id="more-info-link" class="pq-link">More info</a>
+        <input id="allow-sms" type="checkbox" <%= renderMode !== "create" && user.allowSmsMessages ? "checked=\"checked\"" : "" %>/>&nbsp;<a id="more-info-link" class="pq-link">More info</a>
       </div>
       <div id="more-info" class="pq-hide pq-label">
         Checking this box gives The PuzzleQuest Game consent to send you mobile text (SMS) messages.<br>
