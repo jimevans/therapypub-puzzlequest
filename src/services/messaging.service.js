@@ -177,7 +177,7 @@ export async function getPhoneNumbersToMessage(questUser) {
           };
         }
         const user = getTeamMemberResponse.data;
-        if (user.phone && user.sms) {
+        if (user.phone && user.allowSmsMessages) {
           numbersToMessage.push(`+1${user.phone}`);
         }
       }
