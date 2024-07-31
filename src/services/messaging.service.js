@@ -49,7 +49,7 @@ export async function respondToVoiceCall(initiatingPhoneNumber) {
     }
   }
   const responseMessage = questNames.length
-    ? "Congratulations! You have reached the puzzle master. Your quest starts now. Save this number in your contacts, and good luck"
+    ? "Congratulations! You have reached the puzzle master. Your quest starts now. Sign in to the puzzle quest dot com to begin. Save this number in your contacts, and good luck."
     : "The puzzle master says you have no quests waiting to start.";
   voiceResponse.say(
     {
