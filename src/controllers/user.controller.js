@@ -112,7 +112,6 @@ export async function updateUser(req, res) {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
-      requiresAdmin: true,
       requiresBody: true,
     },
     req
