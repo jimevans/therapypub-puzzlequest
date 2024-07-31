@@ -22,11 +22,16 @@ export async function index(req, res) {
   const findOptions = { userNames: userContexts, questStatus: 1 };
   const foundQuestsResult = await QuestService.findQuests(findOptions);
   if (foundQuestsResult.status === "error") {
-    res.render("error", {
-      errorTitle: "Unexpected error",
-      errorDetails: foundQuestsResult.message,
-    });
-    return;
+    if (foundQuestsResult.statusCode !== 404) {
+      res.render("error", {
+        errorTitle: "Unexpected error",
+        errorDetails: foundQuestsResult.message,
+      });
+      return;
+    } else {
+      res.render("home", { userName: loggedInUser.userName, quests: [] });
+      return;
+    }
   }
   const quests = foundQuestsResult.data.map((quest) => {
     const startTime = quest.puzzles.length ? quest.puzzles[0].startTime : "";
