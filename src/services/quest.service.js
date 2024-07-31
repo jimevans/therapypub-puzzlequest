@@ -280,7 +280,7 @@ function createFindErrorMessage(queryOptions) {
     );
   }
   if (queryOptions?.questStatus) {
-    errorMessage.push(`status greater than or equal to ${queryOptions.quests}`);
+    errorMessage.push(`status greater than or equal to ${queryOptions.questStatus}`);
   }
   return errorMessage.join(" and ");
 }
