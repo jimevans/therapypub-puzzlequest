@@ -313,7 +313,12 @@ export async function activateQuestPuzzle(req, res) {
   }
   res.send(JSON.stringify({ status: "success" }));
   WebSocketService.notifyBrowsers(
-    `/quest/${req.params.name}`,
+    [
+      `/quest/${req.params.name}`,
+      `/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
+      `/monitor/quest/${req.params.name}`,
+      `/monitor/quest/${req.params.name}/puzzle/${req.params.puzzleName}`
+    ],
     [],
     {
       message: "puzzleActivated",
@@ -371,7 +376,12 @@ export async function solveQuestPuzzle(req, res) {
     }
   }));
   WebSocketService.notifyBrowsers(
-    `/quest/${req.params.name}`,
+    [
+      `/quest/${req.params.name}`,
+      `/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
+      `/monitor/quest/${req.params.name}`,
+      `/monitor/quest/${req.params.name}/puzzle/${req.params.puzzleName}`
+    ],
     [connectionId],
     {
       message: "puzzleSolved",
@@ -384,7 +394,12 @@ export async function solveQuestPuzzle(req, res) {
   );
   if (solutionResult.data.nextPuzzleName) {
     WebSocketService.notifyBrowsers(
-      `/quest/${req.params.name}`,
+      [
+        `/quest/${req.params.name}`,
+        `/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
+        `/monitor/quest/${req.params.name}`,
+        `/monitor/quest/${req.params.name}/puzzle/${req.params.puzzleName}`
+      ],
       [connectionId],
       {
         message: "puzzleStarted",
@@ -434,7 +449,10 @@ export async function requestQuestPuzzleHint(req, res) {
   }
 
   WebSocketService.notifyBrowsers(
-    `/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
+    [
+      `/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
+      `/monitor/quest/${req.params.name}/puzzle/${req.params.puzzleName}`
+     ],
     [connectionId],
     {
       message: "hintRequested",
@@ -651,4 +669,89 @@ export async function renderQuestRunBook(req, res) {
       errorDetails: pdfResult.message,
     });
   }
+}
+
+export async function renderMonitoredQuest(req, res) {
+  const questResponse = await QuestService.getQuestByQuestName(
+    req.params.name,
+  );
+  if (questResponse.status === "error") {
+    res.status(questResponse.statusCode).render("error", {
+      errorTitle: "Not found",
+      errorDetails: questResponse.message,
+    });
+  }
+  if (questResponse.status === "error") {
+    return;
+  }
+  const quest = questResponse.data;
+
+  // In general, there is only one active puzzle at a time. We
+  // already filter the returned puzzles to those being either
+  // awaiting activation, activated and in progress, or completed.
+  // So all that is left is to get the start time of the single
+  // puzzle, if any, that is not completed.
+  const inProgressStartTimes = quest.puzzles
+    .filter((puzzle) => puzzle.status < QuestPuzzleStatus.COMPLETED)
+    .map((puzzle) => puzzle.startTime);
+  const currentPuzzleStartTime = inProgressStartTimes.length
+    ? inProgressStartTimes[0]
+    : undefined;
+  res.render("monitorQuest", {
+    quest: quest,
+    currentPuzzleStartTime,
+  });
+}
+
+export async function renderMonitoredQuestPuzzle(req, res) {
+  const questName = req.params.name;
+  const questPuzzleResponse = await QuestService.getQuestPuzzle(
+    questName,
+    req.params.puzzleName
+  );
+  if (questPuzzleResponse.status === "error") {
+    res.status(questPuzzleResponse.statusCode).render("error", {
+      errorTitle: "Not found",
+      errorDetails: questPuzzleResponse.message,
+    });
+    return;
+  }
+  const puzzle = questPuzzleResponse.data;
+
+  if (puzzle.status === QuestPuzzleStatus.AWAITING_ACTIVATION) {
+    res.render("error", {
+      errorTitle: "Not found",
+      errorDetails: "Puzzle not found",
+    });
+    return;
+  }
+
+  let renderedPuzzle;
+  switch (puzzle.puzzleDetail.type) {
+    case PuzzleType.IMAGE:
+      renderedPuzzle = `<img src="${puzzle.puzzleDetail.text}" class="pq-puzzle-img" />`;
+      break;
+    case PuzzleType.AUDIO:
+      renderedPuzzle = `<audio src="${puzzle.puzzleDetail.text}" />`;
+      break;
+    case PuzzleType.VIDEO:
+      renderedPuzzle = `<div class="pq-puzzle-video-content"><video src="${puzzle.puzzleDetail.text}" type="video/mp4" playsinline controls /></div>`;
+      break;
+    default:
+      renderedPuzzle = await marked.parse(puzzle.puzzleDetail.text, {
+        gfm: true,
+      });
+  }
+
+  res.render("monitorPuzzle", {
+    quest: questName,
+    puzzle: {
+      puzzleName: puzzle.puzzleName,
+      displayName: puzzle.puzzleDetail.displayName,
+      status: puzzle.status,
+      solutionDisplayText: puzzle.puzzleDetail.solutionDisplayText,
+      hints: puzzle.puzzleDetail.hints.slice(0, puzzle.nextHintToDisplay)
+    },
+    rendered: renderedPuzzle,
+  });
 }

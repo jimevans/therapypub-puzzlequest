@@ -445,7 +445,7 @@ export async function findQuests(
  */
 export async function getQuestByQuestName(questName, user) {
   const queryOptions = { questName: questName };
-  if (!user.isAdmin()) {
+  if (user && !user.isAdmin()) {
     // If the user is a regular user on a quest, only return
     // the quest if it is in progress or completed, and only
     // return puzzles that are awaiting activation, in progress,

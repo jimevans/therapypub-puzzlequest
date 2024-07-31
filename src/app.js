@@ -51,6 +51,9 @@ app.use("/puzzle", PuzzleRouter);
 import { QuestRouter } from "./routes/quest.js";
 app.use("/quest", QuestRouter);
 
+import { MonitorRouter } from "./routes/monitor.js";
+app.use("/monitor", MonitorRouter);
+
 app.set("views", path.join(import.meta.dirname, "views"));
 app.set("view engine", "ejs");
 

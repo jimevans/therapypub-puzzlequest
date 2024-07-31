@@ -50,11 +50,7 @@ function createNewPuzzleElement(messageData) {
 
   const nameElement = document.createElement("div");
   nameElement.classList.add("pq-quest-puzzle-link");
-
-  const nameLink = document.createElement("a");
-  nameLink.href = `/quest/${messageData.questName}/puzzle/${messageData.puzzleName}`;
-  nameLink.innerText = messageData.displayName;
-  nameElement.appendChild(nameLink);
+  nameElement.innerText = messageData.displayName;
   puzzleElement.appendChild(nameElement);
 
   const statusElement = document.createElement("div");
@@ -118,7 +114,7 @@ worker.addEventListener("message", (evt) => {
   const messageData = JSON.parse(evt.data);
   if (messageData.message === "puzzleStarted") {
     if (
-      !document.querySelector(`[data-puzzle-name="${messageData.puzzleName}"]`)
+      !document.querySelector(`[data-puzzle-name = "${messageData.puzzleName}"]`)
     ) {
       const newPuzzleElement = createNewPuzzleElement(messageData);
       const puzzlesContainer = document.querySelector("#puzzles");
@@ -132,6 +128,14 @@ worker.addEventListener("message", (evt) => {
       `[data-puzzle-name="${messageData.puzzleName}"]`
     );
     const activationTime = Date.parse(messageData.activationTime);
+
+    const puzzleNameElement = puzzleElement.querySelector(".pq-quest-puzzle-link");
+    const displayName = puzzleNameElement.innerText;
+    const nameLink = document.createElement("a");
+    nameLink.href = `/monitor/quest/${messageData.questName}/puzzle/${messageData.puzzleName}`;
+    nameLink.innerText = displayName;
+    puzzleElement.querySelector(".pq-quest-puzzle-link").replaceChildren(nameLink);
+
     puzzleElement.querySelector(".pq-quest-puzzle-status span").innerText =
       "In Progress";
     puzzleElement.querySelector(
@@ -163,9 +167,5 @@ worker.addEventListener("message", (evt) => {
     ).innerHTML = `<strong>Solution:</strong>&nbsp;${messageData.solutionText}`;
     puzzleElement.classList.add("pq-data-highlight");
     removeHighlights();
-    if (messageData.questComplete) {
-      const fireworks = new FireworksOverlay();
-      fireworks.render("Congratulations! Your quest is complete!", 15000);
-    }
   }
 });

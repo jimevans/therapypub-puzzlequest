@@ -33,14 +33,14 @@ export function initialize() {
 
 /**
  * Notifies the currently connected browsers, as specified by the URL they are connected from.
- * @param {string} urlPrefix the prefix of the URL for which to notify browsers
+ * @param {string[]} urls the URLs for which to notify browsers
  * @param {string[]} excludeConnections an array of connections to be excluded from this notification
  * @param {object} notificationData the data to send to the connected browsers
  */
-export function notifyBrowsers(urlPrefix, excludeConnections, notificationData) {
+export function notifyBrowsers(urls, excludeConnections, notificationData) {
   const notifyBrowsers = [];
   webSocketSessions.forEach((value, key) => {
-    if (value.url.startsWith(urlPrefix) && !excludeConnections.includes(value.id)) {
+    if (urls.includes(value.url) && !excludeConnections.includes(value.id)) {
       notifyBrowsers.push(value);
     }
   });
