@@ -499,10 +499,9 @@ export async function renderQuest(req, res) {
       errorTitle: "Not found",
       errorDetails: questResponse.message,
     });
-  }
-  if (questResponse.status === "error") {
     return;
   }
+
   const quest = questResponse.data;
 
   // In general, there is only one active puzzle at a time. We
@@ -680,10 +679,9 @@ export async function renderMonitoredQuest(req, res) {
       errorTitle: "Not found",
       errorDetails: questResponse.message,
     });
-  }
-  if (questResponse.status === "error") {
     return;
   }
+
   const quest = questResponse.data;
 
   // In general, there is only one active puzzle at a time. We
@@ -718,7 +716,7 @@ export async function renderMonitoredQuestPuzzle(req, res) {
   }
   const puzzle = questPuzzleResponse.data;
 
-  if (puzzle.status === QuestPuzzleStatus.AWAITING_ACTIVATION) {
+  if (puzzle.status < QuestPuzzleStatus.IN_PROGRESS) {
     res.render("error", {
       errorTitle: "Not found",
       errorDetails: "Puzzle not found",
