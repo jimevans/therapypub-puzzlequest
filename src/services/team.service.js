@@ -191,12 +191,12 @@ export async function getTeamsForUser(userName) {
  * @returns {Promise<TeamResult>} a response object containing a status, status code, and data
  */
 export async function addUserToTeam(teamName, userName, joinCode) {
-  const team = await TeamModel.findOne({ teamName: name });
+  const team = await TeamModel.findOne({ teamName: teamName });
   if (!team) {
     return {
       status: "error",
       statusCode: 404,
-      message: `No team with team name ${name} found`
+      message: `No team with team name ${teamName} found`
     };
   }
 
@@ -234,12 +234,12 @@ export async function addUserToTeam(teamName, userName, joinCode) {
  * @returns {Promise<TeamResult>} a response object containing a status, status code, and data
  */
 export async function removeUserFromTeam(teamName, userName) {
-  const team = await TeamModel.findOne({ teamName: name });
+  const team = await TeamModel.findOne({ teamName: teamName });
   if (!team) {
     return {
       status: "error",
       statusCode: 404,
-      message: `No team with team name ${name} found`
+      message: `No team with team name ${teamName} found`
     };
   }
 
