@@ -1,11 +1,14 @@
 const WebSocketStateEnum = { CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3 };
 
-let webSocketChannel;
 const msgQueue = [];
+let webSocketChannel;
 let connectionId;
+let socketBaseUrl;
 
 self.addEventListener("message", (e) => {
   if (e.data.message === "init") {
+    const url = new URL(e.data.url);
+    socketBaseUrl = `${url.protocol.startsWith("https") ? "wss" : "ws"}://${url.hostname}`;
     sendMessage(_ => {
       webSocketChannel.send(JSON.stringify(e.data));
     });
@@ -20,7 +23,7 @@ function sendMessage(task) {
   }
 
   if (!webSocketChannel) {
-    webSocketChannel = new WebSocket('ws://localhost:3000/api/updates');
+    webSocketChannel = new WebSocket(`${socketBaseUrl}/api/updates`);
 
     webSocketChannel.addEventListener("open", () => {
       while (msgQueue.length > 0) {
