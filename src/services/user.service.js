@@ -277,7 +277,7 @@ export async function createUser(user) {
     password: password,
     email: user.email.toLowerCase(),
     phone: user.phone || "",
-    sms: user.sms || false,
+    sms: user.allowSmsMessages || false,
     authorizationLevel: authLevel,
   };
   if (user.phone) {
