@@ -264,6 +264,10 @@ export async function createUser(user) {
       message: `User with user name ${user.userName} already exists`,
     };
   }
+  const policyResult = AuthorizationService.validatePasswordPolicy(user.password);
+  if (policyResult.status === "error") {
+    return policyResult;
+  }
   let authLevel = user.authorizationLevel || AuthorizationLevel.USER;
   if ((await UserModel.countDocuments()) === 0) {
     // First user created must be an admin user
@@ -314,10 +318,18 @@ export async function updateUser(name, userData) {
   }
   foundUser.displayName = userData.displayName || foundUser.displayName;
   if (userData.password) {
+    const policyResult = AuthorizationService.validatePasswordPolicy(
+      userData.password
+    );
+    if (policyResult.status === "error") {
+      return policyResult;
+    }
     const password = await AuthorizationService.encryptPassword(
       userData.password
     );
     foundUser.password = password;
+    // Revokes all tokens issued before the change.
+    foundUser.passwordChangedAt = new Date(Date.now());
   }
   foundUser.email = userData.email?.toLowerCase() || foundUser.email;
   if (userData.phone) {
@@ -352,6 +364,19 @@ export async function listUsers() {
   const foundUsers = await UserModel.find({});
   const users = foundUsers.map((foundUser) => new User(foundUser));
   return { status: "success", statusCode: 200, data: users };
+}
+
+/**
+ * Gets the data needed to decide whether a user's authentication token is
+ * still valid.
+ * @param {string} userName the user name from the token
+ * @returns {Promise<{ passwordChangedAt: Date | undefined } | null>} a Promise
+ *  resolving to the token validation data, or null if the user does not exist
+ */
+export async function getTokenValidationData(userName) {
+  return await UserModel.findOne({ userName: userName })
+    .select("passwordChangedAt")
+    .lean();
 }
 
 export function getLoggedInUser(requestUserData) {

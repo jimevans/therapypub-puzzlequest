@@ -11,6 +11,10 @@ userRouter.get(
   UserController.renderUser
 );
 
+userRouter.get("/password/forgot", UserController.renderForgotPassword);
+
+userRouter.get("/password/reset", UserController.renderResetPassword);
+
 userRouter.get(
   "/:userName",
   TokenAuthenticator.tokenAuthenticate,

@@ -2,6 +2,8 @@ import { DataGrid } from "./components/grid.js";
 import { Lookup } from "./components/lookup.js";
 import { callDataApi } from "./fetch.js";
 
+const MINIMUM_PASSWORD_LENGTH = 8;
+
 function clearError() {
   const errorNotifier = document.querySelector(".pq-error");
   const errorMessage = errorNotifier.querySelector("span");
@@ -54,6 +56,11 @@ function validateInput(userData, renderMode) {
   }
   if (userData.password === "") {
     dataErrors.push("password cannot be empty");
+  } else if (
+    userData.password !== undefined &&
+    userData.password.length < MINIMUM_PASSWORD_LENGTH
+  ) {
+    dataErrors.push(`password must be at least ${MINIMUM_PASSWORD_LENGTH} characters long`);
   }
   if (userData.email === "") {
     dataErrors.push("email address cannot be empty");
@@ -208,4 +215,76 @@ if (renderMode !== "create") {
     teamsGrid.render(user.teams);
   }
   document.querySelector("#teams").replaceChildren(teamsGrid.getElement());
+}
+
+const changePasswordButton = document.querySelector("#change-password-button");
+if (changePasswordButton) {
+  const passwordError = document.querySelector("#change-password-error");
+  const passwordSuccess = document.querySelector("#change-password-success");
+  const showPasswordError = (message) => {
+    passwordError.querySelector("span").innerText = message;
+    passwordError.classList.remove("pq-hide");
+  };
+
+  changePasswordButton.addEventListener("click", async (e) => {
+    e.preventDefault();
+    passwordError.classList.add("pq-hide");
+    passwordSuccess.classList.add("pq-hide");
+    const currentPasswordElement = document.querySelector("#current-password");
+    const newPasswordElement = document.querySelector("#new-password");
+    const confirmPasswordElement = document.querySelector("#new-password-confirm");
+    if (!currentPasswordElement.value) {
+      showPasswordError("Enter your current password");
+      return;
+    }
+    if (newPasswordElement.value.length < MINIMUM_PASSWORD_LENGTH) {
+      showPasswordError(`New password must be at least ${MINIMUM_PASSWORD_LENGTH} characters long`);
+      return;
+    }
+    if (newPasswordElement.value !== confirmPasswordElement.value) {
+      showPasswordError("New password and confirm password do not match");
+      return;
+    }
+    const response = await callDataApi(
+      `/api/user/${user.name}/password`,
+      "put",
+      {
+        currentPassword: currentPasswordElement.value,
+        newPassword: newPasswordElement.value,
+      }
+    );
+    if (response.status === "error") {
+      showPasswordError(response.message);
+      return;
+    }
+    currentPasswordElement.value = "";
+    newPasswordElement.value = "";
+    confirmPasswordElement.value = "";
+    passwordSuccess.classList.remove("pq-hide");
+  });
+}
+
+const sendResetLinkButton = document.querySelector("#send-reset-link-button");
+if (sendResetLinkButton) {
+  const resetLinkError = document.querySelector("#send-reset-link-error");
+  const resetLinkSuccess = document.querySelector("#send-reset-link-success");
+
+  sendResetLinkButton.addEventListener("click", async (e) => {
+    e.preventDefault();
+    resetLinkError.classList.add("pq-hide");
+    resetLinkSuccess.classList.add("pq-hide");
+    sendResetLinkButton.disabled = true;
+    const response = await callDataApi(
+      `/api/user/${user.name}/password/reset-link`,
+      "post",
+      {}
+    );
+    sendResetLinkButton.disabled = false;
+    if (response.status === "error") {
+      resetLinkError.querySelector("span").innerText = response.message;
+      resetLinkError.classList.remove("pq-hide");
+      return;
+    }
+    resetLinkSuccess.classList.remove("pq-hide");
+  });
 }

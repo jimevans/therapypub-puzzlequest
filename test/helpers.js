@@ -21,6 +21,9 @@ export function createMockResponse() {
     return res;
   });
   res.render = vi.fn(() => res);
+  res.set = vi.fn(() => res);
+  res.cookie = vi.fn(() => res);
+  res.clearCookie = vi.fn(() => res);
   return res;
 }
 
@@ -30,10 +33,20 @@ export function createMockResponse() {
  * @param {object | null} options.user the decoded token user data, or null for anonymous
  * @param {object} options.params the route parameters
  * @param {object} options.body the request body
+ * @param {object} options.query the query string parameters
+ * @param {object} options.cookies the request cookies
+ * @param {object} options.headers the request headers
  * @returns {object} the mock request
  */
-export function createMockRequest({ user = null, params = {}, body = {} } = {}) {
-  return { user, params, body };
+export function createMockRequest({
+  user = null,
+  params = {},
+  body = {},
+  query = {},
+  cookies = {},
+  headers = {},
+} = {}) {
+  return { user, params, body, query, cookies, headers };
 }
 
 export const playerUser = {

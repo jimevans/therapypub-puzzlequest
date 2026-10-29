@@ -15,6 +15,19 @@ app.use(cookieParser());
 import { config } from "./config.js";
 const mongodb = config.PQ_MONGODB_URI;
 
+if (config.PQ_TRUST_PROXY) {
+  // Required behind a reverse proxy (such as cPanel's Apache front end) so
+  // that client IP addresses, and therefore rate limits, are per client.
+  // Accepts a hop count (e.g. "1"), "true", or Express's named/IP values
+  // (e.g. "loopback").
+  const trustProxy = config.PQ_TRUST_PROXY;
+  const hops = Number(trustProxy);
+  app.set(
+    "trust proxy",
+    trustProxy === "true" ? true : Number.isNaN(hops) ? trustProxy : hops
+  );
+}
+
 import mongoose from "mongoose";
 mongoose.set("strictQuery", false);
 mongoose.connect(mongodb);

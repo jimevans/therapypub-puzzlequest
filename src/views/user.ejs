@@ -175,6 +175,69 @@
       <% } %>
     </div>
     <% } %>
+    <% if (renderMode === "display" && currentUser && currentUser.userName === user.userName) { %>
+    <div id="change-password">
+      <div class="pq-header">
+        <span class="pq-header-text">Change password</span>
+      </div>
+      <form id="change-password-form">
+        <div class="pq-form-element">
+          <div class="pq-label">
+            <label for="current-password">Current password:</label>
+          </div>
+          <div class="pq-input">
+            <input id="current-password" type="password" autocomplete="current-password" />
+          </div>
+        </div>
+        <div class="pq-form-element">
+          <div class="pq-label">
+            <label for="new-password">New password:</label>
+          </div>
+          <div class="pq-input">
+            <input id="new-password" type="password" autocomplete="new-password" />
+          </div>
+        </div>
+        <div class="pq-form-element">
+          <div class="pq-label">
+            <label for="new-password-confirm">Confirm new password:</label>
+          </div>
+          <div class="pq-input">
+            <input id="new-password-confirm" type="password" autocomplete="new-password" />
+          </div>
+        </div>
+        <div class="pq-form-element">
+          <button id="change-password-button" class="pq-button" type="submit">Change password</button>
+        </div>
+        <div id="change-password-error" class="pq-error pq-hide">
+          <span></span>
+        </div>
+        <div id="change-password-success" class="pq-label pq-hide">
+          Your password has been changed. You have been signed out on all other devices.
+        </div>
+      </form>
+    </div>
+    <% } %>
+    <% if (renderMode === "display" && currentUser && currentUser.authorizationLevel >= 10 && currentUser.userName !== user.userName) { %>
+    <div id="admin-password-reset">
+      <div class="pq-header">
+        <span class="pq-header-text">Password</span>
+      </div>
+      <div class="pq-form-element">
+        <div class="pq-label">
+          Email this user a link to choose a new password. Their current password keeps working until they use the link.
+        </div>
+      </div>
+      <div class="pq-form-element">
+        <button id="send-reset-link-button" class="pq-button">Send password reset email</button>
+      </div>
+      <div id="send-reset-link-error" class="pq-error pq-hide">
+        <span></span>
+      </div>
+      <div id="send-reset-link-success" class="pq-label pq-hide">
+        Password reset email sent to <%= user.email %>.
+      </div>
+    </div>
+    <% } %>
     <% if (renderMode !== "create") { %>
     <div id="teams">
     </div>

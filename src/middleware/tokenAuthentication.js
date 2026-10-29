@@ -1,7 +1,21 @@
 import jwt from "jsonwebtoken";
 import { config } from "../config.js";
+import * as AuthenticationService from "../services/authentication.service.js";
+import * as UserService from "../services/user.service.js";
 
 export const TOKEN_COOKIE_NAME = "pq-db-token";
+
+/**
+ * Stores an authentication token in the http-only cookie used by UI requests.
+ * @param {object} res the response
+ * @param {string} token the authentication token
+ */
+export function setTokenCookie(res, token) {
+  res.cookie(TOKEN_COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: config.PQ_RUNTIME_ENVIRONMENT !== "development",
+  });
+}
 
 export async function tokenAuthenticate(req, res, next) {
   let token = null;
@@ -14,10 +28,7 @@ export async function tokenAuthenticate(req, res, next) {
     // token is found as part of a form submission, move it to
     // an http-only cookie so future UI requests can access it.
     token = req.body.token;
-    res.cookie(TOKEN_COOKIE_NAME, token, {
-      httpOnly: true,
-      secure: config.PQ_RUNTIME_ENVIRONMENT !== "development",
-    });
+    setTokenCookie(res, token);
   } else if (req.cookies && TOKEN_COOKIE_NAME in req.cookies) {
     // Token is stored as an http-only cookie. This is the usual
     // method used by UI requests.
@@ -35,6 +46,24 @@ export async function tokenAuthenticate(req, res, next) {
   if (token !== null) {
     try {
       const decoded = await jwt.verify(token, config.PQ_SECRET_KEY);
+
+      // Tokens for deleted users, or issued before the user's password was
+      // last changed, are treated like expired tokens.
+      const validationData = await UserService.getTokenValidationData(
+        decoded.userName
+      );
+      if (
+        validationData === null ||
+        AuthenticationService.isTokenRevoked(
+          decoded.iat,
+          validationData.passwordChangedAt
+        )
+      ) {
+        res.clearCookie(TOKEN_COOKIE_NAME);
+        next();
+        return;
+      }
+
       req.user = {
         userName: decoded.userName,
         displayName: decoded.displayName,

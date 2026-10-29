@@ -9,6 +9,7 @@ import { Schema, model } from "mongoose";
  * @property {string} phone the phone number of the user
  * @property {boolean} sms true if the user consents to receive SMS messages; otherwise false
  * @property {number} authorizationLevel the authorization level of the user
+ * @property {Date} passwordChangedAt the date and time the password was last changed; tokens issued before this are invalid
  */
 
 /**
@@ -55,6 +56,9 @@ const userSchema = new Schema({
   authorizationLevel: {
     type: Number,
     default: 0,
+  },
+  passwordChangedAt: {
+    type: Date,
   },
 });
 
