@@ -210,10 +210,37 @@ describe("createQuest", () => {
     });
   });
 
-  it("accepts puzzle names that do not exist (current behavior)", async () => {
-    const quest = await createQuest(["no-such-puzzle"]);
+  it("rejects puzzle names that do not exist", async () => {
+    expect(
+      await QuestService.createQuest({
+        name: "bad",
+        userName: "player",
+        puzzles: [
+          { puzzleName: "fruit" },
+          { puzzleName: "nope" },
+          { puzzleName: "nada" },
+        ],
+      })
+    ).toEqual({
+      status: "error",
+      statusCode: 400,
+      message: "No puzzles found with names: nope, nada",
+    });
+    expect(await storedQuest("bad")).toBeNull();
+  });
 
-    expect(quest.puzzles[0].puzzleName).toBe("no-such-puzzle");
+  it("rejects a puzzle that appears more than once", async () => {
+    expect(
+      await QuestService.createQuest({
+        name: "bad",
+        userName: "player",
+        puzzles: [{ puzzleName: "fruit" }, { puzzleName: "fruit" }],
+      })
+    ).toEqual({
+      status: "error",
+      statusCode: 400,
+      message: "Puzzles may appear only once in a quest: fruit",
+    });
   });
 });
 
@@ -357,7 +384,7 @@ describe("activatePuzzle", () => {
     });
   });
 
-  it("reports a later, still-unavailable puzzle as not found (current behavior)", async () => {
+  it("reports a later, still-unavailable puzzle as not found", async () => {
     const created = await createQuest();
     await QuestService.startQuest("test-quest");
 
@@ -375,7 +402,7 @@ describe("activatePuzzle", () => {
     });
   });
 
-  it("reports puzzles in a not-started quest as not found, because the 'not yet started' check can never trigger (current behavior)", async () => {
+  it("rejects activation in a quest that has not started", async () => {
     const created = await createQuest();
 
     expect(
@@ -387,8 +414,8 @@ describe("activatePuzzle", () => {
       )
     ).toEqual({
       status: "error",
-      statusCode: 404,
-      message: "No puzzle with name colors in quest test-quest",
+      statusCode: 400,
+      message: "Quest test-quest is not yet started",
     });
   });
 
@@ -524,51 +551,59 @@ describe("finishPuzzle", () => {
     expect(result.status).toBe(accepted ? "success" : "error");
   });
 
-  it("treats a space after a comma as part of the keyword (current behavior)", async () => {
+  it("ignores spaces around commas and empty keywords", async () => {
     await PuzzleModel.updateOne(
       { name: "colors" },
-      { solutionKeyword: "red, blue" }
+      { solutionKeyword: " red ,, blue ," }
     );
-    await createQuestWithFirstPuzzleInProgress();
-
-    const withoutSpace = await QuestService.finishPuzzle(
-      "test-quest",
-      "colors",
-      PLAYER,
-      "red,blue"
-    );
-    const withSpace = await QuestService.finishPuzzle(
-      "test-quest",
-      "colors",
-      PLAYER,
-      "red blue"
-    );
-
-    expect(withoutSpace.status).toBe("error");
-    expect(withSpace.status).toBe("success");
-  });
-
-  it("interprets keywords as regular expressions (current behavior)", async () => {
-    await PuzzleModel.updateOne({ name: "colors" }, { solutionKeyword: "r.d" });
     await createQuestWithFirstPuzzleInProgress();
 
     const result = await QuestService.finishPuzzle(
       "test-quest",
       "colors",
       PLAYER,
-      "rod"
+      "red,blue"
     );
 
     expect(result.status).toBe("success");
   });
 
-  it("throws when a keyword is not a valid regular expression (current behavior)", async () => {
-    await PuzzleModel.updateOne({ name: "colors" }, { solutionKeyword: "c++" });
+  it("matches keywords literally rather than as regular expressions", async () => {
+    await PuzzleModel.updateOne({ name: "colors" }, { solutionKeyword: "r.d" });
     await createQuestWithFirstPuzzleInProgress();
 
-    await expect(
-      QuestService.finishPuzzle("test-quest", "colors", PLAYER, "c++")
-    ).rejects.toThrow(SyntaxError);
+    const wildcard = await QuestService.finishPuzzle(
+      "test-quest",
+      "colors",
+      PLAYER,
+      "rod"
+    );
+    const literal = await QuestService.finishPuzzle(
+      "test-quest",
+      "colors",
+      PLAYER,
+      "R.D"
+    );
+
+    expect(wildcard.status).toBe("error");
+    expect(literal.status).toBe("success");
+  });
+
+  it("accepts keywords containing regular expression syntax", async () => {
+    await PuzzleModel.updateOne(
+      { name: "colors" },
+      { solutionKeyword: "c++,(x)" }
+    );
+    await createQuestWithFirstPuzzleInProgress();
+
+    const result = await QuestService.finishPuzzle(
+      "test-quest",
+      "colors",
+      PLAYER,
+      "C++ (x)"
+    );
+
+    expect(result.status).toBe("success");
   });
 
   it("rejects solving a puzzle that has not been activated", async () => {
@@ -640,16 +675,43 @@ describe("finishPuzzle", () => {
     });
   });
 
-  it("throws, saving nothing, when the next puzzle's details are missing (current behavior)", async () => {
+  it("records the solution and names the next puzzle when its details are missing", async () => {
     await createQuestWithFirstPuzzleInProgress();
     await PuzzleModel.deleteOne({ name: "fruit" });
 
-    await expect(
-      QuestService.finishPuzzle("test-quest", "colors", PLAYER, "red blue")
-    ).rejects.toThrow(TypeError);
-    expect((await storedQuest()).puzzles[0].status).toBe(
-      QuestPuzzleStatus.IN_PROGRESS
+    const result = await QuestService.finishPuzzle(
+      "test-quest",
+      "colors",
+      PLAYER,
+      "red blue"
     );
+
+    expect(result.data).toMatchObject({
+      nextPuzzleName: "fruit",
+      nextPuzzleDisplayName: "fruit",
+    });
+    const quest = await storedQuest();
+    expect(quest.puzzles[0].status).toBe(QuestPuzzleStatus.COMPLETED);
+    expect(quest.puzzles[1].status).toBe(QuestPuzzleStatus.AWAITING_ACTIVATION);
+  });
+
+  it.each([
+    [
+      "finishPuzzle",
+      (quest) => QuestService.finishPuzzle(quest, "colors", PLAYER, "red blue"),
+    ],
+    [
+      "getPuzzleHint",
+      (quest) => QuestService.getPuzzleHint(quest, "colors", PLAYER),
+    ],
+  ])("%s rejects a quest that has not started", async (_name, action) => {
+    await createQuest();
+
+    expect(await action("test-quest")).toEqual({
+      status: "error",
+      statusCode: 400,
+      message: "Quest test-quest is not yet started",
+    });
   });
 });
 
@@ -805,21 +867,97 @@ describe("updateQuest", () => {
     expect(quest.userName).toBe("player");
   });
 
-  it("replaces the puzzles of a quest that is in progress, discarding progress (current behavior)", async () => {
+  it("keeps the stored progress and times of puzzles that stay in the quest", async () => {
+    const before = await createQuestWithFirstPuzzleInProgress();
+    await QuestService.getPuzzleHint("test-quest", "colors", PLAYER);
+
+    // The admin quest edit page sends these fields, but not the times.
+    await QuestService.updateQuest({
+      name: "test-quest",
+      displayName: "Renamed",
+      puzzles: before.puzzles.map(({ puzzleName, status, activationCode }) => ({
+        puzzleName,
+        status,
+        activationCode,
+      })),
+    });
+
+    const quest = await storedQuest();
+    expect(quest.displayName).toBe("Renamed");
+    expect(quest.puzzles[0]).toEqual({
+      ...before.puzzles[0],
+      nextHintToDisplay: 1,
+    });
+    expect(quest.puzzles[0].startTime).toBeInstanceOf(Date);
+    expect(quest.puzzles[0].activationTime).toBeInstanceOf(Date);
+  });
+
+  it("applies admin overrides to puzzle progress", async () => {
     await createQuestWithFirstPuzzleInProgress();
 
     await QuestService.updateQuest({
       name: "test-quest",
-      puzzles: [{ puzzleName: "fruit" }],
+      puzzles: [
+        { puzzleName: "colors", status: QuestPuzzleStatus.COMPLETED },
+        {
+          puzzleName: "fruit",
+          status: QuestPuzzleStatus.AWAITING_ACTIVATION,
+          nextHintToDisplay: 0,
+        },
+        { puzzleName: "finale" },
+      ],
     });
 
     const quest = await storedQuest();
-    expect(quest.status).toBe(QuestStatus.IN_PROGRESS);
-    expect(quest.puzzles).toHaveLength(1);
-    expect(quest.puzzles[0].status).toBe(QuestPuzzleStatus.UNAVAILABLE);
+    expect(quest.puzzles.map((p) => p.status)).toEqual([
+      QuestPuzzleStatus.COMPLETED,
+      QuestPuzzleStatus.AWAITING_ACTIVATION,
+      QuestPuzzleStatus.UNAVAILABLE,
+    ]);
   });
 
-  it("removes every puzzle when given an empty list (current behavior)", async () => {
+  it("leaves the puzzles unchanged when the definition has no puzzle list", async () => {
+    const before = await createQuestWithFirstPuzzleInProgress();
+
+    expect(
+      await QuestService.updateQuest({ name: "test-quest", displayName: "x" })
+    ).toEqual({ status: "success", statusCode: 200 });
+
+    const quest = await storedQuest();
+    expect(quest.displayName).toBe("x");
+    expect(quest.puzzles).toEqual(before.puzzles);
+  });
+
+  it("rejects puzzle names that do not exist, changing nothing", async () => {
+    const before = await createQuest();
+
+    expect(
+      await QuestService.updateQuest({
+        name: "test-quest",
+        displayName: "Renamed",
+        puzzles: [{ puzzleName: "colors" }, { puzzleName: "nope" }],
+      })
+    ).toEqual({
+      status: "error",
+      statusCode: 400,
+      message: "No puzzles found with names: nope",
+    });
+    expect(await storedQuest()).toEqual(before);
+  });
+
+  it("rejects an invalid quest status", async () => {
+    await createQuest();
+
+    expect(
+      await QuestService.updateQuest({ name: "test-quest", status: 7 })
+    ).toEqual({
+      status: "error",
+      statusCode: 400,
+      message: "Invalid quest status 7",
+    });
+  });
+
+  it("removes every puzzle when given an empty list", async () => {
     await createQuest();
 
     await QuestService.updateQuest({ name: "test-quest", puzzles: [] });
@@ -827,25 +965,16 @@ describe("updateQuest", () => {
     expect((await storedQuest()).puzzles).toEqual([]);
   });
 
-  it("cannot set the status back to not started, because 0 is falsy (current behavior)", async () => {
+  it("can set the status back to not started", async () => {
     await createQuest();
     await QuestService.startQuest("test-quest");
 
     await QuestService.updateQuest({
       name: "test-quest",
       status: QuestStatus.NOT_STARTED,
-      puzzles: [{ puzzleName: "fruit" }],
     });
 
-    expect((await storedQuest()).status).toBe(QuestStatus.IN_PROGRESS);
-  });
-
-  it("throws when the definition has no puzzle list (current behavior)", async () => {
-    await createQuest();
-
-    await expect(
-      QuestService.updateQuest({ name: "test-quest", displayName: "x" })
-    ).rejects.toThrow(TypeError);
+    expect((await storedQuest()).status).toBe(QuestStatus.NOT_STARTED);
   });
 
   it("returns 404 for an unknown quest", async () => {
@@ -1124,7 +1253,8 @@ describe("getQuestRunBook", () => {
   });
 
   it("returns 500 when a puzzle's details are missing", async () => {
-    await createQuest(["no-such-puzzle"]);
+    await createQuest(["fruit"]);
+    await PuzzleModel.deleteOne({ name: "fruit" });
     const { pdfDoc } = createPdfRecorder();
 
     const result = await QuestService.getQuestRunBook("test-quest", pdfDoc);

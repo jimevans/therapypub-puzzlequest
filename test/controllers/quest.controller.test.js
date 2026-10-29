@@ -23,6 +23,7 @@ vi.mock("../../src/services/quest.service.js", async (importOriginal) => {
     ...original,
     getQuestByQuestName: vi.fn(),
     deleteQuest: vi.fn(),
+    updateQuest: vi.fn(async () => ({ status: "success", statusCode: 200 })),
   };
 });
 
@@ -113,5 +114,36 @@ describe("deleteQuest", () => {
 
     expect(res.statusCode).toBe(404);
     expect(res.sendCount).toBe(1);
+  });
+});
+
+describe("updateQuest", () => {
+  it("leaves the puzzle list unchanged when the request omits it", async () => {
+    const req = createMockRequest({
+      user: adminUser,
+      params: { name: "quest1" },
+      body: { name: "quest1", displayName: "Renamed" },
+    });
+
+    await QuestController.updateQuest(req, createMockResponse());
+
+    const [questDefinition] = QuestService.updateQuest.mock.calls.at(-1);
+    expect(questDefinition.displayName).toBe("Renamed");
+    expect(questDefinition.puzzles).toBeUndefined();
+  });
+
+  it("passes the puzzle list through when the request includes it", async () => {
+    const req = createMockRequest({
+      user: adminUser,
+      params: { name: "quest1" },
+      body: { name: "quest1", puzzles: [{ puzzleName: "puzzle1" }] },
+    });
+
+    await QuestController.updateQuest(req, createMockResponse());
+
+    const [questDefinition] = QuestService.updateQuest.mock.calls.at(-1);
+    expect(questDefinition.puzzles.map((p) => p.puzzleName)).toEqual([
+      "puzzle1",
+    ]);
   });
 });

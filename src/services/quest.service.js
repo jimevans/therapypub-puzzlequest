@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { marked } from "marked";
 import QRCode from "qrcode";
+import { PuzzleModel } from "../models/puzzle.model.js";
 import {
   QuestModel,
   QuestStatus,
@@ -494,6 +495,55 @@ export async function getQuestPuzzle(questName, puzzleName, user) {
 }
 
 /**
+ * Checks a quest's list of puzzles: each puzzle must exist and appear only once.
+ * @param {string[]} puzzleNames the names of the puzzles in the quest
+ * @returns {Promise<QuestResult | null>} an error result, or null if the list is valid
+ */
+async function validateQuestPuzzleNames(puzzleNames) {
+  const duplicates = puzzleNames.filter(
+    (puzzleName, index) => puzzleNames.indexOf(puzzleName) !== index
+  );
+  if (duplicates.length) {
+    return {
+      status: "error",
+      statusCode: 400,
+      message: `Puzzles may appear only once in a quest: ${[
+        ...new Set(duplicates),
+      ].join(", ")}`,
+    };
+  }
+  const foundPuzzles = await PuzzleModel.find({
+    name: { $in: puzzleNames },
+  }).select("name");
+  const foundNames = new Set(foundPuzzles.map((puzzle) => puzzle.name));
+  const missing = puzzleNames.filter(
+    (puzzleName) => !foundNames.has(puzzleName)
+  );
+  if (missing.length) {
+    return {
+      status: "error",
+      statusCode: 400,
+      message: `No puzzles found with names: ${missing.join(", ")}`,
+    };
+  }
+  return null;
+}
+
+/**
+ * Creates a new quest puzzle entry that has not yet been made available.
+ * @param {string} puzzleName the name of the puzzle
+ * @returns {object} the quest puzzle data
+ */
+function createQuestPuzzleEntry(puzzleName) {
+  return {
+    puzzleName,
+    nextHintToDisplay: 0,
+    status: QuestPuzzleStatus.UNAVAILABLE,
+    activationCode: randomUUID().replaceAll("-", ""),
+  };
+}
+
+/**
  * Creates a quest in the data store.
  * @param {Quest} questDefinition the definition of the quest to create.
  * @returns {Promise<QuestResult>} a response object containing a status, status code, and data
@@ -542,19 +592,14 @@ export async function createQuest(questDefinition) {
   });
 
   if ("puzzles" in questDefinition) {
-    // NOTE: This could lead to attempting to add a puzzle name that does
-    // not exist. This is to avoid a lookup of the puzzle from the Puzzles
-    // schema. Consumers of this service will have to take that into account
-    // when managing the implications of creating puzzles in a quest.
-    questDefinition.puzzles.forEach((puzzleDefinition) => {
-      const puzzle = {
-        puzzleName: puzzleDefinition.puzzleName,
-        nextHintToDisplay: 0,
-        status: QuestPuzzleStatus.UNAVAILABLE,
-        activationCode: randomUUID().replaceAll("-", ""),
-      };
-      quest.puzzles.push(puzzle);
-    });
+    const puzzleNames = questDefinition.puzzles.map(
+      (puzzleDefinition) => puzzleDefinition.puzzleName
+    );
+    const puzzleError = await validateQuestPuzzleNames(puzzleNames);
+    if (puzzleError) {
+      return puzzleError;
+    }
+    quest.puzzles = puzzleNames.map(createQuestPuzzleEntry);
   }
   try {
     await quest.save();
@@ -581,6 +626,17 @@ export async function deleteQuest(name) {
   return { status: "success", statusCode: 200 };
 }
 
+// Quest puzzle fields that an update may set. Fields left out of an update
+// keep their stored values.
+const UPDATABLE_QUEST_PUZZLE_FIELDS = [
+  "nextHintToDisplay",
+  "status",
+  "activationCode",
+  "startTime",
+  "activationTime",
+  "endTime",
+];
+
 /**
  * Updates a quest in the data store.
  * @param {Quest} questDefinition quest definition containing the updated data
@@ -595,19 +651,44 @@ export async function updateQuest(questDefinition) {
       message: `No quest with quest name ${questDefinition.name} found`,
     };
   }
+  const status = questDefinition.status ?? foundQuest.status;
+  if (!Object.values(QuestStatus).includes(status)) {
+    return {
+      status: "error",
+      statusCode: 400,
+      message: `Invalid quest status ${status}`,
+    };
+  }
   foundQuest.displayName = questDefinition.displayName || questDefinition.name;
   foundQuest.userName = questDefinition.userName || foundQuest.userName;
-  foundQuest.status = questDefinition.status || foundQuest.status;
-  if (questDefinition.puzzles.length) {
-    foundQuest.puzzles = [];
-    questDefinition.puzzles.forEach((puzzle) => {
-      if (!puzzle.activationCode) {
-        puzzle.activationCode = randomUUID().replaceAll("-", "");
+  foundQuest.status = status;
+  if (questDefinition.puzzles) {
+    // Puzzles already in the quest keep their stored progress and times;
+    // only the fields given in the definition change. Puzzles new to the
+    // quest start out unavailable.
+    const puzzleNames = questDefinition.puzzles.map(
+      (puzzle) => puzzle.puzzleName
+    );
+    const puzzleError = await validateQuestPuzzleNames(puzzleNames);
+    if (puzzleError) {
+      return puzzleError;
+    }
+    const existingPuzzles = new Map(
+      foundQuest.puzzles.map((puzzle) => [puzzle.puzzleName, puzzle.toObject()])
+    );
+    foundQuest.puzzles = questDefinition.puzzles.map((puzzleDefinition) => {
+      const puzzle =
+        existingPuzzles.get(puzzleDefinition.puzzleName) ??
+        createQuestPuzzleEntry(puzzleDefinition.puzzleName);
+      for (const field of UPDATABLE_QUEST_PUZZLE_FIELDS) {
+        const value = puzzleDefinition[field];
+        if (value !== undefined && value !== null && value !== "") {
+          puzzle[field] = value;
+        }
       }
-      foundQuest.puzzles.push(puzzle);
+      return puzzle;
     });
   }
-  foundQuest.puzzles = questDefinition.puzzles || foundQuest.puzzles;
   try {
     await foundQuest.save();
   } catch (err) {
@@ -653,7 +734,7 @@ export async function startQuest(name) {
   try {
     await foundQuest.save();
   } catch (err) {
-    return { status: "error", statusCode: 500, message: err };
+    return { status: "error", statusCode: 500, message: err.message };
   }
   return { status: "success", statusCode: 200 };
 }
@@ -725,7 +806,7 @@ export async function activatePuzzle(
       statusCode: 400,
       message: `Quest ${questName} is already completed`,
     };
-  } else if (quest.status < QuestStatus.NOT_STARTED) {
+  } else if (quest.status < QuestStatus.IN_PROGRESS) {
     return {
       status: "error",
       statusCode: 400,
@@ -770,13 +851,23 @@ export async function activatePuzzle(
   try {
     await quest.save();
   } catch (err) {
-    return { status: "error", statusCode: 500, message: err };
+    return { status: "error", statusCode: 500, message: err.message };
   }
   return {
     status: "success",
     statusCode: 200,
     data: { activationTime: activationTime },
   };
+}
+
+/**
+ * Escapes characters that have special meaning in a regular expression, so
+ * that a solution keyword matches literally.
+ * @param {string} text the text to escape
+ * @returns {string} the escaped text
+ */
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /**
@@ -816,7 +907,7 @@ export async function finishPuzzle(
       statusCode: 400,
       message: `Quest ${questName} is already completed`,
     };
-  } else if (quest.status < QuestStatus.NOT_STARTED) {
+  } else if (quest.status < QuestStatus.IN_PROGRESS) {
     return {
       status: "error",
       statusCode: 400,
@@ -852,9 +943,12 @@ export async function finishPuzzle(
     return puzzleResult;
   }
   const foundPuzzle = puzzleResult.data;
-  const solutionKeywords = foundPuzzle.solutionKeyword.split(",");
+  const solutionKeywords = foundPuzzle.solutionKeyword
+    .split(",")
+    .map((keyword) => keyword.trim())
+    .filter((keyword) => keyword);
   const foundKeywords = solutionKeywords.filter((keyword) =>
-    RegExp(keyword, "i").test(solutionGuess)
+    RegExp(escapeRegExp(keyword), "i").test(solutionGuess)
   );
   if (foundKeywords.length !== solutionKeywords.length) {
     return {
@@ -880,7 +974,10 @@ export async function finishPuzzle(
     returnData.nextPuzzleName = nextPuzzleName;
     const nextPuzzle =
       await PuzzleService.getPuzzleByPuzzleName(nextPuzzleName);
-    returnData.nextPuzzleDisplayName = nextPuzzle.data.displayName;
+    // Fall back to the name if the puzzle has since been deleted, so the
+    // player's correct solution is still recorded.
+    returnData.nextPuzzleDisplayName =
+      nextPuzzle.data?.displayName ?? nextPuzzleName;
   } else {
     quest.status = QuestStatus.COMPLETED;
     returnData.questComplete = true;
@@ -888,9 +985,8 @@ export async function finishPuzzle(
   try {
     await quest.save();
   } catch (err) {
-    return { status: "error", statusCode: 500, message: err };
+    return { status: "error", statusCode: 500, message: err.message };
   }
-  await quest.save();
   return {
     status: "success",
     statusCode: 200,
@@ -929,7 +1025,7 @@ export async function getPuzzleHint(questName, puzzleName, userContexts) {
       statusCode: 400,
       message: `Quest ${questName} is already completed`,
     };
-  } else if (quest.status < QuestStatus.NOT_STARTED) {
+  } else if (quest.status < QuestStatus.IN_PROGRESS) {
     return {
       status: "error",
       statusCode: 400,
@@ -976,7 +1072,7 @@ export async function getPuzzleHint(questName, puzzleName, userContexts) {
   try {
     await quest.save();
   } catch (err) {
-    return { status: "error", statusCode: 500, message: err };
+    return { status: "error", statusCode: 500, message: err.message };
   }
   return {
     status: "success",
