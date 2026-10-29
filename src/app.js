@@ -1,97 +1,37 @@
-import path from "path";
-import { createRequire } from "module";
-import express from "express";
+// Application startup: connects to MongoDB, then serves HTTP and websocket
+// traffic. The hosting configuration runs this file (directly or through
+// loader.cjs), so it must stay at src/app.js. The application itself is
+// defined in createApp.js.
 import * as http from "http";
-const app = express();
-const port = 3000;
-
-app.use(express.json());
-app.use(express.raw({ limit: "100mb", type: "application/octet-stream" }));
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(import.meta.dirname, "public")));
-
-// Browser build of marked, served from the installed package so that its
-// version is pinned by the lockfile and matches the version used on the server.
-const markedBrowserModule = path.join(
-  path.dirname(createRequire(import.meta.url).resolve("marked")),
-  "marked.esm.js"
-);
-app.get("/vendor/marked.esm.js", (req, res) => {
-  res.sendFile(markedBrowserModule);
-});
-
-import cookieParser from "cookie-parser";
-app.use(cookieParser());
-
+import mongoose from "mongoose";
 import { config } from "./config.js";
-const mongodb = config.PQ_MONGODB_URI;
+import { createApp } from "./createApp.js";
+import * as WebSocketService from "./services/websocket.service.js";
 
-if (config.PQ_TRUST_PROXY) {
-  // Required behind a reverse proxy (such as cPanel's Apache front end) so
-  // that client IP addresses, and therefore rate limits, are per client.
-  // Accepts a hop count (e.g. "1"), "true", or Express's named/IP values
-  // (e.g. "loopback").
-  const trustProxy = config.PQ_TRUST_PROXY;
-  const hops = Number(trustProxy);
-  app.set(
-    "trust proxy",
-    trustProxy === "true" ? true : Number.isNaN(hops) ? trustProxy : hops
-  );
+mongoose.set("strictQuery", false);
+mongoose.connection.on(
+  "error",
+  console.error.bind(console, "MongoDB connection error:")
+);
+
+try {
+  await mongoose.connect(config.PQ_MONGODB_URI);
+} catch (err) {
+  console.error(`Unable to connect to MongoDB: ${err.message}`);
+  process.exit(1);
 }
 
-import mongoose from "mongoose";
-mongoose.set("strictQuery", false);
-mongoose.connect(mongodb);
+const server = http.createServer(createApp());
 
-const db = mongoose.connection;
-db.on("error", console.error.bind(console, "MongoDB connection error:"));
-
-import { IndexRouter } from "./routes/index.js";
-app.use("/", IndexRouter);
-
-// API routes for data manipulation
-import { UserApiRouter } from "./routes/api.user.js";
-app.use("/api/user", UserApiRouter);
-
-import { PuzzleApiRouter } from "./routes/api.puzzle.js";
-app.use("/api/puzzle", PuzzleApiRouter);
-
-import { QuestApiRouter } from "./routes/api.quest.js";
-app.use("/api/quest", QuestApiRouter);
-
-import { TeamApiRouter } from "./routes/api.team.js";
-app.use("/api/team", TeamApiRouter);
-
-import { MessagingApiRouter } from "./routes/api.messaging.js";
-app.use("/api/messaging", MessagingApiRouter);
-
-//UI routes for data display
-import { UserRouter } from "./routes/user.js";
-app.use("/user", UserRouter);
-
-import { PuzzleRouter } from "./routes/puzzle.js";
-app.use("/puzzle", PuzzleRouter);
-
-import { QuestRouter } from "./routes/quest.js";
-app.use("/quest", QuestRouter);
-
-import { MonitorRouter } from "./routes/monitor.js";
-app.use("/monitor", MonitorRouter);
-
-app.set("views", path.join(import.meta.dirname, "views"));
-app.set("view engine", "ejs");
-
-const server = http.createServer(app);
-
-import * as WebSocketService from "./services/websocket.service.js";
 const socketServer = WebSocketService.initialize();
-
 server.on("upgrade", (req, socket, header) => {
   socketServer.handleUpgrade(req, socket, header, (ws) =>
     socketServer.emit("connection", ws, req)
   );
 });
 
-server.listen(port, () => {
-  console.log(`Therapy Pub and Co. PuzzleQuest app listening on port ${port}!`);
+server.listen(config.PQ_PORT, () => {
+  console.log(
+    `Therapy Pub and Co. PuzzleQuest app listening on port ${config.PQ_PORT}!`
+  );
 });

@@ -73,7 +73,10 @@ the example values work for local development:
 - The Twilio settings can stay empty unless you are testing calls or texts.
 
 `src/.env` is git-ignored. Every variable is documented in
-[src/.env.example](src/.env.example).
+[src/.env.example](src/.env.example). Environment variables take precedence
+over values in `src/.env`. The app checks its settings at startup
+([src/config.js](src/config.js)). If any are missing or invalid, it exits
+with a list of the problems.
 
 ### 5. Run
 

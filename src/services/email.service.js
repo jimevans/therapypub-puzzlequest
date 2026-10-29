@@ -16,8 +16,8 @@ function getTransport() {
   if (!transport) {
     transport = nodemailer.createTransport({
       host: config.PQ_SMTP_HOST,
-      port: Number(config.PQ_SMTP_PORT) || 587,
-      secure: config.PQ_SMTP_SECURE === "true",
+      port: config.PQ_SMTP_PORT,
+      secure: config.PQ_SMTP_SECURE,
       auth: config.PQ_SMTP_USER
         ? { user: config.PQ_SMTP_USER, pass: config.PQ_SMTP_PASSWORD }
         : undefined,
