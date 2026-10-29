@@ -128,10 +128,11 @@ at the top of the file.
 npm run typecheck
 ```
 
-The server code stays JavaScript, because Node 20 can't run TypeScript files
-and deployment copies the source as-is. TypeScript checks it anyway
-([tsconfig.json](tsconfig.json)), using the JSDoc annotations in the code and
-the libraries' type definitions. Shared types live in
+The server code is JavaScript, and TypeScript type-checks it without emitting
+anything ([tsconfig.json](tsconfig.json)), using the JSDoc annotations in the
+code and the libraries' type definitions. Deployment runs the source as-is.
+How to move to TypeScript files hasn't been decided yet: either compile them
+with `tsc`, or have Node 24 run them directly. Shared types live in
 [src/types.js](src/types.js), and the properties that middleware adds to
 Express requests are declared in [src/express.d.ts](src/express.d.ts).
 
