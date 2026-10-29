@@ -1,0 +1,6 @@
+package-lock.json
+coverage/
+# Generated legal documents
+src/public/policies/
+# Uploaded puzzle media
+src/public/puzzleData/

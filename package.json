@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/jimevans/therapypub-puzzlequest#readme",
   "dependencies": {
-    "bcrypt": "^5.1.1",
+    "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.6",
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",
@@ -42,9 +42,12 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "eslint": "^8.29.0",
-    "eslint-config-google": "^0.14.0",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.13.0",
     "mongodb-memory-server": "^10.4.3",
-    "vitest": "^3.2.7"
+    "prettier": "^3.9.10",
+    "vitest": "^4.1.12"
   }
 }
