@@ -54,7 +54,7 @@ export async function retrieveTeam(req, res) {
     return;
   }
 
-  const teamResponse = await TeamService.getTeamByTeamName(req.params.name);
+  const teamResponse = await TeamService.getTeamByTeamName(req.params.teamName);
   if (teamResponse.status === "error") {
     res.status(teamResponse.statusCode).send(
       JSON.stringify({
@@ -62,6 +62,7 @@ export async function retrieveTeam(req, res) {
         message: teamResponse.message
       })
     );
+    return;
   }
   res.send(JSON.stringify(teamResponse));
 }
@@ -149,6 +150,15 @@ export async function listTeams(req, res) {
   }
 
   const response = await TeamService.listTeams();
+  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (!loggedInUser.isAdmin()) {
+    // Non-administrators only need enough to pick a team to join; exposing
+    // join codes would let anyone join any team.
+    response.data = response.data.map((team) => ({
+      teamName: team.teamName,
+      displayName: team.displayName,
+    }));
+  }
   res.send(JSON.stringify(response));
 }
 
@@ -172,7 +182,7 @@ export async function joinTeam(req, res) {
   }
 
   const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin) {
+  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin()) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -217,7 +227,7 @@ export async function leaveTeam(req, res) {
   }
 
   const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin) {
+  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin()) {
     res.status(403).send(
       JSON.stringify({
         status: "error",

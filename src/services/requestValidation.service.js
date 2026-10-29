@@ -28,7 +28,7 @@ export function validateRequest(validationOptions = {}, request = null) {
       return {
         status: "error",
         statusCode: 403,
-        message: `User ${loggedInUser.userName} not authorized perform operation`,
+        message: `User ${loggedInUser?.userName ?? "(anonymous)"} not authorized to perform operation`,
       };
     }
   }

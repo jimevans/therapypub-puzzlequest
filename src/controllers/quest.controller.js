@@ -72,10 +72,19 @@ export async function retrieveQuest(req, res) {
     });
     return;
   }
+  const quest = questResponse.data.toJSON();
+  if (!loggedInUser.isAdmin()) {
+    // Activation codes must be obtained by scanning the puzzle's QR code,
+    // so never reveal them to players.
+    quest.puzzles = quest.puzzles.map((puzzle) => {
+      const { activationCode, ...playerVisiblePuzzle } = puzzle.toJSON();
+      return playerVisiblePuzzle;
+    });
+  }
   res.send(
     JSON.stringify({
       status: "success",
-      data: questResponse.data[0],
+      data: quest,
     })
   );
 }
@@ -140,6 +149,7 @@ export async function deleteQuest(req, res) {
         message: response.message,
       })
     );
+    return;
   }
   res.send(JSON.stringify(response));
 }

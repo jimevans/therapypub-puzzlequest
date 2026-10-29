@@ -126,7 +126,7 @@ export async function updateUser(req, res) {
     return;
   }
   const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin) {
+  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin()) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -136,6 +136,10 @@ export async function updateUser(req, res) {
     return;
   }
   const updatedUser = new UserService.User(req.body);
+  if (!loggedInUser.isAdmin()) {
+    // Only administrators may change authorization levels.
+    updatedUser.authorizationLevel = undefined;
+  }
   const response = await UserService.updateUser(req.params.userName, updatedUser);
   if (response.status === "error") {
     res.status(response.statusCode).send(
@@ -167,7 +171,7 @@ export async function deleteUser(req, res) {
   }
 
   const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin) {
+  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin()) {
     res.status(403).send(
       JSON.stringify({
         status: "error",

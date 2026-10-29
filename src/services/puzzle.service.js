@@ -161,7 +161,7 @@ export async function deletePuzzle(name) {
   const result = await PuzzleModel.findOneAndDelete({ name: name });
   if (result === null) {
     return {
-      status: error,
+      status: "error",
       statusCode: 404,
       message: `Puzzle with puzzle name ${name} does not exist`
     };
@@ -179,7 +179,7 @@ export async function createPuzzle(puzzle) {
   const puzzleExists = existingPuzzles.length !== 0;
   if (puzzleExists) {
     return {
-      status: error,
+      status: "error",
       statusCode: 400,
       message: `Puzzle with puzzle name ${puzzle.name} already exists`
     };

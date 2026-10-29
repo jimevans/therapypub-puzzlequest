@@ -173,7 +173,6 @@ export class User {
     return {
       userName: this.userName,
       displayName: this.displayName,
-      password: this.password,
       email: this.email,
       phone: this.phone,
       sms: this.allowSmsMessages,
@@ -320,7 +319,7 @@ export async function updateUser(name, userData) {
     );
     foundUser.password = password;
   }
-  foundUser.email = userData.email.toLowerCase() || foundUser.email;
+  foundUser.email = userData.email?.toLowerCase() || foundUser.email;
   if (userData.phone) {
     const phone = userData.phone.replace(/[^\d]/g, "");
     foundUser.phone = phone.startsWith("1") ? phone.substring(1) : phone;
