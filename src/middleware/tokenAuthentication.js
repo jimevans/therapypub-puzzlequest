@@ -23,7 +23,9 @@ export async function tokenAuthenticate(req, res, next) {
   // The JWT can be in different places, depending on the request type.
   // Methods of transmission not explicitly enumerated in the below code
   // are not supported.
-  if ("token" in req.body) {
+  // Express leaves req.body undefined for requests without a parsed body,
+  // including multipart requests, whose body is parsed later by multer.
+  if (req.body && "token" in req.body) {
     // Token is part of a form submitted by the user. If the
     // token is found as part of a form submission, move it to
     // an http-only cookie so future UI requests can access it.

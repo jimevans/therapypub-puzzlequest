@@ -83,4 +83,16 @@ describe("tokenAuthenticate", () => {
     expect(req.user).toBeNull();
     expect(next).toHaveBeenCalled();
   });
+
+  it("handles a request without a parsed body, as Express 5 sends for GET and multipart requests", async () => {
+    UserService.getTokenValidationData.mockResolvedValue({});
+    const req = createAuthenticatedRequest();
+    req.body = undefined;
+    const next = vi.fn();
+
+    await TokenAuthenticator.tokenAuthenticate(req, createMockResponse(), next);
+
+    expect(req.user.userName).toBe("player");
+    expect(next).toHaveBeenCalled();
+  });
 });

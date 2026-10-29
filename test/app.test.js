@@ -27,7 +27,7 @@ describe("createApp", () => {
     const response = await request(createApp()).get("/vendor/marked.esm.js");
 
     expect(response.status).toBe(200);
-    expect(response.type).toBe("application/javascript");
+    expect(response.type).toBe("text/javascript");
     expect(response.text).toContain("export");
   });
 
