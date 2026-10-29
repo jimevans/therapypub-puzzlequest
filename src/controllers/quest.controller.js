@@ -463,6 +463,12 @@ export async function requestQuestPuzzleHint(req, res) {
     return;
   }
 
+  if (hintResult.data === false) {
+    // No hints left; there is nothing to show the other players.
+    res.send(JSON.stringify(hintResult));
+    return;
+  }
+
   WebSocketService.notifyBrowsers(
     [
       `/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,

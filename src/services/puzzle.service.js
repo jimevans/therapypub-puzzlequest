@@ -1,11 +1,10 @@
 import { PuzzleModel, PuzzleType } from "../models/puzzle.model.js";
 
 /**
- * @typedef {Object} PuzzleResult
- * @property {string} status the status of the operation
- * @property {number} statusCode the numeric status code of the operation
- * @property {string | undefined} message text of a message describing the result, especially in an error condition
- * @property {Puzzle | Puzzle[] | undefined} data the user returned in the result
+ * The result of a puzzle service operation; data is a Puzzle unless the
+ * function's documentation says otherwise.
+ * @template [T=Puzzle]
+ * @typedef {import("../types.js").ServiceResult<T>} PuzzleResult
  */
 
 /**
@@ -31,7 +30,7 @@ export class PuzzleHint {
 
   /**
    * Initializes a new instance of the PuzzleHint class.
-   * @param {object} hintDefinition an object containing the definition of hint properties
+   * @param {Partial<PuzzleHint>} hintDefinition an object containing the definition of hint properties
    */
   constructor(hintDefinition) {
     this.text = hintDefinition.text;
@@ -99,7 +98,7 @@ export class Puzzle {
 
   /**
    * Initializes a new instance of the Puzzle class.
-   * @param {object} puzzleDefinition  an object containing the definition of puzzle properties
+   * @param {Partial<Puzzle>} puzzleDefinition an object containing the definition of puzzle properties
    */
   constructor(puzzleDefinition) {
     this.name = puzzleDefinition.name;
@@ -193,7 +192,6 @@ export async function createPuzzle(puzzle) {
       text: puzzle.text || "",
       solutionKeyword: puzzle.solutionKeyword || "",
       solutionDisplayText: puzzle.solutionDisplayText || "",
-      resourcePath: puzzle.resourcePath || "",
       hints: puzzle.hints || [],
     });
     await newPuzzle.save();
@@ -229,16 +227,14 @@ export async function updatePuzzle(name, puzzleData) {
     puzzleData.solutionKeyword || foundPuzzle.solutionKeyword;
   foundPuzzle.solutionDisplayText =
     puzzleData.solutionDisplayText || foundPuzzle.solutionDisplayText;
-  foundPuzzle.resourcePath =
-    puzzleData.resourcePath || foundPuzzle.resourcePath;
-  foundPuzzle.hints = puzzleData.hints || foundPuzzle.hints;
+  foundPuzzle.set("hints", puzzleData.hints || foundPuzzle.hints);
   await foundPuzzle.save();
   return { status: "success", statusCode: 200 };
 }
 
 /**
  * Gets a list of all of the puzzle definitions.
- * @returns {Promise<PuzzleResult>} a response object containing a status, status code, and data
+ * @returns {Promise<PuzzleResult<Puzzle[]>>} a response object containing a status, status code, and data
  */
 export async function listPuzzles() {
   const foundPuzzles = await PuzzleModel.find({});

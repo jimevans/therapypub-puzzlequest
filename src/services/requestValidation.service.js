@@ -2,14 +2,14 @@ import { User } from "./user.service.js";
 
 /**
  * Validates a request.
- * @param {object} validationOptions the options for validating the request
- * @param {boolean | undefined} validationOptions.requiresUser true if a logged in user is required in this request; otherwise, false
- * @param {boolean | undefined} validationOptions.requiresAdmin true if the request requires administrative access; otherwise, false
- * @param {boolean | undefined} validationOptions.requiresBody true if the request requires a body in the request; otherwise, false
- * @param {boolean | undefined} validationOptions.requiresFile true if the request requires an uploaded file; otherwise, false
- * @param {string[] | undefined} validationOptions.requiredBodyProperties an array of the properties required in the body
- * @param {object | null} request the request
- * @returns
+ * @param {object} [validationOptions] the options for validating the request
+ * @param {boolean} [validationOptions.requiresUser] true if a logged in user is required in this request; otherwise, false
+ * @param {boolean} [validationOptions.requiresAdmin] true if the request requires administrative access; otherwise, false
+ * @param {boolean} [validationOptions.requiresBody] true if the request requires a body in the request; otherwise, false
+ * @param {boolean} [validationOptions.requiresFile] true if the request requires an uploaded file; otherwise, false
+ * @param {string[]} [validationOptions.requiredBodyProperties] an array of the properties required in the body
+ * @param {import("express").Request} request the request
+ * @returns {import("../types.js").ServiceResult<undefined>} a success result, or an error result describing why the request is invalid
  */
 export function validateRequest(validationOptions = {}, request = null) {
   if (validationOptions.requiresUser) {

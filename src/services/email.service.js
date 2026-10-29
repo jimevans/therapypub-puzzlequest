@@ -32,8 +32,8 @@ function getTransport() {
  * @param {string} message.to the recipient email address
  * @param {string} message.subject the subject of the message
  * @param {string} message.text the plain text body of the message
- * @param {string | undefined} message.html the HTML body of the message, if any
- * @returns {Promise<object>} a response object containing a status, status code, and message
+ * @param {string} [message.html] the HTML body of the message, if any
+ * @returns {Promise<import("../types.js").ServiceResult<undefined>>} a response object containing a status, status code, and message
  */
 export async function sendEmail({ to, subject, text, html }) {
   const mailTransport = getTransport();

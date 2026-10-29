@@ -1,11 +1,10 @@
 import { TeamModel } from "../models/user.model.js";
 
 /**
- * @typedef {Object} TeamResult
- * @property {string} status the status of the operation
- * @property {number} statusCode the numeric status code of the operation
- * @property {string | undefined} message text of a message describing the result, especially in an error condition
- * @property {Team | Team[] | undefined} data the team returned in the result
+ * The result of a team service operation; data is a Team unless the
+ * function's documentation says otherwise.
+ * @template [T=Team]
+ * @typedef {import("../types.js").ServiceResult<T>} TeamResult
  */
 
 /**
@@ -133,7 +132,7 @@ export async function createTeam(team) {
 /**
  * Updates a team.
  * @param {string} name the name of the team to update
- * @param {object} puzzleData the data to update the team definition with
+ * @param {Partial<Team>} teamData the data to update the team definition with
  * @returns {Promise<TeamResult>} a response object containing a status, status code, and data
  */
 export async function updateTeam(name, teamData) {
@@ -164,7 +163,7 @@ export async function updateTeam(name, teamData) {
 
 /**
  * Gets a list of all of the team definitions.
- * @returns {object} a response object containing a status, status code, and data
+ * @returns {Promise<TeamResult<Team[]>>} a response object containing a status, status code, and data
  */
 export async function listTeams() {
   const foundTeams = await TeamModel.find({});
@@ -175,7 +174,7 @@ export async function listTeams() {
 /**
  * Gets a list of all of the teams for a specified user.
  * @param {string} userName the name of the user for which to retrieve teams
- * @returns {Promise<TeamResult>} a response object containing a status, status code, and data
+ * @returns {Promise<TeamResult<Team[]>>} a response object containing a status, status code, and data
  */
 export async function getTeamsForUser(userName) {
   const teamsContainingUser = await TeamModel.find({

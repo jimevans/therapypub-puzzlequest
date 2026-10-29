@@ -154,10 +154,12 @@ export async function listTeams(req, res) {
   if (!loggedInUser.isAdmin()) {
     // Non-administrators only need enough to pick a team to join; exposing
     // join codes would let anyone join any team.
-    response.data = response.data.map((team) => ({
+    const teams = response.data.map((team) => ({
       teamName: team.teamName,
       displayName: team.displayName,
     }));
+    res.send(JSON.stringify({ ...response, data: teams }));
+    return;
   }
   res.send(JSON.stringify(response));
 }

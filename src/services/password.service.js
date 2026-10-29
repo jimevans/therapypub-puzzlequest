@@ -20,7 +20,7 @@ export function hashResetToken(token) {
 /**
  * Sets a new password on a user document and records when it was changed,
  * which revokes all previously issued tokens.
- * @param {object} userDocument the user document from the data store
+ * @param {InstanceType<typeof UserModel>} userDocument the user document from the data store
  * @param {string} newPassword the new plain text password
  */
 async function applyNewPassword(userDocument, newPassword) {
@@ -34,7 +34,7 @@ async function applyNewPassword(userDocument, newPassword) {
 /**
  * Notifies a user that their password was changed. Failures are logged but
  * do not fail the password change.
- * @param {object} userDocument the user document from the data store
+ * @param {InstanceType<typeof UserModel>} userDocument the user document from the data store
  */
 async function sendPasswordChangedNotice(userDocument) {
   const result = await EmailService.sendEmail({
@@ -54,7 +54,7 @@ async function sendPasswordChangedNotice(userDocument) {
  * @param {string} userName the user name of the user changing their password
  * @param {string} currentPassword the user's current plain text password
  * @param {string} newPassword the new plain text password
- * @returns {Promise<object>} a response object containing a status, status code, and,
+ * @returns {Promise<import("../types.js").ServiceResult<string>>} a response object containing a status, status code, and,
  *  on success, a new authentication token for the user
  */
 export async function changePassword(userName, currentPassword, newPassword) {
@@ -111,7 +111,7 @@ export async function changePassword(userName, currentPassword, newPassword) {
  * emails them a link to reset their password. Succeeds without doing anything
  * if no user matches, so callers must not reveal whether an account exists.
  * @param {string} identifier the user name or email address of the user
- * @returns {Promise<object>} a response object containing a status, status code, and message
+ * @returns {Promise<import("../types.js").ServiceResult<undefined>>} a response object containing a status, status code, and message
  */
 export async function requestPasswordReset(identifier) {
   const configurationError = checkResetLinkConfiguration();
@@ -133,7 +133,7 @@ export async function requestPasswordReset(identifier) {
  * administrator. Unlike requestPasswordReset, reports whether the user exists.
  * The user's current password keeps working until the link is used.
  * @param {string} userName the user name of the user to send the link to
- * @returns {Promise<object>} a response object containing a status, status code, and message
+ * @returns {Promise<import("../types.js").ServiceResult<undefined>>} a response object containing a status, status code, and message
  */
 export async function requestPasswordResetForUser(userName) {
   const configurationError = checkResetLinkConfiguration();
@@ -153,9 +153,9 @@ export async function requestPasswordResetForUser(userName) {
 
 /**
  * Creates a password reset token for a user and emails them a link to use it.
- * @param {object} userDocument the user document from the data store
+ * @param {InstanceType<typeof UserModel>} userDocument the user document from the data store
  * @param {boolean} requestedByAdmin true if an administrator requested the reset; otherwise, false
- * @returns {Promise<object>} a response object containing a status, status code, and message
+ * @returns {Promise<import("../types.js").ServiceResult<undefined>>} a response object containing a status, status code, and message
  */
 async function sendPasswordResetLink(userDocument, requestedByAdmin) {
   // Only the most recent reset link is valid.
@@ -184,7 +184,7 @@ async function sendPasswordResetLink(userDocument, requestedByAdmin) {
 
 /**
  * Checks that the configuration needed to build reset links is present.
- * @returns {object | null} an error response object, or null if configured
+ * @returns {import("../types.js").ServiceResult<undefined> | null} an error response object, or null if configured
  */
 function checkResetLinkConfiguration() {
   if (!config.PQ_BASE_URL) {
@@ -202,7 +202,7 @@ function checkResetLinkConfiguration() {
  * be used once.
  * @param {string} token the password reset token from the reset link
  * @param {string} newPassword the new plain text password
- * @returns {Promise<object>} a response object containing a status, status code, and message
+ * @returns {Promise<import("../types.js").ServiceResult<undefined>>} a response object containing a status, status code, and message
  */
 export async function resetPassword(token, newPassword) {
   const policyResult =
@@ -210,6 +210,7 @@ export async function resetPassword(token, newPassword) {
   if (policyResult.status === "error") {
     return policyResult;
   }
+  /** @type {import("../types.js").ServiceResult<undefined>} */
   const invalidTokenResult = {
     status: "error",
     statusCode: 400,

@@ -6,8 +6,19 @@ import * as UserService from "../services/user.service.js";
 export const TOKEN_COOKIE_NAME = "pq-db-token";
 
 /**
+ * The user data carried in an authentication token.
+ * @typedef {object} TokenUser
+ * @property {string} userName the user name
+ * @property {string} displayName the display name
+ * @property {string} email the email address
+ * @property {string} phone the phone number
+ * @property {boolean} sms true if the user allows SMS messages
+ * @property {number} authorizationLevel the user's authorization level
+ */
+
+/**
  * Stores an authentication token in the http-only cookie used by UI requests.
- * @param {object} res the response
+ * @param {import("express").Response} res the response
  * @param {string} token the authentication token
  */
 export function setTokenCookie(res, token) {
@@ -47,7 +58,10 @@ export async function tokenAuthenticate(req, res, next) {
 
   if (token !== null) {
     try {
-      const decoded = await jwt.verify(token, config.PQ_SECRET_KEY);
+      const decoded =
+        /** @type {import("jsonwebtoken").JwtPayload & TokenUser} */ (
+          await jwt.verify(token, config.PQ_SECRET_KEY)
+        );
 
       // Tokens for deleted users, or issued before the user's password was
       // last changed, are treated like expired tokens.
