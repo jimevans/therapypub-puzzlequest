@@ -3,6 +3,7 @@ import { createRequire } from "module";
 import cookieParser from "cookie-parser";
 import express from "express";
 import { config } from "./config.js";
+import { errorHandler } from "./middleware/errorHandler.js";
 import { IndexRouter } from "./routes/index.js";
 import { MessagingApiRouter } from "./routes/api.messaging.js";
 import { PuzzleApiRouter } from "./routes/api.puzzle.js";
@@ -64,6 +65,9 @@ export function createApp() {
 
   app.set("views", path.join(import.meta.dirname, "views"));
   app.set("view engine", "ejs");
+
+  // Must be registered after every route.
+  app.use(errorHandler);
 
   return app;
 }
