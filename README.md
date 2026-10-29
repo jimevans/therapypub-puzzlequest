@@ -6,8 +6,8 @@ integration.
 
 ## Requirements
 
-- **Node.js 20.** The production host is limited to Node 20, so local
-  development uses the same version. The version is pinned in `.nvmrc`.
+- **Node.js 24.** Production runs Node 24, so local development uses the
+  same version. The version is pinned in `.nvmrc`.
 - **MongoDB.** MongoDB Community 8.0 is used below. If you know which version
   production runs, use the same major version.
 
@@ -16,7 +16,7 @@ integration.
 
 ## Local setup (macOS)
 
-### 1. Install Node 20
+### 1. Install Node 24
 
 Any version manager that reads `.nvmrc` works. With
 [fnm](https://github.com/Schniz/fnm):
@@ -31,10 +31,10 @@ Then, from the project directory:
 
 ```bash
 fnm install    # reads .nvmrc
-node -v        # v20.x
+node -v        # v24.x
 ```
 
-With `--use-on-cd`, fnm switches to Node 20 whenever you `cd` into the
+With `--use-on-cd`, fnm switches to Node 24 whenever you `cd` into the
 project.
 
 ### 2. Install and start MongoDB
@@ -93,7 +93,7 @@ created in an empty database becomes an administrator.
 
 The launch configuration uses whichever `node` is on your `PATH`. Start VS
 Code from a terminal in the project directory (`code .`) so that it uses
-Node 20.
+Node 24.
 
 ## Tests
 
