@@ -12,7 +12,7 @@ document.querySelector("#login").addEventListener("click", async (e) => {
     if (response.status === "success") {
       const result = await response.data;
       const tokenInput = document.createElement("input");
-      tokenInput.name = "token"
+      tokenInput.name = "token";
       tokenInput.value = result;
 
       const dynamicForm = document.createElement("form");
@@ -30,9 +30,7 @@ document.querySelector("#login").addEventListener("click", async (e) => {
   }
 });
 
-document
-  .querySelector("#cancel")
-  .addEventListener("click", (e) => {
-    e.preventDefault();
-    window.location.href = "/";
-  });
+document.querySelector("#cancel").addEventListener("click", (e) => {
+  e.preventDefault();
+  window.location.href = "/";
+});

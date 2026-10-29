@@ -45,10 +45,7 @@ userApiRouter.post(
   TokenAuthenticator.tokenAuthenticate,
   UserController.sendPasswordResetLink
 );
-userApiRouter.post(
-  "/create",
-  UserController.createUser
-);
+userApiRouter.post("/create", UserController.createUser);
 userApiRouter.post(
   "/login",
   RateLimiter.loginRateLimiter,

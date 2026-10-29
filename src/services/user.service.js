@@ -264,7 +264,9 @@ export async function createUser(user) {
       message: `User with user name ${user.userName} already exists`,
     };
   }
-  const policyResult = AuthorizationService.validatePasswordPolicy(user.password);
+  const policyResult = AuthorizationService.validatePasswordPolicy(
+    user.password
+  );
   if (policyResult.status === "error") {
     return policyResult;
   }

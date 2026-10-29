@@ -23,7 +23,7 @@ import { Schema, model } from "mongoose";
 const AuthorizationLevel = {
   GUEST: 0,
   USER: 1,
-  ADMIN: 10
+  ADMIN: 10,
 };
 
 const userSchema = new Schema({
@@ -47,7 +47,7 @@ const userSchema = new Schema({
   },
   sms: {
     type: Boolean,
-    default: false
+    default: false,
   },
   password: {
     type: String,
@@ -62,15 +62,14 @@ const userSchema = new Schema({
   },
 });
 
-userSchema.virtual("authorizationLevelDescription")
-  .get(function() {
-    if (this.authorizationLevel >= AuthorizationLevel.ADMIN) {
-      return "Administrator";
-    } else if (this.authorizationLevel >= AuthorizationLevel.USER) {
-      return "Authorized user";
-    }
-    return "Guest";
-  });
+userSchema.virtual("authorizationLevelDescription").get(function () {
+  if (this.authorizationLevel >= AuthorizationLevel.ADMIN) {
+    return "Administrator";
+  } else if (this.authorizationLevel >= AuthorizationLevel.USER) {
+    return "Authorized user";
+  }
+  return "Guest";
+});
 
 userSchema.set("toJSON", { virtuals: true });
 

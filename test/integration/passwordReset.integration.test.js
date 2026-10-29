@@ -1,4 +1,12 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 
@@ -8,7 +16,8 @@ vi.mock("../../src/services/email.service.js", () => ({
 
 const bcrypt = (await import("bcrypt")).default;
 const { config } = await import("../../src/config.js");
-const { PasswordResetModel } = await import("../../src/models/passwordReset.model.js");
+const { PasswordResetModel } =
+  await import("../../src/models/passwordReset.model.js");
 const { UserModel } = await import("../../src/models/user.model.js");
 const EmailService = await import("../../src/services/email.service.js");
 const PasswordService = await import("../../src/services/password.service.js");
@@ -55,7 +64,10 @@ describe("password reset against MongoDB", () => {
     expect(stored).toHaveLength(1);
     expect(stored[0].tokenHash).toBe(PasswordService.hashResetToken(token));
 
-    const first = await PasswordService.resetPassword(token, "brand new password");
+    const first = await PasswordService.resetPassword(
+      token,
+      "brand new password"
+    );
     expect(first.status).toBe("success");
 
     const user = await UserModel.findOne({ userName: "player" }).lean();
@@ -63,7 +75,10 @@ describe("password reset against MongoDB", () => {
     expect(user.passwordChangedAt).toBeInstanceOf(Date);
     expect(await PasswordResetModel.countDocuments()).toBe(0);
 
-    const second = await PasswordService.resetPassword(token, "another password");
+    const second = await PasswordService.resetPassword(
+      token,
+      "another password"
+    );
     expect(second.statusCode).toBe(400);
   });
 
@@ -74,14 +89,23 @@ describe("password reset against MongoDB", () => {
     await PasswordService.requestPasswordReset("player");
     const secondToken = getEmailedToken();
 
-    expect((await PasswordService.resetPassword(firstToken, "new password 1")).statusCode).toBe(400);
-    expect((await PasswordService.resetPassword(secondToken, "new password 2")).status).toBe("success");
+    expect(
+      (await PasswordService.resetPassword(firstToken, "new password 1"))
+        .statusCode
+    ).toBe(400);
+    expect(
+      (await PasswordService.resetPassword(secondToken, "new password 2"))
+        .status
+    ).toBe("success");
   });
 
   it("rejects an expired token even before MongoDB removes it", async () => {
     await PasswordService.requestPasswordReset("player");
     const token = getEmailedToken();
-    await PasswordResetModel.updateMany({}, { expiresAt: new Date(Date.now() - 1000) });
+    await PasswordResetModel.updateMany(
+      {},
+      { expiresAt: new Date(Date.now() - 1000) }
+    );
 
     const result = await PasswordService.resetPassword(token, "new password");
 
@@ -108,7 +132,9 @@ describe("password reset against MongoDB", () => {
     const user = await UserModel.findOne({ userName: "player" }).lean();
     expect(user.password).toBe("old-hash");
 
-    expect((await PasswordService.resetPassword(token, "new password")).status).toBe("success");
+    expect(
+      (await PasswordService.resetPassword(token, "new password")).status
+    ).toBe("success");
   });
 
   it("expires tokens through a TTL index", async () => {
@@ -120,7 +146,11 @@ describe("password reset against MongoDB", () => {
   it("changes the password and exposes the change time for token revocation", async () => {
     bcrypt.compare.mockResolvedValue(true);
 
-    const result = await PasswordService.changePassword("player", "old password", "new password");
+    const result = await PasswordService.changePassword(
+      "player",
+      "old password",
+      "new password"
+    );
     const validationData = await UserService.getTokenValidationData("player");
 
     expect(result.status).toBe("success");

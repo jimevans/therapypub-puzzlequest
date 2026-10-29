@@ -22,8 +22,8 @@ const puzzleGridOptions = {
   allowRowDeleting: true,
   allowRowEditing: false,
   allowRowReordering: true,
-  allowRowSelecting: false
-}
+  allowRowSelecting: false,
+};
 
 const columnDefinitions = [
   {
@@ -32,41 +32,49 @@ const columnDefinitions = [
   },
   {
     fieldName: "displayName",
-    title: "Display Name"
+    title: "Display Name",
   },
   {
     fieldName: "solutionDisplayText",
-    title: "Solution"
+    title: "Solution",
   },
   {
     fieldName: "nextHintToDisplay",
-    title: "Next Hint Number"
+    title: "Next Hint Number",
   },
   {
     fieldName: "activationCode",
-    title: "Activation Code"
-  }
+    title: "Activation Code",
+  },
 ];
-const puzzleGrid = new DataGrid("Quest Puzzles", columnDefinitions, puzzleGridOptions);
+const puzzleGrid = new DataGrid(
+  "Quest Puzzles",
+  columnDefinitions,
+  puzzleGridOptions
+);
 puzzleGrid.setAddNewDataLinkText("Add puzzle to quest");
 puzzleGrid.render(quest ? quest.puzzles : []);
 
 puzzleGrid.onAddDataRequested = () => {
-   const lookupColumnDefinitions = [
+  const lookupColumnDefinitions = [
     {
       fieldName: "name",
-      title: "Puzzle name"
+      title: "Puzzle name",
     },
     {
       fieldName: "displayName",
-      title: "Display name"
+      title: "Display name",
     },
     {
       fieldName: "solutionDisplayText",
-      title: "Solution text"
-    }
+      title: "Solution text",
+    },
   ];
-  const puzzleLookup = new Lookup("Select puzzles", lookupColumnDefinitions, true);
+  const puzzleLookup = new Lookup(
+    "Select puzzles",
+    lookupColumnDefinitions,
+    true
+  );
   puzzleLookup.onConfirmButtonClick = (e) => {
     const selectedPuzzles = puzzleLookup.getSelectedData();
     puzzleLookup.hide();
@@ -76,15 +84,15 @@ puzzleGrid.onAddDataRequested = () => {
         displayName: puzzle.displayName,
         solutionDisplayText: puzzle.solutionDisplayText,
         nextHintToDisplay: 0,
-        status: 0
-      }
+        status: 0,
+      };
       puzzleGrid.addDataRow(questPuzzle, columnDefinitions);
     });
-  }
+  };
 
   puzzleLookup.render("/api/puzzle/list", "data");
   puzzleLookup.show();
-}
+};
 
 puzzleGrid.onDeleteDataRequested = (e) => {
   puzzleGrid.deleteDataRow(e.currentTarget.parentNode.parentNode.rowIndex - 1);
@@ -92,15 +100,15 @@ puzzleGrid.onDeleteDataRequested = (e) => {
 
 document.querySelector("#set-user-button").addEventListener("click", (e) => {
   e.stopPropagation();
-   const lookupColumnDefinitions = [
+  const lookupColumnDefinitions = [
     {
       fieldName: "userName",
-      title: "User name"
+      title: "User name",
     },
     {
       fieldName: "displayName",
-      title: "Display name"
-    }
+      title: "Display name",
+    },
   ];
   const userLookup = new Lookup("Select user", lookupColumnDefinitions);
   userLookup.onConfirmButtonClick = (e) => {
@@ -109,22 +117,22 @@ document.querySelector("#set-user-button").addEventListener("click", (e) => {
     if (selectedUser.length > 0) {
       document.querySelector("#user-name").value = selectedUser[0].userName;
     }
-  }
+  };
   userLookup.render("/api/user/list", "data");
   userLookup.show();
 });
 
 document.querySelector("#set-team-button").addEventListener("click", (e) => {
   e.stopPropagation();
-   const lookupColumnDefinitions = [
+  const lookupColumnDefinitions = [
     {
       fieldName: "teamName",
-      title: "Team name"
+      title: "Team name",
     },
     {
       fieldName: "displayName",
-      title: "Display name"
-    }
+      title: "Display name",
+    },
   ];
   const userLookup = new Lookup("Select team", lookupColumnDefinitions);
   userLookup.onConfirmButtonClick = (e) => {
@@ -133,12 +141,14 @@ document.querySelector("#set-team-button").addEventListener("click", (e) => {
     if (selectedTeam.length > 0) {
       document.querySelector("#user-name").value = selectedTeam[0].teamName;
     }
-  }
+  };
   userLookup.render("/api/team/list", "data");
   userLookup.show();
 });
 
-document.querySelector("#quest-puzzles").replaceChildren(puzzleGrid.getElement());
+document
+  .querySelector("#quest-puzzles")
+  .replaceChildren(puzzleGrid.getElement());
 
 function getQuestData() {
   const questPuzzles = puzzleGrid.getData().map((questPuzzle) => {
@@ -146,7 +156,7 @@ function getQuestData() {
       puzzleName: questPuzzle.puzzleName,
       nextHintToDisplay: questPuzzle.nextHintToDisplay,
       status: questPuzzle.status,
-      activationCode: questPuzzle.activationCode
+      activationCode: questPuzzle.activationCode,
     };
   });
   const questName =
@@ -158,7 +168,7 @@ function getQuestData() {
     displayName: document.querySelector("#display-name").value,
     userName: document.querySelector("#user-name").value,
     status: parseInt(document.querySelector("#quest-status").value),
-    puzzles: questPuzzles
+    puzzles: questPuzzles,
   };
   return questData;
 }

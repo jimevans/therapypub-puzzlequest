@@ -278,7 +278,9 @@ function createFindErrorMessage(queryOptions) {
     );
   }
   if (queryOptions?.questStatus) {
-    errorMessage.push(`status greater than or equal to ${queryOptions.questStatus}`);
+    errorMessage.push(
+      `status greater than or equal to ${queryOptions.questStatus}`
+    );
   }
   return errorMessage.join(" and ");
 }
@@ -767,7 +769,11 @@ export async function activatePuzzle(
   } catch (err) {
     return { status: "error", statusCode: 500, message: err };
   }
-  return { status: "success", statusCode: 200, data: { activationTime: activationTime } };
+  return {
+    status: "success",
+    statusCode: 200,
+    data: { activationTime: activationTime },
+  };
 }
 
 /**
@@ -860,7 +866,7 @@ export async function finishPuzzle(
   currentPuzzle.status = QuestPuzzleStatus.COMPLETED;
   const returnData = {
     endTime: currentTime,
-    solutionText: foundPuzzle.solutionDisplayText
+    solutionText: foundPuzzle.solutionDisplayText,
   };
   const currentPuzzleIndex = quest.puzzles.indexOf(currentPuzzle);
   if (currentPuzzleIndex < quest.puzzles.length - 1) {
@@ -869,7 +875,8 @@ export async function finishPuzzle(
     quest.puzzles[currentPuzzleIndex + 1].startTime = currentTime;
     const nextPuzzleName = quest.puzzles[currentPuzzleIndex + 1].puzzleName;
     returnData.nextPuzzleName = nextPuzzleName;
-    const nextPuzzle = await PuzzleService.getPuzzleByPuzzleName(nextPuzzleName);
+    const nextPuzzle =
+      await PuzzleService.getPuzzleByPuzzleName(nextPuzzleName);
     returnData.nextPuzzleDisplayName = nextPuzzle.data.displayName;
   } else {
     quest.status = QuestStatus.COMPLETED;
@@ -884,7 +891,7 @@ export async function finishPuzzle(
   return {
     status: "success",
     statusCode: 200,
-    data: returnData
+    data: returnData,
   };
 }
 
@@ -1055,12 +1062,7 @@ export async function getQuestRunBook(questName, pdfDoc) {
         pdfDoc.text("");
       } else if (puzzleDetail.type === 1) {
         const dirname = path.dirname(fileURLToPath(import.meta.url));
-        const image = path.join(
-          dirname,
-          "..",
-          "public",
-          puzzleDetail.text
-        );
+        const image = path.join(dirname, "..", "public", puzzleDetail.text);
         pdfDoc.image(image, {
           fit: [72 * 6.5, 72 * 8.5],
           align: "center",

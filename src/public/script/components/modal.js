@@ -62,7 +62,7 @@ class Modal {
     this.#modalFooter.classList.add("pq-modal-footer");
     const confirmButton = document.createElement("button");
     confirmButton.classList.add("pq-modal-footer-button");
-    confirmButton.setAttribute("data-action", "confirm")
+    confirmButton.setAttribute("data-action", "confirm");
     confirmButton.innerText = "OK";
     confirmButton.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -76,7 +76,7 @@ class Modal {
     if (this.#buttonCount < 2) {
       cancelButton.classList.add("pq-hide");
     }
-    cancelButton.setAttribute("data-action", "cancel")
+    cancelButton.setAttribute("data-action", "cancel");
     cancelButton.innerText = "Cancel";
     cancelButton.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -92,13 +92,13 @@ class Modal {
    * Callback called when the confirm button is clicked.
    * @param {Event} e the event data from the click event of the confirm button
    */
-  onConfirmButtonClick = (e) => { };
+  onConfirmButtonClick = (e) => {};
 
   /**
    * Callback called when the cancel button is clicked.
    * @param {Event} e the event data from the click event of the cancel button
    */
-  onCancelButtonClick = (e) => { };
+  onCancelButtonClick = (e) => {};
 
   /**
    * Sets the title of the modal dialog.
@@ -113,7 +113,9 @@ class Modal {
    * @param {string} text the text of the confirm button
    */
   setConfirmButtonText(text) {
-    this.#modalFooter.querySelector("button.pq-modal-footer-button[data-action='confirm']").innerText = text;
+    this.#modalFooter.querySelector(
+      "button.pq-modal-footer-button[data-action='confirm']"
+    ).innerText = text;
   }
 
   /**
@@ -121,7 +123,9 @@ class Modal {
    * @param {string} text the text of the cancel button
    */
   setCancelButtonText(text) {
-    this.#modalFooter.querySelector("button.pq-modal-footer-button[data-action='cancel']").innerText = text;
+    this.#modalFooter.querySelector(
+      "button.pq-modal-footer-button[data-action='cancel']"
+    ).innerText = text;
   }
 
   /**
@@ -147,4 +151,4 @@ class Modal {
   }
 }
 
-export { Modal }
+export { Modal };

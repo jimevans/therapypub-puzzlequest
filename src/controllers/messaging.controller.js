@@ -97,10 +97,12 @@ export async function sendTextMessage(req, res) {
   const numbersToMessage = numbersToMessageResponse.data;
   if (!numbersToMessage.length) {
     // Early return if no numbers to message found.
-    res.status(400).send(JSON.stringify({
-      status: "error",
-      message: "No users accepting text messages found for quest",
-    }));
+    res.status(400).send(
+      JSON.stringify({
+        status: "error",
+        message: "No users accepting text messages found for quest",
+      })
+    );
     return;
   }
 
@@ -109,10 +111,12 @@ export async function sendTextMessage(req, res) {
     req.body.message
   );
   if (sendMessage.status === "error") {
-    res.status(sendMessage.statusCode).send(JSON.stringify({
-      status: "error",
-      message: sendMessage.message
-    }));
+    res.status(sendMessage.statusCode).send(
+      JSON.stringify({
+        status: "error",
+        message: sendMessage.message,
+      })
+    );
     return;
   }
   res.status(200).send(

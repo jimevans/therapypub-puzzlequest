@@ -23,7 +23,8 @@ vi.mock("../../src/services/password.service.js", () => ({
 
 const UserService = await import("../../src/services/user.service.js");
 const PasswordService = await import("../../src/services/password.service.js");
-const TokenAuthenticator = await import("../../src/middleware/tokenAuthentication.js");
+const TokenAuthenticator =
+  await import("../../src/middleware/tokenAuthentication.js");
 const UserController = await import("../../src/controllers/user.controller.js");
 
 beforeEach(() => {
@@ -232,7 +233,9 @@ describe("forgotPassword", () => {
 
   it("responds identically and does not throw when sending fails", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    PasswordService.requestPasswordReset.mockRejectedValue(new Error("SMTP down"));
+    PasswordService.requestPasswordReset.mockRejectedValue(
+      new Error("SMTP down")
+    );
     const req = createMockRequest({ body: { identifier: "player" } });
     const res = createMockResponse();
 
@@ -269,7 +272,10 @@ describe("resetPassword", () => {
     await UserController.resetPassword(req, res);
 
     expect(res.statusCode).toBe(400);
-    expect(PasswordService.resetPassword).toHaveBeenCalledWith("bad", "new password");
+    expect(PasswordService.resetPassword).toHaveBeenCalledWith(
+      "bad",
+      "new password"
+    );
   });
 });
 
@@ -281,7 +287,9 @@ describe("renderResetPassword", () => {
     UserController.renderResetPassword(req, res);
 
     expect(res.set).toHaveBeenCalledWith("Referrer-Policy", "no-referrer");
-    expect(res.render).toHaveBeenCalledWith("resetPassword", { resetToken: "abc_DEF-123" });
+    expect(res.render).toHaveBeenCalledWith("resetPassword", {
+      resetToken: "abc_DEF-123",
+    });
   });
 
   it("does not pass a malformed token into the page", () => {
@@ -292,13 +300,18 @@ describe("renderResetPassword", () => {
 
     UserController.renderResetPassword(req, res);
 
-    expect(res.render).toHaveBeenCalledWith("resetPassword", { resetToken: "" });
+    expect(res.render).toHaveBeenCalledWith("resetPassword", {
+      resetToken: "",
+    });
   });
 });
 
 describe("sendPasswordResetLink", () => {
   it("forbids non-admins, even for their own account", async () => {
-    const req = createMockRequest({ user: playerUser, params: { userName: "player" } });
+    const req = createMockRequest({
+      user: playerUser,
+      params: { userName: "player" },
+    });
     const res = createMockResponse();
 
     await UserController.sendPasswordResetLink(req, res);
@@ -312,12 +325,17 @@ describe("sendPasswordResetLink", () => {
       status: "success",
       statusCode: 200,
     });
-    const req = createMockRequest({ user: adminUser, params: { userName: "player" } });
+    const req = createMockRequest({
+      user: adminUser,
+      params: { userName: "player" },
+    });
     const res = createMockResponse();
 
     await UserController.sendPasswordResetLink(req, res);
 
-    expect(PasswordService.requestPasswordResetForUser).toHaveBeenCalledWith("player");
+    expect(PasswordService.requestPasswordResetForUser).toHaveBeenCalledWith(
+      "player"
+    );
     expect(res.body).toEqual({ status: "success" });
   });
 
@@ -327,7 +345,10 @@ describe("sendPasswordResetLink", () => {
       statusCode: 404,
       message: "No user with user name ghost found",
     });
-    const req = createMockRequest({ user: adminUser, params: { userName: "ghost" } });
+    const req = createMockRequest({
+      user: adminUser,
+      params: { userName: "ghost" },
+    });
     const res = createMockResponse();
 
     await UserController.sendPasswordResetLink(req, res);

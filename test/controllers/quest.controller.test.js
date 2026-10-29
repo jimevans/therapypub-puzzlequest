@@ -10,7 +10,11 @@ vi.mock("../../src/services/team.service.js", async (importOriginal) => {
   const original = await importOriginal();
   return {
     ...original,
-    getTeamsForUser: vi.fn(async () => ({ status: "success", statusCode: 200, data: [] })),
+    getTeamsForUser: vi.fn(async () => ({
+      status: "success",
+      statusCode: 200,
+      data: [],
+    })),
   };
 });
 vi.mock("../../src/services/quest.service.js", async (importOriginal) => {
@@ -23,7 +27,8 @@ vi.mock("../../src/services/quest.service.js", async (importOriginal) => {
 });
 
 const QuestService = await import("../../src/services/quest.service.js");
-const QuestController = await import("../../src/controllers/quest.controller.js");
+const QuestController =
+  await import("../../src/controllers/quest.controller.js");
 
 function createQuest() {
   return new QuestService.Quest({
@@ -32,8 +37,18 @@ function createQuest() {
     userName: "player",
     status: 1,
     puzzles: [
-      { puzzleName: "p1", status: 3, activationCode: "code1", nextHintToDisplay: 0 },
-      { puzzleName: "p2", status: 1, activationCode: "code2", nextHintToDisplay: 0 },
+      {
+        puzzleName: "p1",
+        status: 3,
+        activationCode: "code1",
+        nextHintToDisplay: 0,
+      },
+      {
+        puzzleName: "p2",
+        status: 1,
+        activationCode: "code2",
+        nextHintToDisplay: 0,
+      },
     ],
   });
 }
@@ -49,7 +64,10 @@ beforeEach(() => {
 
 describe("retrieveQuest", () => {
   it("returns the quest without activation codes to a player", async () => {
-    const req = createMockRequest({ user: playerUser, params: { name: "quest1" } });
+    const req = createMockRequest({
+      user: playerUser,
+      params: { name: "quest1" },
+    });
     const res = createMockResponse();
 
     await QuestController.retrieveQuest(req, res);
@@ -63,12 +81,18 @@ describe("retrieveQuest", () => {
   });
 
   it("returns activation codes to an admin", async () => {
-    const req = createMockRequest({ user: adminUser, params: { name: "quest1" } });
+    const req = createMockRequest({
+      user: adminUser,
+      params: { name: "quest1" },
+    });
     const res = createMockResponse();
 
     await QuestController.retrieveQuest(req, res);
 
-    expect(res.body.data.puzzles.map((p) => p.activationCode)).toEqual(["code1", "code2"]);
+    expect(res.body.data.puzzles.map((p) => p.activationCode)).toEqual([
+      "code1",
+      "code2",
+    ]);
   });
 });
 
@@ -79,7 +103,10 @@ describe("deleteQuest", () => {
       statusCode: 404,
       message: "Quest with name nope does not exist",
     });
-    const req = createMockRequest({ user: adminUser, params: { name: "nope" } });
+    const req = createMockRequest({
+      user: adminUser,
+      params: { name: "nope" },
+    });
     const res = createMockResponse();
 
     await QuestController.deleteQuest(req, res);

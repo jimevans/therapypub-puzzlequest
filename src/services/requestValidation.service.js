@@ -17,8 +17,8 @@ export function validateRequest(validationOptions = {}, request = null) {
       return {
         status: "error",
         statusCode: 401,
-        message: "User must be logged in to perform operation"
-      }
+        message: "User must be logged in to perform operation",
+      };
     }
   }
 
@@ -38,8 +38,8 @@ export function validateRequest(validationOptions = {}, request = null) {
       return {
         status: "error",
         statusCode: 400,
-        message: "Request must have an uploaded file"
-      }
+        message: "Request must have an uploaded file",
+      };
     }
   }
 
@@ -48,8 +48,8 @@ export function validateRequest(validationOptions = {}, request = null) {
       return {
         status: "error",
         statusCode: 400,
-        message: "Request must have a body"
-      }
+        message: "Request must have a body",
+      };
     }
   }
 
@@ -59,8 +59,8 @@ export function validateRequest(validationOptions = {}, request = null) {
         return {
           status: "error",
           statusCode: 400,
-          message: `Request body must contain a ${property} property`
-        }
+          message: `Request body must contain a ${property} property`,
+        };
       }
     }
   }

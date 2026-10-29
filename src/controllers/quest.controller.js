@@ -27,7 +27,6 @@ export async function createQuest(req, res) {
       })
     );
     return;
-
   }
   const response = await QuestService.createQuest(req.body);
   if (response.status === "error") {
@@ -57,7 +56,6 @@ export async function retrieveQuest(req, res) {
       })
     );
     return;
-
   }
 
   const loggedInUser = UserService.getLoggedInUser(req.user);
@@ -327,14 +325,14 @@ export async function activateQuestPuzzle(req, res) {
       `/quest/${req.params.name}`,
       `/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
       `/monitor/quest/${req.params.name}`,
-      `/monitor/quest/${req.params.name}/puzzle/${req.params.puzzleName}`
+      `/monitor/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
     ],
     [],
     {
       message: "puzzleActivated",
       questName: req.params.name,
       puzzleName: req.params.puzzleName,
-      activationTime: activationResult.data.activationTime
+      activationTime: activationResult.data.activationTime,
     }
   );
 }
@@ -378,19 +376,21 @@ export async function solveQuestPuzzle(req, res) {
     );
     return;
   }
-  res.send(JSON.stringify({
-    status: "success",
-    data: {
-      solutionText: solutionResult.data.solutionText,
-      questComplete: solutionResult.data.questComplete
-    }
-  }));
+  res.send(
+    JSON.stringify({
+      status: "success",
+      data: {
+        solutionText: solutionResult.data.solutionText,
+        questComplete: solutionResult.data.questComplete,
+      },
+    })
+  );
   WebSocketService.notifyBrowsers(
     [
       `/quest/${req.params.name}`,
       `/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
       `/monitor/quest/${req.params.name}`,
-      `/monitor/quest/${req.params.name}/puzzle/${req.params.puzzleName}`
+      `/monitor/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
     ],
     [connectionId],
     {
@@ -399,7 +399,7 @@ export async function solveQuestPuzzle(req, res) {
       puzzleName: req.params.puzzleName,
       solutionText: solutionResult.data.solutionText,
       endTime: solutionResult.data.endTime,
-      questComplete: solutionResult.data.questComplete
+      questComplete: solutionResult.data.questComplete,
     }
   );
   if (solutionResult.data.nextPuzzleName) {
@@ -408,7 +408,7 @@ export async function solveQuestPuzzle(req, res) {
         `/quest/${req.params.name}`,
         `/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
         `/monitor/quest/${req.params.name}`,
-        `/monitor/quest/${req.params.name}/puzzle/${req.params.puzzleName}`
+        `/monitor/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
       ],
       [connectionId],
       {
@@ -416,7 +416,7 @@ export async function solveQuestPuzzle(req, res) {
         questName: req.params.name,
         puzzleName: solutionResult.data.nextPuzzleName,
         displayName: solutionResult.data.nextPuzzleDisplayName,
-        startTime: solutionResult.data.endTime
+        startTime: solutionResult.data.endTime,
       }
     );
   }
@@ -426,7 +426,7 @@ export async function requestQuestPuzzleHint(req, res) {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
-      requiresBody: true
+      requiresBody: true,
     },
     req
   );
@@ -461,8 +461,8 @@ export async function requestQuestPuzzleHint(req, res) {
   WebSocketService.notifyBrowsers(
     [
       `/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
-      `/monitor/quest/${req.params.name}/puzzle/${req.params.puzzleName}`
-     ],
+      `/monitor/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
+    ],
     [connectionId],
     {
       message: "hintRequested",
@@ -681,9 +681,7 @@ export async function renderQuestRunBook(req, res) {
 }
 
 export async function renderMonitoredQuest(req, res) {
-  const questResponse = await QuestService.getQuestByQuestName(
-    req.params.name,
-  );
+  const questResponse = await QuestService.getQuestByQuestName(req.params.name);
   if (questResponse.status === "error") {
     res.status(questResponse.statusCode).render("error", {
       errorTitle: "Not found",
@@ -758,7 +756,7 @@ export async function renderMonitoredQuestPuzzle(req, res) {
       displayName: puzzle.puzzleDetail.displayName,
       status: puzzle.status,
       solutionDisplayText: puzzle.puzzleDetail.solutionDisplayText,
-      hints: puzzle.puzzleDetail.hints.slice(0, puzzle.nextHintToDisplay)
+      hints: puzzle.puzzleDetail.hints.slice(0, puzzle.nextHintToDisplay),
     },
     rendered: renderedPuzzle,
   });

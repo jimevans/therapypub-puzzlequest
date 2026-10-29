@@ -156,9 +156,10 @@ document.querySelector("#teams").addEventListener("click", async (e) => {
       const gridRow = e.currentTarget.parentNode.parentNode;
       const index = gridRow.rowIndex - 1;
       grid.editDataRow(index);
-      gridRow.querySelector("td[data-field-name='teamName'] input").readOnly = true;
+      gridRow.querySelector("td[data-field-name='teamName'] input").readOnly =
+        true;
       gridRow.setAttribute("data-edit-mode", "update");
-    }
+    };
     grid.onRowEditCommit = async (e) => {
       const gridRow = e.currentTarget.parentNode.parentNode;
       const index = gridRow.rowIndex - 1;
@@ -167,7 +168,9 @@ document.querySelector("#teams").addEventListener("click", async (e) => {
         gridRow.removeAttribute("data-edit-mode");
       }
       const dataItem = grid.getData()[index];
-      const updateApi = isUpdate ? `/api/team/${dataItem.teamName}` : "/api/team/create";
+      const updateApi = isUpdate
+        ? `/api/team/${dataItem.teamName}`
+        : "/api/team/create";
       const method = isUpdate ? "put" : "post";
       const teamData = {
         displayName: dataItem.displayName,

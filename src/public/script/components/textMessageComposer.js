@@ -103,7 +103,9 @@ class TextMessageComposer {
     }
 
     if (this.#messageElement.value.length > 100) {
-      this.setError("Message is limited to 100 characters due to regulatory oversight");
+      this.setError(
+        "Message is limited to 100 characters due to regulatory oversight"
+      );
       this.#errorElement.classList.remove("pq-hide");
       return "";
     }
@@ -124,7 +126,9 @@ class TextMessageComposer {
    * @returns the confirmation of the expected response
    */
   getResponseConfirmation() {
-    return this.#confirmationElement.value ? this.#confirmationElement.value : "";
+    return this.#confirmationElement.value
+      ? this.#confirmationElement.value
+      : "";
   }
 
   /**

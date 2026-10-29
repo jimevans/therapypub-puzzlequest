@@ -23,7 +23,7 @@ const PuzzleType = {
   IMAGE: 1,
   AUDIO: 2,
   VIDEO: 3,
-}
+};
 
 const hintSchema = new Schema({
   text: {

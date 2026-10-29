@@ -9,7 +9,11 @@ export async function createPuzzle(req, res) {
       requiresUser: true,
       requiresAdmin: true,
       requiresBody: true,
-      requiredBodyProperties: ["name", "solutionKeyword", "solutionDisplayText"],
+      requiredBodyProperties: [
+        "name",
+        "solutionKeyword",
+        "solutionDisplayText",
+      ],
     },
     req
   );
@@ -25,10 +29,12 @@ export async function createPuzzle(req, res) {
 
   const response = await PuzzleService.createPuzzle(req.body);
   if (response.status === "error") {
-    res.status(response.statusCode).send(JSON.stringify({
-      status: "error",
-      message: response.message
-    }));
+    res.status(response.statusCode).send(
+      JSON.stringify({
+        status: "error",
+        message: response.message,
+      })
+    );
     return;
   }
   res.send(JSON.stringify(response));
@@ -38,7 +44,7 @@ export async function retrievePuzzle(req, res) {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
-      requiresAdmin: true
+      requiresAdmin: true,
     },
     req
   );
@@ -56,10 +62,12 @@ export async function retrievePuzzle(req, res) {
     req.params.name
   );
   if (puzzleResponse.status === "error") {
-    res.status(puzzleResponse.statusCode).send(JSON.stringify({
-      status: "error",
-      message: puzzleResponse.message
-    }));
+    res.status(puzzleResponse.statusCode).send(
+      JSON.stringify({
+        status: "error",
+        message: puzzleResponse.message,
+      })
+    );
     return;
   }
 
@@ -88,10 +96,12 @@ export async function updatePuzzle(req, res) {
 
   const response = await PuzzleService.updatePuzzle(req.params.name, req.body);
   if (response.status === "error") {
-    res.status(response.statusCode).send(JSON.stringify({
-      status: "error",
-      message: response.message
-    }));
+    res.status(response.statusCode).send(
+      JSON.stringify({
+        status: "error",
+        message: response.message,
+      })
+    );
     return;
   }
   res.send(JSON.stringify(response));
@@ -103,7 +113,7 @@ export async function deletePuzzle(req, res) {
       requiresUser: true,
       requiresAdmin: true,
     },
-    req,
+    req
   );
   if (validation.status === "error") {
     res.status(validation.statusCode).send(
@@ -117,10 +127,12 @@ export async function deletePuzzle(req, res) {
 
   const response = await PuzzleService.deletePuzzle(req.params.name);
   if (response.status === "error") {
-    res.status(response.statusCode).send(JSON.stringify({
-      status: "error",
-      message: response.message
-    }));
+    res.status(response.statusCode).send(
+      JSON.stringify({
+        status: "error",
+        message: response.message,
+      })
+    );
     return;
   }
   res.send(JSON.stringify(response));
@@ -153,7 +165,7 @@ export function uploadBinaryData(req, res) {
       requiresUser: true,
       requiresAdmin: true,
       requiresBody: true,
-      requiresFile: true
+      requiresFile: true,
     },
     req
   );
@@ -182,13 +194,10 @@ export async function renderPuzzle(req, res) {
     return;
   }
   if (!loggedInUser.isAdmin()) {
-    res.render(
-      "error",
-      {
-        errorTitle: "Unauthorized",
-        errorDetails: `User ${loggedInUser.userName} not authorized to view puzzles`
-      }
-    );
+    res.render("error", {
+      errorTitle: "Unauthorized",
+      errorDetails: `User ${loggedInUser.userName} not authorized to view puzzles`,
+    });
     return;
   }
 
@@ -203,13 +212,10 @@ export async function renderPuzzle(req, res) {
     req.params.name
   );
   if (puzzleResponse.status === "error") {
-    res.render(
-      "error",
-      {
-        errorTitle: "Not found",
-        errorDetails: puzzleResponse.message
-      }
-    );
+    res.render("error", {
+      errorTitle: "Not found",
+      errorDetails: puzzleResponse.message,
+    });
     return;
   }
 

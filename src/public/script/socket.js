@@ -8,14 +8,17 @@ self.addEventListener("message", (e) => {
   if (e.data.message === "init") {
     const url = new URL(e.data.url);
     socketBaseUrl = `${url.protocol.startsWith("https") ? "wss" : "ws"}://${url.hostname}`;
-    sendMessage(_ => {
+    sendMessage((_) => {
       webSocketChannel.send(JSON.stringify(e.data));
     });
   }
 });
 
 function sendMessage(task) {
-  if (!webSocketChannel || webSocketChannel.readyState !== WebSocketStateEnum.OPEN) {
+  if (
+    !webSocketChannel ||
+    webSocketChannel.readyState !== WebSocketStateEnum.OPEN
+  ) {
     msgQueue.push(task);
   } else {
     task();

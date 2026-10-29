@@ -23,7 +23,7 @@ async function uploadBinary(data) {
       method: "post",
       body: data,
       serializeBody: false,
-      headers: {}
+      headers: {},
     });
     if (response.ok) {
       return await response.json();
@@ -128,32 +128,31 @@ document
   .querySelector("#puzzle-content")
   .replaceChildren(renderer.getElement());
 
-
 const hintGridOptions = {
   allowCreation: true,
   allowRowDeleting: true,
   allowRowEditing: true,
   allowRowReordering: true,
-  allowRowSelecting: false
+  allowRowSelecting: false,
 };
 
 const columnDefinitions = [
   {
     fieldName: "text",
     title: "Hint Text",
-    editable: true
+    editable: true,
   },
   {
     fieldName: "solutionWarning",
     title: "Does Hint Give Solution?",
     type: "boolean",
-    editable: true
+    editable: true,
   },
   {
     fieldName: "timePenalty",
     title: "Time Penalty (sec)",
-    editable: true
-  }
+    editable: true,
+  },
 ];
 
 const hintGrid = new DataGrid("Hints", columnDefinitions, hintGridOptions);
@@ -169,14 +168,13 @@ hintGrid.onAddDataRequested = (e) => {
   hintGrid.addDataRow({
     text: "",
     solutionWarning: false,
-    timePenalty: 0
+    timePenalty: 0,
   });
   hintGrid.editDataRow(rowCount);
-}
+};
 
 hintGrid.render(puzzle ? puzzle.hints : []);
 document.querySelector("#hints").replaceChildren(hintGrid.getElement());
-
 
 document.querySelector("#puzzle-type").addEventListener("change", (e) => {
   renderer.render(parseInt(e.target.value), "", true);

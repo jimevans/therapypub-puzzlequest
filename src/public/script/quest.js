@@ -102,8 +102,8 @@ function createNewPuzzleElement(messageData) {
 function removeHighlights() {
   setTimeout(
     () =>
-      [...document.querySelectorAll(".pq-data-highlight")]
-        .forEach((element) => element.classList.remove("pq-data-highlight")
+      [...document.querySelectorAll(".pq-data-highlight")].forEach((element) =>
+        element.classList.remove("pq-data-highlight")
       ),
     3000
   );
@@ -144,23 +144,21 @@ worker.addEventListener("message", (evt) => {
       `[data-puzzle-name = ${messageData.puzzleName}]`
     );
     const endTime = Date.parse(messageData.endTime);
-    puzzleElement.querySelector(".pq-quest-puzzle-status span")
-      .innerText = "Completed";
-    puzzleElement.querySelector(".pq-quest-puzzle-time[data-time='solution'] span")
-      .innerText = dateFormatter.format(endTime);
+    puzzleElement.querySelector(".pq-quest-puzzle-status span").innerText =
+      "Completed";
+    puzzleElement.querySelector(
+      ".pq-quest-puzzle-time[data-time='solution'] span"
+    ).innerText = dateFormatter.format(endTime);
     const elapsed = puzzleElement.querySelector(
       ".pq-quest-puzzle-time[data-time='elapsed'] span"
     );
     if (elapsed.hasAttribute("data-puzzle-start")) {
-      const startTime = Date.parse(
-        elapsed.getAttribute("data-puzzle-start")
-      );
+      const startTime = Date.parse(elapsed.getAttribute("data-puzzle-start"));
       elapsed.removeAttribute("data-puzzle-start");
       elapsed.innerText = calculateElapsed(startTime, endTime);
     }
-    puzzleElement.querySelector(
-      ".pq-quest-puzzle-solution span"
-    ).innerHTML = `<strong>Solution:</strong>&nbsp;${messageData.solutionText}`;
+    puzzleElement.querySelector(".pq-quest-puzzle-solution span").innerHTML =
+      `<strong>Solution:</strong>&nbsp;${messageData.solutionText}`;
     puzzleElement.classList.add("pq-data-highlight");
     removeHighlights();
     if (messageData.questComplete) {

@@ -24,7 +24,7 @@ export async function authenticate(userName, password) {
     return {
       status: "error",
       statusCode: 401,
-      message: `Password for user ${userName} does not match`
+      message: `Password for user ${userName} does not match`,
     };
   }
   const token = createAuthenticationToken(user);
@@ -75,7 +75,10 @@ export function isTokenRevoked(issuedAt, passwordChangedAt) {
  * @returns {object} a response object containing a status, status code, and message
  */
 export function validatePasswordPolicy(password) {
-  if (typeof password !== "string" || password.length < MINIMUM_PASSWORD_LENGTH) {
+  if (
+    typeof password !== "string" ||
+    password.length < MINIMUM_PASSWORD_LENGTH
+  ) {
     return {
       status: "error",
       statusCode: 400,

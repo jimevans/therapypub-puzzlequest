@@ -78,7 +78,8 @@ export async function changePassword(userName, currentPassword, newPassword) {
       message: "Current password is incorrect",
     };
   }
-  const policyResult = AuthenticationService.validatePasswordPolicy(newPassword);
+  const policyResult =
+    AuthenticationService.validatePasswordPolicy(newPassword);
   if (policyResult.status === "error") {
     return policyResult;
   }
@@ -119,10 +120,7 @@ export async function requestPasswordReset(identifier) {
   }
   const normalizedIdentifier = String(identifier).trim().toLowerCase();
   const userDocument = await UserModel.findOne({
-    $or: [
-      { userName: normalizedIdentifier },
-      { email: normalizedIdentifier },
-    ],
+    $or: [{ userName: normalizedIdentifier }, { email: normalizedIdentifier }],
   });
   if (userDocument === null) {
     return { status: "success", statusCode: 200 };
@@ -166,9 +164,7 @@ async function sendPasswordResetLink(userDocument, requestedByAdmin) {
   await new PasswordResetModel({
     userName: userDocument.userName,
     tokenHash: hashResetToken(token),
-    expiresAt: new Date(
-      Date.now() + RESET_TOKEN_LIFETIME_MINUTES * 60 * 1000
-    ),
+    expiresAt: new Date(Date.now() + RESET_TOKEN_LIFETIME_MINUTES * 60 * 1000),
   }).save();
 
   const resetUrl = new URL("/user/password/reset", config.PQ_BASE_URL);
@@ -209,7 +205,8 @@ function checkResetLinkConfiguration() {
  * @returns {Promise<object>} a response object containing a status, status code, and message
  */
 export async function resetPassword(token, newPassword) {
-  const policyResult = AuthenticationService.validatePasswordPolicy(newPassword);
+  const policyResult =
+    AuthenticationService.validatePasswordPolicy(newPassword);
   if (policyResult.status === "error") {
     return policyResult;
   }

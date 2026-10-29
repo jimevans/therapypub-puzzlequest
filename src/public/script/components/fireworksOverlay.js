@@ -1,4 +1,3 @@
-
 /**
  * A class for overlaying a fireworks display.
  */
@@ -49,4 +48,4 @@ class FireworksOverlay {
   }
 }
 
-export { FireworksOverlay }
+export { FireworksOverlay };

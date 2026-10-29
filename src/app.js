@@ -76,7 +76,9 @@ import * as WebSocketService from "./services/websocket.service.js";
 const socketServer = WebSocketService.initialize();
 
 server.on("upgrade", (req, socket, header) => {
-  socketServer.handleUpgrade(req, socket, header, (ws) => socketServer.emit("connection", ws, req));
+  socketServer.handleUpgrade(req, socket, header, (ws) =>
+    socketServer.emit("connection", ws, req)
+  );
 });
 
 server.listen(port, () => {

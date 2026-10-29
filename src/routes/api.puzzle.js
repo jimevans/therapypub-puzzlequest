@@ -9,7 +9,7 @@ const storage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     cb(null, `${req.body.puzzleName}.${req.body.fileExtension}`);
-  }
+  },
 });
 
 const upload = multer({ storage: storage });

@@ -24,7 +24,6 @@ puzzleRouter.get(
   TokenAuthenticator.tokenAuthenticate,
   UseRenderMode.useRenderMode(UseRenderMode.RenderMode.EDIT),
   PuzzleController.renderPuzzle
-)
-
+);
 
 export { puzzleRouter as PuzzleRouter };

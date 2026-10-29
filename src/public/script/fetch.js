@@ -1,10 +1,15 @@
-
-export async function callDataApi(apiEndpoint, method = "get", body = {}, serializeBody = true, headers = undefined) {
+export async function callDataApi(
+  apiEndpoint,
+  method = "get",
+  body = {},
+  serializeBody = true,
+  headers = undefined
+) {
   const fetchArgs = {
     method: method,
   };
   if (!headers) {
-    fetchArgs.headers = { "Content-Type" : "application/json" };
+    fetchArgs.headers = { "Content-Type": "application/json" };
   } else {
     fetchArgs.headers = headers;
   }

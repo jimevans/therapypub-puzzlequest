@@ -166,9 +166,8 @@ export async function getPhoneNumbersToMessage(questUser) {
       };
     } else {
       for (const memberName of getTeamResponse.data.memberNames) {
-        const getTeamMemberResponse = await UserService.getUserByUserName(
-          memberName
-        );
+        const getTeamMemberResponse =
+          await UserService.getUserByUserName(memberName);
         if (getTeamMemberResponse.status === "error") {
           return {
             status: "error",

@@ -21,10 +21,12 @@ vi.mock("../../src/services/email.service.js", () => ({
 
 const bcrypt = (await import("bcrypt")).default;
 const { config } = await import("../../src/config.js");
-const { PasswordResetModel } = await import("../../src/models/passwordReset.model.js");
+const { PasswordResetModel } =
+  await import("../../src/models/passwordReset.model.js");
 const { UserModel } = await import("../../src/models/user.model.js");
 const EmailService = await import("../../src/services/email.service.js");
-const AuthenticationService = await import("../../src/services/authentication.service.js");
+const AuthenticationService =
+  await import("../../src/services/authentication.service.js");
 const PasswordService = await import("../../src/services/password.service.js");
 
 function createUserDocument() {
@@ -58,11 +60,15 @@ describe("validatePasswordPolicy", () => {
   });
 
   it("rejects missing passwords", () => {
-    expect(AuthenticationService.validatePasswordPolicy(undefined).status).toBe("error");
+    expect(AuthenticationService.validatePasswordPolicy(undefined).status).toBe(
+      "error"
+    );
   });
 
   it("accepts passwords meeting the policy", () => {
-    expect(AuthenticationService.validatePasswordPolicy("long enough").status).toBe("success");
+    expect(
+      AuthenticationService.validatePasswordPolicy("long enough").status
+    ).toBe("success");
   });
 });
 
@@ -75,12 +81,18 @@ describe("isTokenRevoked", () => {
   });
 
   it("revokes tokens issued before the password change", () => {
-    expect(AuthenticationService.isTokenRevoked(changedAtSeconds - 1, changedAt)).toBe(true);
+    expect(
+      AuthenticationService.isTokenRevoked(changedAtSeconds - 1, changedAt)
+    ).toBe(true);
   });
 
   it("keeps tokens issued in the same second as, or after, the change", () => {
-    expect(AuthenticationService.isTokenRevoked(changedAtSeconds, changedAt)).toBe(false);
-    expect(AuthenticationService.isTokenRevoked(changedAtSeconds + 1, changedAt)).toBe(false);
+    expect(
+      AuthenticationService.isTokenRevoked(changedAtSeconds, changedAt)
+    ).toBe(false);
+    expect(
+      AuthenticationService.isTokenRevoked(changedAtSeconds + 1, changedAt)
+    ).toBe(false);
   });
 });
 
@@ -90,7 +102,11 @@ describe("changePassword", () => {
     UserModel.findOne.mockResolvedValue(userDocument);
     bcrypt.compare.mockResolvedValue(false);
 
-    const result = await PasswordService.changePassword("player", "wrong", "new password");
+    const result = await PasswordService.changePassword(
+      "player",
+      "wrong",
+      "new password"
+    );
 
     expect(result.status).toBe("error");
     expect(result.statusCode).toBe(400);
@@ -102,7 +118,11 @@ describe("changePassword", () => {
     UserModel.findOne.mockResolvedValue(userDocument);
     bcrypt.compare.mockResolvedValue(true);
 
-    const result = await PasswordService.changePassword("player", "old password", "short");
+    const result = await PasswordService.changePassword(
+      "player",
+      "old password",
+      "short"
+    );
 
     expect(result.status).toBe("error");
     expect(userDocument.save).not.toHaveBeenCalled();
@@ -112,7 +132,11 @@ describe("changePassword", () => {
     UserModel.findOne.mockResolvedValue(createUserDocument());
     bcrypt.compare.mockResolvedValue(true);
 
-    const result = await PasswordService.changePassword("player", "same password", "same password");
+    const result = await PasswordService.changePassword(
+      "player",
+      "same password",
+      "same password"
+    );
 
     expect(result.status).toBe("error");
   });
@@ -120,7 +144,11 @@ describe("changePassword", () => {
   it("returns an error when the user does not exist", async () => {
     UserModel.findOne.mockResolvedValue(null);
 
-    const result = await PasswordService.changePassword("ghost", "a", "new password");
+    const result = await PasswordService.changePassword(
+      "ghost",
+      "a",
+      "new password"
+    );
 
     expect(result.statusCode).toBe(404);
   });
@@ -131,14 +159,22 @@ describe("changePassword", () => {
     bcrypt.compare.mockResolvedValue(true);
 
     const before = Date.now();
-    const result = await PasswordService.changePassword("player", "old password", "new password");
+    const result = await PasswordService.changePassword(
+      "player",
+      "old password",
+      "new password"
+    );
 
     expect(result.status).toBe("success");
     expect(result.data).toBe("token");
     expect(userDocument.password).toBe("hashed");
-    expect(userDocument.passwordChangedAt.getTime()).toBeGreaterThanOrEqual(before);
+    expect(userDocument.passwordChangedAt.getTime()).toBeGreaterThanOrEqual(
+      before
+    );
     expect(userDocument.save).toHaveBeenCalled();
-    expect(PasswordResetModel.deleteMany).toHaveBeenCalledWith({ userName: "player" });
+    expect(PasswordResetModel.deleteMany).toHaveBeenCalledWith({
+      userName: "player",
+    });
     expect(EmailService.sendEmail).toHaveBeenCalledWith(
       expect.objectContaining({ to: "player@example.com" })
     );
@@ -149,7 +185,8 @@ describe("requestPasswordReset", () => {
   it("succeeds without creating a token or sending email for an unknown account", async () => {
     UserModel.findOne.mockResolvedValue(null);
 
-    const result = await PasswordService.requestPasswordReset("nobody@example.com");
+    const result =
+      await PasswordService.requestPasswordReset("nobody@example.com");
 
     expect(result.status).toBe("success");
     expect(PasswordResetModel.instances).toHaveLength(0);
@@ -162,7 +199,10 @@ describe("requestPasswordReset", () => {
     await PasswordService.requestPasswordReset("  Player@Example.com ");
 
     expect(UserModel.findOne).toHaveBeenCalledWith({
-      $or: [{ userName: "player@example.com" }, { email: "player@example.com" }],
+      $or: [
+        { userName: "player@example.com" },
+        { email: "player@example.com" },
+      ],
     });
   });
 
@@ -172,7 +212,9 @@ describe("requestPasswordReset", () => {
     const result = await PasswordService.requestPasswordReset("player");
 
     expect(result.status).toBe("success");
-    expect(PasswordResetModel.deleteMany).toHaveBeenCalledWith({ userName: "player" });
+    expect(PasswordResetModel.deleteMany).toHaveBeenCalledWith({
+      userName: "player",
+    });
     expect(PasswordResetModel.instances).toHaveLength(1);
     const stored = PasswordResetModel.instances[0];
     expect(stored.save).toHaveBeenCalled();
@@ -216,12 +258,18 @@ describe("requestPasswordResetForUser", () => {
 
     expect(result.status).toBe("success");
     expect(UserModel.findOne).toHaveBeenCalledWith({ userName: "player" });
-    expect(PasswordResetModel.deleteMany).toHaveBeenCalledWith({ userName: "player" });
+    expect(PasswordResetModel.deleteMany).toHaveBeenCalledWith({
+      userName: "player",
+    });
     const email = EmailService.sendEmail.mock.calls[0][0];
     expect(email.to).toBe("player@example.com");
     expect(email.text).toContain("administrator requested");
-    const token = new URL(email.text.match(/https:\/\/\S+/)[0]).searchParams.get("token");
-    expect(PasswordResetModel.instances[0].tokenHash).toBe(PasswordService.hashResetToken(token));
+    const token = new URL(
+      email.text.match(/https:\/\/\S+/)[0]
+    ).searchParams.get("token");
+    expect(PasswordResetModel.instances[0].tokenHash).toBe(
+      PasswordService.hashResetToken(token)
+    );
   });
 
   it("does not change the user's current password", async () => {
@@ -278,7 +326,10 @@ describe("resetPassword", () => {
   });
 
   it("rejects a missing token", async () => {
-    const result = await PasswordService.resetPassword(undefined, "new password");
+    const result = await PasswordService.resetPassword(
+      undefined,
+      "new password"
+    );
 
     expect(result.statusCode).toBe(400);
     expect(PasswordResetModel.findOneAndDelete).not.toHaveBeenCalled();
@@ -286,7 +337,9 @@ describe("resetPassword", () => {
 
   it("sets the new password and revokes existing tokens", async () => {
     const userDocument = createUserDocument();
-    PasswordResetModel.findOneAndDelete.mockResolvedValue({ userName: "player" });
+    PasswordResetModel.findOneAndDelete.mockResolvedValue({
+      userName: "player",
+    });
     UserModel.findOne.mockResolvedValue(userDocument);
 
     const result = await PasswordService.resetPassword("token", "new password");
@@ -295,6 +348,8 @@ describe("resetPassword", () => {
     expect(userDocument.password).toBe("hashed");
     expect(userDocument.passwordChangedAt).toBeInstanceOf(Date);
     expect(userDocument.save).toHaveBeenCalled();
-    expect(PasswordResetModel.deleteMany).toHaveBeenCalledWith({ userName: "player" });
+    expect(PasswordResetModel.deleteMany).toHaveBeenCalledWith({
+      userName: "player",
+    });
   });
 });

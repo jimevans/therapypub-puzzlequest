@@ -18,7 +18,7 @@ function createAdditionalLookupBody() {
 
   const labelDiv = document.createElement("div");
   labelDiv.classList.add("pq-label");
-  const label = document.createElement("label")
+  const label = document.createElement("label");
   label.htmlFor = "join-code";
   label.innerText = "Join code:";
   labelDiv.appendChild(label);
@@ -54,7 +54,9 @@ function validateInput(userData, renderMode) {
     userData.password !== undefined &&
     userData.password.length < MINIMUM_PASSWORD_LENGTH
   ) {
-    dataErrors.push(`password must be at least ${MINIMUM_PASSWORD_LENGTH} characters long`);
+    dataErrors.push(
+      `password must be at least ${MINIMUM_PASSWORD_LENGTH} characters long`
+    );
   }
   if (userData.email === "") {
     dataErrors.push("email address cannot be empty");
@@ -67,7 +69,7 @@ async function saveUser() {
     displayName: document.querySelector("#display-name").value,
     email: document.querySelector("#email").value,
     phone: document.querySelector("#phone").value,
-    sms: document.querySelector("#allow-sms").checked
+    sms: document.querySelector("#allow-sms").checked,
   };
   const authLevelElement = document.querySelector("#auth-level");
   if (authLevelElement) {
@@ -80,22 +82,18 @@ async function saveUser() {
   const dataErrors = validateInput(userData, renderMode);
   if (dataErrors.length) {
     showError(dataErrors.join(", "));
-     return false;
+    return false;
   }
-  const uri = renderMode === "create" ? `/api/user/create` : `/api/user/${user.name}`;
+  const uri =
+    renderMode === "create" ? `/api/user/create` : `/api/user/${user.name}`;
   const method = renderMode === "create" ? "post" : "put";
-  const dataReturn = await callDataApi(
-    uri,
-    method,
-    userData
-  );
+  const dataReturn = await callDataApi(uri, method, userData);
   if (dataReturn.status === "error") {
     showError(dataReturn.message);
     return false;
   }
   return true;
 }
-
 
 if (renderMode === "display") {
   document.querySelector("#allow-sms").addEventListener("click", (e) => {
@@ -108,13 +106,15 @@ if (renderMode === "display") {
       window.location.href = e.target.href;
     }
   });
-  document.querySelector("#save-button").addEventListener("click", async (e) => {
-    const returnUrl = e.currentTarget.href;
-    e.preventDefault();
-    if (await saveUser()) {
-      window.location.href = returnUrl;
-    }
-  });
+  document
+    .querySelector("#save-button")
+    .addEventListener("click", async (e) => {
+      const returnUrl = e.currentTarget.href;
+      e.preventDefault();
+      if (await saveUser()) {
+        window.location.href = returnUrl;
+      }
+    });
 }
 
 document.querySelector("#more-info-link").addEventListener("click", (e) => {
@@ -160,12 +160,12 @@ if (renderMode !== "create") {
     const lookupGridColumnDefs = [
       {
         fieldName: "teamName",
-        title: "Team ID"
+        title: "Team ID",
       },
       {
         fieldName: "displayName",
-        title: "Team Name"
-      }
+        title: "Team Name",
+      },
     ];
 
     const teamLookup = new Lookup("Select Team", lookupGridColumnDefs, false);
@@ -183,7 +183,9 @@ if (renderMode !== "create") {
         return;
       }
       const teamName = teamLookup.getSelectedData()[0].teamName;
-      const joinCode = teamLookup.getAdditionalBodyElement().querySelector("#join-code").value;
+      const joinCode = teamLookup
+        .getAdditionalBodyElement()
+        .querySelector("#join-code").value;
       if (!joinCode) {
         showError("No join code entered");
         return;
@@ -192,7 +194,7 @@ if (renderMode !== "create") {
         `/api/team/${teamName}/member/${user.name}`,
         "put",
         {
-          joinCode: joinCode
+          joinCode: joinCode,
         }
       );
       if (joinResponse.status === "error") {
@@ -200,9 +202,9 @@ if (renderMode !== "create") {
         return;
       }
       teamsGrid.addDataRow({
-        displayName: teamLookup.getSelectedData()[0].displayName
+        displayName: teamLookup.getSelectedData()[0].displayName,
       });
-    }
+    };
     teamLookup.show();
   };
   if (user) {
@@ -226,13 +228,17 @@ if (changePasswordButton) {
     passwordSuccess.classList.add("pq-hide");
     const currentPasswordElement = document.querySelector("#current-password");
     const newPasswordElement = document.querySelector("#new-password");
-    const confirmPasswordElement = document.querySelector("#new-password-confirm");
+    const confirmPasswordElement = document.querySelector(
+      "#new-password-confirm"
+    );
     if (!currentPasswordElement.value) {
       showPasswordError("Enter your current password");
       return;
     }
     if (newPasswordElement.value.length < MINIMUM_PASSWORD_LENGTH) {
-      showPasswordError(`New password must be at least ${MINIMUM_PASSWORD_LENGTH} characters long`);
+      showPasswordError(
+        `New password must be at least ${MINIMUM_PASSWORD_LENGTH} characters long`
+      );
       return;
     }
     if (newPasswordElement.value !== confirmPasswordElement.value) {

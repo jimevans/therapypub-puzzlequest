@@ -59,7 +59,7 @@ export async function retrieveTeam(req, res) {
     res.status(teamResponse.statusCode).send(
       JSON.stringify({
         status: "error",
-        message: teamResponse.message
+        message: teamResponse.message,
       })
     );
     return;
@@ -73,7 +73,7 @@ export async function updateTeam(req, res) {
       requiresUser: true,
       requiresAdmin: true,
       requiresBody: true,
-      requiredBodyProperties: ["teamName"]
+      requiredBodyProperties: ["teamName"],
     },
     req
   );
@@ -182,7 +182,10 @@ export async function joinTeam(req, res) {
   }
 
   const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin()) {
+  if (
+    !loggedInUser.isCurrentUser(req.params.userName) &&
+    !loggedInUser.isAdmin()
+  ) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -198,12 +201,12 @@ export async function joinTeam(req, res) {
     req.body.joinCode
   );
   if (addUserResponse.status === "error") {
-    res.status(addUserResponse.statusCode).send(JSON.stringify(
-      {
+    res.status(addUserResponse.statusCode).send(
+      JSON.stringify({
         status: "error",
-        message: addUserResponse.message
-      }
-    ));
+        message: addUserResponse.message,
+      })
+    );
     return;
   }
   res.send({ status: "success", statusCode: 200 });
@@ -227,7 +230,10 @@ export async function leaveTeam(req, res) {
   }
 
   const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin()) {
+  if (
+    !loggedInUser.isCurrentUser(req.params.userName) &&
+    !loggedInUser.isAdmin()
+  ) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -242,12 +248,12 @@ export async function leaveTeam(req, res) {
     req.params.userName
   );
   if (leaveUserResponse.status === "error") {
-    res.status(leaveUserResponse.statusCode).send(JSON.stringify(
-      {
+    res.status(leaveUserResponse.statusCode).send(
+      JSON.stringify({
         status: "error",
-        message: leaveUserResponse.message
-      }
-    ));
+        message: leaveUserResponse.message,
+      })
+    );
     return;
   }
   res.send({ status: "success", statusCode: 200 });

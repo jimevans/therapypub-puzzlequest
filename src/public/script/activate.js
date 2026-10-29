@@ -10,33 +10,49 @@ function drawToCanvas(videoElement, context, width, height) {
 
   const startX = videoElement.videoWidth / 2 - width / 2;
   const startY = videoElement.videoHeight / 2 - height / 2;
-  context.drawImage(videoElement, startX, startY, width, height, 0, 0, width, height);
+  context.drawImage(
+    videoElement,
+    startX,
+    startY,
+    width,
+    height,
+    0,
+    0,
+    width,
+    height
+  );
   setTimeout(drawToCanvas, 20, videoElement, context, width, height);
 }
 
 function startCamera() {
   const videoElement = document.querySelector("video");
-  navigator.mediaDevices.getUserMedia({
-    video: {
-      height: { min: 480, ideal: 1080 },
-      facingMode: "environment"
-    },
-    audio: false,
-  })
-  .then((stream) => {
-    const boundingRect = document.querySelector("#activation-mode").getBoundingClientRect();
-    const tracks = stream
-      .getTracks()
-      .filter((track) => track.kind === "video");
-    videoElement.srcObject = stream;
-    videoElement.onloadedmetadata = function (e) {
-      const settings = tracks[0].getSettings();
-      canvas.width = Math.min(boundingRect.width, settings.width);
-      canvas.height = Math.min(window.innerHeight - boundingRect.bottom, settings.height);
-      videoElement.play();
-      document.querySelector("#scan-code-button").classList.remove("pq-hide");
-    };
-  });
+  navigator.mediaDevices
+    .getUserMedia({
+      video: {
+        height: { min: 480, ideal: 1080 },
+        facingMode: "environment",
+      },
+      audio: false,
+    })
+    .then((stream) => {
+      const boundingRect = document
+        .querySelector("#activation-mode")
+        .getBoundingClientRect();
+      const tracks = stream
+        .getTracks()
+        .filter((track) => track.kind === "video");
+      videoElement.srcObject = stream;
+      videoElement.onloadedmetadata = function (e) {
+        const settings = tracks[0].getSettings();
+        canvas.width = Math.min(boundingRect.width, settings.width);
+        canvas.height = Math.min(
+          window.innerHeight - boundingRect.bottom,
+          settings.height
+        );
+        videoElement.play();
+        document.querySelector("#scan-code-button").classList.remove("pq-hide");
+      };
+    });
 }
 
 function stopCamera() {
@@ -98,39 +114,46 @@ document.querySelector("video").addEventListener("play", (e) => {
   }
 );
 
-document.querySelector("#scan-code-button button").addEventListener("click", async (e) => {
-  e.preventDefault();
-  e.target.enabled = false;
-  const videoElement = document.querySelector("video");
-  videoElement.pause();
-  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-  const formData = new FormData();
-  formData.append("height", imageData.height);
-  formData.append("width", imageData.width);
-  formData.append("image", new Blob([imageData.data.buffer]));
-  const activationResponse = await sendActivationData(formData);
-  e.target.enabled = true;
-  if (activationResponse.status === "error") {
-    showError(activationResponse.message);
-    startCamera();
-  } else {
-    window.location.reload();
-  }
-});
+document
+  .querySelector("#scan-code-button button")
+  .addEventListener("click", async (e) => {
+    e.preventDefault();
+    e.target.enabled = false;
+    const videoElement = document.querySelector("video");
+    videoElement.pause();
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    const formData = new FormData();
+    formData.append("height", imageData.height);
+    formData.append("width", imageData.width);
+    formData.append("image", new Blob([imageData.data.buffer]));
+    const activationResponse = await sendActivationData(formData);
+    e.target.enabled = true;
+    if (activationResponse.status === "error") {
+      showError(activationResponse.message);
+      startCamera();
+    } else {
+      window.location.reload();
+    }
+  });
 
-document.querySelector("#send-code-text-button").addEventListener("click", async (e) => {
-  e.preventDefault();
-  e.target.enabled = false;
-  const formData = new FormData();
-  formData.append("activationCode", document.querySelector("#text-auth-code").value);
-  const activationResponse = await sendActivationData(formData);
-  e.target.enabled = true;
-  if (activationResponse.status === "error") {
-    showError(activationResponse.message);
-  } else {
-    window.location.reload();
-  }
-});
+document
+  .querySelector("#send-code-text-button")
+  .addEventListener("click", async (e) => {
+    e.preventDefault();
+    e.target.enabled = false;
+    const formData = new FormData();
+    formData.append(
+      "activationCode",
+      document.querySelector("#text-auth-code").value
+    );
+    const activationResponse = await sendActivationData(formData);
+    e.target.enabled = true;
+    if (activationResponse.status === "error") {
+      showError(activationResponse.message);
+    } else {
+      window.location.reload();
+    }
+  });
 
 const worker = new Worker("/script/socket.js");
 worker.postMessage({ message: "init", url: window.location.href });

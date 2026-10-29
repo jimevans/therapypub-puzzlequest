@@ -13,7 +13,10 @@ vi.mock("../../src/services/team.service.js", async (importOriginal) => {
     getTeamByTeamName: vi.fn(),
     listTeams: vi.fn(),
     addUserToTeam: vi.fn(async () => ({ status: "success", statusCode: 200 })),
-    removeUserFromTeam: vi.fn(async () => ({ status: "success", statusCode: 200 })),
+    removeUserFromTeam: vi.fn(async () => ({
+      status: "success",
+      statusCode: 200,
+    })),
   };
 });
 
@@ -64,7 +67,11 @@ describe("joinTeam", () => {
     await TeamController.joinTeam(req, res);
 
     expect(res.statusCode).toBe(200);
-    expect(TeamService.addUserToTeam).toHaveBeenCalledWith("red", "player", "secret");
+    expect(TeamService.addUserToTeam).toHaveBeenCalledWith(
+      "red",
+      "player",
+      "secret"
+    );
   });
 });
 
@@ -90,7 +97,10 @@ describe("retrieveTeam", () => {
       statusCode: 200,
       data: teams[0],
     });
-    const req = createMockRequest({ user: adminUser, params: { teamName: "red" } });
+    const req = createMockRequest({
+      user: adminUser,
+      params: { teamName: "red" },
+    });
     const res = createMockResponse();
 
     await TeamController.retrieveTeam(req, res);
@@ -105,7 +115,10 @@ describe("retrieveTeam", () => {
       statusCode: 404,
       message: "No team",
     });
-    const req = createMockRequest({ user: adminUser, params: { teamName: "nope" } });
+    const req = createMockRequest({
+      user: adminUser,
+      params: { teamName: "nope" },
+    });
     const res = createMockResponse();
 
     await TeamController.retrieveTeam(req, res);
@@ -122,7 +135,9 @@ describe("listTeams", () => {
 
     await TeamController.listTeams(req, res);
 
-    expect(res.body.data).toEqual([{ teamName: "red", displayName: "Red Team" }]);
+    expect(res.body.data).toEqual([
+      { teamName: "red", displayName: "Red Team" },
+    ]);
   });
 
   it("returns full team data to admins", async () => {

@@ -13,7 +13,9 @@ function showError(errorMessage) {
 window.history.replaceState(null, "", window.location.pathname);
 
 if (!resetToken) {
-  showError("This password reset link is invalid. Request a new one from the sign in page.");
+  showError(
+    "This password reset link is invalid. Request a new one from the sign in page."
+  );
   document.querySelector("#reset").disabled = true;
 }
 
@@ -23,7 +25,9 @@ document.querySelector("#reset").addEventListener("click", async (e) => {
   const newPassword = document.querySelector("#new-password").value;
   const confirmPassword = document.querySelector("#new-password-confirm").value;
   if (newPassword.length < MINIMUM_PASSWORD_LENGTH) {
-    showError(`Password must be at least ${MINIMUM_PASSWORD_LENGTH} characters long`);
+    showError(
+      `Password must be at least ${MINIMUM_PASSWORD_LENGTH} characters long`
+    );
     return;
   }
   if (newPassword !== confirmPassword) {

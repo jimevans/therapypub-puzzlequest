@@ -21,8 +21,8 @@ function displaySolution(solutionText) {
 function removeHighlights() {
   setTimeout(
     () =>
-      [...document.querySelectorAll(".pq-data-highlight")]
-        .forEach((element) => element.classList.remove("pq-data-highlight")
+      [...document.querySelectorAll(".pq-data-highlight")].forEach((element) =>
+        element.classList.remove("pq-data-highlight")
       ),
     3000
   );

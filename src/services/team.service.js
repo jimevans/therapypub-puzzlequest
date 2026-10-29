@@ -56,8 +56,8 @@ export class Team {
       teamName: this.teamName,
       displayName: this.displayName,
       joinCode: this.joinCode,
-      memberNames: this.memberNames
-    }
+      memberNames: this.memberNames,
+    };
   }
 }
 
@@ -72,7 +72,7 @@ export async function getTeamByTeamName(name) {
     return {
       status: "error",
       statusCode: 404,
-      message: `No team with team name ${name} found`
+      message: `No team with team name ${name} found`,
     };
   }
   return { status: "success", statusCode: 200, data: new Team(team) };
@@ -89,7 +89,7 @@ export async function deleteTeam(name) {
     return {
       status: "error",
       statusCode: 404,
-      message: `Team with team name ${name} does not exist`
+      message: `Team with team name ${name} does not exist`,
     };
   }
   return { status: "success", statusCode: 200 };
@@ -101,13 +101,15 @@ export async function deleteTeam(name) {
  * @returns {Promise<TeamResult>} a response object containing a status, status code, and data
  */
 export async function createTeam(team) {
-  const existingTeams = await TeamModel.find({ teamName: team.teamName }).lean();
+  const existingTeams = await TeamModel.find({
+    teamName: team.teamName,
+  }).lean();
   const teamExists = existingTeams.length !== 0;
   if (teamExists) {
     return {
       status: "error",
       statusCode: 400,
-      message: `Team with team name ${team.teamName} already exists`
+      message: `Team with team name ${team.teamName} already exists`,
     };
   }
   try {
@@ -115,14 +117,14 @@ export async function createTeam(team) {
       teamName: team.teamName,
       displayName: team.displayName || team.teamName,
       joinCode: team.joinCode,
-      memberNames: []
+      memberNames: [],
     });
     await newTeam.save();
   } catch (err) {
     return {
       status: "error",
       statusCode: 500,
-      message: `New team not created - ${err.message}`
+      message: `New team not created - ${err.message}`,
     };
   }
   return { status: "success", statusCode: 200 };
@@ -140,7 +142,7 @@ export async function updateTeam(name, teamData) {
     return {
       status: "error",
       statusCode: 404,
-      message: `No team with team name ${name} found`
+      message: `No team with team name ${name} found`,
     };
   }
   foundTeam.displayName = teamData.displayName || foundTeam.displayName;
@@ -154,10 +156,10 @@ export async function updateTeam(name, teamData) {
     return {
       status: "error",
       statusCode: 500,
-      message: `Team not updated - ${err.message}`
+      message: `Team not updated - ${err.message}`,
     };
   }
-  return { status: "success" , statusCode: 200};
+  return { status: "success", statusCode: 200 };
 }
 
 /**
@@ -196,7 +198,7 @@ export async function addUserToTeam(teamName, userName, joinCode) {
     return {
       status: "error",
       statusCode: 404,
-      message: `No team with team name ${teamName} found`
+      message: `No team with team name ${teamName} found`,
     };
   }
 
@@ -204,15 +206,15 @@ export async function addUserToTeam(teamName, userName, joinCode) {
     return {
       status: "error",
       statusCode: 400,
-      message: `User ${userName} is already a member of team ${teamName}`
-    }
+      message: `User ${userName} is already a member of team ${teamName}`,
+    };
   }
   if (team.joinCode.toLowerCase() !== joinCode.toLowerCase()) {
     return {
       status: "error",
       statusCode: 400,
-      message: `Invalid join code for team ${teamName}`
-    }
+      message: `Invalid join code for team ${teamName}`,
+    };
   }
   team.memberNames.push(userName);
   try {
@@ -221,8 +223,8 @@ export async function addUserToTeam(teamName, userName, joinCode) {
     return {
       status: "error",
       statusCode: 500,
-      message: err.message
-    }
+      message: err.message,
+    };
   }
   return { status: "success", statusCode: 200 };
 }
@@ -239,7 +241,7 @@ export async function removeUserFromTeam(teamName, userName) {
     return {
       status: "error",
       statusCode: 404,
-      message: `No team with team name ${teamName} found`
+      message: `No team with team name ${teamName} found`,
     };
   }
 
@@ -247,8 +249,8 @@ export async function removeUserFromTeam(teamName, userName) {
     return {
       status: "error",
       statusCode: 400,
-      message: `User ${userName} is not a member of team ${teamName}`
-    }
+      message: `User ${userName} is not a member of team ${teamName}`,
+    };
   }
   const index = team.memberNames.indexOf(userName);
   team.memberNames.splice(index, 1);
@@ -258,8 +260,8 @@ export async function removeUserFromTeam(teamName, userName) {
     return {
       status: "error",
       statusCode: 500,
-      message: err.message
-    }
+      message: err.message,
+    };
   }
   return { status: "success", statusCode: 200 };
 }

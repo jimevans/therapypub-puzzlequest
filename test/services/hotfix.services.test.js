@@ -20,7 +20,8 @@ const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
 const { UserModel } = await import("../../src/models/user.model.js");
 const PuzzleService = await import("../../src/services/puzzle.service.js");
 const UserService = await import("../../src/services/user.service.js");
-const { validateRequest } = await import("../../src/services/requestValidation.service.js");
+const { validateRequest } =
+  await import("../../src/services/requestValidation.service.js");
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -81,7 +82,10 @@ describe("UserService", () => {
 
 describe("validateRequest", () => {
   it("rejects an anonymous request requiring admin without throwing", () => {
-    const result = validateRequest({ requiresAdmin: true }, createMockRequest());
+    const result = validateRequest(
+      { requiresAdmin: true },
+      createMockRequest()
+    );
 
     expect(result.status).toBe("error");
     expect(result.statusCode).toBe(403);

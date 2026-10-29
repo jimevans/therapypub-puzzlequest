@@ -87,7 +87,10 @@ export async function retrieveUser(req, res) {
     return;
   }
   const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin()) {
+  if (
+    !loggedInUser.isCurrentUser(req.params.userName) &&
+    !loggedInUser.isAdmin()
+  ) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -107,7 +110,7 @@ export async function retrieveUser(req, res) {
     return;
   }
 
-  res.send(JSON.stringify(userResponse))
+  res.send(JSON.stringify(userResponse));
 }
 
 export async function updateUser(req, res) {
@@ -128,7 +131,10 @@ export async function updateUser(req, res) {
     return;
   }
   const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin()) {
+  if (
+    !loggedInUser.isCurrentUser(req.params.userName) &&
+    !loggedInUser.isAdmin()
+  ) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -145,7 +151,10 @@ export async function updateUser(req, res) {
     updatedUser.authorizationLevel = undefined;
     updatedUser.password = undefined;
   }
-  const response = await UserService.updateUser(req.params.userName, updatedUser);
+  const response = await UserService.updateUser(
+    req.params.userName,
+    updatedUser
+  );
   if (response.status === "error") {
     res.status(response.statusCode).send(
       JSON.stringify({
@@ -176,7 +185,10 @@ export async function deleteUser(req, res) {
   }
 
   const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin()) {
+  if (
+    !loggedInUser.isCurrentUser(req.params.userName) &&
+    !loggedInUser.isAdmin()
+  ) {
     res.status(403).send(
       JSON.stringify({
         status: "error",
@@ -202,7 +214,7 @@ export async function listUsers(req, res) {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
-      requiresAdmin: true
+      requiresAdmin: true,
     },
     req
   );
@@ -393,13 +405,10 @@ export async function renderUser(req, res) {
         user: null,
       });
     } else {
-      res.render(
-        "error",
-        {
-          errorTitle: "Unauthorized",
-          errorDetails: `User ${loggedInUser.userName} not authorized to create new users`,
-        }
-      );
+      res.render("error", {
+        errorTitle: "Unauthorized",
+        errorDetails: `User ${loggedInUser.userName} not authorized to create new users`,
+      });
     }
     return;
   }
@@ -409,26 +418,26 @@ export async function renderUser(req, res) {
     return;
   }
 
-  if (!loggedInUser.isCurrentUser(req.params.userName) && !loggedInUser.isAdmin()) {
-    res.render(
-      "error",
-      {
-        errorTitle: "Unauthorized",
-        errorDetails: `User ${req.params.userName} not authorized to retrieve user ${req.params.userName}`
-      }
-    );
+  if (
+    !loggedInUser.isCurrentUser(req.params.userName) &&
+    !loggedInUser.isAdmin()
+  ) {
+    res.render("error", {
+      errorTitle: "Unauthorized",
+      errorDetails: `User ${req.params.userName} not authorized to retrieve user ${req.params.userName}`,
+    });
     return;
   }
 
-  const userResponse = await UserService.getUserByUserName(req.params.userName, true);
+  const userResponse = await UserService.getUserByUserName(
+    req.params.userName,
+    true
+  );
   if (userResponse.status === "error") {
-    res.render(
-      "error",
-      {
-        errorTitle: "Not found",
-        errorDetails: userResponse.message
-      }
-    );
+    res.render("error", {
+      errorTitle: "Not found",
+      errorDetails: userResponse.message,
+    });
     return;
   }
 

@@ -3,8 +3,8 @@ const PuzzleKind = {
   Text: 0,
   Image: 1,
   Audio: 2,
-  Video: 3
-}
+  Video: 3,
+};
 
 /**
  * Renders a puzzle during authoring.
@@ -16,8 +16,7 @@ class PuzzleRenderer {
   /**
    * Initializes a new instance of the PuzzleRenderer class.
    */
-  constructor() {
-  }
+  constructor() {}
 
   #renderImage(puzzleContent, isEditable) {
     const renderElements = [];
@@ -116,7 +115,8 @@ class PuzzleRenderer {
 
   getPuzzleData() {
     if (this.#puzzleKind !== PuzzleKind.Text) {
-      const uploadElement = this.#rendererElement.querySelector("input[type='file']");
+      const uploadElement =
+        this.#rendererElement.querySelector("input[type='file']");
       if (uploadElement) {
         if (!uploadElement.files.length) {
           return null;
@@ -137,13 +137,13 @@ class PuzzleRenderer {
     this.#puzzleKind = puzzleType;
     const renderElements = [];
     switch (puzzleType) {
-      case (PuzzleKind.Image):
+      case PuzzleKind.Image:
         renderElements.push(...this.#renderImage(puzzleContent, isEditable));
         break;
-      case (PuzzleKind.Audio):
+      case PuzzleKind.Audio:
         renderElements.push(...this.#renderAudio(puzzleContent, isEditable));
         break;
-      case (PuzzleKind.Video):
+      case PuzzleKind.Video:
         renderElements.push(...this.#renderVideo(puzzleContent, isEditable));
         break;
       default:
@@ -161,4 +161,4 @@ class PuzzleRenderer {
   }
 }
 
-export { PuzzleRenderer }
+export { PuzzleRenderer };

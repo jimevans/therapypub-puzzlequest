@@ -79,12 +79,22 @@ class DataGrid {
   }
 
   #createIcon(imagePath) {
-    const svgElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const svgElement = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "svg"
+    );
     svgElement.classList.add("pq-icon");
     svgElement.setAttribute("viewBox", "0 0 512 512");
 
-    const useElement = document.createElementNS("http://www.w3.org/2000/svg", "use");
-    useElement.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", imagePath);
+    const useElement = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "use"
+    );
+    useElement.setAttributeNS(
+      "http://www.w3.org/1999/xlink",
+      "xlink:href",
+      imagePath
+    );
     useElement.setAttribute("href", imagePath);
     svgElement.appendChild(useElement);
 
@@ -273,7 +283,9 @@ class DataGrid {
   deleteDataRow(rowIndex) {
     if (this.allowRowDeleting) {
       this.#gridData.splice(rowIndex, 1);
-      const row = this.#tableBody.querySelector(`tr:nth-of-type(${rowIndex + 1})`);
+      const row = this.#tableBody.querySelector(
+        `tr:nth-of-type(${rowIndex + 1})`
+      );
       this.#tableBody.removeChild(row);
     }
   }
@@ -284,10 +296,14 @@ class DataGrid {
    */
   editDataRow(rowIndex) {
     if (this.allowRowEditing) {
-      const row = this.#tableBody.querySelector(`tr:nth-of-type(${rowIndex + 1})`);
+      const row = this.#tableBody.querySelector(
+        `tr:nth-of-type(${rowIndex + 1})`
+      );
       const dataItem = this.#gridData[rowIndex];
       this.#columnDefinitions.forEach((columnDef) => {
-        const cell = row.querySelector(`td[data-field-name='${columnDef.fieldName}']`);
+        const cell = row.querySelector(
+          `td[data-field-name='${columnDef.fieldName}']`
+        );
         if (columnDef.editable) {
           if (columnDef.type === "boolean") {
             const checkbox = document.createElement("input");
@@ -302,7 +318,7 @@ class DataGrid {
         }
       });
       const fillerCell = row.querySelector("td:last-of-type");
-      [...fillerCell.querySelectorAll("button")].forEach(button => {
+      [...fillerCell.querySelectorAll("button")].forEach((button) => {
         button.classList.add("pq-hide");
       });
       const saveButtonIcon = this.#createIcon("/image/save.svg#save");
@@ -312,10 +328,13 @@ class DataGrid {
       saveButton.addEventListener("click", (e) => {
         e.preventDefault();
         this.#columnDefinitions.forEach((columnDef) => {
-          const cell = row.querySelector(`td[data-field-name='${columnDef.fieldName}']`);
+          const cell = row.querySelector(
+            `td[data-field-name='${columnDef.fieldName}']`
+          );
           if (columnDef.editable) {
             if (columnDef.type === "boolean") {
-              dataItem[columnDef.fieldName] = cell.querySelector("input").checked;
+              dataItem[columnDef.fieldName] =
+                cell.querySelector("input").checked;
               const checkbox = document.createElement("input");
               checkbox.type = "checkbox";
               checkbox.checked = dataItem[columnDef.fieldName];
@@ -331,7 +350,7 @@ class DataGrid {
         });
         this.onRowEditCommit(e);
         fillerCell.removeChild(e.currentTarget);
-        [...fillerCell.querySelectorAll("button")].forEach(button => {
+        [...fillerCell.querySelectorAll("button")].forEach((button) => {
           button.classList.remove("pq-hide");
         });
       });
@@ -361,19 +380,19 @@ class DataGrid {
    * Callback called when addition of a new data row is requested.
    * @param {Event} e the event data from the click event of the commit button
    */
-  onAddDataRequested = (e) => { };
+  onAddDataRequested = (e) => {};
 
   /**
    * Callback called when edit of a data row is requested.
    * @param {Event} e the event data from the click event of the commit button
    */
-  onRowEditRequested = (e) => { };
+  onRowEditRequested = (e) => {};
 
   /**
    * Callback called when edit of a data row is saved.
    * @param {Event} e the event data from the click event of the commit button
    */
-  onRowEditCommit = (e) => { };
+  onRowEditCommit = (e) => {};
 
   /**
    * Renders the data to the grid. Will delete existing data in the grid when called.

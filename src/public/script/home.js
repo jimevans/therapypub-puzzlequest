@@ -1,5 +1,6 @@
-
-const numberFormatter = new Intl.NumberFormat("en", {minimumIntegerDigits: 2});
+const numberFormatter = new Intl.NumberFormat("en", {
+  minimumIntegerDigits: 2,
+});
 
 function calculateElapsed(startTime) {
   const elapsedSeconds = Math.trunc(Date.now() - startTime) / 1000;
@@ -11,7 +12,7 @@ function calculateElapsed(startTime) {
 
 function updateTimes(timesToUpdate) {
   if (timesToUpdate.length) {
-    timesToUpdate.forEach(timeToUpdate => {
+    timesToUpdate.forEach((timeToUpdate) => {
       timeToUpdate.element.innerText = calculateElapsed(timeToUpdate.startTime);
     });
     setTimeout(updateTimes, 1000, timesToUpdate);
@@ -24,7 +25,9 @@ if (elapsedTimeElements.length) {
   elapsedTimeElements.forEach((elapsedTimeElement) => {
     timesToUpdate.push({
       element: elapsedTimeElement,
-      startTime: Date.parse(elapsedTimeElement.getAttribute("data-quest-start"))
+      startTime: Date.parse(
+        elapsedTimeElement.getAttribute("data-quest-start")
+      ),
     });
   });
   updateTimes(timesToUpdate);

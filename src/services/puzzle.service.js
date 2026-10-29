@@ -48,8 +48,8 @@ export class PuzzleHint {
     return {
       text: this.text,
       solutionWarning: this.solutionWarning,
-      timePenalty: this.timePenalty
-    }
+      timePenalty: this.timePenalty,
+    };
   }
 }
 
@@ -95,7 +95,7 @@ export class Puzzle {
    * Gets or sets the list of hints for this puzzle.
    * @type {PuzzleHint[]}
    */
-  hints = []
+  hints = [];
 
   /**
    * Initializes a new instance of the Puzzle class.
@@ -126,7 +126,7 @@ export class Puzzle {
       text: this.text,
       solutionKeyword: this.solutionKeyword,
       solutionDisplayText: this.solutionDisplayText,
-      hints: this.hints
+      hints: this.hints,
     };
   }
 }
@@ -142,7 +142,7 @@ export async function getPuzzleByPuzzleName(name) {
     return {
       status: "error",
       statusCode: 404,
-      message: `No puzzle with puzzle name ${name} found`
+      message: `No puzzle with puzzle name ${name} found`,
     };
   }
   const puzzle = new Puzzle(foundPuzzle);
@@ -163,7 +163,7 @@ export async function deletePuzzle(name) {
     return {
       status: "error",
       statusCode: 404,
-      message: `Puzzle with puzzle name ${name} does not exist`
+      message: `Puzzle with puzzle name ${name} does not exist`,
     };
   }
   return { status: "success", statusCode: 200 };
@@ -181,7 +181,7 @@ export async function createPuzzle(puzzle) {
     return {
       status: "error",
       statusCode: 400,
-      message: `Puzzle with puzzle name ${puzzle.name} already exists`
+      message: `Puzzle with puzzle name ${puzzle.name} already exists`,
     };
   }
 
@@ -201,7 +201,7 @@ export async function createPuzzle(puzzle) {
     return {
       status: "error",
       statusCode: 500,
-      message: `New puzzle not created - ${err}`
+      message: `New puzzle not created - ${err}`,
     };
   }
   return { status: "success", statusCode: 200 };
@@ -219,15 +219,18 @@ export async function updatePuzzle(name, puzzleData) {
     return {
       status: "error",
       statusCode: 404,
-      message: `No puzzle with puzzle name ${name} found`
+      message: `No puzzle with puzzle name ${name} found`,
     };
   }
   foundPuzzle.displayName = puzzleData.displayName || foundPuzzle.displayName;
   foundPuzzle.type = puzzleData.type || foundPuzzle.type;
   foundPuzzle.text = puzzleData.text || foundPuzzle.text;
-  foundPuzzle.solutionKeyword = puzzleData.solutionKeyword || foundPuzzle.solutionKeyword;
-  foundPuzzle.solutionDisplayText = puzzleData.solutionDisplayText || foundPuzzle.solutionDisplayText;
-  foundPuzzle.resourcePath = puzzleData.resourcePath || foundPuzzle.resourcePath;
+  foundPuzzle.solutionKeyword =
+    puzzleData.solutionKeyword || foundPuzzle.solutionKeyword;
+  foundPuzzle.solutionDisplayText =
+    puzzleData.solutionDisplayText || foundPuzzle.solutionDisplayText;
+  foundPuzzle.resourcePath =
+    puzzleData.resourcePath || foundPuzzle.resourcePath;
   foundPuzzle.hints = puzzleData.hints || foundPuzzle.hints;
   await foundPuzzle.save();
   return { status: "success", statusCode: 200 };

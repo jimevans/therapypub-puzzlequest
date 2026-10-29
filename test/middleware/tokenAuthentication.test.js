@@ -8,7 +8,8 @@ vi.mock("../../src/services/user.service.js", async (importOriginal) => {
 
 const jwt = (await import("jsonwebtoken")).default;
 const UserService = await import("../../src/services/user.service.js");
-const TokenAuthenticator = await import("../../src/middleware/tokenAuthentication.js");
+const TokenAuthenticator =
+  await import("../../src/middleware/tokenAuthentication.js");
 
 const issuedAt = Math.floor(new Date("2026-01-01T12:00:00Z").getTime() / 1000);
 
@@ -51,7 +52,9 @@ describe("tokenAuthenticate", () => {
     await TokenAuthenticator.tokenAuthenticate(req, res, next);
 
     expect(req.user).toBeNull();
-    expect(res.clearCookie).toHaveBeenCalledWith(TokenAuthenticator.TOKEN_COOKIE_NAME);
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      TokenAuthenticator.TOKEN_COOKIE_NAME
+    );
     expect(next).toHaveBeenCalled();
   });
 
@@ -61,7 +64,11 @@ describe("tokenAuthenticate", () => {
     });
     const req = createAuthenticatedRequest();
 
-    await TokenAuthenticator.tokenAuthenticate(req, createMockResponse(), vi.fn());
+    await TokenAuthenticator.tokenAuthenticate(
+      req,
+      createMockResponse(),
+      vi.fn()
+    );
 
     expect(req.user.userName).toBe("player");
   });

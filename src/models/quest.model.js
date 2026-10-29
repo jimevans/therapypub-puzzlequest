@@ -64,18 +64,17 @@ const questPuzzleSchema = new Schema({
   },
 });
 
-questPuzzleSchema.virtual("statusDescription")
-  .get(function () {
-    switch (this.status) {
-      case QuestPuzzleStatus.AWAITING_ACTIVATION:
-        return "Awaiting activation";
-      case QuestPuzzleStatus.IN_PROGRESS:
-        return "In progress";
-      case QuestPuzzleStatus.COMPLETED:
-        return "Completed";
-    }
-    return "Unavailable";
-  });
+questPuzzleSchema.virtual("statusDescription").get(function () {
+  switch (this.status) {
+    case QuestPuzzleStatus.AWAITING_ACTIVATION:
+      return "Awaiting activation";
+    case QuestPuzzleStatus.IN_PROGRESS:
+      return "In progress";
+    case QuestPuzzleStatus.COMPLETED:
+      return "Completed";
+  }
+  return "Unavailable";
+});
 
 questPuzzleSchema.set("toJSON", { virtuals: true });
 
@@ -101,30 +100,28 @@ const questSchema = new Schema({
   },
   textResponse: {
     type: String,
-    default: ""
+    default: "",
   },
   textResponseConfirmation: {
     type: String,
-    default: ""
+    default: "",
   },
   puzzles: [questPuzzleSchema],
 });
 
-questSchema.virtual("statusDescription")
-  .get(function () {
-    switch (this.status) {
-      case QuestStatus.NOT_STARTED:
-        return "Not yet started";
-      case QuestStatus.IN_PROGRESS:
-        return "In progress";
-      case QuestStatus.COMPLETED:
-        return "Completed";
-    }
-    return "Unavailable";
-  });
+questSchema.virtual("statusDescription").get(function () {
+  switch (this.status) {
+    case QuestStatus.NOT_STARTED:
+      return "Not yet started";
+    case QuestStatus.IN_PROGRESS:
+      return "In progress";
+    case QuestStatus.COMPLETED:
+      return "Completed";
+  }
+  return "Unavailable";
+});
 
 questSchema.set("toJSON", { virtuals: true });
-
 
 const QuestModel = model("Quest", questSchema);
 const QuestPuzzleModel = model("QuestPuzzle", questPuzzleSchema);

@@ -29,7 +29,9 @@ function addGeneratorButtons(gridElement) {
     svgElement.appendChild(useElement);
 
     const row = cell.parentNode;
-    const puzzleName = row.querySelector("td[data-field-name='puzzleName']").innerText;
+    const puzzleName = row.querySelector(
+      "td[data-field-name='puzzleName']"
+    ).innerText;
     const qrGenerationLink = document.createElement("a");
     qrGenerationLink.classList.add("pq-icon-link");
     qrGenerationLink.href = `/quest/${quest.name}/puzzle/${puzzleName}/qrcode`;
@@ -38,22 +40,24 @@ function addGeneratorButtons(gridElement) {
   });
 }
 
-document.querySelector("#activate-link")?.addEventListener("click", async (e) => {
-  e.preventDefault();
-  document.querySelector("#nav-checkbox").checked = false;
-  const activationResponse = await callDataApi(
-    `/api/quest/${quest.name}/activate`,
-    "put",
-    {}
-  );
-  if (activationResponse.status === "error") {
-    console.log(
-      `Error received activating quest: ${activationResponse.message}`
+document
+  .querySelector("#activate-link")
+  ?.addEventListener("click", async (e) => {
+    e.preventDefault();
+    document.querySelector("#nav-checkbox").checked = false;
+    const activationResponse = await callDataApi(
+      `/api/quest/${quest.name}/activate`,
+      "put",
+      {}
     );
-    return;
-  }
-  window.location.href = e.target.href;
-});
+    if (activationResponse.status === "error") {
+      console.log(
+        `Error received activating quest: ${activationResponse.message}`
+      );
+      return;
+    }
+    window.location.href = e.target.href;
+  });
 
 document.querySelector("#reset-link")?.addEventListener("click", async (e) => {
   e.preventDefault();
@@ -64,9 +68,7 @@ document.querySelector("#reset-link")?.addEventListener("click", async (e) => {
     {}
   );
   if (resetResponse.status === "error") {
-    console.log(
-      `Error received resetting quest ${resetResponse.message}`
-    );
+    console.log(`Error received resetting quest ${resetResponse.message}`);
     return;
   }
   window.location.href = e.target.href;
@@ -94,11 +96,13 @@ document.querySelector("#notify-link")?.addEventListener("click", (e) => {
     }
     const messagePayload = {
       questName: quest.name,
-      message: message
-    }
+      message: message,
+    };
     if (expectedResponse) {
       if (!responseConfirmation) {
-        composer.setError("An expected response requires a response confirmation");
+        composer.setError(
+          "An expected response requires a response confirmation"
+        );
         return;
       }
       messagePayload.expectedResponse = expectedResponse;
@@ -107,7 +111,8 @@ document.querySelector("#notify-link")?.addEventListener("click", (e) => {
     const sendMessageResponse = await callDataApi(
       "/api/messaging/outgoing/text",
       "post",
-      messagePayload);
+      messagePayload
+    );
     if (sendMessageResponse.status === "error") {
       composer.setError(sendMessageResponse.message);
       e.target.disabled = false;

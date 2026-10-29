@@ -11,25 +11,29 @@ document
 const hintGridColumnDefinitions = [
   {
     fieldName: "text",
-    title: "Hint Text"
+    title: "Hint Text",
   },
   {
     fieldName: "solutionWarning",
     title: "Does Hint Give Solution?",
-    type: "boolean"
+    type: "boolean",
   },
   {
     fieldName: "timePenalty",
-    title: "Time Penalty (sec)"
-  }
-]
+    title: "Time Penalty (sec)",
+  },
+];
 const hindGridOptions = {
   allowCreation: false,
   allowRowDeleting: false,
   allowRowEditing: false,
   allowRowReordering: false,
-  allowRowSelecting: false
-}
-const hintGrid = new DataGrid("Hints", hintGridColumnDefinitions, hindGridOptions);
+  allowRowSelecting: false,
+};
+const hintGrid = new DataGrid(
+  "Hints",
+  hintGridColumnDefinitions,
+  hindGridOptions
+);
 hintGrid.render(puzzle.hints);
 document.querySelector("#hints").replaceChildren(hintGrid.getElement());

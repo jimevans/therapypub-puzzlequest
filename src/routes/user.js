@@ -27,6 +27,6 @@ userRouter.get(
   TokenAuthenticator.tokenAuthenticate,
   UseRenderMode.useRenderMode(UseRenderMode.RenderMode.EDIT),
   UserController.renderUser
-)
+);
 
-export { userRouter as UserRouter }
+export { userRouter as UserRouter };

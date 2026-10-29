@@ -37,12 +37,12 @@ questRouter.get(
   "/:name/puzzle/:puzzleName/qrcode",
   TokenAuthenticator.tokenAuthenticate,
   QuestController.renderPuzzleActivationQRCode
-)
+);
 
 questRouter.get(
   "/:name/pdf",
   TokenAuthenticator.tokenAuthenticate,
   QuestController.renderQuestRunBook
-)
+);
 
 export { questRouter as QuestRouter };

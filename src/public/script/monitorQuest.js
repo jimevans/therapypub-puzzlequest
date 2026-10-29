@@ -96,8 +96,8 @@ function createNewPuzzleElement(messageData) {
 function removeHighlights() {
   setTimeout(
     () =>
-      [...document.querySelectorAll(".pq-data-highlight")]
-        .forEach((element) => element.classList.remove("pq-data-highlight")
+      [...document.querySelectorAll(".pq-data-highlight")].forEach((element) =>
+        element.classList.remove("pq-data-highlight")
       ),
     3000
   );
@@ -112,7 +112,9 @@ worker.addEventListener("message", (evt) => {
   const messageData = JSON.parse(evt.data);
   if (messageData.message === "puzzleStarted") {
     if (
-      !document.querySelector(`[data-puzzle-name = "${messageData.puzzleName}"]`)
+      !document.querySelector(
+        `[data-puzzle-name = "${messageData.puzzleName}"]`
+      )
     ) {
       const newPuzzleElement = createNewPuzzleElement(messageData);
       const puzzlesContainer = document.querySelector("#puzzles");
@@ -127,12 +129,16 @@ worker.addEventListener("message", (evt) => {
     );
     const activationTime = Date.parse(messageData.activationTime);
 
-    const puzzleNameElement = puzzleElement.querySelector(".pq-quest-puzzle-link");
+    const puzzleNameElement = puzzleElement.querySelector(
+      ".pq-quest-puzzle-link"
+    );
     const displayName = puzzleNameElement.innerText;
     const nameLink = document.createElement("a");
     nameLink.href = `/monitor/quest/${messageData.questName}/puzzle/${messageData.puzzleName}`;
     nameLink.innerText = displayName;
-    puzzleElement.querySelector(".pq-quest-puzzle-link").replaceChildren(nameLink);
+    puzzleElement
+      .querySelector(".pq-quest-puzzle-link")
+      .replaceChildren(nameLink);
 
     puzzleElement.querySelector(".pq-quest-puzzle-status span").innerText =
       "In Progress";
@@ -146,23 +152,21 @@ worker.addEventListener("message", (evt) => {
       `[data-puzzle-name = ${messageData.puzzleName}]`
     );
     const endTime = Date.parse(messageData.endTime);
-    puzzleElement.querySelector(".pq-quest-puzzle-status span")
-      .innerText = "Completed";
-    puzzleElement.querySelector(".pq-quest-puzzle-time[data-time='solution'] span")
-      .innerText = dateFormatter.format(endTime);
+    puzzleElement.querySelector(".pq-quest-puzzle-status span").innerText =
+      "Completed";
+    puzzleElement.querySelector(
+      ".pq-quest-puzzle-time[data-time='solution'] span"
+    ).innerText = dateFormatter.format(endTime);
     const elapsed = puzzleElement.querySelector(
       ".pq-quest-puzzle-time[data-time='elapsed'] span"
     );
     if (elapsed.hasAttribute("data-puzzle-start")) {
-      const startTime = Date.parse(
-        elapsed.getAttribute("data-puzzle-start")
-      );
+      const startTime = Date.parse(elapsed.getAttribute("data-puzzle-start"));
       elapsed.removeAttribute("data-puzzle-start");
       elapsed.innerText = calculateElapsed(startTime, endTime);
     }
-    puzzleElement.querySelector(
-      ".pq-quest-puzzle-solution span"
-    ).innerHTML = `<strong>Solution:</strong>&nbsp;${messageData.solutionText}`;
+    puzzleElement.querySelector(".pq-quest-puzzle-solution span").innerHTML =
+      `<strong>Solution:</strong>&nbsp;${messageData.solutionText}`;
     puzzleElement.classList.add("pq-data-highlight");
     removeHighlights();
   }
