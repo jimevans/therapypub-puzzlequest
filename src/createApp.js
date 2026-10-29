@@ -1,5 +1,5 @@
 import path from "path";
-import { createRequire } from "module";
+import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
 import express from "express";
 import { config } from "./config.js";
@@ -17,10 +17,8 @@ import { UserRouter } from "./routes/user.js";
 
 // Browser build of marked, served from the installed package so that its
 // version is pinned by the lockfile and matches the version used on the server.
-const markedBrowserModule = path.join(
-  path.dirname(createRequire(import.meta.url).resolve("marked")),
-  "marked.esm.js"
-);
+// The package's entry point is a self-contained ES module.
+const markedBrowserModule = fileURLToPath(import.meta.resolve("marked"));
 
 /**
  * Creates the Express application. This has no side effects: it does not
