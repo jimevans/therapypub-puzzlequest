@@ -123,7 +123,8 @@ export function parseConfig(environment) {
 // vitest.config.js), so a developer's .env never affects them.
 if (process.env.NODE_ENV !== "test") {
   const environmentFile = path.join(import.meta.dirname, ".env");
-  const result = loadEnvironmentFile({ path: environmentFile });
+  // quiet: dotenv's own log line would duplicate the one below.
+  const result = loadEnvironmentFile({ path: environmentFile, quiet: true });
   console.log(
     "error" in result
       ? "loaded config from process.env"
