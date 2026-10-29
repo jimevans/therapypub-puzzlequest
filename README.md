@@ -8,8 +8,9 @@ integration.
 
 - **Node.js 24.** Production runs Node 24, so local development uses the
   same version. The version is pinned in `.nvmrc`.
-- **MongoDB.** MongoDB Community 8.0 is used below. If you know which version
-  production runs, use the same major version.
+- **MongoDB 4.4 or later.** The MongoDB driver used by Mongoose 9 can't
+  connect to older servers. MongoDB Community 8.0 is used below. If you know
+  which version production runs, use the same major version.
 
 > The `jsonwebtoken` dependency does not load on Node 25 or later. If the app
 > fails at startup with a `SlowBuffer` error, check `node -v`.
