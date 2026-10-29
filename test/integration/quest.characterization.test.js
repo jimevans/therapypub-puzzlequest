@@ -168,15 +168,19 @@ describe("createQuest", () => {
     expect((await storedQuest("empty")).puzzles).toEqual([]);
   });
 
-  it("derives the name from the display name by replacing only the first space (current behavior)", async () => {
-    await QuestService.createQuest({
-      displayName: "My Big Quest",
-      userName: "player",
-    });
+  it.each([
+    ["My Big Quest", "my.big.quest"],
+    ["  Spaced   Out\tQuest ", "spaced.out.quest"],
+    ["Solo", "solo"],
+  ])(
+    "derives the name from display name %j as %j",
+    async (displayName, expectedName) => {
+      await QuestService.createQuest({ displayName, userName: "player" });
 
-    const quests = await QuestModel.find({}).lean();
-    expect(quests.map((quest) => quest.name)).toEqual(["my.big quest"]);
-  });
+      const quests = await QuestModel.find({}).lean();
+      expect(quests.map((quest) => quest.name)).toEqual([expectedName]);
+    }
+  );
 
   it("rejects a definition with neither a name nor a display name", async () => {
     expect(await QuestService.createQuest({ userName: "player" })).toEqual({
