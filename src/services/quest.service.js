@@ -503,7 +503,10 @@ export async function createQuest(questDefinition) {
   if ("name" in questDefinition) {
     questName = questDefinition.name;
   } else if ("displayName" in questDefinition) {
-    questName = questDefinition.displayName.replace(" ", ".").toLowerCase();
+    questName = questDefinition.displayName
+      .trim()
+      .replace(/\s+/g, ".")
+      .toLowerCase();
   } else {
     return {
       status: "error",
