@@ -1,3 +1,4 @@
+/* global marked -- loaded by a script tag in the page */
 const PuzzleKind = {
   Text: 0,
   Image: 1,

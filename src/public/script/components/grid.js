@@ -154,7 +154,7 @@ class DataGrid {
         e.preventDefault();
         const sourceRowIndex =
           parseInt(e.dataTransfer.getData("text/plain")) - 1;
-        if (this.#draggedRow != e.currentTarget) {
+        if (this.#draggedRow !== e.currentTarget) {
           const destinationRowIndex = e.currentTarget.rowIndex - 1;
           if (destinationRowIndex < sourceRowIndex) {
             // dragging up

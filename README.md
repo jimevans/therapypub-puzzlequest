@@ -101,3 +101,19 @@ npm test
 The tests use [Vitest](https://vitest.dev). The integration tests run against
 an in-memory MongoDB from `mongodb-memory-server`, so they don't need a local
 database.
+
+## Linting and formatting
+
+```bash
+npm run lint           # ESLint
+npm run format         # rewrite files with Prettier
+npm run format:check   # report files that Prettier would change
+```
+
+ESLint is configured in [eslint.config.js](eslint.config.js). Prettier takes
+indentation and line endings from [.editorconfig](.editorconfig), and its
+other settings are in [.prettierrc.json](.prettierrc.json).
+
+Browser scripts in `src/public/script` that read variables defined by an
+inline `<script>` in their EJS view declare them in a `/* global */` comment
+at the top of the file.

@@ -1,3 +1,4 @@
+/* global quest -- defined by an inline script in the page */
 import { DataGrid } from "./components/grid.js";
 import { Modal } from "./components/modal.js";
 import { TextMessageComposer } from "./components/textMessageComposer.js";

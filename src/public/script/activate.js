@@ -1,3 +1,4 @@
+/* global questName, puzzleName -- defined by an inline script in the page */
 import { callDataApi } from "./fetch.js";
 const canvas = document.querySelector("canvas");
 const context = canvas.getContext("2d");

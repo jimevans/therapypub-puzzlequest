@@ -1,5 +1,3 @@
-import { FireworksOverlay } from "./components/fireworksOverlay.js";
-
 const numberFormatter = new Intl.NumberFormat("en", {
   minimumIntegerDigits: 2,
 });

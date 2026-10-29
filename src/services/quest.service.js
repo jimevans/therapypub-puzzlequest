@@ -2,7 +2,6 @@ import { randomUUID } from "crypto";
 import path from "path";
 import { fileURLToPath } from "url";
 import { marked } from "marked";
-import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
 import {
   QuestModel,
@@ -10,7 +9,6 @@ import {
   QuestPuzzleStatus,
 } from "../models/quest.model.js";
 import * as PuzzleService from "./puzzle.service.js";
-import * as UserService from "./user.service.js";
 
 /**
  * @typedef {Object} QuestResult
@@ -439,7 +437,7 @@ export async function findQuests(
 /**
  * Gets a quest with the specified name.
  * @param {string} questName the name of the quest to retrieve
- * @param {UserService.User} user the user and teams for which to retrieve quests
+ * @param {import("./user.service.js").User} user the user and teams for which to retrieve quests
  * @returns {Promise<QuestResult>} a Promise resolving to a result containing the array of quests matching
  *  the parameters or an error result if no quests are found.
  */
@@ -465,7 +463,7 @@ export async function getQuestByQuestName(questName, user) {
  * Gets a quest with the specified name.
  * @param {string} questName the name of the quest to retrieve
  * @param {string} puzzleName the name of the puzzle in the quest to retrieve
- * @param {UserService.User} user the user and teams for which to retrieve quests
+ * @param {import("./user.service.js").User} user the user and teams for which to retrieve quests
  * @returns {Promise<QuestResult>} a Promise resolving to a result containing the array of quests matching
  *  the parameters or an error result if no quests are found.
  */
@@ -499,7 +497,7 @@ export async function getQuestPuzzle(questName, puzzleName, user) {
  * @returns {Promise<QuestResult>} a response object containing a status, status code, and data
  */
 export async function createQuest(questDefinition) {
-  let questName = "";
+  let questName;
   if ("name" in questDefinition) {
     questName = questDefinition.name;
   } else if ("displayName" in questDefinition) {
@@ -543,7 +541,6 @@ export async function createQuest(questDefinition) {
     // not exist. This is to avoid a lookup of the puzzle from the Puzzles
     // schema. Consumers of this service will have to take that into account
     // when managing the implications of creating puzzles in a quest.
-    let puzzleCount = 0;
     questDefinition.puzzles.forEach((puzzleDefinition) => {
       const puzzle = {
         puzzleName: puzzleDefinition.puzzleName,
@@ -552,7 +549,6 @@ export async function createQuest(questDefinition) {
         activationCode: randomUUID().replaceAll("-", ""),
       };
       quest.puzzles.push(puzzle);
-      puzzleCount++;
     });
   }
   try {
@@ -1028,7 +1024,7 @@ export async function getPuzzleActivationQrCode(questName, puzzleName) {
 /**
  * Gets the quest run book, a PDF containing the puzzles in printed form.
  * @param {string} questName name of the quest for which to generate the run book
- * @param {PDFDocument} pdfDoc the PDF document that will be populated with the quest information
+ * @param {import("pdfkit")} pdfDoc the PDF document that will be populated with the quest information
  * @return {Promise<QuestResult>} a promise resolving to the status of the operation
  */
 export async function getQuestRunBook(questName, pdfDoc) {
@@ -1086,7 +1082,7 @@ export async function getQuestRunBook(questName, pdfDoc) {
 /**
  * Recursively processes a markdown token for rendering in a PDF.
  * @param {Token} token the markdown token to process
- * @param {PDFDocument} pdfDoc the PDF document into which to render the token
+ * @param {import("pdfkit")} pdfDoc the PDF document into which to render the token
  */
 function processMarkdownToken(token, pdfDoc) {
   if (token.type === "paragraph" || token.type === "space") {

@@ -28,14 +28,11 @@ function removeHighlights() {
   );
 }
 
-let connectionId = "";
 const worker = new Worker("/script/socket.js");
 worker.postMessage({ message: "init", url: window.location.href });
 worker.addEventListener("message", (evt) => {
   const messageData = JSON.parse(evt.data);
-  if (messageData.message === "connection") {
-    connectionId = messageData.connectionId;
-  } else if (messageData.message === "puzzleSolved") {
+  if (messageData.message === "puzzleSolved") {
     const solutionElement = displaySolution(messageData.solutionText);
     solutionElement.classList.add("pq-data-highlight");
     removeHighlights();

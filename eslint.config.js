@@ -29,9 +29,18 @@ export default [
     },
   },
   {
+    // Web Worker that owns the browser's websocket connection
+    files: ["src/public/script/socket.js"],
+    languageOptions: {
+      globals: globals.worker,
+    },
+  },
+  {
     rules: {
       eqeqeq: ["error", "always", { null: "ignore" }],
-      "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+      // Unused callback parameters (event handlers, Express middleware
+      // signatures) are normal; unused variables and imports are not.
+      "no-unused-vars": ["error", { args: "none", ignoreRestSiblings: true }],
     },
   },
   // Turns off rules that conflict with Prettier; must be last.

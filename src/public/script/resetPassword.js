@@ -1,3 +1,4 @@
+/* global resetToken -- defined by an inline script in the page */
 import { callDataApi } from "./fetch.js";
 
 const MINIMUM_PASSWORD_LENGTH = 8;

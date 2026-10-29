@@ -1,3 +1,4 @@
+/* global renderMode, quest -- defined by an inline script in the page */
 import { DataGrid } from "./components/grid.js";
 import { Lookup } from "./components/lookup.js";
 import { callDataApi } from "./fetch.js";

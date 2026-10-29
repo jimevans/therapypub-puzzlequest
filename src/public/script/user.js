@@ -1,15 +1,9 @@
+/* global renderMode, user -- defined by an inline script in the page */
 import { DataGrid } from "./components/grid.js";
 import { Lookup } from "./components/lookup.js";
 import { callDataApi } from "./fetch.js";
 
 const MINIMUM_PASSWORD_LENGTH = 8;
-
-function clearError() {
-  const errorNotifier = document.querySelector(".pq-error");
-  const errorMessage = errorNotifier.querySelector("span");
-  errorNotifier.classList.add("pq-hide");
-  errorMessage.innerText = "";
-}
 
 function showError(errorMessage) {
   const errorNotifier = document.querySelector(".pq-error");

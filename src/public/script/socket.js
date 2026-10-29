@@ -2,7 +2,6 @@ const WebSocketStateEnum = { CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3 };
 
 const msgQueue = [];
 let webSocketChannel;
-let connectionId;
 let socketBaseUrl;
 
 self.addEventListener("message", (e) => {
@@ -16,7 +15,7 @@ self.addEventListener("message", (e) => {
 });
 
 function sendMessage(task) {
-  if (!webSocketChannel || webSocketChannel.readyState != WebSocketStateEnum.OPEN) {
+  if (!webSocketChannel || webSocketChannel.readyState !== WebSocketStateEnum.OPEN) {
     msgQueue.push(task);
   } else {
     task();
@@ -40,7 +39,7 @@ function sendMessage(task) {
     });
 
     webSocketChannel.addEventListener("error", (evt) => {
-      if (webSocketChannel.readyState == WebSocketStateEnum.OPEN) {
+      if (webSocketChannel.readyState === WebSocketStateEnum.OPEN) {
         webSocketChannel.close();
       } else {
         webSocketChannel = null;

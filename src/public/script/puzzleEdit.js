@@ -1,3 +1,4 @@
+/* global renderMode, puzzle -- defined by an inline script in the page */
 import { DataGrid } from "./components/grid.js";
 import { PuzzleRenderer } from "./components/puzzleRenderer.js";
 import { callDataApi } from "./fetch.js";

@@ -1,3 +1,4 @@
+/* global questName, puzzleName -- defined by an inline script in the page */
 import { FireworksOverlay } from "./components/fireworksOverlay.js";
 import { Modal } from "./components/modal.js";
 import { callDataApi } from "./fetch.js";
