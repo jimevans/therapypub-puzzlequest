@@ -1,4 +1,5 @@
 import path from "path";
+import { createRequire } from "module";
 import express from "express";
 import * as http from "http";
 const app = express();
@@ -8,6 +9,16 @@ app.use(express.json());
 app.use(express.raw({ limit: "100mb", type: "application/octet-stream" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(import.meta.dirname, "public")));
+
+// Browser build of marked, served from the installed package so that its
+// version is pinned by the lockfile and matches the version used on the server.
+const markedBrowserModule = path.join(
+  path.dirname(createRequire(import.meta.url).resolve("marked")),
+  "marked.esm.js"
+);
+app.get("/vendor/marked.esm.js", (req, res) => {
+  res.sendFile(markedBrowserModule);
+});
 
 import cookieParser from "cookie-parser";
 app.use(cookieParser());

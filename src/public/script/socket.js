@@ -7,7 +7,7 @@ let socketBaseUrl;
 self.addEventListener("message", (e) => {
   if (e.data.message === "init") {
     const url = new URL(e.data.url);
-    socketBaseUrl = `${url.protocol.startsWith("https") ? "wss" : "ws"}://${url.hostname}`;
+    socketBaseUrl = `${url.protocol.startsWith("https") ? "wss" : "ws"}://${url.host}`;
     sendMessage((_) => {
       webSocketChannel.send(JSON.stringify(e.data));
     });

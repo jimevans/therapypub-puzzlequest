@@ -1,4 +1,5 @@
-/* global marked -- loaded by a script tag in the page */
+import { marked } from "/vendor/marked.esm.js";
+
 const PuzzleKind = {
   Text: 0,
   Image: 1,
