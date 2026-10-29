@@ -1,7 +1,8 @@
 {
-  // Type-checks the server code and tests, which stay JavaScript: Node 20
-  // cannot run .ts files, and the deployment copies the source as-is. Types
-  // come from JSDoc annotations and the libraries' type definitions.
+  // Type-checks the server code, which is still JavaScript; converting it to
+  // TypeScript files has not been decided yet. Types come from JSDoc
+  // annotations and the libraries' type definitions. Nothing is emitted: the
+  // deployment runs the source as-is.
   "compilerOptions": {
     "allowJs": true,
     "checkJs": true,
