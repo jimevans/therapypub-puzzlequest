@@ -108,6 +108,11 @@ export async function updateQuest(req, res) {
   }
 
   const questToUpdate = new QuestService.Quest(req.body);
+  if (!("puzzles" in req.body)) {
+    // The Quest class defaults to an empty puzzle list, which would remove
+    // every puzzle; leaving the list out of a request keeps it unchanged.
+    questToUpdate.puzzles = undefined;
+  }
   const response = await QuestService.updateQuest(questToUpdate);
   if (response.status === "error") {
     res.status(response.statusCode).send(
