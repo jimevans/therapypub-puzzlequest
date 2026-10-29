@@ -28,6 +28,7 @@ jobs:
       # the Node version in .nvmrc, which is what the production host runs.
       - run: npm ci --engine-strict
       - run: npm run lint
+      - run: npm run typecheck
       - run: npm run format:check
       - run: npm test
 

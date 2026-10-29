@@ -122,14 +122,30 @@ Browser scripts in `src/public/script` that read variables defined by an
 inline `<script>` in their EJS view declare them in a `/* global */` comment
 at the top of the file.
 
+## Type checking
+
+```bash
+npm run typecheck
+```
+
+The server code stays JavaScript, because Node 20 can't run TypeScript files
+and deployment copies the source as-is. TypeScript checks it anyway
+([tsconfig.json](tsconfig.json)), using the JSDoc annotations in the code and
+the libraries' type definitions. Shared types live in
+[src/types.js](src/types.js), and the properties that middleware adds to
+Express requests are declared in [src/express.d.ts](src/express.d.ts).
+
+The browser scripts in `src/public/script` and the tests aren't type-checked
+yet.
+
 ## Continuous integration
 
 GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs on
 every pull request and on every push to `main`:
 
 - **Lint and test:** installs with `npm ci --engine-strict` on the Node
-  version in `.nvmrc`, then runs `npm run lint`, `npm run format:check`, and
-  `npm test`. The strict engine check fails the build if any dependency no
+  version in `.nvmrc`, then runs `npm run lint`, `npm run typecheck`,
+  `npm run format:check`, and `npm test`. The strict engine check fails the build if any dependency no
   longer supports that Node version.
 - **Dependency audit:** `npm audit` fails on any advisory of moderate severity
   or higher.

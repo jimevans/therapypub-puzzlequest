@@ -12,7 +12,7 @@ export const MAXIMUM_PASSWORD_BYTES = 72;
  * Authenticates a user.
  * @param {string} userName the user name to authenticate
  * @param {string} password the password to authenticate
- * @returns {object} a response object containing a status, status code, and data
+ * @returns {Promise<import("../types.js").ServiceResult<string>>} a result containing the signed authentication token
  */
 export async function authenticate(userName, password) {
   const userResponse = await UserService.getUserByUserName(userName);
@@ -72,7 +72,7 @@ export function isTokenRevoked(issuedAt, passwordChangedAt) {
 /**
  * Validates that a password meets the password policy.
  * @param {string} password the plain text password to validate
- * @returns {object} a response object containing a status, status code, and message
+ * @returns {import("../types.js").ServiceResult<undefined>} a success result, or an error result describing the problem
  */
 export function validatePasswordPolicy(password) {
   if (

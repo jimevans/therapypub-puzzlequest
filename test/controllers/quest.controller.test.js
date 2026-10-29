@@ -24,10 +24,17 @@ vi.mock("../../src/services/quest.service.js", async (importOriginal) => {
     getQuestByQuestName: vi.fn(),
     deleteQuest: vi.fn(),
     updateQuest: vi.fn(async () => ({ status: "success", statusCode: 200 })),
+    getPuzzleHint: vi.fn(),
   };
 });
 
+vi.mock("../../src/services/websocket.service.js", () => ({
+  notifyBrowsers: vi.fn(),
+}));
+
 const QuestService = await import("../../src/services/quest.service.js");
+const WebSocketService =
+  await import("../../src/services/websocket.service.js");
 const QuestController =
   await import("../../src/controllers/quest.controller.js");
 
@@ -145,5 +152,58 @@ describe("updateQuest", () => {
     expect(questDefinition.puzzles.map((p) => p.puzzleName)).toEqual([
       "puzzle1",
     ]);
+  });
+});
+
+describe("requestQuestPuzzleHint", () => {
+  function createHintRequest() {
+    return createMockRequest({
+      user: playerUser,
+      params: { name: "quest1", puzzleName: "puzzle1" },
+      body: { connectionId: "connection1" },
+    });
+  }
+
+  it("shares a revealed hint with the other players' screens", async () => {
+    const hint = {
+      hintText: "Look up",
+      moreHints: false,
+      timePenalty: 60,
+      isNextHintSolution: false,
+    };
+    QuestService.getPuzzleHint.mockResolvedValue({
+      status: "success",
+      statusCode: 200,
+      data: hint,
+    });
+    const res = createMockResponse();
+
+    await QuestController.requestQuestPuzzleHint(createHintRequest(), res);
+
+    expect(WebSocketService.notifyBrowsers).toHaveBeenCalledWith(
+      expect.any(Array),
+      ["connection1"],
+      { message: "hintRequested", ...hint }
+    );
+    expect(res.body.data).toEqual(hint);
+  });
+
+  it("does not notify other screens when there are no hints left", async () => {
+    QuestService.getPuzzleHint.mockResolvedValue({
+      status: "success",
+      statusCode: 200,
+      data: false,
+    });
+    const res = createMockResponse();
+
+    await QuestController.requestQuestPuzzleHint(createHintRequest(), res);
+
+    expect(WebSocketService.notifyBrowsers).not.toHaveBeenCalled();
+    expect(res.body).toEqual({
+      status: "success",
+      statusCode: 200,
+      data: false,
+    });
+    expect(res.sendCount).toBe(1);
   });
 });

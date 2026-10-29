@@ -3,11 +3,10 @@ import * as AuthorizationService from "./authentication.service.js";
 import * as TeamService from "./team.service.js";
 
 /**
- * @typedef {Object} UserResult
- * @property {string} status the status of the operation
- * @property {number} statusCode the numeric status code of the operation
- * @property {string | undefined} message text of a message describing the result, especially in an error condition
- * @property {User | User[] | undefined} data the user returned in the result
+ * The result of a user service operation; data is a User unless the
+ * function's documentation says otherwise.
+ * @template [T=User]
+ * @typedef {import("../types.js").ServiceResult<T>} UserResult
  */
 
 /**
@@ -28,7 +27,7 @@ export class UserTeam {
 
   /**
    * Initializes a new instance of the UserTeam class.
-   * @param {object} teamDefinition an object containing the definition of the team properties
+   * @param {{teamName: string, displayName: string}} teamDefinition an object containing the definition of the team properties
    */
   constructor(teamDefinition) {
     this.teamName = teamDefinition.teamName;
@@ -109,7 +108,7 @@ export class User {
 
   /**
    * Initializes a new instance of the User class.
-   * @param {object} userDefinition an object containing the definition of user properties
+   * @param {Partial<Omit<User, "allowSmsMessages">> & {sms?: boolean}} userDefinition an object containing the definition of user properties; sms sets allowSmsMessages
    */
   constructor(userDefinition) {
     this.userName = userDefinition.userName;
@@ -186,7 +185,7 @@ export class User {
 /**
  * Gets a user by its user name.
  * @param {string} name the name of the user to get
- * @param {boolean} includeExtendedAttributes true to return extended attributes of the user like team membership; otherwise, false
+ * @param {boolean} [includeExtendedAttributes] true to return extended attributes of the user like team membership; otherwise, false
  * @returns {Promise<UserResult>} a Promise resolving to a result object
  * containing a status, status code, and a User object.
  */
@@ -212,7 +211,7 @@ export async function getUserByUserName(name, includeExtendedAttributes) {
 /**
  * Gets all users having the given phone number.
  * @param {string} phoneNumber the phone number of the user to get
- * @returns {Promise<UserResult>} a Promise resolving to a result object
+ * @returns {Promise<UserResult<User[]>>} a Promise resolving to a result object
  * containing a status, status code, and an array of User objects, or an error result object.
  */
 export async function getUsersByPhoneNumber(phoneNumber) {
@@ -359,7 +358,7 @@ export async function updateUser(name, userData) {
 
 /**
  * Gets a list of all of the user definitions.
- * @returns {Promise<UserResult>} a Promise resolving to a result object
+ * @returns {Promise<UserResult<User[]>>} a Promise resolving to a result object
  * containing a status, status code, and an array of User objects.
  */
 export async function listUsers() {
@@ -376,9 +375,11 @@ export async function listUsers() {
  *  resolving to the token validation data, or null if the user does not exist
  */
 export async function getTokenValidationData(userName) {
-  return await UserModel.findOne({ userName: userName })
-    .select("passwordChangedAt")
-    .lean();
+  return /** @type {{ passwordChangedAt: Date | undefined } | null} */ (
+    await UserModel.findOne({ userName: userName })
+      .select("passwordChangedAt")
+      .lean()
+  );
 }
 
 export function getLoggedInUser(requestUserData) {

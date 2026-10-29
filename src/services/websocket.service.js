@@ -17,7 +17,7 @@ export function initialize() {
     webSocketSessions.set(connectionId, { id: connectionId, socket });
     socket.on("error", console.error);
     socket.on("message", (data) => {
-      const messageData = JSON.parse(data);
+      const messageData = JSON.parse(data.toString());
       if (messageData.message === "init") {
         socket.send(JSON.stringify({ message: "connection", connectionId }));
         const url = new URL(messageData.url);
