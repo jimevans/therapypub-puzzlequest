@@ -5,7 +5,7 @@
   "main": "src/app.js",
   "type": "module",
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "scripts": {
     "start": "node src/app.js",
@@ -35,7 +35,6 @@
     "jsonwebtoken": "^9.0.3",
     "jsqr": "^1.4.0",
     "marked": "^13.0.0",
-    "mongodb": "^6.7.0",
     "mongoose": "^8.4.1",
     "multer": "^2.5.0",
     "nodemailer": "^10.3.1",
@@ -53,6 +52,6 @@
     "mongodb-memory-server": "^11.3.0",
     "prettier": "^3.9.10",
     "supertest": "^7.3.1",
-    "vitest": "^4.1.12"
+    "vitest": "^5.0.5"
   }
 }
