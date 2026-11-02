@@ -157,25 +157,29 @@ The hosting environment (cPanel) starts the application through
 [src/loader.cjs](src/loader.cjs), which loads the compiled `dist/app.js`.
 
 Deploy with **Deploy HEAD Commit** in cPanel's Git Version Control. It runs the
-tasks in [.cpanel.yml](.cpanel.yml), which copy the repository to the
-application directory, then build and restart the application there:
+tasks in [.cpanel.yml](.cpanel.yml), which:
 
-```bash
-npm ci                  # install exactly what package-lock.json lists
-npm run build           # compile to dist/
-npm prune --omit=dev    # remove the build and test tools
-```
+1. Copy the repository, except `.git`, to the application directory.
+2. Install the packages listed in `package-lock.json`, including the
+   development dependencies the build needs (`npm ci --include=dev`).
+3. Compile to `dist/` (`npm run build`).
+4. Remove the build and test tools (`npm prune --omit=dev`).
+5. Restart the application.
 
-These run in the application's Node 24 environment, which `.cpanel.yml`
-activates with the command shown on cPanel's **Setup Node.js App** page. If
-the Node version or application directory changes there, update `.cpanel.yml`
-to match. A failing task stops the deployment; cPanel shows its output in the
-deployment log.
+The packages are installed where cPanel's **Run NPM Install** button puts
+them: in the application's Node 24 environment, in
+`/home/thepuzzlequest/nodevenv/puzzlequest/24/lib/node_modules`.
+`node_modules` in the application directory is a link to that folder, and the
+deployment recreates the link each time. If the Node version or application
+directory changes on cPanel's **Setup Node.js App** page, update the paths at
+the top of `.cpanel.yml` to match.
 
-The build needs the development dependencies, so the install is `npm ci`, not
-`npm ci --omit=dev`. npm 11 warns that it skipped some packages' install
-scripts; that's expected, because bcrypt ships prebuilt binaries and the other
-scripts only matter for tests.
+A failing task stops the deployment, and cPanel shows each task's output in
+the deployment log. The environment sets `NODE_ENV=production`, which would
+make npm skip the development dependencies; that's why the install needs
+`--include=dev`. npm 11 warns that it skipped some packages' install scripts;
+that's expected, because bcrypt ships prebuilt binaries and the other scripts
+only matter for tests.
 
 ## Continuous integration
 
