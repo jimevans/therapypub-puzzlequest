@@ -1,17 +1,32 @@
+import type { Request } from "express";
+import type { ServiceResult } from "../types.js";
 import { User } from "./user.service.js";
+
+/** What a request must include, and who must make it. */
+export interface ValidationOptions {
+  /** True if a signed-in user must make the request. */
+  requiresUser?: boolean;
+  /** True if an administrator must make the request. */
+  requiresAdmin?: boolean;
+  /** True if the request must have a body. */
+  requiresBody?: boolean;
+  /** True if the request must include an uploaded file. */
+  requiresFile?: boolean;
+  /** Properties the request body must contain. */
+  requiredBodyProperties?: string[];
+}
 
 /**
  * Validates a request.
- * @param {object} [validationOptions] the options for validating the request
- * @param {boolean} [validationOptions.requiresUser] true if a logged in user is required in this request; otherwise, false
- * @param {boolean} [validationOptions.requiresAdmin] true if the request requires administrative access; otherwise, false
- * @param {boolean} [validationOptions.requiresBody] true if the request requires a body in the request; otherwise, false
- * @param {boolean} [validationOptions.requiresFile] true if the request requires an uploaded file; otherwise, false
- * @param {string[]} [validationOptions.requiredBodyProperties] an array of the properties required in the body
- * @param {import("express").Request} request the request
- * @returns {import("../types.js").ServiceResult<undefined>} a success result, or an error result describing why the request is invalid
+ * @param validationOptions what the request must include, and who must make it
+ * @param request the request
+ * @returns a success result, or an error result describing why the request is
+ *  invalid
  */
-export function validateRequest(validationOptions = {}, request = null) {
+export function validateRequest(
+  validationOptions: ValidationOptions = {},
+  request: Request
+): ServiceResult<undefined> {
   if (validationOptions.requiresUser) {
     if (!request.user) {
       return {

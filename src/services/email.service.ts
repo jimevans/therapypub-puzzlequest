@@ -1,15 +1,27 @@
-import nodemailer from "nodemailer";
+import nodemailer, { type Transporter } from "nodemailer";
 import { config } from "../config.js";
+import type { ServiceResult } from "../types.js";
 
-let transport = null;
+/** An email message to send. */
+export interface EmailMessage {
+  /** The recipient's email address. */
+  to: string;
+  subject: string;
+  /** The plain text body. */
+  text: string;
+  /** The HTML body, if any. */
+  html?: string;
+}
+
+let transport: Transporter | null = null;
 
 /**
  * Gets the SMTP transport, creating it on first use. Returns null if SMTP is
  * not configured, in which case messages are written to the console in
  * development and rejected otherwise.
- * @returns {import("nodemailer").Transporter | null} the transport, or null
+ * @returns the transport, or null
  */
-function getTransport() {
+function getTransport(): Transporter | null {
   if (!config.PQ_SMTP_HOST) {
     return null;
   }
@@ -28,14 +40,15 @@ function getTransport() {
 
 /**
  * Sends an email message.
- * @param {object} message the message to send
- * @param {string} message.to the recipient email address
- * @param {string} message.subject the subject of the message
- * @param {string} message.text the plain text body of the message
- * @param {string} [message.html] the HTML body of the message, if any
- * @returns {Promise<import("../types.js").ServiceResult<undefined>>} a response object containing a status, status code, and message
+ * @param message the message to send
+ * @returns a result containing a status, status code, and message
  */
-export async function sendEmail({ to, subject, text, html }) {
+export async function sendEmail({
+  to,
+  subject,
+  text,
+  html,
+}: EmailMessage): Promise<ServiceResult<undefined>> {
   const mailTransport = getTransport();
   if (!mailTransport) {
     if (config.PQ_RUNTIME_ENVIRONMENT !== "development") {
