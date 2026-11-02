@@ -4,7 +4,12 @@ import globals from "globals";
 
 export default [
   {
-    ignores: ["coverage/", "src/public/policies/", "src/public/puzzleData/"],
+    ignores: [
+      "coverage/",
+      "dist/",
+      "src/public/policies/",
+      "src/public/puzzleData/",
+    ],
   },
   js.configs.recommended,
   {

@@ -1,0 +1,15 @@
+{
+  // Compiles the server code in src/ to dist/, which production runs. The
+  // type-checking settings come from tsconfig.json.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rootDir": "src",
+    "outDir": "dist",
+    "sourceMap": true
+  },
+  "include": ["src/**/*.js", "src/**/*.d.ts"],
+  // Browser scripts are served from src/public as-is. loader.cjs is the
+  // hosting startup file and loads the compiled application from dist/.
+  "exclude": ["src/public/**", "src/loader.cjs"]
+}

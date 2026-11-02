@@ -1,5 +1,6 @@
 package-lock.json
 coverage/
+dist/
 # Generated legal documents
 src/public/policies/
 # Uploaded puzzle media

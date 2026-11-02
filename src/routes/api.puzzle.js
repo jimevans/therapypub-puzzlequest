@@ -2,10 +2,11 @@ import express from "express";
 import multer from "multer";
 import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
 import * as PuzzleController from "../controllers/puzzle.controller.js";
+import { puzzleDataDirectory } from "../paths.js";
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, `${import.meta.dirname}/../public/puzzleData`);
+    cb(null, puzzleDataDirectory);
   },
   filename: function (req, file, cb) {
     cb(null, `${req.body.puzzleName}.${req.body.fileExtension}`);

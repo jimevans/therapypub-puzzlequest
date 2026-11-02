@@ -82,8 +82,13 @@ with a list of the problems.
 ### 5. Run
 
 ```bash
-npm run dev    # restarts when source files change
-# or
+npm run dev    # runs the source; restarts when source files change
+```
+
+To run the compiled application the way production does:
+
+```bash
+npm run build  # compiles src/ to dist/
 npm start
 ```
 
@@ -122,22 +127,48 @@ Browser scripts in `src/public/script` that read variables defined by an
 inline `<script>` in their EJS view declare them in a `/* global */` comment
 at the top of the file.
 
-## Type checking
+## TypeScript and the build
 
 ```bash
-npm run typecheck
+npm run typecheck  # type-check without emitting anything
+npm run build      # compile src/ to dist/
 ```
 
-The server code is JavaScript, and TypeScript type-checks it without emitting
-anything ([tsconfig.json](tsconfig.json)), using the JSDoc annotations in the
-code and the libraries' type definitions. Deployment runs the source as-is.
-How to move to TypeScript files hasn't been decided yet: either compile them
-with `tsc`, or have Node 24 run them directly. Shared types live in
-[src/types.js](src/types.js), and the properties that middleware adds to
-Express requests are declared in [src/express.d.ts](src/express.d.ts).
+The server code is being moved to TypeScript. Production runs the compiled
+JavaScript in `dist/`, built with `tsc`
+([tsconfig.build.json](tsconfig.build.json)); `dist/` is not committed. Files
+that are still JavaScript are type-checked from their JSDoc annotations
+([tsconfig.json](tsconfig.json)) and copied into `dist/` by the same build.
+Shared types live in [src/types.js](src/types.js), and the properties that
+middleware adds to Express requests are declared in
+[src/express.d.ts](src/express.d.ts).
+
+The views, the static files (including uploaded puzzle media in
+`src/public/puzzleData`), and `src/.env` stay in `src/` and are not copied
+into `dist/`. The application finds them through [src/paths.js](src/paths.js),
+so it works the same whether it runs from `src/` or `dist/`.
 
 The browser scripts in `src/public/script` and the tests aren't type-checked
 yet.
+
+## Deployment
+
+The hosting environment (cPanel) starts the application through
+[src/loader.cjs](src/loader.cjs), which loads the compiled `dist/app.js`. After
+copying a new version to the server, build it in the application's Node 24
+environment (cPanel shows the command that activates it), from the
+application directory:
+
+```bash
+npm ci                  # install exactly what package-lock.json lists
+npm run build           # compile to dist/
+npm prune --omit=dev    # remove the build and test tools
+```
+
+Then restart the application. The build needs the development dependencies,
+so install them with `npm ci`, not `npm ci --omit=dev`. npm 11 warns that it
+skipped some packages' install scripts; that's expected, because bcrypt ships
+prebuilt binaries and the other scripts only matter for tests.
 
 ## Continuous integration
 
@@ -146,7 +177,7 @@ every pull request and on every push to `main`:
 
 - **Lint and test:** installs with `npm ci --engine-strict` on the Node
   version in `.nvmrc`, then runs `npm run lint`, `npm run typecheck`,
-  `npm run format:check`, and `npm test`. The strict engine check fails the build if any dependency no
+  `npm run build`, `npm run format:check`, and `npm test`. The strict engine check fails the build if any dependency no
   longer supports that Node version.
 - **Dependency audit:** `npm audit` fails on any advisory of moderate severity
   or higher.

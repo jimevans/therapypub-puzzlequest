@@ -1,6 +1,5 @@
 import { randomUUID } from "crypto";
 import path from "path";
-import { fileURLToPath } from "url";
 import { marked } from "marked";
 import QRCode from "qrcode";
 import { PuzzleModel } from "../models/puzzle.model.js";
@@ -9,6 +8,7 @@ import {
   QuestStatus,
   QuestPuzzleStatus,
 } from "../models/quest.model.js";
+import { publicDirectory } from "../paths.js";
 import * as PuzzleService from "./puzzle.service.js";
 
 /**
@@ -1190,8 +1190,7 @@ export async function getQuestRunBook(questName, pdfDoc) {
           .forEach((token) => processMarkdownToken(token, pdfDoc));
         pdfDoc.text("");
       } else if (puzzleDetail.type === 1) {
-        const dirname = path.dirname(fileURLToPath(import.meta.url));
-        const image = path.join(dirname, "..", "public", puzzleDetail.text);
+        const image = path.join(publicDirectory, puzzleDetail.text);
         pdfDoc.image(image, {
           fit: [72 * 6.5, 72 * 8.5],
           align: "center",
