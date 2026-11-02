@@ -680,7 +680,8 @@ export async function updateQuest(questDefinition) {
     };
   }
   const status = questDefinition.status ?? foundQuest.status;
-  if (!Object.values(QuestStatus).includes(status)) {
+  const validStatuses = /** @type {number[]} */ (Object.values(QuestStatus));
+  if (!validStatuses.includes(status)) {
     return {
       status: "error",
       statusCode: 400,
