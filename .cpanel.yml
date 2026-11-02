@@ -1,5 +1,15 @@
 ---
+# Run by cPanel's Git Version Control on "Deploy HEAD Commit". Each task runs
+# in order, in one shell, on the server; a failing task stops the deployment.
 deployment:
   tasks:
     - export DEPLOYPATH=/home/thepuzzlequest/puzzlequest
+    - export NODE_ENVIRONMENT=/home/thepuzzlequest/nodevenv/puzzlequest/24/bin/activate
     - /bin/cp -R . $DEPLOYPATH
+    # Build in the application's Node 24 environment (the command shown on
+    # cPanel's Setup Node.js App page). The build needs the development
+    # dependencies, which are removed again afterwards.
+    - source $NODE_ENVIRONMENT && cd $DEPLOYPATH && npm ci && npm run build && npm prune --omit=dev
+    # Passenger restarts the application on its next request when this file
+    # changes.
+    - mkdir -p $DEPLOYPATH/tmp && touch $DEPLOYPATH/tmp/restart.txt

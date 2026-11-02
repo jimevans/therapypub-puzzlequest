@@ -154,10 +154,11 @@ yet.
 ## Deployment
 
 The hosting environment (cPanel) starts the application through
-[src/loader.cjs](src/loader.cjs), which loads the compiled `dist/app.js`. After
-copying a new version to the server, build it in the application's Node 24
-environment (cPanel shows the command that activates it), from the
-application directory:
+[src/loader.cjs](src/loader.cjs), which loads the compiled `dist/app.js`.
+
+Deploy with **Deploy HEAD Commit** in cPanel's Git Version Control. It runs the
+tasks in [.cpanel.yml](.cpanel.yml), which copy the repository to the
+application directory, then build and restart the application there:
 
 ```bash
 npm ci                  # install exactly what package-lock.json lists
@@ -165,10 +166,16 @@ npm run build           # compile to dist/
 npm prune --omit=dev    # remove the build and test tools
 ```
 
-Then restart the application. The build needs the development dependencies,
-so install them with `npm ci`, not `npm ci --omit=dev`. npm 11 warns that it
-skipped some packages' install scripts; that's expected, because bcrypt ships
-prebuilt binaries and the other scripts only matter for tests.
+These run in the application's Node 24 environment, which `.cpanel.yml`
+activates with the command shown on cPanel's **Setup Node.js App** page. If
+the Node version or application directory changes there, update `.cpanel.yml`
+to match. A failing task stops the deployment; cPanel shows its output in the
+deployment log.
+
+The build needs the development dependencies, so the install is `npm ci`, not
+`npm ci --omit=dev`. npm 11 warns that it skipped some packages' install
+scripts; that's expected, because bcrypt ships prebuilt binaries and the other
+scripts only matter for tests.
 
 ## Continuous integration
 
