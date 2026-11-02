@@ -179,8 +179,10 @@ every pull request and on every push to `main`:
   version in `.nvmrc`, then runs `npm run lint`, `npm run typecheck`,
   `npm run build`, `npm run format:check`, and `npm test`. The strict engine check fails the build if any dependency no
   longer supports that Node version.
-- **Dependency audit:** `npm audit` fails on any advisory of moderate severity
-  or higher.
+- **Dependency audit:** fails on any advisory of moderate severity or higher
+  in the production dependencies (`npm audit --omit=dev`). Advisories that
+  affect only development tools, such as linters and test runners, are
+  reported in the job's log but don't fail the build.
 
 Dependabot ([.github/dependabot.yml](.github/dependabot.yml)) opens weekly
 update PRs for npm packages and GitHub Actions. Minor and patch npm updates

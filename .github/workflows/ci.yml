@@ -43,4 +43,12 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
-      - run: npm audit --audit-level=moderate
+      # Production dependencies are what the server runs, so an advisory in
+      # one fails the build.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=moderate
+      # Advisories in development tools (linters, test runners) are reported
+      # but don't block merges; Dependabot raises alerts for them as well.
+      - name: Audit all dependencies (report only)
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
