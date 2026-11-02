@@ -1,8 +1,10 @@
 import js from "@eslint/js";
+import { defineConfig } from "eslint/config";
 import prettier from "eslint-config-prettier";
 import globals from "globals";
+import tseslint from "typescript-eslint";
 
-export default [
+export default defineConfig([
   {
     ignores: [
       "coverage/",
@@ -41,6 +43,15 @@ export default [
     },
   },
   {
+    // Server code converted to TypeScript. These rules use the syntax only;
+    // type checking is done by `npm run typecheck`.
+    files: ["**/*.ts"],
+    extends: [tseslint.configs.recommended],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
+  {
     rules: {
       eqeqeq: ["error", "always", { null: "ignore" }],
       // Unused callback parameters (event handlers, Express middleware
@@ -48,6 +59,17 @@ export default [
       "no-unused-vars": ["error", { args: "none", ignoreRestSiblings: true }],
     },
   },
+  {
+    // The same rule for TypeScript, which replaces the JavaScript one there.
+    files: ["**/*.ts"],
+    rules: {
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { args: "none", ignoreRestSiblings: true },
+      ],
+    },
+  },
   // Turns off rules that conflict with Prettier; must be last.
   prettier,
-];
+]);
