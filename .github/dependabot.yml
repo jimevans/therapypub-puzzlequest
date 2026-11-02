@@ -8,6 +8,13 @@ updates:
       # One PR for all non-breaking updates; major versions get their own PRs.
       npm-minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # typescript is TypeScript 6, kept for typescript-eslint, which doesn't
+      # support TypeScript 7 yet. The project compiles with TypeScript 7,
+      # installed as typescript-native. Remove this once typescript-eslint
+      # supports TypeScript 7.
+      - dependency-name: typescript
+        versions: [">=6.1.0"]
 
   - package-ecosystem: github-actions
     directory: /

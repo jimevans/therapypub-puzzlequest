@@ -14,7 +14,7 @@
     "skipLibCheck": true,
     "strict": false
   },
-  "include": ["src/**/*.js", "src/**/*.d.ts", "*.js"],
+  "include": ["src/**/*.ts", "src/**/*.js", "*.js"],
   // Browser scripts read globals that each EJS page defines, so they are not
   // checked yet. Tests are not checked yet either. src/loader.cjs, the hosting
   // startup file, is not checked because it imports the build output in dist/,
