@@ -101,7 +101,7 @@ export class QuestPuzzle {
    * of this QuestPuzzle.
    * @returns the object to be serialized to JSON
    */
-  toJSON(): object {
+  toJSON(): Record<string, unknown> {
     const serializableObject: Record<string, unknown> = {
       puzzleName: this.puzzleName,
       nextHintToDisplay: this.nextHintToDisplay,
@@ -231,11 +231,7 @@ export class Quest {
    * of this Quest.
    * @returns the object to be serialized to JSON
    */
-  // The quest controller, still JavaScript, replaces the puzzles in this
-  // object with copies that leave out activation codes; give this a precise
-  // type when that controller is converted.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  toJSON(): Record<string, any> {
+  toJSON(): QuestJSON {
     return {
       name: this.name,
       displayName: this.displayName,
@@ -248,6 +244,19 @@ export class Quest {
     };
   }
 }
+
+/** The JSON representation of a Quest. */
+export type QuestJSON = Pick<
+  Quest,
+  | "name"
+  | "displayName"
+  | "userName"
+  | "status"
+  | "statusDescription"
+  | "textResponse"
+  | "textResponseConfirmation"
+  | "puzzles"
+>;
 
 /**
  * Options for querying quests. Every option is optional.

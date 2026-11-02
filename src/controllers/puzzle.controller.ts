@@ -1,9 +1,11 @@
+import type { Request, Response } from "express";
+import type { RouteRequest } from "../types.js";
 import { RenderMode } from "../middleware/useRenderMode.js";
 import * as PuzzleService from "../services/puzzle.service.js";
 import * as UserService from "../services/user.service.js";
 import * as RequestValidationService from "../services/requestValidation.service.js";
 
-export async function createPuzzle(req, res) {
+export async function createPuzzle(req: Request, res: Response): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -40,7 +42,10 @@ export async function createPuzzle(req, res) {
   res.send(JSON.stringify(response));
 }
 
-export async function retrievePuzzle(req, res) {
+export async function retrievePuzzle(
+  req: RouteRequest<"name">,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -74,7 +79,10 @@ export async function retrievePuzzle(req, res) {
   res.send(JSON.stringify(puzzleResponse));
 }
 
-export async function updatePuzzle(req, res) {
+export async function updatePuzzle(
+  req: RouteRequest<"name">,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -107,7 +115,10 @@ export async function updatePuzzle(req, res) {
   res.send(JSON.stringify(response));
 }
 
-export async function deletePuzzle(req, res) {
+export async function deletePuzzle(
+  req: RouteRequest<"name">,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -138,7 +149,7 @@ export async function deletePuzzle(req, res) {
   res.send(JSON.stringify(response));
 }
 
-export async function listPuzzles(req, res) {
+export async function listPuzzles(req: Request, res: Response): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -159,7 +170,7 @@ export async function listPuzzles(req, res) {
   res.send(JSON.stringify(response));
 }
 
-export function uploadBinaryData(req, res) {
+export function uploadBinaryData(req: Request, res: Response): void {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -187,7 +198,10 @@ export function uploadBinaryData(req, res) {
   );
 }
 
-export async function renderPuzzle(req, res) {
+export async function renderPuzzle(
+  req: RouteRequest<"name">,
+  res: Response
+): Promise<void> {
   const loggedInUser = UserService.getLoggedInUser(req.user);
   if (!loggedInUser) {
     res.render("login", { requestingUrl: req.url });

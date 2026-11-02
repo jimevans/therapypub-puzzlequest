@@ -1,3 +1,5 @@
+import type { Request, Response } from "express";
+import type { RouteRequest } from "../types.js";
 import * as AuthenticationService from "../services/authentication.service.js";
 import * as PasswordService from "../services/password.service.js";
 import * as UserService from "../services/user.service.js";
@@ -5,7 +7,7 @@ import * as RequestValidationService from "../services/requestValidation.service
 import { RenderMode } from "../middleware/useRenderMode.js";
 import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
 
-export async function login(req, res) {
+export async function login(req: Request, res: Response): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresBody: true,
@@ -38,7 +40,7 @@ export async function login(req, res) {
   res.send(JSON.stringify(response));
 }
 
-export async function createUser(req, res) {
+export async function createUser(req: Request, res: Response): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresBody: true,
@@ -70,7 +72,10 @@ export async function createUser(req, res) {
   res.send(JSON.stringify(response));
 }
 
-export async function retrieveUser(req, res) {
+export async function retrieveUser(
+  req: RouteRequest<"userName">,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -113,7 +118,10 @@ export async function retrieveUser(req, res) {
   res.send(JSON.stringify(userResponse));
 }
 
-export async function updateUser(req, res) {
+export async function updateUser(
+  req: RouteRequest<"userName">,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -167,7 +175,10 @@ export async function updateUser(req, res) {
   res.send(JSON.stringify(response));
 }
 
-export async function deleteUser(req, res) {
+export async function deleteUser(
+  req: RouteRequest<"userName">,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -210,7 +221,7 @@ export async function deleteUser(req, res) {
   res.send(JSON.stringify(response));
 }
 
-export async function listUsers(req, res) {
+export async function listUsers(req: Request, res: Response): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -231,7 +242,10 @@ export async function listUsers(req, res) {
   res.send(JSON.stringify(response));
 }
 
-export async function changePassword(req, res) {
+export async function changePassword(
+  req: RouteRequest<"userName">,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -281,7 +295,10 @@ export async function changePassword(req, res) {
   res.send(JSON.stringify({ status: "success", data: response.data }));
 }
 
-export async function forgotPassword(req, res) {
+export async function forgotPassword(
+  req: Request,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresBody: true,
@@ -315,7 +332,10 @@ export async function forgotPassword(req, res) {
   }
 }
 
-export async function resetPassword(req, res) {
+export async function resetPassword(
+  req: Request,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresBody: true,
@@ -348,7 +368,10 @@ export async function resetPassword(req, res) {
   res.send(JSON.stringify({ status: "success" }));
 }
 
-export async function sendPasswordResetLink(req, res) {
+export async function sendPasswordResetLink(
+  req: RouteRequest<"userName">,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -380,11 +403,11 @@ export async function sendPasswordResetLink(req, res) {
   res.send(JSON.stringify({ status: "success" }));
 }
 
-export function renderForgotPassword(req, res) {
+export function renderForgotPassword(req: Request, res: Response): void {
   res.render("forgotPassword");
 }
 
-export function renderResetPassword(req, res) {
+export function renderResetPassword(req: Request, res: Response): void {
   // Keep the reset token in the URL from leaking to other sites.
   res.set("Referrer-Policy", "no-referrer");
   // Reset tokens are base64url; rejecting anything else also keeps arbitrary
@@ -395,7 +418,10 @@ export function renderResetPassword(req, res) {
   res.render("resetPassword", { resetToken: isWellFormed ? token : "" });
 }
 
-export async function renderUser(req, res) {
+export async function renderUser(
+  req: RouteRequest<"userName">,
+  res: Response
+): Promise<void> {
   const loggedInUser = UserService.getLoggedInUser(req.user);
   if (req.renderMode && req.renderMode === RenderMode.CREATE) {
     if (!loggedInUser || loggedInUser.isAdmin()) {

@@ -1,8 +1,9 @@
+import type { Request, Response } from "express";
 import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
 import * as UserService from "../services/user.service.js";
 import * as QuestService from "../services/quest.service.js";
 
-export async function index(req, res) {
+export async function index(req: Request, res: Response): Promise<void> {
   const loggedInUser = UserService.getLoggedInUser(req.user);
 
   // Case 1: No user logged in.
@@ -50,17 +51,17 @@ export async function index(req, res) {
   res.render("home", { userName: loggedInUser.userName, quests: quests });
 }
 
-export function login(req, res) {
+export function login(req: Request, res: Response): void {
   res.render("login", { requestingUrl: "/" });
 }
 
-export function authenticate(req, res) {
+export function authenticate(req: Request, res: Response): void {
   // Authentication happens in the middleware layer for JWT verification,
   // so all we need to do is redirect back to the root.
   res.redirect("/");
 }
 
-export function logout(req, res) {
+export function logout(req: Request, res: Response): void {
   // TODO: Create invalid token denylist and add to this to
   // prevent tokens from logged out sessions from potentially
   // being hijacked.

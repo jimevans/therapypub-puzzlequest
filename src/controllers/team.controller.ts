@@ -1,8 +1,10 @@
+import type { Request, Response } from "express";
+import type { RouteRequest } from "../types.js";
 import * as TeamService from "../services/team.service.js";
 import * as UserService from "../services/user.service.js";
 import * as RequestValidationService from "../services/requestValidation.service.js";
 
-export async function createTeam(req, res) {
+export async function createTeam(req: Request, res: Response): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -36,7 +38,10 @@ export async function createTeam(req, res) {
   res.send(JSON.stringify(response));
 }
 
-export async function retrieveTeam(req, res) {
+export async function retrieveTeam(
+  req: RouteRequest<"teamName">,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -67,7 +72,10 @@ export async function retrieveTeam(req, res) {
   res.send(JSON.stringify(teamResponse));
 }
 
-export async function updateTeam(req, res) {
+export async function updateTeam(
+  req: RouteRequest<"teamName">,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -101,7 +109,10 @@ export async function updateTeam(req, res) {
   res.send(JSON.stringify(response));
 }
 
-export async function deleteTeam(req, res) {
+export async function deleteTeam(
+  req: RouteRequest<"teamName">,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -132,7 +143,7 @@ export async function deleteTeam(req, res) {
   res.send(JSON.stringify(response));
 }
 
-export async function listTeams(req, res) {
+export async function listTeams(req: Request, res: Response): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -164,7 +175,10 @@ export async function listTeams(req, res) {
   res.send(JSON.stringify(response));
 }
 
-export async function joinTeam(req, res) {
+export async function joinTeam(
+  req: RouteRequest<"teamName" | "userName">,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -214,7 +228,10 @@ export async function joinTeam(req, res) {
   res.send({ status: "success", statusCode: 200 });
 }
 
-export async function leaveTeam(req, res) {
+export async function leaveTeam(
+  req: RouteRequest<"teamName" | "userName">,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
