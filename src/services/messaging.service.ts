@@ -4,8 +4,26 @@ import { config } from "../config.js";
 import * as QuestService from "../services/quest.service.js";
 import * as TeamService from "../services/team.service.js";
 import * as UserService from "../services/user.service.js";
+import type { ServiceResult } from "../types.js";
 
-export async function respondToVoiceCall(initiatingPhoneNumber) {
+/** The reply to an incoming call, and the quests the call starts. */
+export interface VoiceCallResponse {
+  /** The TwiML that tells Twilio what to say to the caller. */
+  response: string;
+  /** The quests to start, now that the caller has phoned in. */
+  questsToActivate?: string[];
+}
+
+/**
+ * Builds the reply to an incoming phone call. A known caller with quests that
+ * haven't started is told they are starting; the quests are returned so the
+ * caller can start them.
+ * @param initiatingPhoneNumber the caller's number, from Twilio, if not hidden
+ * @returns the TwiML reply and the quests to start
+ */
+export async function respondToVoiceCall(
+  initiatingPhoneNumber: string | undefined
+): Promise<ServiceResult<VoiceCallResponse>> {
   const voiceResponse = new Twilio.twiml.VoiceResponse();
   if (!initiatingPhoneNumber) {
     // If the number's caller ID is hidden, respond with an error message.
@@ -65,10 +83,17 @@ export async function respondToVoiceCall(initiatingPhoneNumber) {
   };
 }
 
+/**
+ * Builds the reply to an incoming text message, checking it against any reply
+ * the sender's in-progress quests are expecting.
+ * @param initiatingPhoneNumber the sender's number, from Twilio
+ * @param incomingMessage the text of the message
+ * @returns the TwiML reply
+ */
 export async function respondToTextMessage(
-  initiatingPhoneNumber,
-  incomingMessage
-) {
+  initiatingPhoneNumber: string,
+  incomingMessage: string
+): Promise<ServiceResult<string>> {
   const fromNumber = initiatingPhoneNumber.replace(/[^\d]/g, "").substring(1);
   const messageBody = incomingMessage.trim();
   const messageResponse = new Twilio.twiml.MessagingResponse();
@@ -126,11 +151,19 @@ export async function respondToTextMessage(
   };
 }
 
+/**
+ * Records the reply a quest expects by text message, and the confirmation to
+ * send when it arrives. Does nothing if no reply is expected.
+ * @param questName the name of the quest
+ * @param expectedIncomingMessage the expected reply, if any
+ * @param confirmation the confirmation to send when the reply arrives
+ * @returns a success result, or an error result
+ */
 export async function setupExpectedTextMessage(
-  questName,
-  expectedIncomingMessage,
-  confirmation
-) {
+  questName: string,
+  expectedIncomingMessage: string | undefined,
+  confirmation: string | undefined
+): Promise<ServiceResult<undefined>> {
   if (expectedIncomingMessage) {
     if (!confirmation) {
       return {
@@ -152,9 +185,17 @@ export async function setupExpectedTextMessage(
   return { status: "success", statusCode: 200 };
 }
 
-export async function getPhoneNumbersToMessage(questUser) {
+/**
+ * Gets the phone numbers to text for a quest: the user's number, or those of
+ * the team's members, for whoever accepts text messages.
+ * @param questUser the user name or team name the quest is assigned to
+ * @returns the phone numbers to text, in international format
+ */
+export async function getPhoneNumbersToMessage(
+  questUser: string
+): Promise<ServiceResult<string[]>> {
   // Quest user could be a user or a team
-  const numbersToMessage = [];
+  const numbersToMessage: string[] = [];
   const getUserResponse = await UserService.getUserByUserName(questUser);
   if (getUserResponse.status === "error") {
     const getTeamResponse = await TeamService.getTeamByTeamName(questUser);
@@ -189,7 +230,17 @@ export async function getPhoneNumbersToMessage(questUser) {
   return { status: "success", statusCode: 200, data: numbersToMessage };
 }
 
-export async function sendOutgoingTextMessage(numbersToMessage, messageToSend) {
+/**
+ * Texts a message to each of the given phone numbers through Twilio, waiting
+ * between messages to stay within carrier limits.
+ * @param numbersToMessage the phone numbers to text
+ * @param messageToSend the message
+ * @returns a success result, or an error result with Twilio's message
+ */
+export async function sendOutgoingTextMessage(
+  numbersToMessage: string[],
+  messageToSend: string
+): Promise<ServiceResult<undefined>> {
   const client = new Twilio.Twilio(
     config.PQ_TWILIO_ACCOUNT_SID,
     config.PQ_TWILIO_AUTH_TOKEN
