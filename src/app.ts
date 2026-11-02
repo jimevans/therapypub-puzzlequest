@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 import { config } from "./config.js";
 import { createApp } from "./createApp.js";
 import * as WebSocketService from "./services/websocket.service.js";
+import { getErrorMessage } from "./errors.js";
 
 mongoose.set("strictQuery", false);
 mongoose.connection.on(
@@ -18,7 +19,7 @@ mongoose.connection.on(
 try {
   await mongoose.connect(config.PQ_MONGODB_URI);
 } catch (err) {
-  console.error(`Unable to connect to MongoDB: ${err.message}`);
+  console.error(`Unable to connect to MongoDB: ${getErrorMessage(err)}`);
   process.exit(1);
 }
 

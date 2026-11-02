@@ -1,5 +1,6 @@
 import { TeamModel } from "../models/user.model.js";
 import type { ServiceResult } from "../types.js";
+import { getErrorMessage } from "../errors.js";
 
 /**
  * The result of a team service operation; data is a Team unless the
@@ -7,9 +8,10 @@ import type { ServiceResult } from "../types.js";
  */
 export type TeamResult<T = Team> = ServiceResult<T>;
 
-/** The properties a Team can be created from; all are optional. */
-export type TeamDefinition = Partial<
-  Pick<Team, "teamName" | "displayName" | "joinCode" | "memberNames">
+/** The properties a Team is created from: a stored team, or a request. */
+export type TeamDefinition = Pick<
+  Team,
+  "teamName" | "displayName" | "joinCode" | "memberNames"
 >;
 
 /**
@@ -75,7 +77,7 @@ export async function getTeamByTeamName(name: string): Promise<TeamResult> {
  * @param name the name of the team to delete
  * @returns a response object containing a status, status code, and data
  */
-export async function deleteTeam(name: string): Promise<TeamResult> {
+export async function deleteTeam(name: string): Promise<TeamResult<undefined>> {
   const result = await TeamModel.findOneAndDelete({ teamName: name });
   if (result === null) {
     return {
@@ -92,7 +94,9 @@ export async function deleteTeam(name: string): Promise<TeamResult> {
  * @param team the definition of the team to create
  * @returns a response object containing a status, status code, and data
  */
-export async function createTeam(team: TeamDefinition): Promise<TeamResult> {
+export async function createTeam(
+  team: TeamDefinition
+): Promise<TeamResult<undefined>> {
   const existingTeams = await TeamModel.find({
     teamName: team.teamName,
   }).lean();
@@ -116,7 +120,7 @@ export async function createTeam(team: TeamDefinition): Promise<TeamResult> {
     return {
       status: "error",
       statusCode: 500,
-      message: `New team not created - ${err.message}`,
+      message: `New team not created - ${getErrorMessage(err)}`,
     };
   }
   return { status: "success", statusCode: 200 };
@@ -130,8 +134,8 @@ export async function createTeam(team: TeamDefinition): Promise<TeamResult> {
  */
 export async function updateTeam(
   name: string,
-  teamData: TeamDefinition
-): Promise<TeamResult> {
+  teamData: Partial<TeamDefinition>
+): Promise<TeamResult<undefined>> {
   const foundTeam = await TeamModel.findOne({ teamName: name });
   if (foundTeam === null) {
     return {
@@ -151,7 +155,7 @@ export async function updateTeam(
     return {
       status: "error",
       statusCode: 500,
-      message: `Team not updated - ${err.message}`,
+      message: `Team not updated - ${getErrorMessage(err)}`,
     };
   }
   return { status: "success", statusCode: 200 };
@@ -193,7 +197,7 @@ export async function addUserToTeam(
   teamName: string,
   userName: string,
   joinCode: string
-): Promise<TeamResult> {
+): Promise<TeamResult<undefined>> {
   const team = await TeamModel.findOne({ teamName: teamName });
   if (!team) {
     return {
@@ -224,7 +228,7 @@ export async function addUserToTeam(
     return {
       status: "error",
       statusCode: 500,
-      message: err.message,
+      message: getErrorMessage(err),
     };
   }
   return { status: "success", statusCode: 200 };
@@ -239,7 +243,7 @@ export async function addUserToTeam(
 export async function removeUserFromTeam(
   teamName: string,
   userName: string
-): Promise<TeamResult> {
+): Promise<TeamResult<undefined>> {
   const team = await TeamModel.findOne({ teamName: teamName });
   if (!team) {
     return {
@@ -264,7 +268,7 @@ export async function removeUserFromTeam(
     return {
       status: "error",
       statusCode: 500,
-      message: err.message,
+      message: getErrorMessage(err),
     };
   }
   return { status: "success", statusCode: 200 };

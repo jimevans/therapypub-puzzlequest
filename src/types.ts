@@ -3,17 +3,25 @@ import type { Request } from "express";
 // Types shared across the application.
 
 /**
- * The result of a service operation. A successful result may carry data; an
- * error result always carries a message.
- * @template T the type of the data in a successful result
+ * The result of a service operation. A successful result carries data unless
+ * its data type is undefined; an error result always carries a message.
+ * @template T the type of the data in a successful result, or undefined for
+ *  an operation that returns no data
  */
 export type ServiceResult<T> =
-  | {
-      status: "success";
-      statusCode: number;
-      message?: string;
-      data?: T;
-    }
+  | ([T] extends [undefined]
+      ? {
+          status: "success";
+          statusCode: number;
+          message?: string;
+          data?: undefined;
+        }
+      : {
+          status: "success";
+          statusCode: number;
+          message?: string;
+          data: T;
+        })
   | {
       status: "error";
       statusCode: number;

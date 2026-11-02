@@ -24,7 +24,10 @@ export function errorHandler(
   }
   const status = err.status ?? err.statusCode;
   const isClientError =
-    Number.isInteger(status) && status >= 400 && status < 500;
+    typeof status === "number" &&
+    Number.isInteger(status) &&
+    status >= 400 &&
+    status < 500;
   if (!isClientError) {
     console.error(`Error handling ${req.method} ${req.originalUrl}:`, err);
   }

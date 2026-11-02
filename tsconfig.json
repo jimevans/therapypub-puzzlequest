@@ -13,7 +13,7 @@
     "moduleResolution": "nodenext",
     "types": ["node"],
     "skipLibCheck": true,
-    "strict": false
+    "strict": true
   },
   "include": ["src/**/*.ts", "src/**/*.js", "*.js"],
   // Browser scripts read globals that each EJS page defines, so they are not

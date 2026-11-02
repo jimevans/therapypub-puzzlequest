@@ -7,6 +7,26 @@ import type { ServiceResult } from "../types.js";
  */
 export type PuzzleResult<T = Puzzle> = ServiceResult<T>;
 
+/** The properties a PuzzleHint is created from. */
+export type HintDefinition = Pick<
+  PuzzleHint,
+  "text" | "solutionWarning" | "timePenalty"
+>;
+
+/**
+ * The properties a Puzzle is created from: a stored puzzle, or a puzzle sent
+ * by the puzzle editor.
+ */
+export type PuzzleDefinition = Pick<
+  Puzzle,
+  | "name"
+  | "displayName"
+  | "type"
+  | "text"
+  | "solutionKeyword"
+  | "solutionDisplayText"
+> & { hints?: HintDefinition[] };
+
 /**
  * A data class describing a puzzle hint.
  */
@@ -30,7 +50,7 @@ export class PuzzleHint {
    * Initializes a new instance of the PuzzleHint class.
    * @param hintDefinition an object containing the definition of hint properties
    */
-  constructor(hintDefinition: Partial<PuzzleHint>) {
+  constructor(hintDefinition: HintDefinition) {
     this.text = hintDefinition.text;
     this.solutionWarning = hintDefinition.solutionWarning;
     this.timePenalty = hintDefinition.timePenalty;
@@ -91,7 +111,7 @@ export class Puzzle {
    * Initializes a new instance of the Puzzle class.
    * @param puzzleDefinition an object containing the definition of puzzle properties
    */
-  constructor(puzzleDefinition: Partial<Puzzle>) {
+  constructor(puzzleDefinition: PuzzleDefinition) {
     this.name = puzzleDefinition.name;
     this.displayName = puzzleDefinition.displayName;
     this.type = puzzleDefinition.type;
@@ -149,7 +169,9 @@ export async function getPuzzleByPuzzleName(
  * @param name the name of the puzzle to delete
  * @returns a response object containing a status, status code, and data
  */
-export async function deletePuzzle(name: string): Promise<PuzzleResult> {
+export async function deletePuzzle(
+  name: string
+): Promise<PuzzleResult<undefined>> {
   const result = await PuzzleModel.findOneAndDelete({ name: name });
   if (result === null) {
     return {
@@ -166,7 +188,9 @@ export async function deletePuzzle(name: string): Promise<PuzzleResult> {
  * @param puzzle the definition of the puzzle to create
  * @returns a response object containing a status, status code, and data
  */
-export async function createPuzzle(puzzle: Puzzle): Promise<PuzzleResult> {
+export async function createPuzzle(
+  puzzle: PuzzleDefinition
+): Promise<PuzzleResult<undefined>> {
   const existingPuzzles = await PuzzleModel.find({ name: puzzle.name }).lean();
   const puzzleExists = existingPuzzles.length !== 0;
   if (puzzleExists) {
@@ -206,8 +230,8 @@ export async function createPuzzle(puzzle: Puzzle): Promise<PuzzleResult> {
  */
 export async function updatePuzzle(
   name: string,
-  puzzleData: Puzzle
-): Promise<PuzzleResult> {
+  puzzleData: Partial<PuzzleDefinition>
+): Promise<PuzzleResult<undefined>> {
   const foundPuzzle = await PuzzleModel.findOne({ name: name });
   if (foundPuzzle === null) {
     return {

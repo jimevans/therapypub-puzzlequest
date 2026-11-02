@@ -24,7 +24,7 @@ export async function authenticate(
     return userResponse;
   }
   const user = userResponse.data;
-  if (!(await bcrypt.compare(password, user.password))) {
+  if (!user.password || !(await bcrypt.compare(password, user.password))) {
     return {
       status: "error",
       statusCode: 401,
@@ -66,7 +66,7 @@ export function createAuthenticationToken(user: UserService.User): string {
  */
 export function isTokenRevoked(
   issuedAt: number,
-  passwordChangedAt: Date | undefined
+  passwordChangedAt: Date | null | undefined
 ): boolean {
   if (!passwordChangedAt) {
     return false;

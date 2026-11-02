@@ -1,6 +1,7 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { config } from "../config.js";
 import type { ServiceResult } from "../types.js";
+import { getErrorMessage } from "../errors.js";
 
 /** An email message to send. */
 export interface EmailMessage {
@@ -75,7 +76,7 @@ export async function sendEmail({
       html,
     });
   } catch (err) {
-    return { status: "error", statusCode: 500, message: err.message };
+    return { status: "error", statusCode: 500, message: getErrorMessage(err) };
   }
   return { status: "success", statusCode: 200 };
 }

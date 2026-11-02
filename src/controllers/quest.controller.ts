@@ -63,7 +63,7 @@ export async function retrieveQuest(
     return;
   }
 
-  const loggedInUser = UserService.getLoggedInUser(req.user);
+  const loggedInUser = UserService.requireLoggedInUser(req.user);
   const questResponse = await QuestService.getQuestByQuestName(
     req.params.name,
     loggedInUser
@@ -115,7 +115,8 @@ export async function updateQuest(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const questToUpdate = new QuestService.Quest(req.body);
+  const questToUpdate: QuestService.QuestDefinition & { name: string } =
+    new QuestService.Quest(req.body);
   if (!("puzzles" in req.body)) {
     // The Quest class defaults to an empty puzzle list, which would remove
     // every puzzle; leaving the list out of a request keeps it unchanged.
@@ -326,7 +327,7 @@ export async function activateQuestPuzzle(
     return;
   }
 
-  const loggedInUser = UserService.getLoggedInUser(req.user);
+  const loggedInUser = UserService.requireLoggedInUser(req.user);
   const userContexts = await loggedInUser.getAllUserContexts();
   const activationCode = req.qrCodeData
     ? req.qrCodeData
@@ -387,7 +388,7 @@ export async function solveQuestPuzzle(
     return;
   }
 
-  const loggedInUser = UserService.getLoggedInUser(req.user);
+  const loggedInUser = UserService.requireLoggedInUser(req.user);
   const userContexts = await loggedInUser.getAllUserContexts();
   const solutionGuess = req.body.guess;
   const connectionId = req.body.connectionId;
@@ -474,7 +475,7 @@ export async function requestQuestPuzzleHint(
     return;
   }
 
-  const loggedInUser = UserService.getLoggedInUser(req.user);
+  const loggedInUser = UserService.requireLoggedInUser(req.user);
   const userContexts = await loggedInUser.getAllUserContexts();
   const connectionId = req.body.connectionId;
   const hintResult = await QuestService.getPuzzleHint(
@@ -535,7 +536,7 @@ export async function renderQuest(
     if (!loggedInUser.isAdmin()) {
       res.render("error", {
         errorTitle: "Unauthorized",
-        errorDetails: `User ${req.user.userName} not authorized to create new quests`,
+        errorDetails: `User ${loggedInUser.userName} not authorized to create new quests`,
       });
       return;
     }
@@ -600,6 +601,15 @@ export async function renderQuestPuzzle(
     return;
   }
   const puzzle = questPuzzleResponse.data;
+  // A puzzle deleted after it was added to the quest has no details.
+  const puzzleDetail = puzzle.puzzleDetail;
+  if (!puzzleDetail) {
+    res.status(404).render("error", {
+      errorTitle: "Not found",
+      errorDetails: `Puzzle ${req.params.puzzleName} no longer exists`,
+    });
+    return;
+  }
 
   if (puzzle.status === QuestPuzzleStatus.AWAITING_ACTIVATION) {
     res.render("activate", {
@@ -607,32 +617,32 @@ export async function renderQuestPuzzle(
       quest: questName,
       puzzle: {
         puzzleName: puzzle.puzzleName,
-        displayName: puzzle.puzzleDetail.displayName,
+        displayName: puzzleDetail.displayName,
       },
     });
     return;
   }
 
   let renderedPuzzle;
-  switch (puzzle.puzzleDetail.type) {
+  switch (puzzleDetail.type) {
     case PuzzleType.IMAGE:
-      renderedPuzzle = `<img src="${puzzle.puzzleDetail.text}" class="pq-puzzle-img" />`;
+      renderedPuzzle = `<img src="${puzzleDetail.text}" class="pq-puzzle-img" />`;
       break;
     case PuzzleType.AUDIO:
-      renderedPuzzle = `<audio src="${puzzle.puzzleDetail.text}" />`;
+      renderedPuzzle = `<audio src="${puzzleDetail.text}" />`;
       break;
     case PuzzleType.VIDEO:
-      renderedPuzzle = `<div class="pq-puzzle-video-content"><video src="${puzzle.puzzleDetail.text}" type="video/mp4" playsinline controls /></div>`;
+      renderedPuzzle = `<div class="pq-puzzle-video-content"><video src="${puzzleDetail.text}" type="video/mp4" playsinline controls /></div>`;
       break;
     default:
-      renderedPuzzle = await marked.parse(puzzle.puzzleDetail.text, {
+      renderedPuzzle = await marked.parse(puzzleDetail.text, {
         gfm: true,
       });
   }
 
   const nextHint =
-    puzzle.nextHintToDisplay < puzzle.puzzleDetail.hints.length
-      ? puzzle.puzzleDetail.hints[puzzle.nextHintToDisplay]
+    puzzle.nextHintToDisplay < puzzleDetail.hints.length
+      ? puzzleDetail.hints[puzzle.nextHintToDisplay]
       : undefined;
 
   res.render("puzzle", {
@@ -640,10 +650,10 @@ export async function renderQuestPuzzle(
     quest: questName,
     puzzle: {
       puzzleName: puzzle.puzzleName,
-      displayName: puzzle.puzzleDetail.displayName,
+      displayName: puzzleDetail.displayName,
       status: puzzle.status,
-      solutionDisplayText: puzzle.puzzleDetail.solutionDisplayText,
-      hints: puzzle.puzzleDetail.hints.slice(0, puzzle.nextHintToDisplay),
+      solutionDisplayText: puzzleDetail.solutionDisplayText,
+      hints: puzzleDetail.hints.slice(0, puzzle.nextHintToDisplay),
       nextHintTimePenalty: nextHint ? nextHint.timePenalty : 0,
       nextHintSolutionWarning: nextHint ? nextHint.solutionWarning : undefined,
     },
@@ -708,7 +718,7 @@ export async function renderQuestRunBook(
     });
     return;
   }
-  const buffers = [];
+  const buffers: Buffer[] = [];
   const pdfDoc = new PDFDocument({ autoFirstPage: false, bufferPages: true });
   pdfDoc.on("data", buffers.push.bind(buffers));
   pdfDoc.on("end", () => {
@@ -781,6 +791,15 @@ export async function renderMonitoredQuestPuzzle(
     return;
   }
   const puzzle = questPuzzleResponse.data;
+  // A puzzle deleted after it was added to the quest has no details.
+  const puzzleDetail = puzzle.puzzleDetail;
+  if (!puzzleDetail) {
+    res.status(404).render("error", {
+      errorTitle: "Not found",
+      errorDetails: `Puzzle ${req.params.puzzleName} no longer exists`,
+    });
+    return;
+  }
 
   if (puzzle.status < QuestPuzzleStatus.IN_PROGRESS) {
     res.render("error", {
@@ -791,18 +810,18 @@ export async function renderMonitoredQuestPuzzle(
   }
 
   let renderedPuzzle;
-  switch (puzzle.puzzleDetail.type) {
+  switch (puzzleDetail.type) {
     case PuzzleType.IMAGE:
-      renderedPuzzle = `<img src="${puzzle.puzzleDetail.text}" class="pq-puzzle-img" />`;
+      renderedPuzzle = `<img src="${puzzleDetail.text}" class="pq-puzzle-img" />`;
       break;
     case PuzzleType.AUDIO:
-      renderedPuzzle = `<audio src="${puzzle.puzzleDetail.text}" />`;
+      renderedPuzzle = `<audio src="${puzzleDetail.text}" />`;
       break;
     case PuzzleType.VIDEO:
-      renderedPuzzle = `<div class="pq-puzzle-video-content"><video src="${puzzle.puzzleDetail.text}" type="video/mp4" playsinline controls /></div>`;
+      renderedPuzzle = `<div class="pq-puzzle-video-content"><video src="${puzzleDetail.text}" type="video/mp4" playsinline controls /></div>`;
       break;
     default:
-      renderedPuzzle = await marked.parse(puzzle.puzzleDetail.text, {
+      renderedPuzzle = await marked.parse(puzzleDetail.text, {
         gfm: true,
       });
   }
@@ -811,10 +830,10 @@ export async function renderMonitoredQuestPuzzle(
     quest: questName,
     puzzle: {
       puzzleName: puzzle.puzzleName,
-      displayName: puzzle.puzzleDetail.displayName,
+      displayName: puzzleDetail.displayName,
       status: puzzle.status,
-      solutionDisplayText: puzzle.puzzleDetail.solutionDisplayText,
-      hints: puzzle.puzzleDetail.hints.slice(0, puzzle.nextHintToDisplay),
+      solutionDisplayText: puzzleDetail.solutionDisplayText,
+      hints: puzzleDetail.hints.slice(0, puzzle.nextHintToDisplay),
     },
     rendered: renderedPuzzle,
   });

@@ -2,6 +2,7 @@ import path from "path";
 import type { RequestHandler } from "express";
 import multer from "multer";
 import { puzzleDataDirectory } from "../paths.js";
+import { getErrorMessage, toError } from "../errors.js";
 
 /** The largest puzzle media file that can be uploaded, in bytes. */
 export const MAXIMUM_PUZZLE_MEDIA_BYTES = 100 * 1024 * 1024;
@@ -116,7 +117,7 @@ function reportUploadErrors(middleware: RequestHandler): RequestHandler {
         next(
           err.code === "LIMIT_FILE_SIZE"
             ? new UploadError(413, "The uploaded file is too large")
-            : new UploadError(400, err.message)
+            : new UploadError(400, getErrorMessage(err))
         );
         return;
       }
@@ -142,7 +143,7 @@ export const uploadPuzzleMedia = reportUploadErrors(
             getPuzzleMediaFileName(req.body.puzzleName, req.body.fileExtension)
           );
         } catch (err) {
-          cb(err, "");
+          cb(toError(err), "");
         }
       },
     }),
@@ -152,7 +153,7 @@ export const uploadPuzzleMedia = reportUploadErrors(
         getPuzzleMediaFileName(req.body.puzzleName, req.body.fileExtension);
         cb(null, true);
       } catch (err) {
-        cb(err);
+        cb(toError(err));
       }
     },
   }).single("binary")
