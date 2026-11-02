@@ -6,10 +6,10 @@ import { environmentFile } from "./paths.js";
  * Wraps a schema so that a missing or blank environment variable is treated
  * as unset, which lets `.optional()` and `.default()` apply to lines such as
  * `PQ_TRUST_PROXY=` in a .env file.
- * @param {z.ZodType} schema the schema for the variable's value
- * @returns {z.ZodType} the wrapped schema
+ * @param schema the schema for the variable's value
+ * @returns the wrapped schema
  */
-function setting(schema) {
+function setting<T extends z.ZodType>(schema: T) {
   return z.preprocess(
     (value) =>
       typeof value === "string" && value.trim() === "" ? undefined : value,
@@ -21,10 +21,12 @@ function setting(schema) {
  * Converts PQ_TRUST_PROXY to the value Express expects for "trust proxy":
  * a hop count (e.g. "1"), true for "true", or a named or IP value such as
  * "loopback".
- * @param {string | undefined} value the configured value
- * @returns {number | boolean | string | undefined} the Express setting
+ * @param value the configured value
+ * @returns the Express setting
  */
-function parseTrustProxy(value) {
+function parseTrustProxy(
+  value: string | undefined
+): number | boolean | string | undefined {
   if (value === undefined) {
     return undefined;
   }
@@ -96,15 +98,19 @@ const configSchema = z
     }
   });
 
+/** The validated application configuration. */
+export type Config = z.infer<typeof configSchema>;
+
 /**
  * Validates configuration settings and converts them to their typed values.
- * @param {Record<string, string | undefined>} environment the raw settings,
- *  usually process.env
- * @returns {z.infer<typeof configSchema>} the validated configuration
+ * @param environment the raw settings, usually process.env
+ * @returns the validated configuration
  * @throws {Error} if any setting is missing or invalid; the message lists
  *  every problem
  */
-export function parseConfig(environment) {
+export function parseConfig(
+  environment: Record<string, string | undefined>
+): Config {
   const result = configSchema.safeParse(environment);
   if (!result.success) {
     const problems = result.error.issues.map(
@@ -131,6 +137,4 @@ if (process.env.NODE_ENV !== "test") {
   );
 }
 
-const config = parseConfig(process.env);
-
-export { config };
+export const config: Config = parseConfig(process.env);
