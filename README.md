@@ -134,13 +134,11 @@ npm run typecheck  # type-check without emitting anything
 npm run build      # compile src/ to dist/
 ```
 
-The server code is being moved to TypeScript, one module at a time. Production
-runs the compiled JavaScript in `dist/`, built with `tsc`
-([tsconfig.build.json](tsconfig.build.json)); `dist/` is not committed. Files
-that are still JavaScript are type-checked from their JSDoc annotations
-([tsconfig.json](tsconfig.json)) and copied into `dist/` by the same build.
-Imports name the compiled file, so a module imports `./config.js` even though
-the source is `config.ts`.
+The server code is TypeScript. Production runs the compiled JavaScript in
+`dist/`, built with `tsc` ([tsconfig.build.json](tsconfig.build.json)); `dist/`
+is not committed. Imports name the compiled file, so a module imports
+`./config.js` even though the source is `config.ts`. The type-checking settings
+are in [tsconfig.json](tsconfig.json).
 
 Shared types live in [src/types.ts](src/types.ts), and the properties that
 middleware adds to Express requests are declared in

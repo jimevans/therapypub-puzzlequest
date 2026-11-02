@@ -1,7 +1,8 @@
 {
-  // Type-checks the server code (`npm run typecheck`). Files that are still
-  // JavaScript get their types from JSDoc annotations and the libraries' type
-  // definitions. tsconfig.build.json extends this to compile src/ to dist/.
+  // Type-checks the server code, which is TypeScript, and the JavaScript
+  // configuration files at the project root, from their JSDoc annotations
+  // (`npm run typecheck`). tsconfig.build.json extends this to compile src/
+  // to dist/.
   "compilerOptions": {
     "allowJs": true,
     "checkJs": true,

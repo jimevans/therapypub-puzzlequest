@@ -11,7 +11,7 @@
       "skipFiles": ["<node_internals>/**"],
       // tsx runs the source directly, including files converted to TypeScript.
       "runtimeArgs": ["--import", "tsx"],
-      "program": "${workspaceFolder}/src/app.js"
+      "program": "${workspaceFolder}/src/app.ts"
     }
   ]
 }
