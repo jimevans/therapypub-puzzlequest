@@ -1,6 +1,6 @@
 import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
-import express from "express";
+import express, { type Express } from "express";
 import { config } from "./config.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { publicDirectory, viewsDirectory } from "./paths.js";
@@ -24,9 +24,9 @@ const markedBrowserModule = fileURLToPath(import.meta.resolve("marked"));
  * Creates the Express application. This has no side effects: it does not
  * connect to the database or listen on a port (see app.js), so tests can
  * create an app and send requests to it directly.
- * @returns {import("express").Express} the configured application
+ * @returns the configured application
  */
-export function createApp() {
+export function createApp(): Express {
   const app = express();
 
   if (config.PQ_TRUST_PROXY !== undefined) {

@@ -1,7 +1,8 @@
 // Application startup: connects to MongoDB, then serves HTTP and websocket
-// traffic. The hosting configuration runs this file (directly or through
-// loader.cjs), so it must stay at src/app.js. The application itself is
-// defined in createApp.js.
+// traffic. In production, the hosting environment starts it through
+// loader.cjs, which loads the compiled dist/app.js; during development,
+// `npm run dev` runs this file directly. The application itself is defined in
+// createApp.ts.
 import * as http from "http";
 import mongoose from "mongoose";
 import { config } from "./config.js";

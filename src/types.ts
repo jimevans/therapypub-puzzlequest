@@ -1,5 +1,6 @@
-// Shared types. JavaScript modules refer to them in JSDoc with
-// import("./types.js").TypeName.
+import type { Request } from "express";
+
+// Types shared across the application.
 
 /**
  * The result of a service operation. A successful result may carry data; an
@@ -26,6 +27,4 @@ export type ServiceResult<T> =
  * wildcard routes, which this application doesn't use.)
  * @template P the names of the route parameters
  */
-export type RouteRequest<P extends string> = import("express").Request<
-  Record<P, string>
->;
+export type RouteRequest<P extends string> = Request<Record<P, string>>;
