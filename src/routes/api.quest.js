@@ -1,10 +1,9 @@
 import express from "express";
-import multer from "multer";
+import { requireUser } from "../middleware/authorization.js";
 import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
+import { uploadActivationImage } from "../middleware/upload.js";
 import * as QuestController from "../controllers/quest.controller.js";
 import * as QRCodeReader from "../middleware/qrCodeReader.js";
-
-const uploadActivate = multer();
 
 const questApiRouter = express.Router();
 questApiRouter.get(
@@ -45,7 +44,9 @@ questApiRouter.put(
 questApiRouter.post(
   "/:name/puzzle/:puzzleName/activate",
   TokenAuthenticator.tokenAuthenticate,
-  uploadActivate.single("image"),
+  // Checked before the image is read into memory.
+  requireUser,
+  uploadActivationImage,
   QRCodeReader.readQRCode,
   QuestController.activateQuestPuzzle
 );
