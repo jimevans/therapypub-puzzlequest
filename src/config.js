@@ -1,6 +1,6 @@
-import path from "path";
 import { config as loadEnvironmentFile } from "dotenv";
 import { z } from "zod";
+import { environmentFile } from "./paths.js";
 
 /**
  * Wraps a schema so that a missing or blank environment variable is treated
@@ -122,7 +122,6 @@ export function parseConfig(environment) {
 // in any that are not set. Tests supply their own settings (see
 // vitest.config.js), so a developer's .env never affects them.
 if (process.env.NODE_ENV !== "test") {
-  const environmentFile = path.join(import.meta.dirname, ".env");
   // quiet: dotenv's own log line would duplicate the one below.
   const result = loadEnvironmentFile({ path: environmentFile, quiet: true });
   console.log(

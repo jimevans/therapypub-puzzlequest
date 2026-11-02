@@ -2,13 +2,14 @@
   "name": "therapypub-puzzlequest",
   "version": "0.0.1",
   "description": "Therapy Pub and Co. PuzzleQuest website",
-  "main": "src/app.js",
+  "main": "dist/app.js",
   "type": "module",
   "engines": {
     "node": "24.x"
   },
   "scripts": {
-    "start": "node src/app.js",
+    "build": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\" && tsc -p tsconfig.build.json",
+    "start": "node --enable-source-maps dist/app.js",
     "dev": "node --watch src/app.js",
     "test": "vitest run",
     "lint": "eslint .",
