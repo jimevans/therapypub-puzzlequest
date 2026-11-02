@@ -5,7 +5,11 @@ deployment:
   tasks:
     - export DEPLOYPATH=/home/thepuzzlequest/puzzlequest
     - export NODE_ENVIRONMENT=/home/thepuzzlequest/nodevenv/puzzlequest/24/bin/activate
-    - /bin/cp -R . $DEPLOYPATH
+    # Copy the checked-out files, leaving out .git: its object files are
+    # read-only, so copying it over the previous deployment's copy fails.
+    # Files that aren't in the repository (src/.env, uploaded puzzle media,
+    # node_modules) are left as they are.
+    - cp -R $(ls -A | grep -v -x -F .git) $DEPLOYPATH
     # Build in the application's Node 24 environment (the command shown on
     # cPanel's Setup Node.js App page). The build needs the development
     # dependencies, which are removed again afterwards.
