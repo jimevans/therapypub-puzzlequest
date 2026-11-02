@@ -1,7 +1,7 @@
 // Multipart upload endpoints, exercised over HTTP through createApp() so that
 // the real multer configuration in the routes is used.
 import { existsSync } from "fs";
-import { readFile, rm } from "fs/promises";
+import { readdir, readFile, rm } from "fs/promises";
 import path from "path";
 import {
   afterAll,
@@ -25,6 +25,8 @@ const { QuestModel, QuestPuzzleStatus } =
 const { AuthorizationLevel, UserModel } =
   await import("../../src/models/user.model.js");
 const QuestService = await import("../../src/services/quest.service.js");
+const { MAXIMUM_ACTIVATION_IMAGE_BYTES, MAXIMUM_PUZZLE_MEDIA_BYTES } =
+  await import("../../src/middleware/upload.js");
 
 const puzzleDataDirectory = path.join(
   import.meta.dirname,
@@ -170,18 +172,54 @@ describe("POST /api/quest/:name/puzzle/:puzzleName/activate", () => {
 
     expect(response.status).toBe(200);
   });
+
+  it("rejects an anonymous request before reading the image", async () => {
+    const response = await request(app)
+      .post("/api/quest/test-quest/puzzle/colors/activate")
+      .field("height", "1")
+      .field("width", "1")
+      .attach("image", Buffer.alloc(4), "blob");
+
+    expect(response.status).toBe(401);
+  });
+
+  it("rejects an image larger than the limit", async () => {
+    const response = await sendImage({
+      data: Buffer.alloc(MAXIMUM_ACTIVATION_IMAGE_BYTES + 1),
+      width: 1,
+      height: 1,
+    });
+
+    expect(response.status).toBe(413);
+    const quest = await QuestModel.findOne({ name: "test-quest" }).lean();
+    expect(quest.puzzles[0].status).toBe(QuestPuzzleStatus.AWAITING_ACTIVATION);
+  });
 });
 
 describe("POST /api/puzzle/upload", () => {
-  function upload() {
+  let filesBefore;
+
+  beforeEach(async () => {
+    filesBefore = await readdir(puzzleDataDirectory);
+  });
+
+  function upload({
+    puzzleName = "upload-test",
+    fileExtension = "png",
+    contents = Buffer.from("fake image bytes"),
+  } = {}) {
     // Same field order as puzzleEdit.js: the fields that name the file
     // must arrive before the file itself.
     return request(app)
       .post("/api/puzzle/upload")
       .set("Authorization", "Bearer token")
-      .field("puzzleName", "upload-test")
-      .field("fileExtension", "png")
-      .attach("binary", Buffer.from("fake image bytes"), "puzzle.png");
+      .field("puzzleName", puzzleName)
+      .field("fileExtension", fileExtension)
+      .attach("binary", contents, `puzzle.${fileExtension}`);
+  }
+
+  async function expectNothingWritten() {
+    expect(await readdir(puzzleDataDirectory)).toEqual(filesBefore);
   }
 
   it("saves the file under puzzleData, named for the puzzle", async () => {
@@ -197,21 +235,101 @@ describe("POST /api/puzzle/upload", () => {
     expect(await readFile(uploadedFile, "utf8")).toBe("fake image bytes");
   });
 
-  it("rejects an upload from a user who is not an admin", async () => {
+  it("stores the extension in lowercase", async () => {
+    signInAs("admin", AuthorizationLevel.ADMIN);
+
+    const response = await upload({ fileExtension: "PNG" });
+
+    expect(JSON.parse(response.text).data).toBe("/puzzleData/upload-test.png");
+    expect(existsSync(uploadedFile)).toBe(true);
+  });
+
+  it("rejects an anonymous upload without writing anything", async () => {
+    const response = await request(app)
+      .post("/api/puzzle/upload")
+      .field("puzzleName", "upload-test")
+      .field("fileExtension", "png")
+      .attach("binary", Buffer.from("fake image bytes"), "puzzle.png");
+
+    expect(response.status).toBe(401);
+    await expectNothingWritten();
+  });
+
+  it("rejects an upload from a user who is not an admin without writing anything", async () => {
     signInAs("player", AuthorizationLevel.USER);
 
     const response = await upload();
 
     expect(response.status).toBe(403);
+    await expectNothingWritten();
   });
 
-  it("writes the file even when the upload is rejected (current behavior)", async () => {
-    // The file is stored before the controller checks authorization; Phase 2
-    // upload hardening moves that check ahead of storage.
-    signInAs("player", AuthorizationLevel.USER);
+  it.each([
+    "../outside-test",
+    "../../outside-test",
+    "nested/outside-test",
+    "nested\\outside-test",
+    "..",
+    ".",
+    ".hidden-test",
+    "",
+    "line\nbreak",
+  ])(
+    "rejects the puzzle name %j without writing anything",
+    async (puzzleName) => {
+      signInAs("admin", AuthorizationLevel.ADMIN);
+      const target = path.resolve(puzzleDataDirectory, `${puzzleName}.png`);
 
-    await upload();
+      const response = await upload({ puzzleName });
 
-    expect(existsSync(uploadedFile)).toBe(true);
+      expect(response.status).toBe(400);
+      expect(JSON.parse(response.text)).toEqual({
+        status: "error",
+        message: "Invalid puzzle name for an upload",
+      });
+      expect(existsSync(target) && target !== puzzleDataDirectory).toBe(false);
+      await expectNothingWritten();
+    }
+  );
+
+  it.each(["html", "js", "svg", "exe", "png/../x", ""])(
+    "rejects the file extension %j without writing anything",
+    async (fileExtension) => {
+      signInAs("admin", AuthorizationLevel.ADMIN);
+
+      const response = await upload({ fileExtension });
+
+      expect(response.status).toBe(400);
+      expect(JSON.parse(response.text).message).toMatch(/cannot be uploaded/);
+      await expectNothingWritten();
+    }
+  );
+
+  it("rejects a file sent before the fields that name it", async () => {
+    signInAs("admin", AuthorizationLevel.ADMIN);
+
+    const response = await request(app)
+      .post("/api/puzzle/upload")
+      .set("Authorization", "Bearer token")
+      .attach("binary", Buffer.from("fake image bytes"), "puzzle.png")
+      .field("puzzleName", "upload-test")
+      .field("fileExtension", "png");
+
+    expect(response.status).toBe(400);
+    await expectNothingWritten();
+  });
+
+  it("rejects a file larger than the limit", async () => {
+    signInAs("admin", AuthorizationLevel.ADMIN);
+
+    const response = await upload({
+      contents: Buffer.alloc(MAXIMUM_PUZZLE_MEDIA_BYTES + 1),
+    });
+
+    expect(response.status).toBe(413);
+    expect(JSON.parse(response.text).message).toBe(
+      "The uploaded file is too large"
+    );
+    expect(existsSync(uploadedFile)).toBe(false);
   });
 });

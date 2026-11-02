@@ -1,19 +1,8 @@
 import express from "express";
-import multer from "multer";
+import { requireAdmin } from "../middleware/authorization.js";
 import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
+import { uploadPuzzleMedia } from "../middleware/upload.js";
 import * as PuzzleController from "../controllers/puzzle.controller.js";
-import { puzzleDataDirectory } from "../paths.js";
-
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, puzzleDataDirectory);
-  },
-  filename: function (req, file, cb) {
-    cb(null, `${req.body.puzzleName}.${req.body.fileExtension}`);
-  },
-});
-
-const upload = multer({ storage: storage });
 
 const puzzleApiRouter = express.Router();
 puzzleApiRouter.get(
@@ -44,7 +33,9 @@ puzzleApiRouter.post(
 puzzleApiRouter.post(
   "/upload",
   TokenAuthenticator.tokenAuthenticate,
-  upload.single("binary"),
+  // Checked before the upload is stored, so rejected requests write nothing.
+  requireAdmin,
+  uploadPuzzleMedia,
   PuzzleController.uploadBinaryData
 );
 
