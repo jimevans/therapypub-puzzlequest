@@ -1,4 +1,5 @@
 import path from "path";
+import type { RequestHandler } from "express";
 import multer from "multer";
 import { puzzleDataDirectory } from "../paths.js";
 
@@ -43,11 +44,17 @@ export const PUZZLE_MEDIA_EXTENSIONS = new Set([
  * An error rejecting an upload, reported to the client with its status code.
  */
 class UploadError extends Error {
+  /** The HTTP status code to respond with. */
+  status: number;
+
+  /** Always true: the message is meant for the client (see errorHandler). */
+  expose: boolean;
+
   /**
-   * @param {number} status the HTTP status code
-   * @param {string} message the message for the client
+   * @param status the HTTP status code
+   * @param message the message for the client
    */
-  constructor(status, message) {
+  constructor(status: number, message: string) {
     super(message);
     this.status = status;
     this.expose = true;
@@ -59,12 +66,15 @@ class UploadError extends Error {
  * puzzle name or file extension is unacceptable. The name is the puzzle name
  * plus the lowercased extension, and must resolve to a file directly inside
  * the puzzle data directory.
- * @param {unknown} puzzleName the puzzle name from the request
- * @param {unknown} fileExtension the file extension from the request
- * @returns {string} the file name
+ * @param puzzleName the puzzle name from the request
+ * @param fileExtension the file extension from the request
+ * @returns the file name
  * @throws {UploadError} if the name or extension is not acceptable
  */
-export function getPuzzleMediaFileName(puzzleName, fileExtension) {
+export function getPuzzleMediaFileName(
+  puzzleName: unknown,
+  fileExtension: unknown
+): string {
   if (typeof puzzleName !== "string" || typeof fileExtension !== "string") {
     throw new UploadError(
       400,
@@ -96,10 +106,10 @@ export function getPuzzleMediaFileName(puzzleName, fileExtension) {
  * Wraps multer middleware so that rejected uploads are reported as client
  * errors: 413 for files that are too large, 400 for anything else multer
  * rejects.
- * @param {import("express").RequestHandler} middleware the multer middleware
- * @returns {import("express").RequestHandler} the wrapped middleware
+ * @param middleware the multer middleware
+ * @returns the wrapped middleware
  */
-function reportUploadErrors(middleware) {
+function reportUploadErrors(middleware: RequestHandler): RequestHandler {
   return (req, res, next) => {
     middleware(req, res, (err) => {
       if (err instanceof multer.MulterError) {

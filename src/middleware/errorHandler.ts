@@ -1,15 +1,22 @@
+import type { NextFunction, Request, Response } from "express";
+
 /**
  * Handles errors thrown by routes and middleware, including rejected promises
  * from async handlers, which Express forwards here. Client errors that are
  * meant to be shown (such as malformed JSON from the body parser) keep their
  * status and message; anything else is logged and reported as a generic 500,
  * so that internal details do not reach the client.
- * @param {Error & {status?: number, statusCode?: number, expose?: boolean}} err the error
- * @param {import("express").Request} req the request
- * @param {import("express").Response} res the response
- * @param {import("express").NextFunction} next the next handler
+ * @param err the error
+ * @param req the request
+ * @param res the response
+ * @param next the next handler
  */
-export function errorHandler(err, req, res, next) {
+export function errorHandler(
+  err: Error & { status?: number; statusCode?: number; expose?: boolean },
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void {
   if (res.headersSent) {
     // Too late to send an error response; let Express close the connection.
     next(err);
