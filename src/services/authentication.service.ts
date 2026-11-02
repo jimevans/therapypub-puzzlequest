@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { config } from "../config.js";
+import type { ServiceResult } from "../types.js";
 import * as UserService from "./user.service.js";
 
 export const MINIMUM_PASSWORD_LENGTH = 8;
@@ -10,11 +11,14 @@ export const MAXIMUM_PASSWORD_BYTES = 72;
 
 /**
  * Authenticates a user.
- * @param {string} userName the user name to authenticate
- * @param {string} password the password to authenticate
- * @returns {Promise<import("../types.js").ServiceResult<string>>} a result containing the signed authentication token
+ * @param userName the user name to authenticate
+ * @param password the password to authenticate
+ * @returns a result containing the signed authentication token
  */
-export async function authenticate(userName, password) {
+export async function authenticate(
+  userName: string,
+  password: string
+): Promise<ServiceResult<string>> {
   const userResponse = await UserService.getUserByUserName(userName);
   if (userResponse.status === "error") {
     return userResponse;
@@ -33,10 +37,10 @@ export async function authenticate(userName, password) {
 
 /**
  * Creates a signed authentication token for a user.
- * @param {UserService.User} user the user for which to create the token
- * @returns {string} the signed token
+ * @param user the user for which to create the token
+ * @returns the signed token
  */
-export function createAuthenticationToken(user) {
+export function createAuthenticationToken(user: UserService.User): string {
   return jwt.sign(
     {
       userName: user.userName.toLowerCase(),
@@ -56,11 +60,14 @@ export function createAuthenticationToken(user) {
 /**
  * Determines whether a token was issued before the user's password was last
  * changed, and therefore must no longer be accepted.
- * @param {number} issuedAt the token's issued-at time, in seconds since the epoch
- * @param {Date | undefined} passwordChangedAt the date and time the password was last changed, if ever
- * @returns {boolean} true if the token has been revoked; otherwise, false
+ * @param issuedAt the token's issued-at time, in seconds since the epoch
+ * @param passwordChangedAt when the password was last changed, if ever
+ * @returns true if the token has been revoked; otherwise, false
  */
-export function isTokenRevoked(issuedAt, passwordChangedAt) {
+export function isTokenRevoked(
+  issuedAt: number,
+  passwordChangedAt: Date | undefined
+): boolean {
   if (!passwordChangedAt) {
     return false;
   }
@@ -71,10 +78,12 @@ export function isTokenRevoked(issuedAt, passwordChangedAt) {
 
 /**
  * Validates that a password meets the password policy.
- * @param {string} password the plain text password to validate
- * @returns {import("../types.js").ServiceResult<undefined>} a success result, or an error result describing the problem
+ * @param password the plain text password to validate
+ * @returns a success result, or an error result describing the problem
  */
-export function validatePasswordPolicy(password) {
+export function validatePasswordPolicy(
+  password: unknown
+): ServiceResult<undefined> {
   if (
     typeof password !== "string" ||
     password.length < MINIMUM_PASSWORD_LENGTH
@@ -97,19 +106,24 @@ export function validatePasswordPolicy(password) {
 
 /**
  * Compares a plain text password with an encrypted password.
- * @param {string} plainTextPassword the plain text password
- * @param {string} encryptedPassword the encrypted password from the data store
- * @returns {Promise<boolean>} a Promise resolving to true if the passwords match; otherwise, false
+ * @param plainTextPassword the plain text password
+ * @param encryptedPassword the encrypted password from the data store
+ * @returns true if the passwords match; otherwise, false
  */
-export async function comparePassword(plainTextPassword, encryptedPassword) {
+export async function comparePassword(
+  plainTextPassword: string,
+  encryptedPassword: string
+): Promise<boolean> {
   return await bcrypt.compare(plainTextPassword, encryptedPassword);
 }
 
 /**
  * Encrypts a password for storage in the data store.
- * @param {string} plainTextPassword the plain text password
- * @returns {Promise<string>} a Promise resolving to the encrypted password
+ * @param plainTextPassword the plain text password
+ * @returns the encrypted password
  */
-export async function encryptPassword(plainTextPassword) {
+export async function encryptPassword(
+  plainTextPassword: string
+): Promise<string> {
   return await bcrypt.hash(plainTextPassword, 10);
 }
