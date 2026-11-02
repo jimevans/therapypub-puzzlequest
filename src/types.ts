@@ -19,3 +19,13 @@ export type ServiceResult<T> =
       message: string;
       data?: undefined;
     };
+
+/**
+ * An Express request whose route provides the named parameters, each a single
+ * string. (Express types route parameters as string | string[] to allow for
+ * wildcard routes, which this application doesn't use.)
+ * @template P the names of the route parameters
+ */
+export type RouteRequest<P extends string> = import("express").Request<
+  Record<P, string>
+>;

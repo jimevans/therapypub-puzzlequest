@@ -1,3 +1,5 @@
+import type { Request, Response } from "express";
+import type { RouteRequest } from "../types.js";
 import { PassThrough } from "stream";
 import { marked } from "marked";
 import PDFDocument from "pdfkit";
@@ -9,7 +11,7 @@ import * as UserService from "../services/user.service.js";
 import * as WebSocketService from "../services/websocket.service.js";
 import * as RequestValidationService from "../services/requestValidation.service.js";
 
-export async function createQuest(req, res) {
+export async function createQuest(req: Request, res: Response): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -41,7 +43,10 @@ export async function createQuest(req, res) {
   res.send(JSON.stringify(response));
 }
 
-export async function retrieveQuest(req, res) {
+export async function retrieveQuest(
+  req: RouteRequest<"name">,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -71,23 +76,26 @@ export async function retrieveQuest(req, res) {
     return;
   }
   const quest = questResponse.data.toJSON();
-  if (!loggedInUser.isAdmin()) {
-    // Activation codes must be obtained by scanning the puzzle's QR code,
-    // so never reveal them to players.
-    quest.puzzles = quest.puzzles.map((puzzle) => {
-      const { activationCode, ...playerVisiblePuzzle } = puzzle.toJSON();
-      return playerVisiblePuzzle;
-    });
-  }
+  // Activation codes must be obtained by scanning the puzzle's QR code, so
+  // never reveal them to players.
+  const visibleQuest = loggedInUser.isAdmin()
+    ? quest
+    : {
+        ...quest,
+        puzzles: quest.puzzles.map((puzzle) => {
+          const { activationCode, ...playerVisiblePuzzle } = puzzle.toJSON();
+          return playerVisiblePuzzle;
+        }),
+      };
   res.send(
     JSON.stringify({
       status: "success",
-      data: quest,
+      data: visibleQuest,
     })
   );
 }
 
-export async function updateQuest(req, res) {
+export async function updateQuest(req: Request, res: Response): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -126,7 +134,10 @@ export async function updateQuest(req, res) {
   res.send(JSON.stringify(response));
 }
 
-export async function deleteQuest(req, res) {
+export async function deleteQuest(
+  req: RouteRequest<"name">,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -157,7 +168,7 @@ export async function deleteQuest(req, res) {
   res.send(JSON.stringify(response));
 }
 
-export async function listQuests(req, res) {
+export async function listQuests(req: Request, res: Response): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -188,7 +199,10 @@ export async function listQuests(req, res) {
   res.send(JSON.stringify(response));
 }
 
-export async function activateQuest(req, res) {
+export async function activateQuest(
+  req: RouteRequest<"name">,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -219,7 +233,10 @@ export async function activateQuest(req, res) {
   res.send(JSON.stringify(startQuestResponse));
 }
 
-export async function resetQuest(req, res) {
+export async function resetQuest(
+  req: RouteRequest<"name">,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -250,7 +267,10 @@ export async function resetQuest(req, res) {
   res.send(JSON.stringify(resetQuestResponse));
 }
 
-export async function generatePuzzleActivationQRCode(req, res) {
+export async function generatePuzzleActivationQRCode(
+  req: RouteRequest<"name" | "puzzleName">,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -284,7 +304,10 @@ export async function generatePuzzleActivationQRCode(req, res) {
   res.send({ status: "success", data: qrCodeResponse.data });
 }
 
-export async function activateQuestPuzzle(req, res) {
+export async function activateQuestPuzzle(
+  req: RouteRequest<"name" | "puzzleName">,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -342,7 +365,10 @@ export async function activateQuestPuzzle(req, res) {
   );
 }
 
-export async function solveQuestPuzzle(req, res) {
+export async function solveQuestPuzzle(
+  req: RouteRequest<"name" | "puzzleName">,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -427,7 +453,10 @@ export async function solveQuestPuzzle(req, res) {
   }
 }
 
-export async function requestQuestPuzzleHint(req, res) {
+export async function requestQuestPuzzleHint(
+  req: RouteRequest<"name" | "puzzleName">,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
@@ -486,7 +515,10 @@ export async function requestQuestPuzzleHint(req, res) {
   res.send(JSON.stringify(hintResult));
 }
 
-export async function renderQuest(req, res) {
+export async function renderQuest(
+  req: RouteRequest<"name">,
+  res: Response
+): Promise<void> {
   const loggedInUser = UserService.getLoggedInUser(req.user);
   if (!loggedInUser) {
     res.render("login", { requestingUrl: req.url });
@@ -544,7 +576,10 @@ export async function renderQuest(req, res) {
   });
 }
 
-export async function renderQuestPuzzle(req, res) {
+export async function renderQuestPuzzle(
+  req: RouteRequest<"name" | "puzzleName">,
+  res: Response
+): Promise<void> {
   const loggedInUser = UserService.getLoggedInUser(req.user);
   if (!loggedInUser) {
     res.render("login", { requestingUrl: req.url });
@@ -616,7 +651,10 @@ export async function renderQuestPuzzle(req, res) {
   });
 }
 
-export async function renderPuzzleActivationQRCode(req, res) {
+export async function renderPuzzleActivationQRCode(
+  req: RouteRequest<"name" | "puzzleName">,
+  res: Response
+): Promise<void> {
   const loggedInUser = UserService.getLoggedInUser(req.user);
   if (!loggedInUser) {
     res.render("login", { requestingUrl: req.url.replace(/\/qrcode$/i, "") });
@@ -653,7 +691,10 @@ export async function renderPuzzleActivationQRCode(req, res) {
   qrStream.pipe(res);
 }
 
-export async function renderQuestRunBook(req, res) {
+export async function renderQuestRunBook(
+  req: RouteRequest<"name">,
+  res: Response
+): Promise<void> {
   const loggedInUser = UserService.getLoggedInUser(req.user);
   if (!loggedInUser) {
     res.render("login", { requestingUrl: req.url.replace(/\/pdf$/i, "") });
@@ -691,7 +732,10 @@ export async function renderQuestRunBook(req, res) {
   }
 }
 
-export async function renderMonitoredQuest(req, res) {
+export async function renderMonitoredQuest(
+  req: RouteRequest<"name">,
+  res: Response
+): Promise<void> {
   const questResponse = await QuestService.getQuestByQuestName(req.params.name);
   if (questResponse.status === "error") {
     res.status(questResponse.statusCode).render("error", {
@@ -720,7 +764,10 @@ export async function renderMonitoredQuest(req, res) {
   });
 }
 
-export async function renderMonitoredQuestPuzzle(req, res) {
+export async function renderMonitoredQuestPuzzle(
+  req: RouteRequest<"name" | "puzzleName">,
+  res: Response
+): Promise<void> {
   const questName = req.params.name;
   const questPuzzleResponse = await QuestService.getQuestPuzzle(
     questName,

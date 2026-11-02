@@ -1,10 +1,14 @@
+import type { Request, Response } from "express";
 import { QuestStatus } from "../models/quest.model.js";
 import * as QuestService from "../services/quest.service.js";
 import * as UserService from "../services/user.service.js";
 import * as MessagingService from "../services/messaging.service.js";
 import * as RequestValidationService from "../services/requestValidation.service.js";
 
-export async function receiveVoiceCall(req, res) {
+export async function receiveVoiceCall(
+  req: Request,
+  res: Response
+): Promise<void> {
   const voice = await MessagingService.respondToVoiceCall(req.body.From);
   res.type("text/xml").send(voice.data.response);
 
@@ -15,7 +19,10 @@ export async function receiveVoiceCall(req, res) {
   }
 }
 
-export async function receiveTextMessage(req, res) {
+export async function receiveTextMessage(
+  req: Request,
+  res: Response
+): Promise<void> {
   const text = await MessagingService.respondToTextMessage(
     req.body.From,
     req.body.Body
@@ -23,7 +30,10 @@ export async function receiveTextMessage(req, res) {
   res.type("text/xml").send(text.data);
 }
 
-export async function sendTextMessage(req, res) {
+export async function sendTextMessage(
+  req: Request,
+  res: Response
+): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
       requiresUser: true,
