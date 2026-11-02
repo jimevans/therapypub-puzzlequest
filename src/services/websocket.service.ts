@@ -32,11 +32,26 @@ export function initialize(): WebSocketServer {
     webSocketSessions.set(connectionId, { id: connectionId, socket });
     socket.on("error", console.error);
     socket.on("message", (data) => {
-      const messageData: BrowserMessage = JSON.parse(data.toString());
-      if (messageData.message === "init") {
+      // Anyone can connect, so ignore anything that isn't a valid message; an
+      // exception here would stop the whole server.
+      let messageData: BrowserMessage;
+      try {
+        messageData = JSON.parse(data.toString());
+      } catch {
+        return;
+      }
+      if (messageData?.message === "init") {
         socket.send(JSON.stringify({ message: "connection", connectionId }));
-        const url = new URL(messageData.url);
-        webSocketSessions.get(connectionId).url = url.pathname;
+        if (
+          typeof messageData.url !== "string" ||
+          !URL.canParse(messageData.url)
+        ) {
+          return;
+        }
+        const session = webSocketSessions.get(connectionId);
+        if (session) {
+          session.url = new URL(messageData.url).pathname;
+        }
       }
     });
     socket.on("close", () => {
@@ -60,7 +75,11 @@ export function notifyBrowsers(
 ): void {
   const notifyBrowsers: WebSocketSession[] = [];
   webSocketSessions.forEach((value) => {
-    if (urls.includes(value.url) && !excludeConnections.includes(value.id)) {
+    if (
+      value.url !== undefined &&
+      urls.includes(value.url) &&
+      !excludeConnections.includes(value.id)
+    ) {
       notifyBrowsers.push(value);
     }
   });
