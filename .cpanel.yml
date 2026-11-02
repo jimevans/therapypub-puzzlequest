@@ -1,19 +1,37 @@
 ---
 # Run by cPanel's Git Version Control on "Deploy HEAD Commit". Each task runs
 # in order, in one shell, on the server; a failing task stops the deployment.
+#
+# The application's packages live in its cPanel Node.js environment, as
+# cPanel's "Run NPM Install" button installs them, and node_modules in the
+# application directory is a link to them.
 deployment:
   tasks:
     - export DEPLOYPATH=/home/thepuzzlequest/puzzlequest
-    - export NODE_ENVIRONMENT=/home/thepuzzlequest/nodevenv/puzzlequest/24/bin/activate
+    # The application's Node 24 environment (shown on cPanel's Setup Node.js
+    # App page), and the folder in it that holds the application's packages.
+    - export NODE_ENVIRONMENT=/home/thepuzzlequest/nodevenv/puzzlequest/24
+    - export PACKAGES=$NODE_ENVIRONMENT/lib
     # Copy the checked-out files, leaving out .git: its object files are
     # read-only, so copying it over the previous deployment's copy fails.
     # Files that aren't in the repository (src/.env, uploaded puzzle media,
     # node_modules) are left as they are.
     - cp -R $(ls -A | grep -v -x -F .git) $DEPLOYPATH
-    # Build in the application's Node 24 environment (the command shown on
-    # cPanel's Setup Node.js App page). The build needs the development
-    # dependencies, which are removed again afterwards.
-    - source $NODE_ENVIRONMENT && cd $DEPLOYPATH && npm ci && npm run build && npm prune --omit=dev
+    # Install exactly what the deployed package-lock.json lists. Both files are
+    # linked into the environment on every deployment, so a new host can deploy
+    # without first using cPanel's "Run NPM Install" button (cPanel itself
+    # links only package.json). The build needs the development dependencies;
+    # --include=dev is needed because the environment sets NODE_ENV=production,
+    # which makes npm skip them.
+    - ln -sf $DEPLOYPATH/package.json $PACKAGES/package.json
+    - ln -sf $DEPLOYPATH/package-lock.json $PACKAGES/package-lock.json
+    - source $NODE_ENVIRONMENT/bin/activate && cd $PACKAGES && npm ci --include=dev
+    # Make node_modules in the application directory a link to the packages,
+    # replacing anything else that's there.
+    - rm -rf $DEPLOYPATH/node_modules && ln -s $PACKAGES/node_modules $DEPLOYPATH/node_modules
+    # Compile to dist/, then remove the build and test tools.
+    - source $NODE_ENVIRONMENT/bin/activate && cd $DEPLOYPATH && npm run build
+    - source $NODE_ENVIRONMENT/bin/activate && cd $PACKAGES && npm prune --omit=dev
     # Passenger restarts the application on its next request when this file
     # changes.
     - mkdir -p $DEPLOYPATH/tmp && touch $DEPLOYPATH/tmp/restart.txt
