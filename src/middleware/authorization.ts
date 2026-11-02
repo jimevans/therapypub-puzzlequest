@@ -1,14 +1,19 @@
+import type { RequestHandler } from "express";
 import * as RequestValidationService from "../services/requestValidation.service.js";
 
 /**
  * Creates middleware that rejects the request unless the authenticated user
  * meets the requirement. Use it after tokenAuthenticate, and before any
  * middleware that does work on the user's behalf, such as storing an upload.
- * @param {{requiresUser?: boolean, requiresAdmin?: boolean}} requirement what
- *  the user must be
- * @returns {import("express").RequestHandler} the middleware
+ * @param requirement what the user must be
+ * @returns the middleware
  */
-function authorize(requirement) {
+function authorize(
+  requirement: Pick<
+    RequestValidationService.ValidationOptions,
+    "requiresUser" | "requiresAdmin"
+  >
+): RequestHandler {
   return (req, res, next) => {
     const validation = RequestValidationService.validateRequest(
       requirement,

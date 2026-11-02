@@ -1,34 +1,49 @@
-import jwt from "jsonwebtoken";
+import type { NextFunction, Request, Response } from "express";
+import jwt, { type JwtPayload } from "jsonwebtoken";
 import { config } from "../config.js";
 import * as AuthenticationService from "../services/authentication.service.js";
 import * as UserService from "../services/user.service.js";
 
 export const TOKEN_COOKIE_NAME = "pq-db-token";
 
-/**
- * The user data carried in an authentication token.
- * @typedef {object} TokenUser
- * @property {string} userName the user name
- * @property {string} displayName the display name
- * @property {string} email the email address
- * @property {string} phone the phone number
- * @property {boolean} sms true if the user allows SMS messages
- * @property {number} authorizationLevel the user's authorization level
- */
+/** The user data carried in an authentication token. */
+export interface TokenUser {
+  userName: string;
+  displayName: string;
+  email: string;
+  phone: string;
+  /** True if the user allows SMS messages. */
+  sms: boolean;
+  /** The user's authorization level (see AuthorizationLevel). */
+  authorizationLevel: number;
+}
 
 /**
  * Stores an authentication token in the http-only cookie used by UI requests.
- * @param {import("express").Response} res the response
- * @param {string} token the authentication token
+ * @param res the response
+ * @param token the authentication token
  */
-export function setTokenCookie(res, token) {
+export function setTokenCookie(res: Response, token: string): void {
   res.cookie(TOKEN_COOKIE_NAME, token, {
     httpOnly: true,
     secure: config.PQ_RUNTIME_ENVIRONMENT !== "development",
   });
 }
 
-export async function tokenAuthenticate(req, res, next) {
+/**
+ * Identifies the user making a request from their authentication token, and
+ * sets req.user: the token's user data, or null for an anonymous request. It
+ * doesn't check what the user may do (see authorization.ts). A malformed or
+ * invalid token gets a 401 response.
+ * @param req the request
+ * @param res the response
+ * @param next the next handler
+ */
+export async function tokenAuthenticate(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   let token = null;
   req.user = null;
   // The JWT can be in different places, depending on the request type.
@@ -58,10 +73,10 @@ export async function tokenAuthenticate(req, res, next) {
 
   if (token !== null) {
     try {
-      const decoded =
-        /** @type {import("jsonwebtoken").JwtPayload & TokenUser} */ (
-          await jwt.verify(token, config.PQ_SECRET_KEY)
-        );
+      const decoded = (await jwt.verify(
+        token,
+        config.PQ_SECRET_KEY
+      )) as JwtPayload & TokenUser;
 
       // Tokens for deleted users, or issued before the user's password was
       // last changed, are treated like expired tokens.

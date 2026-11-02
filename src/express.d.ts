@@ -10,5 +10,7 @@ declare module "express-serve-static-core" {
     user?: import("./middleware/tokenAuthentication.js").TokenUser | null;
     /** The text of a scanned QR code. Set by the readQRCode middleware. */
     qrCodeData?: string;
+    /** How the page should be rendered. Set by the useRenderMode middleware. */
+    renderMode?: import("./middleware/useRenderMode.js").RenderMode;
   }
 }
