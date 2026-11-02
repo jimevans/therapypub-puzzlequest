@@ -1100,6 +1100,23 @@ describe("getQuestByQuestName", () => {
   });
 });
 
+describe("quests whose puzzles were deleted", () => {
+  it("still load, without details for the deleted puzzle", async () => {
+    await createQuest(["colors", "fruit"]);
+    await PuzzleModel.deleteOne({ name: "fruit" });
+
+    const result = await QuestService.getQuestByQuestName("test-quest", null);
+
+    expect(result.status).toBe("success");
+    expect(result.data.puzzles.map((p) => p.puzzleName)).toEqual([
+      "colors",
+      "fruit",
+    ]);
+    expect(result.data.puzzles[0].puzzleDetail.displayName).toBe("Colors");
+    expect(result.data.puzzles[1].puzzleDetail).toBeUndefined();
+  });
+});
+
 describe("getQuestPuzzle", () => {
   it("returns one puzzle from the quest", async () => {
     await createQuest();

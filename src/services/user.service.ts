@@ -2,6 +2,7 @@ import { AuthorizationLevel, UserModel } from "../models/user.model.js";
 import type { ServiceResult } from "../types.js";
 import * as AuthorizationService from "./authentication.service.js";
 import * as TeamService from "./team.service.js";
+import { getErrorMessage } from "../errors.js";
 
 /**
  * The result of a user service operation; data is a User unless the
@@ -10,12 +11,20 @@ import * as TeamService from "./team.service.js";
 export type UserResult<T = User> = ServiceResult<T>;
 
 /**
- * The properties a User can be created from; all are optional. `sms` sets
- * allowSmsMessages, matching the stored data and the authentication token.
+ * The properties a User is created from: a stored user, a request, or the
+ * user data in an authentication token, which has no password. `sms` sets
+ * allowSmsMessages, matching the stored data and the token.
  */
-export type UserDefinition = Partial<Omit<User, "allowSmsMessages">> & {
-  sms?: boolean;
-};
+export interface UserDefinition {
+  userName: string;
+  displayName: string;
+  email: string;
+  phone: string;
+  sms: boolean;
+  authorizationLevel: number;
+  password?: string;
+  authorizationLevelDescription?: string;
+}
 
 /**
  * A data class representing a team a user belongs to.
@@ -58,8 +67,11 @@ export class User {
   /** The display name of the user. */
   displayName: string;
 
-  /** The encrypted password of the user. */
-  password: string;
+  /**
+   * The encrypted password of the user. Absent when the user comes from an
+   * authentication token.
+   */
+  password?: string;
 
   /** The email address of the user. */
   email: string;
@@ -74,10 +86,10 @@ export class User {
   authorizationLevel: number;
 
   /** The description of the user's authorization level. */
-  authorizationLevelDescription: string;
+  authorizationLevelDescription?: string;
 
   /** The teams the user belongs to, once loaded by getTeams. */
-  teams: UserTeam[];
+  teams?: UserTeam[];
 
   /**
    * Initializes a new instance of the User class.
@@ -120,6 +132,9 @@ export class User {
   async getTeams(): Promise<UserTeam[]> {
     if (!this.teams) {
       const teamResponse = await TeamService.getTeamsForUser(this.userName);
+      if (teamResponse.status === "error") {
+        throw new Error(teamResponse.message);
+      }
       const teamsContainingUser = teamResponse.data;
       this.teams = teamsContainingUser.map((team) => new UserTeam(team));
     }
@@ -143,9 +158,7 @@ export class User {
    * password is never included.
    * @returns the object to be serialized to JSON
    */
-  toJSON(): Omit<UserDefinition, "password" | "teams"> & {
-    teams: UserTeam[];
-  } {
+  toJSON(): Omit<UserDefinition, "password"> & { teams?: UserTeam[] } {
     return {
       userName: this.userName,
       displayName: this.displayName,
@@ -213,7 +226,7 @@ export async function getUsersByPhoneNumber(
  * @param name the name of the user to delete
  * @returns a success result, or an error result
  */
-export async function deleteUser(name: string): Promise<UserResult> {
+export async function deleteUser(name: string): Promise<UserResult<undefined>> {
   const result = await UserModel.findOneAndDelete({ userName: name });
   if (result === null) {
     return {
@@ -230,7 +243,7 @@ export async function deleteUser(name: string): Promise<UserResult> {
  * @param user the definition of the user to create
  * @returns a success result, or an error result
  */
-export async function createUser(user: User): Promise<UserResult> {
+export async function createUser(user: User): Promise<UserResult<undefined>> {
   const existingUsers = await UserModel.find({
     userName: user.userName,
   }).lean();
@@ -253,7 +266,10 @@ export async function createUser(user: User): Promise<UserResult> {
     // First user created must be an admin user
     authLevel = AuthorizationLevel.ADMIN;
   }
-  const password = await AuthorizationService.encryptPassword(user.password);
+  // validatePasswordPolicy has checked that the password is a string.
+  const password = await AuthorizationService.encryptPassword(
+    user.password as string
+  );
   const userData = {
     userName: user.userName.toLowerCase(),
     displayName: user.displayName || user.userName,
@@ -274,7 +290,7 @@ export async function createUser(user: User): Promise<UserResult> {
     return {
       status: "error",
       statusCode: 500,
-      message: `New user not created - ${err.message}`,
+      message: `New user not created - ${getErrorMessage(err)}`,
     };
   }
   return { status: "success", statusCode: 200 };
@@ -288,8 +304,8 @@ export async function createUser(user: User): Promise<UserResult> {
  */
 export async function updateUser(
   name: string,
-  userData: User
-): Promise<UserResult> {
+  userData: Partial<User>
+): Promise<UserResult<undefined>> {
   const foundUser = await UserModel.findOne({ userName: name });
   if (foundUser === null) {
     return {
@@ -331,7 +347,7 @@ export async function updateUser(
     return {
       status: "error",
       statusCode: 500,
-      message: `User not updated - ${err.message}`,
+      message: `User not updated - ${getErrorMessage(err)}`,
     };
   }
   return { status: "success", statusCode: 200 };
@@ -350,7 +366,7 @@ export async function listUsers(): Promise<UserResult<User[]>> {
 /** The data needed to decide whether an authentication token is still valid. */
 export interface TokenValidationData {
   /** When the user's password was last changed, if ever. */
-  passwordChangedAt?: Date;
+  passwordChangedAt?: Date | null;
 }
 
 /**
@@ -381,4 +397,22 @@ export function getLoggedInUser(
   }
 
   return null;
+}
+
+/**
+ * Gets the signed-in user, for request handlers whose request validation has
+ * already required one.
+ * @param requestUserData the request's user data
+ * @returns the user
+ * @throws {Error} if the request has no user, which means the handler is
+ *  missing its validation
+ */
+export function requireLoggedInUser(
+  requestUserData: UserDefinition | null | undefined
+): User {
+  const user = getLoggedInUser(requestUserData);
+  if (user === null) {
+    throw new Error("Request handler requires a signed-in user");
+  }
+  return user;
 }

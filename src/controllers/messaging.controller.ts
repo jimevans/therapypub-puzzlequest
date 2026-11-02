@@ -10,6 +10,10 @@ export async function receiveVoiceCall(
   res: Response
 ): Promise<void> {
   const voice = await MessagingService.respondToVoiceCall(req.body.From);
+  if (voice.status === "error") {
+    res.status(voice.statusCode).send(voice.message);
+    return;
+  }
   res.type("text/xml").send(voice.data.response);
 
   if (voice.data.questsToActivate) {

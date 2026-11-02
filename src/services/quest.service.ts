@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import path from "path";
 import { marked, type Token } from "marked";
+import type { PipelineStage } from "mongoose";
 import QRCode from "qrcode";
 import { PuzzleModel } from "../models/puzzle.model.js";
 import {
@@ -12,12 +13,39 @@ import { publicDirectory } from "../paths.js";
 import type { ServiceResult } from "../types.js";
 import * as PuzzleService from "./puzzle.service.js";
 import type { User } from "./user.service.js";
+import { getErrorMessage } from "../errors.js";
 
 /**
  * The result of a quest service operation; data is a Quest unless the
  * function's documentation says otherwise.
  */
 export type QuestResult<T = Quest> = ServiceResult<T>;
+
+/**
+ * The properties a QuestPuzzle is created from: a quest's stored progress on
+ * a puzzle, or a puzzle sent by the quest editor.
+ */
+export type QuestPuzzleProperties = Pick<
+  QuestPuzzle,
+  "puzzleName" | "nextHintToDisplay" | "status" | "activationCode"
+> &
+  Partial<Pick<QuestPuzzle, "startTime" | "endTime" | "activationTime">>;
+
+/** The properties a Quest is created from: a stored quest, or a request. */
+export type QuestProperties = Pick<
+  Quest,
+  "name" | "displayName" | "userName" | "status"
+> &
+  Partial<Pick<Quest, "textResponse" | "textResponseConfirmation">> & {
+    puzzles?: QuestPuzzleProperties[];
+  };
+
+/** A quest as returned by the findQuests aggregation, with puzzle details. */
+type AggregatedQuest = Omit<QuestProperties, "puzzles"> & {
+  puzzles: (QuestPuzzleProperties & {
+    details?: PuzzleService.PuzzleDefinition;
+  })[];
+};
 
 /**
  * A data class describing a puzzle in a quest
@@ -51,28 +79,28 @@ export class QuestPuzzle {
   /**
    * Gets or sets the time when the puzzle is available for activation.
    */
-  startTime: Date;
+  startTime?: Date | null;
 
   /**
    * Gets or sets the time when the puzzle is solved.
    */
-  endTime: Date;
+  endTime?: Date | null;
 
   /**
    * Gets or sets the time when the puzzle is activated.
    */
-  activationTime: Date;
+  activationTime?: Date | null;
 
   /**
    * Gets or sets the details of the puzzle.
    */
-  puzzleDetail: PuzzleService.Puzzle;
+  puzzleDetail?: PuzzleService.Puzzle;
 
   /**
    * Initializes a new instance of the QuestPuzzle class.
    * @param puzzleDefinition an object containing the definition of quest puzzle properties
    */
-  constructor(puzzleDefinition: Partial<QuestPuzzle>) {
+  constructor(puzzleDefinition: QuestPuzzleProperties) {
     this.puzzleName = puzzleDefinition.puzzleName;
     this.nextHintToDisplay = puzzleDefinition.nextHintToDisplay;
     this.status = puzzleDefinition.status;
@@ -160,13 +188,13 @@ export class Quest {
    * Gets or sets the expected text message sent from a user
    * to the application via SMS.
    */
-  textResponse: string;
+  textResponse?: string;
 
   /**
    * Gets or sets the response once the expected text message is
    * received by a user via SMS.
    */
-  textResponseConfirmation: string;
+  textResponseConfirmation?: string;
 
   /**
    * The list of puzzles assigned to this quest.
@@ -177,11 +205,7 @@ export class Quest {
    * Initializes a new instance of the Quest class.
    * @param questDefinition an object containing the definition of quest properties
    */
-  constructor(
-    questDefinition: Partial<Omit<Quest, "puzzles">> & {
-      puzzles?: Partial<QuestPuzzle>[];
-    }
-  ) {
+  constructor(questDefinition: QuestProperties) {
     this.name = questDefinition.name;
     this.displayName = questDefinition.displayName;
     this.userName = questDefinition.userName;
@@ -286,7 +310,7 @@ export interface QuestDefinition {
   /** The status of the quest. */
   status?: number;
   /** The puzzles in the quest, in order. */
-  puzzles?: Partial<QuestPuzzle>[];
+  puzzles?: (Partial<QuestPuzzleProperties> & { puzzleName: string })[];
 }
 
 /**
@@ -376,10 +400,13 @@ function createFindMatchParameter(queryOptions?: QuestQueryOptions): object {
  * @returns an object containing the stages to add to the aggregation pipeline to include puzzle details
  */
 function createFindPuzzleDetailsParameters(): {
-  lookupParam: object;
-  addFieldsParam: object;
+  lookupParam: PipelineStage.Lookup["$lookup"];
+  addFieldsParam: PipelineStage.AddFields["$addFields"];
 } {
-  const detailsParams = {} as { lookupParam: object; addFieldsParam: object };
+  const detailsParams = {} as {
+    lookupParam: PipelineStage.Lookup["$lookup"];
+    addFieldsParam: object;
+  };
   detailsParams.lookupParam = {
     from: "puzzles",
     localField: "puzzles.puzzleName",
@@ -456,7 +483,7 @@ export async function findQuests(
   queryOptions: QuestQueryOptions = {},
   includeExtendedAttributes: boolean = false
 ): Promise<QuestResult<Quest[]>> {
-  const pipelineStages = [];
+  const pipelineStages: PipelineStage[] = [];
   const matchParam = createFindMatchParameter(queryOptions);
   pipelineStages.push({ $match: matchParam });
   if (includeExtendedAttributes) {
@@ -465,8 +492,11 @@ export async function findQuests(
     pipelineStages.push({ $addFields: puzzleDetailsParams.addFieldsParam });
   }
   const projectParam = createFindResultProjectionParameter(queryOptions);
-  pipelineStages.push({ $project: projectParam });
-  const foundQuests = await QuestModel.aggregate(pipelineStages);
+  pipelineStages.push({
+    $project: projectParam as PipelineStage.Project["$project"],
+  });
+  const foundQuests =
+    await QuestModel.aggregate<AggregatedQuest>(pipelineStages);
   if (foundQuests.length === 0) {
     const returnedError = createFindErrorMessage(queryOptions);
     return {
@@ -484,8 +514,11 @@ export async function findQuests(
         const filtered = foundQuest.puzzles.filter(
           (questPuzzle) => questPuzzle.puzzleName === puzzle.puzzleName
         );
-        const detail = new PuzzleService.Puzzle(filtered[0].details);
-        puzzle.puzzleDetail = detail;
+        // A puzzle deleted after it was added to the quest has no details.
+        const details = filtered[0]?.details;
+        if (details) {
+          puzzle.puzzleDetail = new PuzzleService.Puzzle(details);
+        }
       });
     }
     return quest;
@@ -599,7 +632,7 @@ async function validateQuestPuzzleNames(
  * @param puzzleName the name of the puzzle
  * @returns the quest puzzle data
  */
-function createQuestPuzzleEntry(puzzleName: string): object {
+function createQuestPuzzleEntry(puzzleName: string): QuestPuzzleProperties {
   return {
     puzzleName,
     nextHintToDisplay: 0,
@@ -615,11 +648,11 @@ function createQuestPuzzleEntry(puzzleName: string): object {
  */
 export async function createQuest(
   questDefinition: QuestDefinition
-): Promise<QuestResult> {
-  let questName;
-  if ("name" in questDefinition) {
+): Promise<QuestResult<undefined>> {
+  let questName: string;
+  if (questDefinition.name !== undefined) {
     questName = questDefinition.name;
-  } else if ("displayName" in questDefinition) {
+  } else if (questDefinition.displayName !== undefined) {
     questName = questDefinition.displayName
       .trim()
       .replace(/\s+/g, ".")
@@ -658,7 +691,7 @@ export async function createQuest(
     puzzles: [],
   });
 
-  if ("puzzles" in questDefinition) {
+  if (questDefinition.puzzles) {
     const puzzleNames = questDefinition.puzzles.map(
       (puzzleDefinition) => puzzleDefinition.puzzleName
     );
@@ -671,7 +704,7 @@ export async function createQuest(
   try {
     await quest.save();
   } catch (err) {
-    return { status: "error", statusCode: 500, message: err.message };
+    return { status: "error", statusCode: 500, message: getErrorMessage(err) };
   }
   return { status: "success", statusCode: 200 };
 }
@@ -681,7 +714,9 @@ export async function createQuest(
  * @param name the name of the quest to delete
  * @returns a response object containing a status, status code, and data
  */
-export async function deleteQuest(name: string): Promise<QuestResult> {
+export async function deleteQuest(
+  name: string
+): Promise<QuestResult<undefined>> {
   const result = await QuestModel.findOneAndDelete({ name: name });
   if (result === null) {
     return {
@@ -702,7 +737,7 @@ const UPDATABLE_QUEST_PUZZLE_FIELDS = [
   "startTime",
   "activationTime",
   "endTime",
-];
+] as const;
 
 /**
  * Updates a quest in the data store.
@@ -710,8 +745,8 @@ const UPDATABLE_QUEST_PUZZLE_FIELDS = [
  * @returns a response object containing a status, status code, and data
  */
 export async function updateQuest(
-  questDefinition: QuestDefinition
-): Promise<QuestResult> {
+  questDefinition: QuestDefinition & { name: string }
+): Promise<QuestResult<undefined>> {
   const foundQuest = await QuestModel.findOne({ name: questDefinition.name });
   if (foundQuest === null) {
     return {
@@ -747,7 +782,7 @@ export async function updateQuest(
       foundQuest.puzzles.map((puzzle) => [puzzle.puzzleName, puzzle.toObject()])
     );
     const updatedPuzzles = questDefinition.puzzles.map((puzzleDefinition) => {
-      const puzzle =
+      const puzzle: Record<string, unknown> =
         existingPuzzles.get(puzzleDefinition.puzzleName) ??
         createQuestPuzzleEntry(puzzleDefinition.puzzleName);
       for (const field of UPDATABLE_QUEST_PUZZLE_FIELDS) {
@@ -763,7 +798,7 @@ export async function updateQuest(
   try {
     await foundQuest.save();
   } catch (err) {
-    return { status: "error", statusCode: 500, message: err.message };
+    return { status: "error", statusCode: 500, message: getErrorMessage(err) };
   }
   return { status: "success", statusCode: 200 };
 }
@@ -773,7 +808,9 @@ export async function updateQuest(
  * @param name the name of the quest to start
  * @returns a response object containing a status, status code, and data
  */
-export async function startQuest(name: string): Promise<QuestResult> {
+export async function startQuest(
+  name: string
+): Promise<QuestResult<undefined>> {
   const foundQuest = await QuestModel.findOne({ name: name });
   if (foundQuest === null) {
     return {
@@ -805,7 +842,7 @@ export async function startQuest(name: string): Promise<QuestResult> {
   try {
     await foundQuest.save();
   } catch (err) {
-    return { status: "error", statusCode: 500, message: err.message };
+    return { status: "error", statusCode: 500, message: getErrorMessage(err) };
   }
   return { status: "success", statusCode: 200 };
 }
@@ -815,7 +852,9 @@ export async function startQuest(name: string): Promise<QuestResult> {
  * @param questName the name of the quest
  * @returns a response object containing a status, status code, and data
  */
-export async function resetQuest(questName: string): Promise<QuestResult> {
+export async function resetQuest(
+  questName: string
+): Promise<QuestResult<undefined>> {
   const quest = await QuestModel.findOne({ name: questName });
   if (quest === null) {
     return {
@@ -835,7 +874,7 @@ export async function resetQuest(questName: string): Promise<QuestResult> {
   try {
     await quest.save();
   } catch (err) {
-    return { status: "error", statusCode: 500, message: err.message };
+    return { status: "error", statusCode: 500, message: getErrorMessage(err) };
   }
   return { status: "success", statusCode: 200 };
 }
@@ -922,7 +961,7 @@ export async function activatePuzzle(
   try {
     await quest.save();
   } catch (err) {
-    return { status: "error", statusCode: 500, message: err.message };
+    return { status: "error", statusCode: 500, message: getErrorMessage(err) };
   }
   return {
     status: "success",
@@ -1056,7 +1095,7 @@ export async function finishPuzzle(
   try {
     await quest.save();
   } catch (err) {
-    return { status: "error", statusCode: 500, message: err.message };
+    return { status: "error", statusCode: 500, message: getErrorMessage(err) };
   }
   return {
     status: "success",
@@ -1147,7 +1186,7 @@ export async function getPuzzleHint(
   try {
     await quest.save();
   } catch (err) {
-    return { status: "error", statusCode: 500, message: err.message };
+    return { status: "error", statusCode: 500, message: getErrorMessage(err) };
   }
   return {
     status: "success",
@@ -1200,7 +1239,7 @@ export async function getPuzzleActivationQrCode(
     return {
       status: "error",
       statusCode: 500,
-      message: err.message,
+      message: getErrorMessage(err),
     };
   }
 }
@@ -1229,6 +1268,9 @@ export async function getQuestRunBook(
       const puzzleResult = await PuzzleService.getPuzzleByPuzzleName(
         puzzle.puzzleName
       );
+      if (puzzleResult.status === "error") {
+        throw new Error(puzzleResult.message);
+      }
       const puzzleDetail = puzzleResult.data;
       pdfDoc.addPage({ margins: { top: 72, left: 72, right: 72, bottom: 36 } });
       pdfDoc.fontSize(18);
@@ -1255,7 +1297,7 @@ export async function getQuestRunBook(
     }
     pdfDoc.end();
   } catch (err) {
-    return { status: "error", statusCode: 500, message: err.message };
+    return { status: "error", statusCode: 500, message: getErrorMessage(err) };
   }
   return { status: "success", statusCode: 200 };
 }
@@ -1289,7 +1331,7 @@ function processMarkdownToken(
   if (token.type === "text" || token.type === "escape") {
     const text = token.text.replace(
       /&#x([\dA-Fa-f]+);/gi,
-      function (match, numStr) {
+      function (match: string, numStr: string) {
         const num = parseInt(numStr, 16);
         return String.fromCharCode(num);
       }
@@ -1329,7 +1371,7 @@ export async function setExpectedTextResponse(
     return {
       status: "error",
       statusCode: 500,
-      message: err.message,
+      message: getErrorMessage(err),
     };
   }
   return { status: "success", statusCode: 200 };

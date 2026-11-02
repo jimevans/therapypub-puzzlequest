@@ -161,7 +161,13 @@ export async function listTeams(req: Request, res: Response): Promise<void> {
   }
 
   const response = await TeamService.listTeams();
-  const loggedInUser = UserService.getLoggedInUser(req.user);
+  if (response.status === "error") {
+    res
+      .status(response.statusCode)
+      .send(JSON.stringify({ status: "error", message: response.message }));
+    return;
+  }
+  const loggedInUser = UserService.requireLoggedInUser(req.user);
   if (!loggedInUser.isAdmin()) {
     // Non-administrators only need enough to pick a team to join; exposing
     // join codes would let anyone join any team.
@@ -197,7 +203,7 @@ export async function joinTeam(
     return;
   }
 
-  const loggedInUser = UserService.getLoggedInUser(req.user);
+  const loggedInUser = UserService.requireLoggedInUser(req.user);
   if (
     !loggedInUser.isCurrentUser(req.params.userName) &&
     !loggedInUser.isAdmin()
@@ -248,7 +254,7 @@ export async function leaveTeam(
     return;
   }
 
-  const loggedInUser = UserService.getLoggedInUser(req.user);
+  const loggedInUser = UserService.requireLoggedInUser(req.user);
   if (
     !loggedInUser.isCurrentUser(req.params.userName) &&
     !loggedInUser.isAdmin()

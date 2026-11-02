@@ -250,6 +250,33 @@ describe.each(PAGES)("%s (%s)", (_description, path, account, view, texts) => {
   });
 });
 
+describe("a quest puzzle whose puzzle was deleted", () => {
+  it("renders the error page with a 404", async () => {
+    await PuzzleModel.create({
+      name: "doomed-puzzle",
+      displayName: "Doomed Puzzle",
+      solutionKeyword: "gone",
+      solutionDisplayText: "Gone",
+    });
+    await QuestService.createQuest({
+      name: "doomed-quest",
+      userName: "player",
+      puzzles: [{ puzzleName: "doomed-puzzle" }],
+    });
+    await QuestService.startQuest("doomed-quest");
+    await PuzzleModel.deleteOne({ name: "doomed-puzzle" });
+
+    const response = await getPage(
+      "/quest/doomed-quest/puzzle/doomed-puzzle",
+      "player"
+    );
+
+    expect(response.status).toBe(404);
+    expect(response.text).toContain("<h1>Not found</h1>");
+    expect(response.text).toContain("Puzzle doomed-puzzle no longer exists");
+  });
+});
+
 describe("error page", () => {
   it.each([
     [

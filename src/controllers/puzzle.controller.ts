@@ -193,7 +193,8 @@ export function uploadBinaryData(req: Request, res: Response): void {
   res.send(
     JSON.stringify({
       status: "success",
-      data: `/puzzleData/${req.file.filename}`,
+      // validateRequest has checked that the request includes a file.
+      data: `/puzzleData/${req.file!.filename}`,
     })
   );
 }

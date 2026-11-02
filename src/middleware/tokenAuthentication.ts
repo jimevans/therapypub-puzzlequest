@@ -86,7 +86,9 @@ export async function tokenAuthenticate(
       if (
         validationData === null ||
         AuthenticationService.isTokenRevoked(
-          decoded.iat,
+          // Tokens signed by this application always have an issue time; a
+          // token without one counts as issued before any password change.
+          decoded.iat ?? 0,
           validationData.passwordChangedAt
         )
       ) {
@@ -104,7 +106,7 @@ export async function tokenAuthenticate(
         authorizationLevel: decoded.authorizationLevel,
       };
     } catch (err) {
-      if (err.name !== "TokenExpiredError") {
+      if (!(err instanceof Error) || err.name !== "TokenExpiredError") {
         res
           .status(401)
           .send(`{ 'error': 'Invalid token - ${JSON.stringify(err)}' }`);

@@ -6,6 +6,7 @@ import * as AuthenticationService from "./authentication.service.js";
 import * as EmailService from "./email.service.js";
 import { User } from "./user.service.js";
 import type { ServiceResult } from "../types.js";
+import { getErrorMessage } from "../errors.js";
 
 /** A user as loaded from the database. */
 type UserDocument = InstanceType<typeof UserModel>;
@@ -109,7 +110,7 @@ export async function changePassword(
     return {
       status: "error",
       statusCode: 500,
-      message: `Password not changed - ${err.message}`,
+      message: `Password not changed - ${getErrorMessage(err)}`,
     };
   }
   await sendPasswordChangedNotice(userDocument);
@@ -265,7 +266,7 @@ export async function resetPassword(
     return {
       status: "error",
       statusCode: 500,
-      message: `Password not reset - ${err.message}`,
+      message: `Password not reset - ${getErrorMessage(err)}`,
     };
   }
   await sendPasswordChangedNotice(userDocument);

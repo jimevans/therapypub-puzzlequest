@@ -6,6 +6,7 @@ import * as UserService from "../services/user.service.js";
 import * as RequestValidationService from "../services/requestValidation.service.js";
 import { RenderMode } from "../middleware/useRenderMode.js";
 import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
+import { getErrorMessage } from "../errors.js";
 
 export async function login(req: Request, res: Response): Promise<void> {
   const validation = RequestValidationService.validateRequest(
@@ -91,7 +92,7 @@ export async function retrieveUser(
     );
     return;
   }
-  const loggedInUser = UserService.getLoggedInUser(req.user);
+  const loggedInUser = UserService.requireLoggedInUser(req.user);
   if (
     !loggedInUser.isCurrentUser(req.params.userName) &&
     !loggedInUser.isAdmin()
@@ -138,7 +139,7 @@ export async function updateUser(
     );
     return;
   }
-  const loggedInUser = UserService.getLoggedInUser(req.user);
+  const loggedInUser = UserService.requireLoggedInUser(req.user);
   if (
     !loggedInUser.isCurrentUser(req.params.userName) &&
     !loggedInUser.isAdmin()
@@ -151,7 +152,7 @@ export async function updateUser(
     );
     return;
   }
-  const updatedUser = new UserService.User(req.body);
+  const updatedUser: Partial<UserService.User> = new UserService.User(req.body);
   if (!loggedInUser.isAdmin()) {
     // Only administrators may change authorization levels. Users change
     // their own passwords through changePassword, which requires the
@@ -195,7 +196,7 @@ export async function deleteUser(
     return;
   }
 
-  const loggedInUser = UserService.getLoggedInUser(req.user);
+  const loggedInUser = UserService.requireLoggedInUser(req.user);
   if (
     !loggedInUser.isCurrentUser(req.params.userName) &&
     !loggedInUser.isAdmin()
@@ -263,7 +264,7 @@ export async function changePassword(
     );
     return;
   }
-  const loggedInUser = UserService.getLoggedInUser(req.user);
+  const loggedInUser = UserService.requireLoggedInUser(req.user);
   if (!loggedInUser.isCurrentUser(req.params.userName)) {
     res.status(403).send(
       JSON.stringify({
@@ -328,7 +329,7 @@ export async function forgotPassword(
   } catch (err) {
     // The response has already been sent, so an uncaught rejection here
     // would otherwise crash the process.
-    console.error(`Password reset request failed: ${err.message}`);
+    console.error(`Password reset request failed: ${getErrorMessage(err)}`);
   }
 }
 
