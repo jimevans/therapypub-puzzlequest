@@ -1,44 +1,38 @@
 import { TeamModel } from "../models/user.model.js";
+import type { ServiceResult } from "../types.js";
 
 /**
  * The result of a team service operation; data is a Team unless the
  * function's documentation says otherwise.
- * @template [T=Team]
- * @typedef {import("../types.js").ServiceResult<T>} TeamResult
  */
+export type TeamResult<T = Team> = ServiceResult<T>;
+
+/** The properties a Team can be created from; all are optional. */
+export type TeamDefinition = Partial<
+  Pick<Team, "teamName" | "displayName" | "joinCode" | "memberNames">
+>;
 
 /**
  * A data class representing a team in the PuzzleQuest application.
  */
 export class Team {
-  /**
-   * Gets or sets unique name of the team.
-   * @type {string}
-   */
-  teamName;
+  /** The unique name of the team. */
+  teamName: string;
 
-  /**
-   * Gets or sets the display name of the team.
-   * @type {string}
-   */
-  displayName;
+  /** The display name of the team. */
+  displayName: string;
 
-  /**
-   * Gets or sets the code a user must supply to join the team.
-   * @type {string}
-   */
-  joinCode;
+  /** The code a user must supply to join the team. */
+  joinCode: string;
 
-  /**
-   * Gets or sets the list of user names that are members of the team.
-   * @type {string[]}
-   */
-  memberNames = [];
+  /** The user names of the team's members. */
+  memberNames: string[] = [];
 
   /**
    * Initializes a new instance of the Team class.
+   * @param teamDefinition the team's properties
    */
-  constructor(teamDefinition) {
+  constructor(teamDefinition: TeamDefinition) {
     this.teamName = teamDefinition.teamName;
     this.displayName = teamDefinition.displayName;
     this.joinCode = teamDefinition.joinCode;
@@ -46,11 +40,10 @@ export class Team {
   }
 
   /**
-   * Gets an object that will be serialized to JSON as the serialized representation
-   * of this Team.
-   * @returns {object} the object to be serialized to JSON
+   * Gets the object serialized as the JSON representation of this Team.
+   * @returns the object to be serialized to JSON
    */
-  toJSON() {
+  toJSON(): TeamDefinition {
     return {
       teamName: this.teamName,
       displayName: this.displayName,
@@ -62,10 +55,10 @@ export class Team {
 
 /**
  * Gets a team by its team name.
- * @param {string} name the name of the team to get
- * @returns {Promise<TeamResult>} a response object containing a status, status code, and data
+ * @param name the name of the team to get
+ * @returns a response object containing a status, status code, and data
  */
-export async function getTeamByTeamName(name) {
+export async function getTeamByTeamName(name: string): Promise<TeamResult> {
   const team = await TeamModel.findOne({ teamName: name });
   if (team === null) {
     return {
@@ -79,10 +72,10 @@ export async function getTeamByTeamName(name) {
 
 /**
  * Deletes a team by its team name.
- * @param {string} name the name of the team to delete
- * @returns {Promise<TeamResult>} a response object containing a status, status code, and data
+ * @param name the name of the team to delete
+ * @returns a response object containing a status, status code, and data
  */
-export async function deleteTeam(name) {
+export async function deleteTeam(name: string): Promise<TeamResult> {
   const result = await TeamModel.findOneAndDelete({ teamName: name });
   if (result === null) {
     return {
@@ -96,10 +89,10 @@ export async function deleteTeam(name) {
 
 /**
  * Creates a new team.
- * @param {Team} team the definition of the team to create
- * @returns {Promise<TeamResult>} a response object containing a status, status code, and data
+ * @param team the definition of the team to create
+ * @returns a response object containing a status, status code, and data
  */
-export async function createTeam(team) {
+export async function createTeam(team: TeamDefinition): Promise<TeamResult> {
   const existingTeams = await TeamModel.find({
     teamName: team.teamName,
   }).lean();
@@ -131,11 +124,14 @@ export async function createTeam(team) {
 
 /**
  * Updates a team.
- * @param {string} name the name of the team to update
- * @param {Partial<Team>} teamData the data to update the team definition with
- * @returns {Promise<TeamResult>} a response object containing a status, status code, and data
+ * @param name the name of the team to update
+ * @param teamData the data to update the team definition with
+ * @returns a response object containing a status, status code, and data
  */
-export async function updateTeam(name, teamData) {
+export async function updateTeam(
+  name: string,
+  teamData: TeamDefinition
+): Promise<TeamResult> {
   const foundTeam = await TeamModel.findOne({ teamName: name });
   if (foundTeam === null) {
     return {
@@ -163,9 +159,9 @@ export async function updateTeam(name, teamData) {
 
 /**
  * Gets a list of all of the team definitions.
- * @returns {Promise<TeamResult<Team[]>>} a response object containing a status, status code, and data
+ * @returns a response object containing a status, status code, and data
  */
-export async function listTeams() {
+export async function listTeams(): Promise<TeamResult<Team[]>> {
   const foundTeams = await TeamModel.find({});
   const teams = foundTeams.map((team) => new Team(team));
   return { status: "success", statusCode: 200, data: teams };
@@ -173,10 +169,12 @@ export async function listTeams() {
 
 /**
  * Gets a list of all of the teams for a specified user.
- * @param {string} userName the name of the user for which to retrieve teams
- * @returns {Promise<TeamResult<Team[]>>} a response object containing a status, status code, and data
+ * @param userName the name of the user for which to retrieve teams
+ * @returns a response object containing a status, status code, and data
  */
-export async function getTeamsForUser(userName) {
+export async function getTeamsForUser(
+  userName: string
+): Promise<TeamResult<Team[]>> {
   const teamsContainingUser = await TeamModel.find({
     memberNames: { $elemMatch: { $eq: userName } },
   });
@@ -186,12 +184,16 @@ export async function getTeamsForUser(userName) {
 
 /**
  * Adds a user to a team.
- * @param {string} teamName the name of the team to which to add the user
- * @param {string} userName the user name to add to the team
- * @param {string} joinCode the code the user must supply to successfully join the team
- * @returns {Promise<TeamResult>} a response object containing a status, status code, and data
+ * @param teamName the name of the team to which to add the user
+ * @param userName the user name to add to the team
+ * @param joinCode the code the user must supply to successfully join the team
+ * @returns a response object containing a status, status code, and data
  */
-export async function addUserToTeam(teamName, userName, joinCode) {
+export async function addUserToTeam(
+  teamName: string,
+  userName: string,
+  joinCode: string
+): Promise<TeamResult> {
   const team = await TeamModel.findOne({ teamName: teamName });
   if (!team) {
     return {
@@ -230,11 +232,14 @@ export async function addUserToTeam(teamName, userName, joinCode) {
 
 /**
  * Removes a user from a team.
- * @param {string} teamName the name of the team from which to remove the user
- * @param {string} userName the user name to remove from the team
- * @returns {Promise<TeamResult>} a response object containing a status, status code, and data
+ * @param teamName the name of the team from which to remove the user
+ * @param userName the user name to remove from the team
+ * @returns a response object containing a status, status code, and data
  */
-export async function removeUserFromTeam(teamName, userName) {
+export async function removeUserFromTeam(
+  teamName: string,
+  userName: string
+): Promise<TeamResult> {
   const team = await TeamModel.findOne({ teamName: teamName });
   if (!team) {
     return {

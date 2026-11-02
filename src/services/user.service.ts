@@ -1,45 +1,46 @@
-import { UserModel, AuthorizationLevel } from "../models/user.model.js";
+import { AuthorizationLevel, UserModel } from "../models/user.model.js";
+import type { ServiceResult } from "../types.js";
 import * as AuthorizationService from "./authentication.service.js";
 import * as TeamService from "./team.service.js";
 
 /**
  * The result of a user service operation; data is a User unless the
  * function's documentation says otherwise.
- * @template [T=User]
- * @typedef {import("../types.js").ServiceResult<T>} UserResult
  */
+export type UserResult<T = User> = ServiceResult<T>;
+
+/**
+ * The properties a User can be created from; all are optional. `sms` sets
+ * allowSmsMessages, matching the stored data and the authentication token.
+ */
+export type UserDefinition = Partial<Omit<User, "allowSmsMessages">> & {
+  sms?: boolean;
+};
 
 /**
  * A data class representing a team a user belongs to.
  */
 export class UserTeam {
-  /**
-   * Gets or sets the team name.
-   * @type {string}
-   */
-  teamName;
+  /** The unique name of the team. */
+  teamName: string;
 
-  /**
-   * Gets or sets the display name of the team.
-   * @type {string}
-   */
-  displayName;
+  /** The display name of the team. */
+  displayName: string;
 
   /**
    * Initializes a new instance of the UserTeam class.
-   * @param {{teamName: string, displayName: string}} teamDefinition an object containing the definition of the team properties
+   * @param teamDefinition the team's properties
    */
-  constructor(teamDefinition) {
+  constructor(teamDefinition: { teamName: string; displayName: string }) {
     this.teamName = teamDefinition.teamName;
     this.displayName = teamDefinition.displayName;
   }
 
   /**
-   * Gets an object that will be serialized to JSON as the serialized representation
-   * of this UserTeam.
-   * @returns {object} the object to be serialized to JSON
+   * Gets the object serialized as the JSON representation of this UserTeam.
+   * @returns the object to be serialized to JSON
    */
-  toJSON() {
+  toJSON(): { teamName: string; displayName: string } {
     return {
       teamName: this.teamName,
       displayName: this.displayName,
@@ -51,66 +52,38 @@ export class UserTeam {
  * A data class representing a user of the PuzzleQuest application.
  */
 export class User {
-  /**
-   * Gets or sets unique user name of the user.
-   * @type {string}
-   */
-  userName;
+  /** The unique user name of the user. */
+  userName: string;
 
-  /**
-   * Gets or sets the display name of the user.
-   * @type {string}
-   */
-  displayName;
+  /** The display name of the user. */
+  displayName: string;
 
-  /**
-   * Gets or sets the encrypted password of the user.
-   * @type {string}
-   */
-  password;
+  /** The encrypted password of the user. */
+  password: string;
 
-  /**
-   * Gets or sets the email address of the user.
-   * @type {string}
-   */
-  email;
+  /** The email address of the user. */
+  email: string;
 
-  /**
-   * Gets or sets the phone number of the user.
-   * @type {string}
-   */
-  phone;
+  /** The phone number of the user. */
+  phone: string;
 
-  /**
-   * Gets or sets a value indicating whether the user allows
-   * the system to send them SMS (text) messages.
-   * @type {boolean}
-   */
-  allowSmsMessages;
+  /** True if the user allows the system to send them SMS (text) messages. */
+  allowSmsMessages: boolean;
 
-  /**
-   * Gets or sets the authorization level of the user.
-   * @type {number}
-   */
-  authorizationLevel;
+  /** The authorization level of the user (see AuthorizationLevel). */
+  authorizationLevel: number;
 
-  /**
-   * Gets or sets the description of the authorization level of the user.
-   * @type {string}
-   */
-  authorizationLevelDescription;
+  /** The description of the user's authorization level. */
+  authorizationLevelDescription: string;
 
-  /**
-   * Gets or sets the list of teams to which the user belongs.
-   * @type {UserTeam[]}
-   */
-  teams;
+  /** The teams the user belongs to, once loaded by getTeams. */
+  teams: UserTeam[];
 
   /**
    * Initializes a new instance of the User class.
-   * @param {Partial<Omit<User, "allowSmsMessages">> & {sms?: boolean}} userDefinition an object containing the definition of user properties; sms sets allowSmsMessages
+   * @param userDefinition the user's properties
    */
-  constructor(userDefinition) {
+  constructor(userDefinition: UserDefinition) {
     this.userName = userDefinition.userName;
     this.displayName = userDefinition.displayName;
     this.password = userDefinition.password;
@@ -124,26 +97,27 @@ export class User {
 
   /**
    * Gets a value indicating whether the user is an administrative user.
-   * @returns {boolean} true if the user is an administrative user; otherwise, false
+   * @returns true if the user is an administrative user; otherwise, false
    */
-  isAdmin() {
+  isAdmin(): boolean {
     return this.authorizationLevel === AuthorizationLevel.ADMIN;
   }
 
   /**
-   * Gets a value indicating whether the current user has the specified user name.
-   * @param {string} userName the user name to check
-   * @returns {boolean} true if the user has the specified user name; otherwise, false
+   * Gets a value indicating whether the current user has the specified user
+   * name.
+   * @param userName the user name to check
+   * @returns true if the user has the specified user name; otherwise, false
    */
-  isCurrentUser(userName) {
+  isCurrentUser(userName: string): boolean {
     return userName === this.userName;
   }
 
   /**
    * Gets the list of teams to which the user belongs.
-   * @returns {Promise<UserTeam[]>} a promise resolving to the list of teams to which the user belongs.
+   * @returns the teams to which the user belongs
    */
-  async getTeams() {
+  async getTeams(): Promise<UserTeam[]> {
     if (!this.teams) {
       const teamResponse = await TeamService.getTeamsForUser(this.userName);
       const teamsContainingUser = teamResponse.data;
@@ -153,10 +127,11 @@ export class User {
   }
 
   /**
-   * Gets a list containing the user's user name and all team names of which the user is a member
-   * @returns {Promise<string[]>} a Promise resolving to an array of the user's user name and all team names of which the user is a member
+   * Gets the user's user name and the names of all the teams the user is a
+   * member of.
+   * @returns the user's user name followed by their team names
    */
-  async getAllUserContexts() {
+  async getAllUserContexts(): Promise<string[]> {
     const userContexts = [this.userName];
     const teams = await this.getTeams();
     userContexts.push(...teams.map((team) => team.teamName));
@@ -164,11 +139,13 @@ export class User {
   }
 
   /**
-   * Gets an object that will be serialized to JSON as the serialized representation
-   * of this User.
-   * @returns {object} the object to be serialized to JSON
+   * Gets the object serialized as the JSON representation of this User. The
+   * password is never included.
+   * @returns the object to be serialized to JSON
    */
-  toJSON() {
+  toJSON(): Omit<UserDefinition, "password" | "teams"> & {
+    teams: UserTeam[];
+  } {
     return {
       userName: this.userName,
       displayName: this.displayName,
@@ -184,12 +161,15 @@ export class User {
 
 /**
  * Gets a user by its user name.
- * @param {string} name the name of the user to get
- * @param {boolean} [includeExtendedAttributes] true to return extended attributes of the user like team membership; otherwise, false
- * @returns {Promise<UserResult>} a Promise resolving to a result object
- * containing a status, status code, and a User object.
+ * @param name the name of the user to get
+ * @param includeExtendedAttributes true to return extended attributes of the
+ *  user like team membership; otherwise, false
+ * @returns a result containing a status, status code, and a User object
  */
-export async function getUserByUserName(name, includeExtendedAttributes) {
+export async function getUserByUserName(
+  name: string,
+  includeExtendedAttributes?: boolean
+): Promise<UserResult> {
   const foundUser = await UserModel.findOne({ userName: name });
   if (foundUser === null) {
     return {
@@ -210,11 +190,12 @@ export async function getUserByUserName(name, includeExtendedAttributes) {
 
 /**
  * Gets all users having the given phone number.
- * @param {string} phoneNumber the phone number of the user to get
- * @returns {Promise<UserResult<User[]>>} a Promise resolving to a result object
- * containing a status, status code, and an array of User objects, or an error result object.
+ * @param phoneNumber the phone number of the user to get
+ * @returns a result containing the matching users, or an error result
  */
-export async function getUsersByPhoneNumber(phoneNumber) {
+export async function getUsersByPhoneNumber(
+  phoneNumber: string
+): Promise<UserResult<User[]>> {
   const foundUsers = await UserModel.find({ phone: phoneNumber });
   if (!foundUsers.length) {
     return {
@@ -229,11 +210,10 @@ export async function getUsersByPhoneNumber(phoneNumber) {
 
 /**
  * Deletes a user by its user name.
- * @param {string} name the name of the user to delete
- * @returns {Promise<UserResult>} a Promise resolving to a result object
- * containing a status, status code, and a User object, or an error result object.
+ * @param name the name of the user to delete
+ * @returns a success result, or an error result
  */
-export async function deleteUser(name) {
+export async function deleteUser(name: string): Promise<UserResult> {
   const result = await UserModel.findOneAndDelete({ userName: name });
   if (result === null) {
     return {
@@ -247,11 +227,10 @@ export async function deleteUser(name) {
 
 /**
  * Creates a new user.
- * @param {User} user the definition of the user to create
- * @returns {Promise<UserResult>} a Promise resolving to a result object
- * containing a status, status code, and a User object, or an error result object.
+ * @param user the definition of the user to create
+ * @returns a success result, or an error result
  */
-export async function createUser(user) {
+export async function createUser(user: User): Promise<UserResult> {
   const existingUsers = await UserModel.find({
     userName: user.userName,
   }).lean();
@@ -303,12 +282,14 @@ export async function createUser(user) {
 
 /**
  * Updates a user.
- * @param {string} name the name of the user to update
- * @param {User} userData the data to update the user definition with
- * @returns {Promise<UserResult>} a Promise resolving to a result object
- * containing a status, status code, and a User object, or an error result object.
+ * @param name the name of the user to update
+ * @param userData the data to update the user definition with
+ * @returns a success result, or an error result
  */
-export async function updateUser(name, userData) {
+export async function updateUser(
+  name: string,
+  userData: User
+): Promise<UserResult> {
   const foundUser = await UserModel.findOne({ userName: name });
   if (foundUser === null) {
     return {
@@ -358,31 +339,43 @@ export async function updateUser(name, userData) {
 
 /**
  * Gets a list of all of the user definitions.
- * @returns {Promise<UserResult<User[]>>} a Promise resolving to a result object
- * containing a status, status code, and an array of User objects.
+ * @returns a result containing all users
  */
-export async function listUsers() {
+export async function listUsers(): Promise<UserResult<User[]>> {
   const foundUsers = await UserModel.find({});
   const users = foundUsers.map((foundUser) => new User(foundUser));
   return { status: "success", statusCode: 200, data: users };
 }
 
+/** The data needed to decide whether an authentication token is still valid. */
+export interface TokenValidationData {
+  /** When the user's password was last changed, if ever. */
+  passwordChangedAt?: Date;
+}
+
 /**
  * Gets the data needed to decide whether a user's authentication token is
  * still valid.
- * @param {string} userName the user name from the token
- * @returns {Promise<{ passwordChangedAt: Date | undefined } | null>} a Promise
- *  resolving to the token validation data, or null if the user does not exist
+ * @param userName the user name from the token
+ * @returns the token validation data, or null if the user does not exist
  */
-export async function getTokenValidationData(userName) {
-  return /** @type {{ passwordChangedAt: Date | undefined } | null} */ (
-    await UserModel.findOne({ userName: userName })
-      .select("passwordChangedAt")
-      .lean()
-  );
+export async function getTokenValidationData(
+  userName: string
+): Promise<TokenValidationData | null> {
+  return await UserModel.findOne({ userName: userName })
+    .select("passwordChangedAt")
+    .lean();
 }
 
-export function getLoggedInUser(requestUserData) {
+/**
+ * Gets the signed-in user from the user data that tokenAuthenticate puts on
+ * the request.
+ * @param requestUserData the request's user data, or null if anonymous
+ * @returns the user, or null if the request is anonymous
+ */
+export function getLoggedInUser(
+  requestUserData: UserDefinition | null | undefined
+): User | null {
   if (requestUserData) {
     return new User(requestUserData);
   }

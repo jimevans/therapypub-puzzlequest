@@ -5,25 +5,32 @@ import { UserModel } from "../models/user.model.js";
 import * as AuthenticationService from "./authentication.service.js";
 import * as EmailService from "./email.service.js";
 import { User } from "./user.service.js";
+import type { ServiceResult } from "../types.js";
+
+/** A user as loaded from the database. */
+type UserDocument = InstanceType<typeof UserModel>;
 
 export const RESET_TOKEN_LIFETIME_MINUTES = 60;
 
 /**
  * Hashes a password reset token for storage and lookup.
- * @param {string} token the reset token
- * @returns {string} the hex-encoded SHA-256 hash of the token
+ * @param token the reset token
+ * @returns the hex-encoded SHA-256 hash of the token
  */
-export function hashResetToken(token) {
+export function hashResetToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
 /**
  * Sets a new password on a user document and records when it was changed,
  * which revokes all previously issued tokens.
- * @param {InstanceType<typeof UserModel>} userDocument the user document from the data store
- * @param {string} newPassword the new plain text password
+ * @param userDocument the user document from the data store
+ * @param newPassword the new plain text password
  */
-async function applyNewPassword(userDocument, newPassword) {
+async function applyNewPassword(
+  userDocument: UserDocument,
+  newPassword: string
+): Promise<void> {
   userDocument.password =
     await AuthenticationService.encryptPassword(newPassword);
   userDocument.passwordChangedAt = new Date(Date.now());
@@ -34,9 +41,11 @@ async function applyNewPassword(userDocument, newPassword) {
 /**
  * Notifies a user that their password was changed. Failures are logged but
  * do not fail the password change.
- * @param {InstanceType<typeof UserModel>} userDocument the user document from the data store
+ * @param userDocument the user document from the data store
  */
-async function sendPasswordChangedNotice(userDocument) {
+async function sendPasswordChangedNotice(
+  userDocument: UserDocument
+): Promise<void> {
   const result = await EmailService.sendEmail({
     to: userDocument.email,
     subject: "Your PuzzleQuest password was changed",
@@ -51,13 +60,17 @@ async function sendPasswordChangedNotice(userDocument) {
 
 /**
  * Changes the password of a user after verifying their current password.
- * @param {string} userName the user name of the user changing their password
- * @param {string} currentPassword the user's current plain text password
- * @param {string} newPassword the new plain text password
- * @returns {Promise<import("../types.js").ServiceResult<string>>} a response object containing a status, status code, and,
- *  on success, a new authentication token for the user
+ * @param userName the user name of the user changing their password
+ * @param currentPassword the user's current plain text password
+ * @param newPassword the new plain text password
+ * @returns a result containing a status, status code, and, on success, a new
+ *  authentication token for the user
  */
-export async function changePassword(userName, currentPassword, newPassword) {
+export async function changePassword(
+  userName: string,
+  currentPassword: string,
+  newPassword: string
+): Promise<ServiceResult<string>> {
   const userDocument = await UserModel.findOne({ userName: userName });
   if (userDocument === null) {
     return {
@@ -110,10 +123,12 @@ export async function changePassword(userName, currentPassword, newPassword) {
  * Creates a password reset token for the user matching the identifier and
  * emails them a link to reset their password. Succeeds without doing anything
  * if no user matches, so callers must not reveal whether an account exists.
- * @param {string} identifier the user name or email address of the user
- * @returns {Promise<import("../types.js").ServiceResult<undefined>>} a response object containing a status, status code, and message
+ * @param identifier the user name or email address of the user
+ * @returns a result containing a status, status code, and message
  */
-export async function requestPasswordReset(identifier) {
+export async function requestPasswordReset(
+  identifier: string
+): Promise<ServiceResult<undefined>> {
   const configurationError = checkResetLinkConfiguration();
   if (configurationError) {
     return configurationError;
@@ -132,10 +147,12 @@ export async function requestPasswordReset(identifier) {
  * Emails a password reset link to the specified user on behalf of an
  * administrator. Unlike requestPasswordReset, reports whether the user exists.
  * The user's current password keeps working until the link is used.
- * @param {string} userName the user name of the user to send the link to
- * @returns {Promise<import("../types.js").ServiceResult<undefined>>} a response object containing a status, status code, and message
+ * @param userName the user name of the user to send the link to
+ * @returns a result containing a status, status code, and message
  */
-export async function requestPasswordResetForUser(userName) {
+export async function requestPasswordResetForUser(
+  userName: string
+): Promise<ServiceResult<undefined>> {
   const configurationError = checkResetLinkConfiguration();
   if (configurationError) {
     return configurationError;
@@ -153,11 +170,15 @@ export async function requestPasswordResetForUser(userName) {
 
 /**
  * Creates a password reset token for a user and emails them a link to use it.
- * @param {InstanceType<typeof UserModel>} userDocument the user document from the data store
- * @param {boolean} requestedByAdmin true if an administrator requested the reset; otherwise, false
- * @returns {Promise<import("../types.js").ServiceResult<undefined>>} a response object containing a status, status code, and message
+ * @param userDocument the user document from the data store
+ * @param requestedByAdmin true if an administrator requested the reset;
+ *  otherwise, false
+ * @returns a result containing a status, status code, and message
  */
-async function sendPasswordResetLink(userDocument, requestedByAdmin) {
+async function sendPasswordResetLink(
+  userDocument: UserDocument,
+  requestedByAdmin: boolean
+): Promise<ServiceResult<undefined>> {
   // Only the most recent reset link is valid.
   await PasswordResetModel.deleteMany({ userName: userDocument.userName });
   const token = randomBytes(32).toString("base64url");
@@ -184,9 +205,9 @@ async function sendPasswordResetLink(userDocument, requestedByAdmin) {
 
 /**
  * Checks that the configuration needed to build reset links is present.
- * @returns {import("../types.js").ServiceResult<undefined> | null} an error response object, or null if configured
+ * @returns an error result, or null if configured
  */
-function checkResetLinkConfiguration() {
+function checkResetLinkConfiguration(): ServiceResult<undefined> | null {
   if (!config.PQ_BASE_URL) {
     return {
       status: "error",
@@ -200,18 +221,20 @@ function checkResetLinkConfiguration() {
 /**
  * Resets a user's password using a password reset token. The token can only
  * be used once.
- * @param {string} token the password reset token from the reset link
- * @param {string} newPassword the new plain text password
- * @returns {Promise<import("../types.js").ServiceResult<undefined>>} a response object containing a status, status code, and message
+ * @param token the password reset token from the reset link
+ * @param newPassword the new plain text password
+ * @returns a result containing a status, status code, and message
  */
-export async function resetPassword(token, newPassword) {
+export async function resetPassword(
+  token: unknown,
+  newPassword: string
+): Promise<ServiceResult<undefined>> {
   const policyResult =
     AuthenticationService.validatePasswordPolicy(newPassword);
   if (policyResult.status === "error") {
     return policyResult;
   }
-  /** @type {import("../types.js").ServiceResult<undefined>} */
-  const invalidTokenResult = {
+  const invalidTokenResult: ServiceResult<undefined> = {
     status: "error",
     statusCode: 400,
     message: "Password reset link is invalid or has expired",
