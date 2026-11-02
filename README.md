@@ -76,7 +76,7 @@ the example values work for local development:
 `src/.env` is git-ignored. Every variable is documented in
 [src/.env.example](src/.env.example). Environment variables take precedence
 over values in `src/.env`. The app checks its settings at startup
-([src/config.js](src/config.js)). If any are missing or invalid, it exits
+([src/config.ts](src/config.ts)). If any are missing or invalid, it exits
 with a list of the problems.
 
 ### 5. Run
@@ -134,18 +134,34 @@ npm run typecheck  # type-check without emitting anything
 npm run build      # compile src/ to dist/
 ```
 
-The server code is being moved to TypeScript. Production runs the compiled
-JavaScript in `dist/`, built with `tsc`
+The server code is being moved to TypeScript, one module at a time. Production
+runs the compiled JavaScript in `dist/`, built with `tsc`
 ([tsconfig.build.json](tsconfig.build.json)); `dist/` is not committed. Files
 that are still JavaScript are type-checked from their JSDoc annotations
 ([tsconfig.json](tsconfig.json)) and copied into `dist/` by the same build.
-Shared types live in [src/types.js](src/types.js), and the properties that
+Imports name the compiled file, so a module imports `./config.js` even though
+the source is `config.ts`.
+
+Shared types live in [src/types.ts](src/types.ts), and the properties that
 middleware adds to Express requests are declared in
 [src/express.d.ts](src/express.d.ts).
 
+Two versions of TypeScript are installed:
+
+- **TypeScript 7** (the package `typescript-native`) type-checks and builds.
+  The `typecheck` and `build` scripts call it directly.
+- **TypeScript 6** (the package `typescript`) is there for typescript-eslint,
+  which lints the `.ts` files but doesn't support TypeScript 7 yet. Because
+  it's installed under the usual name, `npx tsc` runs TypeScript 6; use the npm
+  scripts instead.
+
+During development, `npm run dev` and the VS Code launch configuration run the
+source with [tsx](https://tsx.is), which handles the mix of `.ts` and `.js`
+files without a build.
+
 The views, the static files (including uploaded puzzle media in
 `src/public/puzzleData`), and `src/.env` stay in `src/` and are not copied
-into `dist/`. The application finds them through [src/paths.js](src/paths.js),
+into `dist/`. The application finds them through [src/paths.ts](src/paths.ts),
 so it works the same whether it runs from `src/` or `dist/`.
 
 The browser scripts in `src/public/script` and the tests aren't type-checked
