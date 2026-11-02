@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import path from "path";
-import { marked } from "marked";
+import { marked, type Token } from "marked";
 import QRCode from "qrcode";
 import { PuzzleModel } from "../models/puzzle.model.js";
 import {
@@ -9,14 +9,15 @@ import {
   QuestPuzzleStatus,
 } from "../models/quest.model.js";
 import { publicDirectory } from "../paths.js";
+import type { ServiceResult } from "../types.js";
 import * as PuzzleService from "./puzzle.service.js";
+import type { User } from "./user.service.js";
 
 /**
  * The result of a quest service operation; data is a Quest unless the
  * function's documentation says otherwise.
- * @template [T=Quest]
- * @typedef {import("../types.js").ServiceResult<T>} QuestResult
  */
+export type QuestResult<T = Quest> = ServiceResult<T>;
 
 /**
  * A data class describing a puzzle in a quest
@@ -24,63 +25,54 @@ import * as PuzzleService from "./puzzle.service.js";
 export class QuestPuzzle {
   /**
    * Gets or sets the unique puzzle name.
-   * @type {string}
    */
-  puzzleName;
+  puzzleName: string;
 
   /**
    * Gets or sets the index of the next hint to display for this puzzle in this quest.
-   * @type {number}
    */
-  nextHintToDisplay;
+  nextHintToDisplay: number;
 
   /**
    * Gets or sets the status of the puzzle in the quest.
-   * @type {number}
    */
-  status;
+  status: number;
 
   /**
    * Gets or sets the text description of the status of this puzzle in the quest.
-   * @type {string}
    */
-  statusDescription;
+  statusDescription: string;
 
   /**
    * Gets or sets the code to activate the puzzle in the quest.
-   * @type {string}
    */
-  activationCode;
+  activationCode: string;
 
   /**
    * Gets or sets the time when the puzzle is available for activation.
-   * @type {Date}
    */
-  startTime;
+  startTime: Date;
 
   /**
    * Gets or sets the time when the puzzle is solved.
-   * @type {Date}
    */
-  endTime;
+  endTime: Date;
 
   /**
    * Gets or sets the time when the puzzle is activated.
-   * @type {Date}
    */
-  activationTime;
+  activationTime: Date;
 
   /**
    * Gets or sets the details of the puzzle.
-   * @type {PuzzleService.Puzzle}
    */
-  puzzleDetail;
+  puzzleDetail: PuzzleService.Puzzle;
 
   /**
    * Initializes a new instance of the QuestPuzzle class.
-   * @param {Partial<QuestPuzzle>} puzzleDefinition an object containing the definition of quest puzzle properties
+   * @param puzzleDefinition an object containing the definition of quest puzzle properties
    */
-  constructor(puzzleDefinition) {
+  constructor(puzzleDefinition: Partial<QuestPuzzle>) {
     this.puzzleName = puzzleDefinition.puzzleName;
     this.nextHintToDisplay = puzzleDefinition.nextHintToDisplay;
     this.status = puzzleDefinition.status;
@@ -107,10 +99,10 @@ export class QuestPuzzle {
   /**
    * Gets an object that will be serialized to JSON as the serialized representation
    * of this QuestPuzzle.
-   * @returns {object} the object to be serialized to JSON
+   * @returns the object to be serialized to JSON
    */
-  toJSON() {
-    const serializableObject = {
+  toJSON(): object {
+    const serializableObject: Record<string, unknown> = {
       puzzleName: this.puzzleName,
       nextHintToDisplay: this.nextHintToDisplay,
       status: this.status,
@@ -140,60 +132,56 @@ export class QuestPuzzle {
 export class Quest {
   /**
    * Gets or sets the unique name of the quest.
-   * @type {string}
    */
-  name;
+  name: string;
 
   /**
    * Gets or sets the display name of this quest.
-   * @type {string}
    */
-  displayName;
+  displayName: string;
 
   /**
    * Gets or sets the user or team assigned to this quest.
-   * @type {string}
    *
    */
-  userName;
+  userName: string;
 
   /**
    * The status of this quest.
-   * @type {number}
    */
-  status;
+  status: number;
 
   /**
    * Gets or sets the text description of the status of this quest.
-   * @type {string}
    */
-  statusDescription;
+  statusDescription: string;
 
   /**
    * Gets or sets the expected text message sent from a user
    * to the application via SMS.
-   * @type {string}
    */
-  textResponse;
+  textResponse: string;
 
   /**
    * Gets or sets the response once the expected text message is
    * received by a user via SMS.
-   * @type {string}
    */
-  textResponseConfirmation;
+  textResponseConfirmation: string;
 
   /**
    * The list of puzzles assigned to this quest.
-   * @type {QuestPuzzle[]}
    */
-  puzzles = [];
+  puzzles: QuestPuzzle[] = [];
 
   /**
    * Initializes a new instance of the Quest class.
-   * @param {Partial<Omit<Quest, "puzzles">> & {puzzles?: Partial<QuestPuzzle>[]}} questDefinition an object containing the definition of quest properties
+   * @param questDefinition an object containing the definition of quest properties
    */
-  constructor(questDefinition) {
+  constructor(
+    questDefinition: Partial<Omit<Quest, "puzzles">> & {
+      puzzles?: Partial<QuestPuzzle>[];
+    }
+  ) {
     this.name = questDefinition.name;
     this.displayName = questDefinition.displayName;
     this.userName = questDefinition.userName;
@@ -223,10 +211,10 @@ export class Quest {
 
   /**
    * Gets the puzzle with the specified name, or null if not present.
-   * @param {string} puzzleName the name of the puzzle to retrieve.
-   * @return {QuestPuzzle | null} the puzzle in the quest, if it exists
+   * @param puzzleName the name of the puzzle to retrieve.
+   * @returns the puzzle in the quest, if it exists
    */
-  getPuzzle(puzzleName) {
+  getPuzzle(puzzleName: string): QuestPuzzle | null {
     const filteredPuzzles = this.puzzles.filter(
       (puzzle) => puzzle.puzzleName === puzzleName
     );
@@ -241,9 +229,13 @@ export class Quest {
   /**
    * Gets an object that will be serialized to JSON as the serialized representation
    * of this Quest.
-   * @returns {Record<string, any>} the object to be serialized to JSON
+   * @returns the object to be serialized to JSON
    */
-  toJSON() {
+  // The quest controller, still JavaScript, replaces the puzzles in this
+  // object with copies that leave out activation codes; give this a precise
+  // type when that controller is converted.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  toJSON(): Record<string, any> {
     return {
       name: this.name,
       displayName: this.displayName,
@@ -259,49 +251,71 @@ export class Quest {
 
 /**
  * Options for querying quests. Every option is optional.
- * @typedef {object} QuestQueryOptions
- * @property {string} [questName] the name of the quest to retrieve
- * @property {string[]} [userNames] the names of the users and teams for which to retrieve quests
- * @property {number} [questStatus] the status that the quest must be greater than or equal to be included in the result
- * @property {number} [puzzleStatus] the status that quest puzzles must be greater than or equal to be included in the returned quests
  */
+export interface QuestQueryOptions {
+  /** The name of the quest to retrieve. */
+  questName?: string;
+  /** The names of the users and teams for which to retrieve quests. */
+  userNames?: string[];
+  /** The status that the quest must be greater than or equal to be included in the result. */
+  questStatus?: number;
+  /** The status that quest puzzles must be greater than or equal to be included in the returned quests. */
+  puzzleStatus?: number;
+}
 
 /**
  * The definition of a quest to create or update. Properties left out of an
  * update keep their stored values.
- * @typedef {object} QuestDefinition
- * @property {string} [name] the unique name of the quest
- * @property {string} [displayName] the name of the quest shown to players
- * @property {string} [userName] the user or team the quest is assigned to
- * @property {number} [status] the status of the quest
- * @property {Partial<QuestPuzzle>[]} [puzzles] the puzzles in the quest, in order
  */
+export interface QuestDefinition {
+  /** The unique name of the quest. */
+  name?: string;
+  /** The name of the quest shown to players. */
+  displayName?: string;
+  /** The user or team the quest is assigned to. */
+  userName?: string;
+  /** The status of the quest. */
+  status?: number;
+  /** The puzzles in the quest, in order. */
+  puzzles?: Partial<QuestPuzzle>[];
+}
 
 /**
  * The result of solving a puzzle.
- * @typedef {object} PuzzleSolution
- * @property {Date} endTime the time the puzzle was solved
- * @property {string} solutionText the solution text to show the player
- * @property {string} [nextPuzzleName] the name of the next puzzle, if there is one
- * @property {string} [nextPuzzleDisplayName] the display name of the next puzzle, if there is one
- * @property {boolean} [questComplete] true if this was the last puzzle in the quest
  */
+export interface PuzzleSolution {
+  /** The time the puzzle was solved. */
+  endTime: Date;
+  /** The solution text to show the player. */
+  solutionText: string;
+  /** The name of the next puzzle, if there is one. */
+  nextPuzzleName?: string;
+  /** The display name of the next puzzle, if there is one. */
+  nextPuzzleDisplayName?: string;
+  /** True if this was the last puzzle in the quest. */
+  questComplete?: boolean;
+}
 
 /**
  * A hint revealed to a player.
- * @typedef {object} PuzzleHintResult
- * @property {string} hintText the text of the hint
- * @property {boolean} moreHints true if the puzzle has more hints
- * @property {number} timePenalty the time penalty for the hint, in seconds
- * @property {boolean} isNextHintSolution true if the next hint gives away the solution
  */
+export interface PuzzleHintResult {
+  /** The text of the hint. */
+  hintText: string;
+  /** True if the puzzle has more hints. */
+  moreHints: boolean;
+  /** The time penalty for the hint, in seconds. */
+  timePenalty: number;
+  /** True if the next hint gives away the solution. */
+  isNextHintSolution: boolean;
+}
 
 /**
  * Generates the error message returned when no quests meet the specified criteria.
- * @param {QuestQueryOptions} [queryOptions] the query options for the quest
- * @returns {string} the error message to be displayed if no quests are found for the criteria
+ * @param queryOptions the query options for the quest
+ * @returns the error message to be displayed if no quests are found for the criteria
  */
-function createFindErrorMessage(queryOptions) {
+function createFindErrorMessage(queryOptions?: QuestQueryOptions): string {
   const errorMessage = [];
   if (queryOptions?.questName) {
     errorMessage.push(`quest name equal to ${queryOptions.questName}`);
@@ -323,11 +337,11 @@ function createFindErrorMessage(queryOptions) {
 
 /**
  * Generates the match parameter to use in the query for quests.
- * @param {QuestQueryOptions} [queryOptions] the query options for the quest
- * @returns {object} an object representing the match criteria to use in the query aggregation pipeline
+ * @param queryOptions the query options for the quest
+ * @returns an object representing the match criteria to use in the query aggregation pipeline
  */
-function createFindMatchParameter(queryOptions) {
-  const matchParam = {};
+function createFindMatchParameter(queryOptions?: QuestQueryOptions): object {
+  const matchParam: Record<string, unknown> = {};
   if (queryOptions?.questName) {
     // Limit results to only quests having the specified quest name.
     // NOTE: this should only ever return a single quest.
@@ -350,10 +364,13 @@ function createFindMatchParameter(queryOptions) {
 
 /**
  * Generates the parameters to use to return all puzzle details in the result when querying for quests.
- * @returns {{lookupParam: object, addFieldsParam: object}} an object containing the stages to add to the aggregation pipeline to include puzzle details
+ * @returns an object containing the stages to add to the aggregation pipeline to include puzzle details
  */
-function createFindPuzzleDetailsParameters() {
-  const detailsParams = {};
+function createFindPuzzleDetailsParameters(): {
+  lookupParam: object;
+  addFieldsParam: object;
+} {
+  const detailsParams = {} as { lookupParam: object; addFieldsParam: object };
   detailsParams.lookupParam = {
     from: "puzzles",
     localField: "puzzles.puzzleName",
@@ -392,11 +409,13 @@ function createFindPuzzleDetailsParameters() {
 
 /**
  * Generates the parameter to define fields projected into the result of querying for quests.
- * @param {QuestQueryOptions} [queryOptions] the query options for the quest
- * @returns {object} an object representing the fields to be projected into the result of in the aggregation pipeline
+ * @param queryOptions the query options for the quest
+ * @returns an object representing the fields to be projected into the result of in the aggregation pipeline
  */
-function createFindResultProjectionParameter(queryOptions) {
-  const projectParams = {
+function createFindResultProjectionParameter(
+  queryOptions?: QuestQueryOptions
+): object {
+  const projectParams: Record<string, unknown> = {
     name: true,
     displayName: true,
     userName: true,
@@ -419,15 +438,15 @@ function createFindResultProjectionParameter(queryOptions) {
 
 /**
  * Queries for a quest given the passed in parameters.
- * @param {QuestQueryOptions} [queryOptions] the query options for the quest
- * @param {boolean} includeExtendedAttributes true to return puzzle details with each puzzle in the quest
- * @returns {Promise<QuestResult<Quest[]>>} a Promise resolving to a result containing the array of quests matching
+ * @param queryOptions the query options for the quest
+ * @param includeExtendedAttributes true to return puzzle details with each puzzle in the quest
+ * @returns a Promise resolving to a result containing the array of quests matching
  *  the parameters or an error result if no quests are found.
  */
 export async function findQuests(
-  queryOptions = {},
-  includeExtendedAttributes = false
-) {
+  queryOptions: QuestQueryOptions = {},
+  includeExtendedAttributes: boolean = false
+): Promise<QuestResult<Quest[]>> {
   const pipelineStages = [];
   const matchParam = createFindMatchParameter(queryOptions);
   pipelineStages.push({ $match: matchParam });
@@ -467,13 +486,16 @@ export async function findQuests(
 
 /**
  * Gets a quest with the specified name.
- * @param {string} questName the name of the quest to retrieve
- * @param {import("./user.service.js").User | null} [user] the user and teams for which to retrieve quests; omit for no filtering
- * @returns {Promise<QuestResult>} a Promise resolving to a result containing the array of quests matching
+ * @param questName the name of the quest to retrieve
+ * @param user the user and teams for which to retrieve quests; omit for no filtering
+ * @returns a Promise resolving to a result containing the array of quests matching
  *  the parameters or an error result if no quests are found.
  */
-export async function getQuestByQuestName(questName, user) {
-  const queryOptions = { questName: questName };
+export async function getQuestByQuestName(
+  questName: string,
+  user?: User | null
+): Promise<QuestResult> {
+  const queryOptions: QuestQueryOptions = { questName: questName };
   if (user && !user.isAdmin()) {
     // If the user is a regular user on a quest, only return
     // the quest if it is in progress or completed, and only
@@ -492,13 +514,17 @@ export async function getQuestByQuestName(questName, user) {
 
 /**
  * Gets a quest with the specified name.
- * @param {string} questName the name of the quest to retrieve
- * @param {string} puzzleName the name of the puzzle in the quest to retrieve
- * @param {import("./user.service.js").User | null} [user] the user and teams for which to retrieve quests; omit for no filtering
- * @returns {Promise<QuestResult<QuestPuzzle>>} a Promise resolving to a result containing the array of quests matching
+ * @param questName the name of the quest to retrieve
+ * @param puzzleName the name of the puzzle in the quest to retrieve
+ * @param user the user and teams for which to retrieve quests; omit for no filtering
+ * @returns a Promise resolving to a result containing the array of quests matching
  *  the parameters or an error result if no quests are found.
  */
-export async function getQuestPuzzle(questName, puzzleName, user) {
+export async function getQuestPuzzle(
+  questName: string,
+  puzzleName: string,
+  user?: User | null
+): Promise<QuestResult<QuestPuzzle>> {
   const queryResult = await getQuestByQuestName(questName, user);
   if (queryResult.status === "error") {
     return queryResult;
@@ -524,10 +550,12 @@ export async function getQuestPuzzle(questName, puzzleName, user) {
 
 /**
  * Checks a quest's list of puzzles: each puzzle must exist and appear only once.
- * @param {string[]} puzzleNames the names of the puzzles in the quest
- * @returns {Promise<QuestResult<undefined> | null>} an error result, or null if the list is valid
+ * @param puzzleNames the names of the puzzles in the quest
+ * @returns an error result, or null if the list is valid
  */
-async function validateQuestPuzzleNames(puzzleNames) {
+async function validateQuestPuzzleNames(
+  puzzleNames: string[]
+): Promise<QuestResult<undefined> | null> {
   const duplicates = puzzleNames.filter(
     (puzzleName, index) => puzzleNames.indexOf(puzzleName) !== index
   );
@@ -559,10 +587,10 @@ async function validateQuestPuzzleNames(puzzleNames) {
 
 /**
  * Creates a new quest puzzle entry that has not yet been made available.
- * @param {string} puzzleName the name of the puzzle
- * @returns {object} the quest puzzle data
+ * @param puzzleName the name of the puzzle
+ * @returns the quest puzzle data
  */
-function createQuestPuzzleEntry(puzzleName) {
+function createQuestPuzzleEntry(puzzleName: string): object {
   return {
     puzzleName,
     nextHintToDisplay: 0,
@@ -573,10 +601,12 @@ function createQuestPuzzleEntry(puzzleName) {
 
 /**
  * Creates a quest in the data store.
- * @param {QuestDefinition} questDefinition the definition of the quest to create.
- * @returns {Promise<QuestResult>} a response object containing a status, status code, and data
+ * @param questDefinition the definition of the quest to create.
+ * @returns a response object containing a status, status code, and data
  */
-export async function createQuest(questDefinition) {
+export async function createQuest(
+  questDefinition: QuestDefinition
+): Promise<QuestResult> {
   let questName;
   if ("name" in questDefinition) {
     questName = questDefinition.name;
@@ -639,10 +669,10 @@ export async function createQuest(questDefinition) {
 
 /**
  * Deletes a quest from the data store.
- * @param {string} name the name of the quest to delete
- * @returns {Promise<QuestResult>} a response object containing a status, status code, and data
+ * @param name the name of the quest to delete
+ * @returns a response object containing a status, status code, and data
  */
-export async function deleteQuest(name) {
+export async function deleteQuest(name: string): Promise<QuestResult> {
   const result = await QuestModel.findOneAndDelete({ name: name });
   if (result === null) {
     return {
@@ -667,10 +697,12 @@ const UPDATABLE_QUEST_PUZZLE_FIELDS = [
 
 /**
  * Updates a quest in the data store.
- * @param {QuestDefinition} questDefinition quest definition containing the updated data
- * @returns {Promise<QuestResult>} a response object containing a status, status code, and data
+ * @param questDefinition quest definition containing the updated data
+ * @returns a response object containing a status, status code, and data
  */
-export async function updateQuest(questDefinition) {
+export async function updateQuest(
+  questDefinition: QuestDefinition
+): Promise<QuestResult> {
   const foundQuest = await QuestModel.findOne({ name: questDefinition.name });
   if (foundQuest === null) {
     return {
@@ -680,7 +712,7 @@ export async function updateQuest(questDefinition) {
     };
   }
   const status = questDefinition.status ?? foundQuest.status;
-  const validStatuses = /** @type {number[]} */ (Object.values(QuestStatus));
+  const validStatuses: number[] = Object.values(QuestStatus);
   if (!validStatuses.includes(status)) {
     return {
       status: "error",
@@ -729,10 +761,10 @@ export async function updateQuest(questDefinition) {
 
 /**
  * Starts a quest, making the first puzzle available for activation.
- * @param {string} name the name of the quest to start
- * @returns {Promise<QuestResult>} a response object containing a status, status code, and data
+ * @param name the name of the quest to start
+ * @returns a response object containing a status, status code, and data
  */
-export async function startQuest(name) {
+export async function startQuest(name: string): Promise<QuestResult> {
   const foundQuest = await QuestModel.findOne({ name: name });
   if (foundQuest === null) {
     return {
@@ -771,10 +803,10 @@ export async function startQuest(name) {
 
 /**
  * Resets a quest to its initial state.
- * @param {string} questName the name of the quest
- * @returns {Promise<QuestResult>} a response object containing a status, status code, and data
+ * @param questName the name of the quest
+ * @returns a response object containing a status, status code, and data
  */
-export async function resetQuest(questName) {
+export async function resetQuest(questName: string): Promise<QuestResult> {
   const quest = await QuestModel.findOne({ name: questName });
   if (quest === null) {
     return {
@@ -801,18 +833,18 @@ export async function resetQuest(questName) {
 
 /**
  * Activates a puzzle in the quest, moving it from "awaiting activation" to "in progress"
- * @param {string} questName the name of the quest for which to activate the puzzle
- * @param {string} puzzleName the name of the puzzle within the quest to activate
- * @param {string[]} userContexts an array of all of the contexts (user names and team names) for the user requesting activation
- * @param {string} activationCode the activation code of the puzzle
- * @returns {Promise<QuestResult<{activationTime: Date}>>} a response object containing a status, status code, and data
+ * @param questName the name of the quest for which to activate the puzzle
+ * @param puzzleName the name of the puzzle within the quest to activate
+ * @param userContexts an array of all of the contexts (user names and team names) for the user requesting activation
+ * @param activationCode the activation code of the puzzle
+ * @returns a response object containing a status, status code, and data
  */
 export async function activatePuzzle(
-  questName,
-  puzzleName,
-  userContexts,
-  activationCode
-) {
+  questName: string,
+  puzzleName: string,
+  userContexts: string[],
+  activationCode: string
+): Promise<QuestResult<{ activationTime: Date }>> {
   const quest = await QuestModel.findOne({ name: questName });
   if (quest === null) {
     return {
@@ -893,27 +925,27 @@ export async function activatePuzzle(
 /**
  * Escapes characters that have special meaning in a regular expression, so
  * that a solution keyword matches literally.
- * @param {string} text the text to escape
- * @returns {string} the escaped text
+ * @param text the text to escape
+ * @returns the escaped text
  */
-function escapeRegExp(text) {
+function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /**
  * Finishes the specified puzzle, if the provided solution is correct.
- * @param {string} questName the name of the quest containing the puzzle to finish
- * @param {string} puzzleName the name of the puzzle to finish
- * @param {string[]} userContexts an array of all of the contexts (user names and team names) for the user attempting to solve
- * @param {string} solutionGuess the guess for the solution of the puzzle
- * @returns {Promise<QuestResult<PuzzleSolution>>} a response object containing a status, status code, and data
+ * @param questName the name of the quest containing the puzzle to finish
+ * @param puzzleName the name of the puzzle to finish
+ * @param userContexts an array of all of the contexts (user names and team names) for the user attempting to solve
+ * @param solutionGuess the guess for the solution of the puzzle
+ * @returns a response object containing a status, status code, and data
  */
 export async function finishPuzzle(
-  questName,
-  puzzleName,
-  userContexts,
-  solutionGuess
-) {
+  questName: string,
+  puzzleName: string,
+  userContexts: string[],
+  solutionGuess: string
+): Promise<QuestResult<PuzzleSolution>> {
   const quest = await QuestModel.findOne({ name: questName });
   if (quest === null) {
     return {
@@ -991,8 +1023,7 @@ export async function finishPuzzle(
   const currentTime = new Date(Date.now());
   currentPuzzle.endTime = currentTime;
   currentPuzzle.status = QuestPuzzleStatus.COMPLETED;
-  /** @type {PuzzleSolution} */
-  const returnData = {
+  const returnData: PuzzleSolution = {
     endTime: currentTime,
     solutionText: foundPuzzle.solutionDisplayText,
   };
@@ -1027,12 +1058,16 @@ export async function finishPuzzle(
 
 /**
  * Gets the next hint in the named puzzle for the specified quest.
- * @param {string} questName the name of the quest
- * @param {string} puzzleName the name of the puzzle for which to get the next hint
- * @param {string[]} userContexts an array of all of the contexts (user names and team names) for the user attempting to solve
- * @returns {Promise<QuestResult<PuzzleHintResult | false>>} a response object containing a status, status code, and data
+ * @param questName the name of the quest
+ * @param puzzleName the name of the puzzle for which to get the next hint
+ * @param userContexts an array of all of the contexts (user names and team names) for the user attempting to solve
+ * @returns a response object containing a status, status code, and data
  */
-export async function getPuzzleHint(questName, puzzleName, userContexts) {
+export async function getPuzzleHint(
+  questName: string,
+  puzzleName: string,
+  userContexts: string[]
+): Promise<QuestResult<PuzzleHintResult | false>> {
   const quest = await QuestModel.findOne({ name: questName });
   if (quest === null) {
     return {
@@ -1119,11 +1154,14 @@ export async function getPuzzleHint(questName, puzzleName, userContexts) {
 
 /**
  * Generates a QR code for activating the specified puzzle.
- * @param {string} questName the quest containing the puzzle
- * @param {string} puzzleName the puzzle for which to generate the activation QR code
- * @returns {Promise<QuestResult<Buffer>>} a response object containing a status, status code, and data
+ * @param questName the quest containing the puzzle
+ * @param puzzleName the puzzle for which to generate the activation QR code
+ * @returns a response object containing a status, status code, and data
  */
-export async function getPuzzleActivationQrCode(questName, puzzleName) {
+export async function getPuzzleActivationQrCode(
+  questName: string,
+  puzzleName: string
+): Promise<QuestResult<Buffer>> {
   const quest = await QuestModel.findOne({ name: questName });
   if (quest === null) {
     return {
@@ -1160,11 +1198,14 @@ export async function getPuzzleActivationQrCode(questName, puzzleName) {
 
 /**
  * Gets the quest run book, a PDF containing the puzzles in printed form.
- * @param {string} questName name of the quest for which to generate the run book
- * @param {PDFKit.PDFDocument} pdfDoc the PDF document that will be populated with the quest information
- * @returns {Promise<QuestResult<undefined>>} a promise resolving to the status of the operation
+ * @param questName name of the quest for which to generate the run book
+ * @param pdfDoc the PDF document that will be populated with the quest information
+ * @returns a promise resolving to the status of the operation
  */
-export async function getQuestRunBook(questName, pdfDoc) {
+export async function getQuestRunBook(
+  questName: string,
+  pdfDoc: PDFKit.PDFDocument
+): Promise<QuestResult<undefined>> {
   const quest = await QuestModel.findOne({ name: questName });
   if (quest === null) {
     return {
@@ -1212,10 +1253,13 @@ export async function getQuestRunBook(questName, pdfDoc) {
 
 /**
  * Recursively processes a markdown token for rendering in a PDF.
- * @param {import("marked").Token & {tokens?: import("marked").Token[]}} token the markdown token to process
- * @param {PDFKit.PDFDocument} pdfDoc the PDF document into which to render the token
+ * @param token the markdown token to process
+ * @param pdfDoc the PDF document into which to render the token
  */
-function processMarkdownToken(token, pdfDoc) {
+function processMarkdownToken(
+  token: Token & { tokens?: Token[] },
+  pdfDoc: PDFKit.PDFDocument
+) {
   if (token.type === "paragraph" || token.type === "space") {
     pdfDoc.text("");
     pdfDoc.moveDown();
@@ -1237,7 +1281,7 @@ function processMarkdownToken(token, pdfDoc) {
     const text = token.text.replace(
       /&#x([\dA-Fa-f]+);/gi,
       function (match, numStr) {
-        var num = parseInt(numStr, 16);
+        const num = parseInt(numStr, 16);
         return String.fromCharCode(num);
       }
     );
@@ -1250,16 +1294,16 @@ function processMarkdownToken(token, pdfDoc) {
 
 /**
  * Sets the expected response from an incoming text message and the corresponding confirmation.
- * @param {string} questName name of the quest for which to set the expected response
- * @param {string} expectedResponse expected text message response from a quest user
- * @param {string} responseConfirmation the confirmation to send when the correct response is received
- * @returns {Promise<QuestResult<undefined>>} a response object containing a status, status code, and data
+ * @param questName name of the quest for which to set the expected response
+ * @param expectedResponse expected text message response from a quest user
+ * @param responseConfirmation the confirmation to send when the correct response is received
+ * @returns a response object containing a status, status code, and data
  */
 export async function setExpectedTextResponse(
-  questName,
-  expectedResponse,
-  responseConfirmation
-) {
+  questName: string,
+  expectedResponse: string,
+  responseConfirmation: string
+): Promise<QuestResult<undefined>> {
   const quest = await QuestModel.findOne({ name: questName });
   if (quest === null) {
     return {
@@ -1284,11 +1328,14 @@ export async function setExpectedTextResponse(
 
 /**
  * Validates the text response sent by a user, case insensitively.
- * @param {string} questName the name of the quest to check for the text response
- * @param {string} textResponse the text response to validate
- * @returns {Promise<QuestResult<string>>} a response object containing a status, status code, and data
+ * @param questName the name of the quest to check for the text response
+ * @param textResponse the text response to validate
+ * @returns a response object containing a status, status code, and data
  */
-export async function validateExpectedTextResponse(questName, textResponse) {
+export async function validateExpectedTextResponse(
+  questName: string,
+  textResponse: string
+): Promise<QuestResult<string>> {
   const quest = await QuestModel.findOne({ name: questName });
   if (quest === null) {
     return {
