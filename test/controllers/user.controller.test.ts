@@ -197,16 +197,6 @@ describe("forgotPassword", () => {
     expect(res.body).toEqual({ status: "success" });
     expect(res.sendCount).toBe(1);
   });
-
-  it("requires an identifier", async () => {
-    const req = createMockRequest({ body: {} });
-    const res = createMockResponse();
-
-    await UserController.forgotPassword(req, res);
-
-    expect(res.statusCode).toBe(400);
-    expect(PasswordService.requestPasswordReset).not.toHaveBeenCalled();
-  });
 });
 
 describe("resetPassword", () => {

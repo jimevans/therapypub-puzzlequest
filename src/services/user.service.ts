@@ -275,14 +275,11 @@ export async function createUser(user: User): Promise<UserResult<undefined>> {
     displayName: user.displayName || user.userName,
     password: password,
     email: user.email.toLowerCase(),
+    // In E.164 format, as the request schema converts it.
     phone: user.phone || "",
     sms: user.allowSmsMessages || false,
     authorizationLevel: authLevel,
   };
-  if (user.phone) {
-    const phone = user.phone.replace(/[^\d]/g, "");
-    userData.phone = phone.startsWith("1") ? phone.substring(1) : phone;
-  }
   try {
     const newUser = new UserModel(userData);
     await newUser.save();
@@ -340,9 +337,9 @@ export async function updateUser(
     foundUser.passwordChangedAt = new Date(Date.now());
   }
   foundUser.email = userData.email?.toLowerCase() || foundUser.email;
-  if (userData.phone) {
-    const phone = userData.phone.replace(/[^\d]/g, "");
-    foundUser.phone = phone.startsWith("1") ? phone.substring(1) : phone;
+  // In E.164 format, as the request schema converts it; empty removes it.
+  if (userData.phone !== undefined) {
+    foundUser.phone = userData.phone;
   }
   foundUser.sms =
     userData.allowSmsMessages === undefined ||

@@ -63,10 +63,10 @@ beforeEach(async () => {
     QuestModel.deleteMany({}),
   ]);
   await UserModel.create([
-    user("player", "5551230001", { sms: true }),
-    user("teammate", "5551230002", { sms: true }),
-    user("quiet", "5551230003", { sms: false }),
-    user("admin", "5559990000", {
+    user("player", "+15551230001", { sms: true }),
+    user("teammate", "+15551230002", { sms: true }),
+    user("quiet", "+15551230003", { sms: false }),
+    user("admin", "+15559990000", {
       authorizationLevel: AuthorizationLevel.ADMIN,
     }),
   ]);

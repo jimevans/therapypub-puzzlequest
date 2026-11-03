@@ -1,0 +1,260 @@
+// Tests of request validation through the whole application: invalid input
+// gets a 400 naming the fields, values pages send as text are converted, and
+// fields a request adds are never used.
+import type { Express } from "express";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import { MongoMemoryServer } from "mongodb-memory-server";
+import mongoose from "mongoose";
+import request from "supertest";
+
+const jwt = (await import("jsonwebtoken")).default;
+const { createApp } = await import("../../src/createApp.js");
+const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
+const { QuestModel } = await import("../../src/models/quest.model.js");
+const { AuthorizationLevel, UserModel } =
+  await import("../../src/models/user.model.js");
+const QuestService = await import("../../src/services/quest.service.js");
+
+let mongoServer: MongoMemoryServer | undefined;
+let app: Express;
+
+beforeAll(async () => {
+  mongoServer = await MongoMemoryServer.create();
+  await mongoose.connect(mongoServer.getUri());
+  await UserModel.init();
+  app = createApp();
+}, 120000);
+
+afterAll(async () => {
+  await mongoose.disconnect();
+  await mongoServer?.stop();
+});
+
+beforeEach(async () => {
+  vi.clearAllMocks();
+  await Promise.all([
+    UserModel.deleteMany({}),
+    PuzzleModel.deleteMany({}),
+    QuestModel.deleteMany({}),
+  ]);
+  await UserModel.create(
+    (["admin", "player"] as const).map((userName) => ({
+      userName,
+      displayName: userName,
+      email: `${userName}@example.com`,
+      phone: "",
+      password: "hash",
+      authorizationLevel:
+        userName === "admin"
+          ? AuthorizationLevel.ADMIN
+          : AuthorizationLevel.USER,
+    }))
+  );
+});
+
+/**
+ * Starts a request signed in as a user, or anonymously.
+ * @param method the HTTP method
+ * @param path the path
+ * @param userName who sends it, or null for anonymous
+ * @returns the request
+ */
+function send(
+  method: "post" | "put",
+  path: string,
+  userName: "admin" | "player" | null = "admin"
+) {
+  const pending = request(app)[method](path);
+  if (userName) {
+    vi.mocked(jwt.verify).mockReturnValue({
+      userName,
+      authorizationLevel:
+        userName === "admin"
+          ? AuthorizationLevel.ADMIN
+          : AuthorizationLevel.USER,
+      iat: Math.floor(Date.now() / 1000),
+    } as never);
+    pending.set("Authorization", "Bearer token");
+  }
+  return pending;
+}
+
+async function storedUser(userName: string) {
+  return (await UserModel.findOne({ userName }).lean())!;
+}
+
+describe("invalid input", () => {
+  it("gets a 400 naming each invalid field", async () => {
+    const response = await send("post", "/api/user/create", null).send({
+      userName: "a/b",
+      email: "not an email",
+      phone: "555-0142",
+      password: "a long enough password",
+    });
+
+    expect(response.status).toBe(400);
+    const body = JSON.parse(response.text);
+    expect(body.errors).toEqual([
+      { path: "body.userName", message: 'Must not contain "/"' },
+      { path: "body.email", message: "Enter a valid email address" },
+      {
+        path: "body.phone",
+        message: "Enter a valid US or Canadian phone number",
+      },
+    ]);
+    expect(body.message).toBe(
+      'userName: Must not contain "/"; email: Enter a valid email address; phone: Enter a valid US or Canadian phone number'
+    );
+    expect(await UserModel.countDocuments()).toBe(2);
+  });
+
+  it("reports a missing field", async () => {
+    const response = await send("post", "/api/quest/create").send({
+      name: "quest",
+      userName: "player",
+    });
+
+    expect(response.status).toBe(400);
+    expect(JSON.parse(response.text).errors).toEqual([
+      { path: "body.displayName", message: expect.any(String) },
+    ]);
+  });
+
+  it("is checked only after authorization", async () => {
+    const response = await send("post", "/api/quest/create", "player").send({});
+
+    expect(response.status).toBe(403);
+  });
+});
+
+describe("phone numbers", () => {
+  it("are stored in E.164 format, however they're typed", async () => {
+    const response = await send("post", "/api/user/create", null).send({
+      userName: "newcomer",
+      email: "newcomer@example.com",
+      phone: "(312) 555-0142",
+      password: "a long enough password",
+    });
+
+    expect(response.status).toBe(200);
+    expect((await storedUser("newcomer")).phone).toBe("+13125550142");
+  });
+
+  it("can be removed by sending an empty one", async () => {
+    await UserModel.updateOne(
+      { userName: "player" },
+      { phone: "+13125550142" }
+    );
+
+    const response = await send("put", "/api/user/player", "player").send({
+      phone: "",
+    });
+
+    expect(response.status).toBe(200);
+    expect((await storedUser("player")).phone).toBe("");
+  });
+
+  it("are shown formatted on the profile page", async () => {
+    await UserModel.updateOne(
+      { userName: "player" },
+      { phone: "+13125550142" }
+    );
+
+    const response = await request(app)
+      .get("/user/player")
+      .set("Authorization", "Bearer token");
+
+    expect(response.text).toContain("(312) 555-0142");
+  });
+});
+
+describe("values pages send as text", () => {
+  it("are converted to numbers", async () => {
+    await send("put", "/api/user/player").send({ authorizationLevel: "10" });
+
+    expect((await storedUser("player")).authorizationLevel).toBe(10);
+  });
+
+  it("are converted in nested fields too", async () => {
+    const response = await send("post", "/api/puzzle/create").send({
+      name: "riddle",
+      solutionKeyword: "piano",
+      solutionDisplayText: "A piano",
+      hints: [{ text: "It makes music", timePenalty: "60" }],
+    });
+
+    expect(response.status).toBe(200);
+    const puzzle = (await PuzzleModel.findOne({ name: "riddle" }).lean())!;
+    expect(puzzle.hints[0]).toMatchObject({
+      text: "It makes music",
+      timePenalty: 60,
+      solutionWarning: false,
+    });
+  });
+});
+
+describe("fields a request adds", () => {
+  it("are dropped, so they can't change what they shouldn't", async () => {
+    const response = await send("put", "/api/user/player", "player").send({
+      displayName: "Renamed",
+      userName: "someone-else",
+      passwordChangedAt: "2000-01-01",
+      _id: "000000000000000000000000",
+    });
+
+    expect(response.status).toBe(200);
+    const player = await storedUser("player");
+    expect(player.displayName).toBe("Renamed");
+    expect(player.passwordChangedAt).toBeUndefined();
+  });
+
+  it("can't redirect a quest update to another quest", async () => {
+    await PuzzleModel.create({
+      name: "riddle",
+      solutionKeyword: "piano",
+      solutionDisplayText: "A piano",
+    });
+    for (const name of ["first", "second"]) {
+      await QuestService.createQuest({
+        name,
+        displayName: name,
+        userName: "player",
+        puzzles: [],
+      });
+    }
+
+    await send("put", "/api/quest/first").send({
+      name: "second",
+      displayName: "Renamed",
+    });
+
+    const quests = await QuestModel.find({}).sort({ name: 1 }).lean();
+    expect(quests.map((quest) => quest.displayName)).toEqual([
+      "Renamed",
+      "second",
+    ]);
+  });
+});
+
+describe("activating a puzzle", () => {
+  it("needs an activation code or a readable QR code", async () => {
+    const response = await send(
+      "post",
+      "/api/quest/quest/puzzle/riddle/activate",
+      "player"
+    ).send({});
+
+    expect(response.status).toBe(400);
+    expect(JSON.parse(response.text).message).toBe(
+      "Request must include an activation code or a readable QR code"
+    );
+  });
+});

@@ -640,3 +640,8 @@ button.pq-modal-footer-button:disabled {
     margin-left: 80%;
   }
 }
+
+/* A short explanation under a form field. */
+.pq-field-hint {
+  font-size: 0.75em;
+}

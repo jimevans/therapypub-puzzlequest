@@ -1,5 +1,12 @@
 import type { Request, Response } from "express";
-import type { RouteRequest } from "../types.js";
+import type { BodyRequest, RouteRequest } from "../types.js";
+import type {
+  ActivatePuzzleBody,
+  CreateQuestBody,
+  RequestHintBody,
+  SolvePuzzleBody,
+  UpdateQuestBody,
+} from "../schemas/quest.schemas.js";
 import { PassThrough } from "stream";
 import { marked } from "marked";
 import PDFDocument from "pdfkit";
@@ -8,25 +15,11 @@ import { PuzzleType } from "../models/puzzle.model.js";
 import { QuestPuzzleStatus } from "../models/quest.model.js";
 import * as QuestService from "../services/quest.service.js";
 import * as UserService from "../services/user.service.js";
-import * as RequestValidationService from "../services/requestValidation.service.js";
 
-export async function createQuest(req: Request, res: Response): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresBody: true,
-      requiredBodyProperties: ["name", "displayName", "userName"],
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
+export async function createQuest(
+  req: BodyRequest<CreateQuestBody>,
+  res: Response
+): Promise<void> {
   const response = await QuestService.createQuest(req.body);
   if (response.status === "error") {
     res.status(response.statusCode).send(
@@ -67,31 +60,13 @@ export async function retrieveQuest(
   );
 }
 
-export async function updateQuest(req: Request, res: Response): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresBody: true,
-      requiredBodyProperties: ["name"],
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
-  const questToUpdate: QuestService.QuestDefinition & { name: string } =
-    new QuestService.Quest(req.body);
-  if (!("puzzles" in req.body)) {
-    // The Quest class defaults to an empty puzzle list, which would remove
-    // every puzzle; leaving the list out of a request keeps it unchanged.
-    questToUpdate.puzzles = undefined;
-  }
+export async function updateQuest(
+  req: RouteRequest<"name", UpdateQuestBody>,
+  res: Response
+): Promise<void> {
+  // The quest is the one the URL names; leaving the puzzle list out of the
+  // body keeps the puzzles unchanged.
+  const questToUpdate = { ...req.body, name: req.params.name };
   const response = await QuestService.updateQuest(questToUpdate);
   if (response.status === "error") {
     res.status(response.statusCode).send(
@@ -200,31 +175,19 @@ export async function generatePuzzleActivationQRCode(
 }
 
 export async function activateQuestPuzzle(
-  req: RouteRequest<"name" | "puzzleName">,
+  req: RouteRequest<"name" | "puzzleName", ActivatePuzzleBody>,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresBody: true,
-      requiredBodyProperties: ["activationCode"],
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
   const loggedInUser = UserService.requireLoggedInUser(req.user);
   const userContexts = await loggedInUser.getAllUserContexts();
-  const activationCode = req.qrCodeData
-    ? req.qrCodeData
-    : req.body.activationCode;
+  const activationCode = req.qrCodeData ?? req.body.activationCode;
+  if (!activationCode) {
+    res.status(400).json({
+      status: "error",
+      message: "Request must include an activation code or a readable QR code",
+    });
+    return;
+  }
 
   const activationResult = await QuestService.activatePuzzle(
     req.params.name,
@@ -246,26 +209,9 @@ export async function activateQuestPuzzle(
 }
 
 export async function solveQuestPuzzle(
-  req: RouteRequest<"name" | "puzzleName">,
+  req: RouteRequest<"name" | "puzzleName", SolvePuzzleBody>,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresBody: true,
-      requiredBodyProperties: ["guess"],
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
   const loggedInUser = UserService.requireLoggedInUser(req.user);
   const userContexts = await loggedInUser.getAllUserContexts();
   const solutionGuess = req.body.guess;
@@ -299,25 +245,9 @@ export async function solveQuestPuzzle(
 }
 
 export async function requestQuestPuzzleHint(
-  req: RouteRequest<"name" | "puzzleName">,
+  req: RouteRequest<"name" | "puzzleName", RequestHintBody>,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresBody: true,
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
   const loggedInUser = UserService.requireLoggedInUser(req.user);
   const userContexts = await loggedInUser.getAllUserContexts();
   const connectionId = req.body.connectionId;

@@ -19,7 +19,7 @@ export interface VoiceCallResponse {
  * Builds the reply to an incoming phone call. A known caller with quests that
  * haven't started is told they are starting; the quests are returned so the
  * caller can start them.
- * @param initiatingPhoneNumber the caller's number, from Twilio, if not hidden
+ * @param initiatingPhoneNumber the caller's number in E.164 format, from Twilio, if not hidden
  * @returns the TwiML reply and the quests to start
  */
 export async function respondToVoiceCall(
@@ -42,8 +42,9 @@ export async function respondToVoiceCall(
     };
   }
 
-  const fromNumber = initiatingPhoneNumber.replace(/[^\d]/g, "").substring(1);
-  const getUserResponse = await UserService.getUsersByPhoneNumber(fromNumber);
+  const getUserResponse = await UserService.getUsersByPhoneNumber(
+    initiatingPhoneNumber
+  );
   if (getUserResponse.status === "error") {
     // If there are no users with the incoming phone number, reject the call.
     voiceResponse.reject({ reason: "rejected" });
@@ -87,7 +88,7 @@ export async function respondToVoiceCall(
 /**
  * Builds the reply to an incoming text message, checking it against any reply
  * the sender's in-progress quests are expecting.
- * @param initiatingPhoneNumber the sender's number, from Twilio
+ * @param initiatingPhoneNumber the sender's number in E.164 format, from Twilio
  * @param incomingMessage the text of the message
  * @returns the TwiML reply
  */
@@ -95,10 +96,11 @@ export async function respondToTextMessage(
   initiatingPhoneNumber: string,
   incomingMessage: string
 ): Promise<ServiceResult<string>> {
-  const fromNumber = initiatingPhoneNumber.replace(/[^\d]/g, "").substring(1);
   const messageBody = incomingMessage.trim();
   const messageResponse = new Twilio.twiml.MessagingResponse();
-  const getUserResult = await UserService.getUsersByPhoneNumber(fromNumber);
+  const getUserResult = await UserService.getUsersByPhoneNumber(
+    initiatingPhoneNumber
+  );
   if (getUserResult.status === "error") {
     messageResponse.message(
       "From the PuzzleQuest Game\n\nYou are not a registered user of this service\n\nReply 'STOP' to unsubscribe"
@@ -219,13 +221,13 @@ export async function getPhoneNumbersToMessage(
         }
         const user = getTeamMemberResponse.data;
         if (user.phone && user.allowSmsMessages) {
-          numbersToMessage.push(`+1${user.phone}`);
+          numbersToMessage.push(user.phone);
         }
       }
     }
   } else {
     if (getUserResponse.data.phone && getUserResponse.data.allowSmsMessages) {
-      numbersToMessage.push(`+1${getUserResponse.data.phone}`);
+      numbersToMessage.push(getUserResponse.data.phone);
     }
   }
   return { status: "success", statusCode: 200, data: numbersToMessage };

@@ -135,9 +135,10 @@
       </div>
       <div class="pq-input">
         <% if (renderMode === "display") { %>
-        <%= user.phone %>
+        <%= phone %>
         <% } else { %>
-        <input id="phone" value="<%= renderMode !== "create" ? user.phone : "" %>" />
+        <input id="phone" type="tel" autocomplete="tel" value="<%= phone %>" />
+        <div class="pq-field-hint">US and Canadian numbers only, for now.</div>
         <% } %>
       </div>
     </div>

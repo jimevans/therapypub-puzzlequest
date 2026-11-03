@@ -1,4 +1,13 @@
 import express from "express";
+import { validate } from "../middleware/validate.js";
+import {
+  changePasswordBody,
+  createUserBody,
+  forgotPasswordBody,
+  loginBody,
+  resetPasswordBody,
+  updateUserBody,
+} from "../schemas/user.schemas.js";
 import {
   requireAdmin,
   requireSelf,
@@ -18,11 +27,13 @@ userApiRouter.get(
 userApiRouter.post(
   "/password/forgot",
   RateLimiter.passwordRateLimiter,
+  validate({ body: forgotPasswordBody }),
   UserController.forgotPassword
 );
 userApiRouter.post(
   "/password/reset",
   RateLimiter.passwordRateLimiter,
+  validate({ body: resetPasswordBody }),
   UserController.resetPassword
 );
 userApiRouter.get(
@@ -35,6 +46,7 @@ userApiRouter.put(
   "/:userName",
   TokenAuthenticator.tokenAuthenticate,
   requireSelfOrAdmin,
+  validate({ body: updateUserBody }),
   UserController.updateUser
 );
 userApiRouter.delete(
@@ -48,6 +60,7 @@ userApiRouter.put(
   RateLimiter.passwordRateLimiter,
   TokenAuthenticator.tokenAuthenticate,
   requireSelf,
+  validate({ body: changePasswordBody }),
   UserController.changePassword
 );
 userApiRouter.post(
@@ -61,12 +74,14 @@ userApiRouter.post(
   // Anyone may sign up; the token identifies an administrator creating an
   // account, who may also choose its authorization level.
   TokenAuthenticator.tokenAuthenticate,
+  validate({ body: createUserBody }),
   UserController.createUser
 );
 userApiRouter.post(
   "/login",
   RateLimiter.loginAddressRateLimiter,
   RateLimiter.loginRateLimiter,
+  validate({ body: loginBody }),
   UserController.login
 );
 
