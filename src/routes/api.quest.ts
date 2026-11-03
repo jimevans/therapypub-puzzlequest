@@ -1,6 +1,9 @@
 import express from "express";
 import { requireUser } from "../middleware/authorization.js";
-import { activationRateLimiter } from "../middleware/rateLimiter.js";
+import {
+  activationRateLimiter,
+  solutionRateLimiter,
+} from "../middleware/rateLimiter.js";
 import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
 import { uploadActivationImage } from "../middleware/upload.js";
 import * as QuestController from "../controllers/quest.controller.js";
@@ -55,6 +58,8 @@ questApiRouter.post(
 questApiRouter.put(
   "/:name/puzzle/:puzzleName/solve",
   TokenAuthenticator.tokenAuthenticate,
+  requireUser,
+  solutionRateLimiter,
   QuestController.solveQuestPuzzle
 );
 questApiRouter.put(

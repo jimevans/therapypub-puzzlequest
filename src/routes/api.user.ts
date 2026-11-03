@@ -48,6 +48,7 @@ userApiRouter.post(
 userApiRouter.post("/create", UserController.createUser);
 userApiRouter.post(
   "/login",
+  RateLimiter.loginAddressRateLimiter,
   RateLimiter.loginRateLimiter,
   UserController.login
 );

@@ -1,6 +1,6 @@
 import { TeamModel } from "../models/user.model.js";
 import type { ServiceResult } from "../types.js";
-import { getErrorMessage } from "../errors.js";
+import { isDuplicateKeyError, unexpectedErrorResult } from "../errors.js";
 
 /**
  * The result of a team service operation; data is a Team unless the
@@ -117,11 +117,21 @@ export async function createTeam(
     });
     await newTeam.save();
   } catch (err) {
-    return {
-      status: "error",
-      statusCode: 500,
-      message: `New team not created - ${getErrorMessage(err)}`,
-    };
+    if (isDuplicateKeyError(err, "teamName")) {
+      return {
+        status: "error",
+        statusCode: 400,
+        message: "That team name is already in use",
+      };
+    }
+    if (isDuplicateKeyError(err, "joinCode")) {
+      return {
+        status: "error",
+        statusCode: 400,
+        message: "That join code is already in use",
+      };
+    }
+    return unexpectedErrorResult("createTeam", err);
   }
   return { status: "success", statusCode: 200 };
 }
@@ -152,11 +162,14 @@ export async function updateTeam(
   try {
     await foundTeam.save();
   } catch (err) {
-    return {
-      status: "error",
-      statusCode: 500,
-      message: `Team not updated - ${getErrorMessage(err)}`,
-    };
+    if (isDuplicateKeyError(err, "joinCode")) {
+      return {
+        status: "error",
+        statusCode: 400,
+        message: "That join code is already in use",
+      };
+    }
+    return unexpectedErrorResult("updateTeam", err);
   }
   return { status: "success", statusCode: 200 };
 }
@@ -225,11 +238,7 @@ export async function addUserToTeam(
   try {
     await team.save();
   } catch (err) {
-    return {
-      status: "error",
-      statusCode: 500,
-      message: getErrorMessage(err),
-    };
+    return unexpectedErrorResult("addUserToTeam", err);
   }
   return { status: "success", statusCode: 200 };
 }
@@ -265,11 +274,7 @@ export async function removeUserFromTeam(
   try {
     await team.save();
   } catch (err) {
-    return {
-      status: "error",
-      statusCode: 500,
-      message: getErrorMessage(err),
-    };
+    return unexpectedErrorResult("removeUserFromTeam", err);
   }
   return { status: "success", statusCode: 200 };
 }

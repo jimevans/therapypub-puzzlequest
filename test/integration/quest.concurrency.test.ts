@@ -248,16 +248,17 @@ describe("simultaneous actions on a quest", () => {
     });
   });
 
-  it("reports other save failures as server errors", async () => {
-    vi.spyOn(QuestModel.prototype, "save").mockRejectedValue(
-      new Error("disk full")
-    );
+  it("reports other save failures as server errors, logging the details", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const diskFull = new Error("disk full");
+    vi.spyOn(QuestModel.prototype, "save").mockRejectedValue(diskFull);
 
     expect(await QuestService.resetQuest("test-quest")).toEqual({
       status: "error",
       statusCode: 500,
-      message: "disk full",
+      message: "An unexpected error occurred",
     });
+    expect(error).toHaveBeenCalledWith("applyQuestAction failed:", diskFull);
   });
 });
 

@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { config } from "../config.js";
@@ -9,8 +10,17 @@ export const MINIMUM_PASSWORD_LENGTH = 8;
 // bcrypt silently ignores everything after the first 72 bytes of input.
 export const MAXIMUM_PASSWORD_BYTES = 72;
 
+/** The one message for every failed sign-in. */
+export const INCORRECT_CREDENTIALS_MESSAGE = "Incorrect user name or password";
+
+// A hash of a password no one has, compared against when the user name is
+// unknown, so a failed sign-in takes about as long either way.
+let dummyPasswordHash: Promise<string> | undefined;
+
 /**
- * Authenticates a user.
+ * Authenticates a user. A failed sign-in gives the same message, and takes
+ * about the same time, whether or not the user name exists, so it doesn't
+ * reveal which user names do.
  * @param userName the user name to authenticate
  * @param password the password to authenticate
  * @returns a result containing the signed authentication token
@@ -20,18 +30,22 @@ export async function authenticate(
   password: string
 ): Promise<ServiceResult<string>> {
   const userResponse = await UserService.getUserByUserName(userName);
-  if (userResponse.status === "error") {
-    return userResponse;
-  }
-  const user = userResponse.data;
-  if (!user.password || !(await bcrypt.compare(password, user.password))) {
+  const passwordHash =
+    userResponse.status === "success"
+      ? userResponse.data.password
+      : await (dummyPasswordHash ??= encryptPassword(randomUUID()));
+  const matches =
+    passwordHash !== undefined &&
+    passwordHash !== "" &&
+    (await bcrypt.compare(password, passwordHash));
+  if (userResponse.status === "error" || !matches) {
     return {
       status: "error",
       statusCode: 401,
-      message: `Password for user ${userName} does not match`,
+      message: INCORRECT_CREDENTIALS_MESSAGE,
     };
   }
-  const token = createAuthenticationToken(user);
+  const token = createAuthenticationToken(userResponse.data);
   return { status: "success", statusCode: 200, data: token };
 }
 

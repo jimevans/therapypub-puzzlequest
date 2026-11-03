@@ -5,7 +5,7 @@ import * as QuestService from "../services/quest.service.js";
 import * as TeamService from "../services/team.service.js";
 import * as UserService from "../services/user.service.js";
 import type { ServiceResult } from "../types.js";
-import { getErrorMessage } from "../errors.js";
+import { unexpectedErrorResult } from "../errors.js";
 
 /** The reply to an incoming call, and the quests the call starts. */
 export interface VoiceCallResponse {
@@ -254,11 +254,7 @@ export async function sendOutgoingTextMessage(
         to: phoneNumber,
       });
     } catch (err) {
-      return {
-        status: "error",
-        statusCode: 500,
-        message: getErrorMessage(err),
-      };
+      return unexpectedErrorResult("sendOutgoingTextMessage", err);
     }
     // Regulatory throttling means that only one message can be sent every
     // four seconds for AT&T (on per second for other carriers), so we back

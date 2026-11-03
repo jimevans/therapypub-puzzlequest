@@ -1,6 +1,7 @@
 import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
 import express, { type Express } from "express";
+import helmet from "helmet";
 import { config } from "./config.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { publicDirectory, viewsDirectory } from "./paths.js";
@@ -35,8 +36,25 @@ export function createApp(): Express {
     app.set("trust proxy", config.PQ_TRUST_PROXY);
   }
 
+  app.use(
+    helmet({
+      // Added separately, with nonces for the pages' inline scripts.
+      contentSecurityPolicy: false,
+      // helmet's default, no-referrer, makes browsers send "Origin: null" on
+      // form posts and fetches, which would defeat checking where requests
+      // come from. This is the browsers' own default.
+      referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+      // Not for subdomains, which the host may serve over plain HTTP.
+      strictTransportSecurity: {
+        maxAge: 365 * 24 * 60 * 60,
+        includeSubDomains: false,
+      },
+    })
+  );
+
+  // Bodies are limited to 100 KB; uploads go through multer, which has its
+  // own limits.
   app.use(express.json());
-  app.use(express.raw({ limit: "100mb", type: "application/octet-stream" }));
   app.use(express.urlencoded({ extended: true }));
   app.use(express.static(publicDirectory));
 

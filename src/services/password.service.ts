@@ -6,7 +6,7 @@ import * as AuthenticationService from "./authentication.service.js";
 import * as EmailService from "./email.service.js";
 import { User } from "./user.service.js";
 import type { ServiceResult } from "../types.js";
-import { getErrorMessage } from "../errors.js";
+import { unexpectedErrorResult } from "../errors.js";
 
 /** A user as loaded from the database. */
 type UserDocument = InstanceType<typeof UserModel>;
@@ -107,11 +107,7 @@ export async function changePassword(
   try {
     await applyNewPassword(userDocument, newPassword);
   } catch (err) {
-    return {
-      status: "error",
-      statusCode: 500,
-      message: `Password not changed - ${getErrorMessage(err)}`,
-    };
+    return unexpectedErrorResult("changePassword", err);
   }
   await sendPasswordChangedNotice(userDocument);
   const token = AuthenticationService.createAuthenticationToken(
@@ -263,11 +259,7 @@ export async function resetPassword(
   try {
     await applyNewPassword(userDocument, newPassword);
   } catch (err) {
-    return {
-      status: "error",
-      statusCode: 500,
-      message: `Password not reset - ${getErrorMessage(err)}`,
-    };
+    return unexpectedErrorResult("resetPassword", err);
   }
   await sendPasswordChangedNotice(userDocument);
   return { status: "success", statusCode: 200 };
