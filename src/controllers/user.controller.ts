@@ -5,6 +5,7 @@ import * as PasswordService from "../services/password.service.js";
 import * as UserService from "../services/user.service.js";
 import * as RequestValidationService from "../services/requestValidation.service.js";
 import { RenderMode } from "../middleware/useRenderMode.js";
+import { AuthorizationLevel } from "../models/user.model.js";
 import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
 import { getErrorMessage } from "../errors.js";
 
@@ -60,6 +61,11 @@ export async function createUser(req: Request, res: Response): Promise<void> {
   }
 
   const userToCreate = new UserService.User(req.body);
+  if (!UserService.getLoggedInUser(req.user)?.isAdmin()) {
+    // Only an administrator may choose the new account's authorization
+    // level; anyone else signing up gets an ordinary account.
+    userToCreate.authorizationLevel = AuthorizationLevel.USER;
+  }
   const response = await UserService.createUser(userToCreate);
   if (response.status === "error") {
     res.status(response.statusCode).send(
