@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/services/websocket.service.js", () => ({
   notifyBrowsers: vi.fn(),
+  notifyQuestPages: vi.fn(),
 }));
 
-const { notifyBrowsers } =
+const { notifyBrowsers, notifyQuestPages } =
   await import("../../src/services/websocket.service.js");
 const { sendLiveUpdates } = await import("../../src/events/liveUpdates.js");
 
@@ -155,4 +156,17 @@ describe("sendLiveUpdates", () => {
 
     expect(notifyBrowsers).not.toHaveBeenCalled();
   });
+
+  it.each(["QuestPaused", "QuestResumed"] as const)(
+    "tells every page of the quest to reload when it is %s",
+    (type) => {
+      sendLiveUpdates({ questName: "q1", events: [{ type, at: AT }] });
+
+      expect(notifyQuestPages).toHaveBeenCalledExactlyOnceWith("q1", {
+        message: "questUpdated",
+        questName: "q1",
+      });
+      expect(notifyBrowsers).not.toHaveBeenCalled();
+    }
+  );
 });

@@ -654,3 +654,10 @@ button.pq-modal-footer-button:disabled {
   border-radius: 5px;
   background-color: #fdf3e2;
 }
+
+/* Groups form controls so they can be disabled together; draws nothing. */
+.pq-fieldset {
+  border: none;
+  margin: 0;
+  padding: 0;
+}

@@ -7,7 +7,10 @@ import {
   QuestStatus,
   type TransitionResult,
   activatePuzzle,
+  isPaused,
+  pause,
   reset,
+  resume,
   revealHint,
   start,
   submitSolution,
@@ -421,6 +424,117 @@ describe("reset", () => {
       }))
     );
     expect(result.events).toEqual([{ type: "QuestReset", at: NOW }]);
+  });
+});
+
+describe("pause", () => {
+  it("pauses a quest in progress, stopping its clocks", () => {
+    const state = inProgressWith(QuestPuzzleStatus.IN_PROGRESS);
+
+    const result = expectSuccess(pause(state, NOW));
+
+    expect(result.state.pauses).toEqual([{ startTime: NOW }]);
+    expect(isPaused(result.state)).toBe(true);
+    expect(result.state.puzzles).toEqual(state.puzzles);
+    expect(result.events).toEqual([{ type: "QuestPaused", at: NOW }]);
+  });
+
+  it("adds to earlier pauses", () => {
+    const earlier = { startTime: EARLIER, endTime: EARLIER };
+    const state = {
+      ...inProgressWith(QuestPuzzleStatus.IN_PROGRESS),
+      pauses: [earlier],
+    };
+
+    const result = expectSuccess(pause(state, NOW));
+
+    expect(result.state.pauses).toEqual([earlier, { startTime: NOW }]);
+  });
+
+  it.each([
+    ["a quest not started", notStarted, "QUEST_NOT_STARTED"],
+    ["a completed quest", completed, "QUEST_COMPLETED"],
+    [
+      "a quest already paused",
+      {
+        ...inProgressWith(QuestPuzzleStatus.IN_PROGRESS),
+        pauses: [{ startTime: EARLIER }],
+      },
+      "QUEST_PAUSED",
+    ],
+  ])("refuses to pause %s", (_, state, error) => {
+    expect(pause(state, NOW)).toEqual({ ok: false, error });
+  });
+});
+
+describe("resume", () => {
+  it("resumes a paused quest, ending its pause", () => {
+    const state = {
+      ...inProgressWith(QuestPuzzleStatus.IN_PROGRESS),
+      pauses: [{ startTime: EARLIER }],
+    };
+
+    const result = expectSuccess(resume(state, NOW));
+
+    expect(result.state.pauses).toEqual([{ startTime: EARLIER, endTime: NOW }]);
+    expect(isPaused(result.state)).toBe(false);
+    expect(result.events).toEqual([{ type: "QuestResumed", at: NOW }]);
+  });
+
+  it.each([
+    ["a quest never paused", inProgressWith(QuestPuzzleStatus.IN_PROGRESS)],
+    [
+      "a quest already resumed",
+      {
+        ...inProgressWith(QuestPuzzleStatus.IN_PROGRESS),
+        pauses: [{ startTime: EARLIER, endTime: EARLIER }],
+      },
+    ],
+  ])("refuses to resume %s", (_, state) => {
+    expect(resume(state, NOW)).toEqual({
+      ok: false,
+      error: "QUEST_NOT_PAUSED",
+    });
+  });
+});
+
+describe("a paused quest", () => {
+  const paused = (status: QuestPuzzleStatus) => ({
+    ...inProgressWith(status),
+    pauses: [{ startTime: EARLIER }],
+  });
+
+  it.each([
+    [
+      "activating a puzzle",
+      (state: QuestState) =>
+        activatePuzzle(state, "second", "second-code", NOW),
+      QuestPuzzleStatus.AWAITING_ACTIVATION,
+    ],
+    [
+      "solving a puzzle",
+      (state: QuestState) =>
+        submitSolution(state, "second", "red fox", rules, NOW),
+      QuestPuzzleStatus.IN_PROGRESS,
+    ],
+    [
+      "revealing a hint",
+      (state: QuestState) => revealHint(state, "second", rules, NOW),
+      QuestPuzzleStatus.IN_PROGRESS,
+    ],
+  ])("refuses %s", (_, action, puzzleStatus) => {
+    expect(action(paused(puzzleStatus))).toEqual({
+      ok: false,
+      error: "QUEST_PAUSED",
+    });
+  });
+
+  it("can be reset, which clears its pauses", () => {
+    const result = expectSuccess(
+      reset(paused(QuestPuzzleStatus.IN_PROGRESS), NOW)
+    );
+
+    expect(result.state.pauses).toEqual([]);
   });
 });
 

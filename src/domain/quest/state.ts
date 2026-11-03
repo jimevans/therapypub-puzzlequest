@@ -37,12 +37,35 @@ export interface PuzzleState {
   readonly endTime?: Date | null;
 }
 
+/** A time when an administrator paused a quest. */
+export interface Pause {
+  /** When the pause began. */
+  readonly startTime: Date;
+  /** When the quest resumed; absent while the pause goes on. */
+  readonly endTime?: Date | null;
+}
+
 /** The progress on a quest. */
 export interface QuestState {
   /** The progress on the quest as a whole. */
   readonly status: QuestStatus;
   /** The progress on each of the quest's puzzles, in order. */
   readonly puzzles: readonly PuzzleState[];
+  /**
+   * The times the quest has been paused, in order; the last may still be
+   * going on. Missing means it never has been.
+   */
+  readonly pauses?: readonly Pause[];
+}
+
+/**
+ * Determines whether a quest is paused now.
+ * @param state the quest
+ * @returns true if it is paused
+ */
+export function isPaused(state: QuestState): boolean {
+  const last = state.pauses?.at(-1);
+  return last !== undefined && !last.endTime;
 }
 
 /** A puzzle hint, as far as the rules of the game are concerned. */

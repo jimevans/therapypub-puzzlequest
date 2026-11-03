@@ -43,6 +43,13 @@
             <li>
               <a id="notify-link" class="pq-menu-link" href="/quest/<%=quest.name%>">Notify</a>
             </li>
+            <li>
+              <% if (quest.paused) { %>
+              <a id="resume-link" class="pq-menu-link" href="#">Resume quest</a>
+              <% } else { %>
+              <a id="pause-link" class="pq-menu-link" href="#">Pause quest</a>
+              <% } %>
+            </li>
             <% } %>
             <li>
               <a id="reset-link" class="pq-menu-link" href="/">Reset</a>
