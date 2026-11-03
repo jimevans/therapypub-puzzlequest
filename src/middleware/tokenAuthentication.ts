@@ -72,47 +72,51 @@ export async function tokenAuthenticate(
   }
 
   if (token !== null) {
+    let decoded: JwtPayload & TokenUser;
     try {
-      const decoded = (await jwt.verify(
-        token,
-        config.PQ_SECRET_KEY
-      )) as JwtPayload & TokenUser;
-
-      // Tokens for deleted users, or issued before the user's password was
-      // last changed, are treated like expired tokens.
-      const validationData = await UserService.getTokenValidationData(
-        decoded.userName
-      );
-      if (
-        validationData === null ||
-        AuthenticationService.isTokenRevoked(
-          // Tokens signed by this application always have an issue time; a
-          // token without one counts as issued before any password change.
-          decoded.iat ?? 0,
-          validationData.passwordChangedAt
-        )
-      ) {
-        res.clearCookie(TOKEN_COOKIE_NAME);
+      decoded = (await jwt.verify(token, config.PQ_SECRET_KEY)) as JwtPayload &
+        TokenUser;
+    } catch (err) {
+      if (err instanceof Error && err.name === "TokenExpiredError") {
         next();
         return;
       }
-
-      req.user = {
-        userName: decoded.userName,
-        displayName: decoded.displayName,
-        email: decoded.email,
-        phone: decoded.phone,
-        sms: decoded.sms,
-        authorizationLevel: decoded.authorizationLevel,
-      };
-    } catch (err) {
-      if (!(err instanceof Error) || err.name !== "TokenExpiredError") {
-        res
-          .status(401)
-          .send(`{ 'error': 'Invalid token - ${JSON.stringify(err)}' }`);
-        return;
-      }
+      // A token this application didn't sign, or one signed with an earlier
+      // secret key. Clearing the cookie lets the browser sign in again.
+      res.clearCookie(TOKEN_COOKIE_NAME);
+      res
+        .status(401)
+        .json({ status: "error", message: "Invalid authentication token" });
+      return;
     }
+
+    // Tokens for deleted users, or issued before the user's password was
+    // last changed, are treated like expired tokens.
+    const validationData = await UserService.getTokenValidationData(
+      decoded.userName
+    );
+    if (
+      validationData === null ||
+      AuthenticationService.isTokenRevoked(
+        // Tokens signed by this application always have an issue time; a
+        // token without one counts as issued before any password change.
+        decoded.iat ?? 0,
+        validationData.passwordChangedAt
+      )
+    ) {
+      res.clearCookie(TOKEN_COOKIE_NAME);
+      next();
+      return;
+    }
+
+    req.user = {
+      userName: decoded.userName,
+      displayName: decoded.displayName,
+      email: decoded.email,
+      phone: decoded.phone,
+      sms: decoded.sms,
+      authorizationLevel: decoded.authorizationLevel,
+    };
   }
   next();
 }
