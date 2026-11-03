@@ -58,7 +58,7 @@ function refuse(req: Request, res: Response, user: UserService.User): void {
 
 /**
  * Creates middleware that lets a request through only if the user is signed
- * in and has permission. Use it after tokenAuthenticate, and before anything
+ * in and has permission. Use it after authenticateSession, and before anything
  * that reads the body or does work on the user's behalf, such as storing an
  * upload, so a refused request gets a 401 or 403 rather than some other
  * error.

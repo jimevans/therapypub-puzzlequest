@@ -7,7 +7,7 @@ import {
 } from "../schemas/messaging.schemas.js";
 import { requireAdmin } from "../middleware/authorization.js";
 import * as MessagingController from "../controllers/messaging.controller.js";
-import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
+import { authenticateSession } from "../middleware/sessionAuthentication.js";
 import { requireTwilioSignature } from "../middleware/twilioSignature.js";
 
 const messagingApiRouter = express.Router();
@@ -26,7 +26,7 @@ messagingApiRouter.post(
 );
 messagingApiRouter.post(
   "/outgoing/text",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireAdmin,
   validate({ body: sendTextBody }),
   MessagingController.sendTextMessage

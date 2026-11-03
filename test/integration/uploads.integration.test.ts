@@ -12,14 +12,13 @@ import {
   describe,
   expect,
   it,
-  vi,
 } from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import QRCode from "qrcode";
 import request from "supertest";
+import { startSessions } from "../sessions.js";
 
-const jwt = (await import("jsonwebtoken")).default;
 const { createApp } = await import("../../src/createApp.js");
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
 const { QuestModel, QuestPuzzleStatus } =
@@ -78,18 +77,15 @@ afterEach(async () => {
   await rm(uploadedFile, { force: true });
 });
 
+/** The session token of the user the next requests come from. */
+let signedInToken = "";
+
 /**
- * Makes the (globally mocked) token verification return the given user.
+ * Makes the next requests come from the given user, who must exist.
  * @param userName the user name
- * @param authorizationLevel the user's authorization level
  */
-function signInAs(userName: string, authorizationLevel: number): void {
-  vi.mocked(jwt.verify).mockReturnValue({
-    userName,
-    displayName: userName,
-    authorizationLevel,
-    iat: Math.floor(Date.now() / 1000),
-  } as never);
+async function signInAs(userName: string): Promise<void> {
+  signedInToken = (await startSessions(userName))[userName];
 }
 
 /** An image in the RGBA pixel format of a canvas. */
@@ -147,7 +143,7 @@ describe("POST /api/quest/:name/puzzle/:puzzleName/activate", () => {
     await QuestService.startQuest("test-quest");
     const quest = await QuestModel.findOne({ name: "test-quest" }).lean();
     activationCode = quest!.puzzles[0].activationCode;
-    signInAs("player", AuthorizationLevel.USER);
+    await signInAs("player");
     // Failed attempts in earlier tests count towards the limit.
     await activationRateLimiter.resetKey("player");
     await activationRateLimiter.resetKey("admin");
@@ -156,7 +152,7 @@ describe("POST /api/quest/:name/puzzle/:puzzleName/activate", () => {
   function sendCode(code: string): request.Test {
     return request(app)
       .post("/api/quest/test-quest/puzzle/colors/activate")
-      .set("Authorization", "Bearer token")
+      .set("Authorization", `Bearer ${signedInToken}`)
       .send({ activationCode: code });
   }
 
@@ -171,7 +167,7 @@ describe("POST /api/quest/:name/puzzle/:puzzleName/activate", () => {
     expect(JSON.parse(limited.text).status).toBe("error");
 
     // Other users, who may share the player's network, are not affected.
-    signInAs("admin", AuthorizationLevel.ADMIN);
+    await signInAs("admin");
     expect((await sendCode("wrong")).status).not.toBe(429);
   });
 
@@ -188,7 +184,7 @@ describe("POST /api/quest/:name/puzzle/:puzzleName/activate", () => {
     // Same field order as activate.js: dimensions first, then the pixels.
     return request(app)
       .post("/api/quest/test-quest/puzzle/colors/activate")
-      .set("Authorization", "Bearer token")
+      .set("Authorization", `Bearer ${signedInToken}`)
       .field("height", String(image.height))
       .field("width", String(image.width))
       .attach("image", image.data, "blob");
@@ -212,7 +208,7 @@ describe("POST /api/quest/:name/puzzle/:puzzleName/activate", () => {
   it("still accepts an activation code typed as text", async () => {
     const response = await request(app)
       .post("/api/quest/test-quest/puzzle/colors/activate")
-      .set("Authorization", "Bearer token")
+      .set("Authorization", `Bearer ${signedInToken}`)
       .send({ activationCode });
 
     expect(response.status).toBe(200);
@@ -259,7 +255,7 @@ describe("POST /api/puzzle/upload", () => {
     // must arrive before the file itself.
     return request(app)
       .post("/api/puzzle/upload")
-      .set("Authorization", "Bearer token")
+      .set("Authorization", `Bearer ${signedInToken}`)
       .field("puzzleName", puzzleName)
       .field("fileExtension", fileExtension)
       .attach("binary", contents, `puzzle.${fileExtension}`);
@@ -270,7 +266,7 @@ describe("POST /api/puzzle/upload", () => {
   }
 
   it("saves the file under puzzleData, named for the puzzle", async () => {
-    signInAs("admin", AuthorizationLevel.ADMIN);
+    await signInAs("admin");
 
     const response = await upload();
 
@@ -283,7 +279,7 @@ describe("POST /api/puzzle/upload", () => {
   });
 
   it("stores the extension in lowercase", async () => {
-    signInAs("admin", AuthorizationLevel.ADMIN);
+    await signInAs("admin");
 
     const response = await upload({ fileExtension: "PNG" });
 
@@ -303,7 +299,7 @@ describe("POST /api/puzzle/upload", () => {
   });
 
   it("rejects an upload from a user who is not an admin without writing anything", async () => {
-    signInAs("player", AuthorizationLevel.USER);
+    await signInAs("player");
 
     const response = await upload();
 
@@ -324,7 +320,7 @@ describe("POST /api/puzzle/upload", () => {
   ])(
     "rejects the puzzle name %j without writing anything",
     async (puzzleName) => {
-      signInAs("admin", AuthorizationLevel.ADMIN);
+      await signInAs("admin");
       const target = path.resolve(puzzleDataDirectory, `${puzzleName}.png`);
 
       const response = await upload({ puzzleName });
@@ -342,7 +338,7 @@ describe("POST /api/puzzle/upload", () => {
   it.each(["html", "js", "svg", "exe", "png/../x", ""])(
     "rejects the file extension %j without writing anything",
     async (fileExtension) => {
-      signInAs("admin", AuthorizationLevel.ADMIN);
+      await signInAs("admin");
 
       const response = await upload({ fileExtension });
 
@@ -353,11 +349,11 @@ describe("POST /api/puzzle/upload", () => {
   );
 
   it("rejects a file sent before the fields that name it", async () => {
-    signInAs("admin", AuthorizationLevel.ADMIN);
+    await signInAs("admin");
 
     const response = await request(app)
       .post("/api/puzzle/upload")
-      .set("Authorization", "Bearer token")
+      .set("Authorization", `Bearer ${signedInToken}`)
       .attach("binary", Buffer.from("fake image bytes"), "puzzle.png")
       .field("puzzleName", "upload-test")
       .field("fileExtension", "png");
@@ -367,7 +363,7 @@ describe("POST /api/puzzle/upload", () => {
   });
 
   it("rejects a file larger than the limit", async () => {
-    signInAs("admin", AuthorizationLevel.ADMIN);
+    await signInAs("admin");
 
     const response = await upload({
       contents: Buffer.alloc(MAXIMUM_PUZZLE_MEDIA_BYTES + 1),

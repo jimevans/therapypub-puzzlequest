@@ -16,12 +16,12 @@ import {
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
+import { startSessions } from "../sessions.js";
 import Twilio from "twilio";
 
 // The service waits between outgoing messages to respect carrier limits.
 vi.mock("timers/promises", () => ({ setTimeout: vi.fn(async () => {}) }));
 
-const jwt = (await import("jsonwebtoken")).default;
 const { setTimeout: throttle } = await import("timers/promises");
 const { config } = await import("../../src/config.js");
 const { createApp } = await import("../../src/createApp.js");
@@ -351,7 +351,9 @@ describe("POST /api/messaging/incoming/text", () => {
 describe("POST /api/messaging/outgoing/text", () => {
   let twilioRequests: unknown[];
 
-  beforeEach(() => {
+  let adminToken = "";
+
+  beforeEach(async () => {
     config.PQ_TWILIO_ACCOUNT_SID = ACCOUNT_SID;
     config.PQ_TWILIO_AUTH_TOKEN = AUTH_TOKEN;
     config.PQ_TWILIO_MESSAGING_SERVICE_ID = MESSAGING_SERVICE_SID;
@@ -369,12 +371,7 @@ describe("POST /api/messaging/outgoing/text", () => {
         };
       }
     );
-    vi.mocked(jwt.verify).mockReturnValue({
-      userName: "admin",
-      displayName: "admin",
-      authorizationLevel: AuthorizationLevel.ADMIN,
-      iat: Math.floor(Date.now() / 1000),
-    } as never);
+    adminToken = (await startSessions("admin")).admin;
   });
 
   afterEach(() => {
@@ -386,7 +383,7 @@ describe("POST /api/messaging/outgoing/text", () => {
   function send(body: object): request.Test {
     return request(app)
       .post("/api/messaging/outgoing/text")
-      .set("Authorization", "Bearer token")
+      .set("Authorization", `Bearer ${adminToken}`)
       .send(body);
   }
 

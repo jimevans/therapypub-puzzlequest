@@ -3,8 +3,8 @@ import { config } from "../config.js";
 import { PasswordResetModel } from "../models/passwordReset.model.js";
 import { UserModel } from "../models/user.model.js";
 import * as AuthenticationService from "./authentication.service.js";
+import * as SessionService from "./session.service.js";
 import * as EmailService from "./email.service.js";
-import { User } from "./user.service.js";
 import type { ServiceResult } from "../types.js";
 import { unexpectedErrorResult } from "../errors.js";
 
@@ -23,20 +23,28 @@ export function hashResetToken(token: string): string {
 }
 
 /**
- * Sets a new password on a user document and records when it was changed,
- * which revokes all previously issued tokens.
+ * Sets a new password on a user document, records when it was changed, and
+ * ends the user's sessions, so anyone who knew the old password is signed
+ * out.
  * @param userDocument the user document from the data store
  * @param newPassword the new plain text password
+ * @param keepSessionToken a session to keep, such as the one that changed
+ *  the password
  */
 async function applyNewPassword(
   userDocument: UserDocument,
-  newPassword: string
+  newPassword: string,
+  keepSessionToken?: string
 ): Promise<void> {
   userDocument.password =
     await AuthenticationService.encryptPassword(newPassword);
   userDocument.passwordChangedAt = new Date(Date.now());
   await userDocument.save();
   await PasswordResetModel.deleteMany({ userName: userDocument.userName });
+  await SessionService.deleteUserSessions(
+    userDocument.userName,
+    keepSessionToken
+  );
 }
 
 /**
@@ -70,8 +78,9 @@ async function sendPasswordChangedNotice(
 export async function changePassword(
   userName: string,
   currentPassword: string,
-  newPassword: string
-): Promise<ServiceResult<string>> {
+  newPassword: string,
+  keepSessionToken?: string
+): Promise<ServiceResult<undefined>> {
   const userDocument = await UserModel.findOne({ userName: userName });
   if (userDocument === null) {
     return {
@@ -105,15 +114,12 @@ export async function changePassword(
     };
   }
   try {
-    await applyNewPassword(userDocument, newPassword);
+    await applyNewPassword(userDocument, newPassword, keepSessionToken);
   } catch (err) {
     return unexpectedErrorResult("changePassword", err);
   }
   await sendPasswordChangedNotice(userDocument);
-  const token = AuthenticationService.createAuthenticationToken(
-    new User(userDocument)
-  );
-  return { status: "success", statusCode: 200, data: token };
+  return { status: "success", statusCode: 200 };
 }
 
 /**

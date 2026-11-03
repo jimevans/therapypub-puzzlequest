@@ -12,7 +12,7 @@ import {
   activationRateLimiter,
   solutionRateLimiter,
 } from "../middleware/rateLimiter.js";
-import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
+import { authenticateSession } from "../middleware/sessionAuthentication.js";
 import { uploadActivationImage } from "../middleware/upload.js";
 import * as QuestController from "../controllers/quest.controller.js";
 import * as QRCodeReader from "../middleware/qrCodeReader.js";
@@ -20,51 +20,51 @@ import * as QRCodeReader from "../middleware/qrCodeReader.js";
 const questApiRouter = express.Router();
 questApiRouter.get(
   "/list",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireAdmin,
   QuestController.listQuests
 );
 questApiRouter.get(
   "/:name",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireUser,
   QuestController.retrieveQuest
 );
 questApiRouter.put(
   "/:name",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireAdmin,
   validate({ body: updateQuestBody }),
   QuestController.updateQuest
 );
 questApiRouter.delete(
   "/:name",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireAdmin,
   QuestController.deleteQuest
 );
 questApiRouter.post(
   "/create",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireAdmin,
   validate({ body: createQuestBody }),
   QuestController.createQuest
 );
 questApiRouter.put(
   "/:name/activate",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireAdmin,
   QuestController.activateQuest
 );
 questApiRouter.put(
   "/:name/reset",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireAdmin,
   QuestController.resetQuest
 );
 questApiRouter.post(
   "/:name/puzzle/:puzzleName/activate",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   // Checked before the image is read into memory.
   requireUser,
   activationRateLimiter,
@@ -75,7 +75,7 @@ questApiRouter.post(
 );
 questApiRouter.put(
   "/:name/puzzle/:puzzleName/solve",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireUser,
   solutionRateLimiter,
   validate({ body: solvePuzzleBody }),
@@ -83,14 +83,14 @@ questApiRouter.put(
 );
 questApiRouter.put(
   "/:name/puzzle/:puzzleName/hint",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireUser,
   validate({ body: requestHintBody }),
   QuestController.requestQuestPuzzleHint
 );
 questApiRouter.get(
   "/:name/puzzle/:puzzleName/qrcode",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireAdmin,
   QuestController.generatePuzzleActivationQRCode
 );

@@ -14,8 +14,8 @@ import {
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
+import { startSessions } from "../sessions.js";
 
-const jwt = (await import("jsonwebtoken")).default;
 const { createApp } = await import("../../src/createApp.js");
 const { AuthorizationLevel, UserModel } =
   await import("../../src/models/user.model.js");
@@ -55,20 +55,13 @@ async function createAdmin() {
  * @param signedInAs who sends the request, or null for anonymous
  * @returns the response
  */
-function signUpAsAdmin(signedInAs: "admin" | "player" | null) {
+async function signUpAsAdmin(signedInAs: "admin" | "player" | null) {
   const pending = request(app).post("/api/user/create");
   if (signedInAs) {
-    vi.mocked(jwt.verify).mockReturnValue({
-      userName: signedInAs,
-      authorizationLevel:
-        signedInAs === "admin"
-          ? AuthorizationLevel.ADMIN
-          : AuthorizationLevel.USER,
-      iat: Math.floor(Date.now() / 1000),
-    } as never);
-    pending.set("Authorization", "Bearer token");
+    const tokens = await startSessions(signedInAs);
+    pending.set("Authorization", `Bearer ${tokens[signedInAs]}`);
   }
-  return pending.send({
+  return await pending.send({
     userName: "newcomer",
     displayName: "Newcomer",
     email: "newcomer@example.com",

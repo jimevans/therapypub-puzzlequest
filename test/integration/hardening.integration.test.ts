@@ -14,9 +14,9 @@ import {
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
+import { startSessions } from "../sessions.js";
 
 const bcrypt = (await import("bcrypt")).default;
-const jwt = (await import("jsonwebtoken")).default;
 const { createApp } = await import("../../src/createApp.js");
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
 const { QuestModel } = await import("../../src/models/quest.model.js");
@@ -64,18 +64,15 @@ async function createUser(userName: string) {
   });
 }
 
+/** The session token of the user the next requests come from. */
+let signedInToken = "";
+
 /**
  * Makes the next requests come from the given user.
  * @param userName the user name
  */
-function signInAs(userName: string): void {
-  vi.mocked(jwt.verify).mockReturnValue({
-    userName,
-    displayName: userName,
-    email: `${userName}@example.com`,
-    authorizationLevel: AuthorizationLevel.USER,
-    iat: Math.floor(Date.now() / 1000),
-  } as never);
+async function signInAs(userName: string): Promise<void> {
+  signedInToken = (await startSessions(userName))[userName];
 }
 
 function login(userName: string, password: string) {
@@ -186,7 +183,7 @@ describe("guessing solutions", () => {
   function guess(answer: string) {
     return request(app)
       .put("/api/quest/quest/puzzle/riddle/solve")
-      .set("Authorization", "Bearer token")
+      .set("Authorization", `Bearer ${signedInToken}`)
       .send({ guess: answer });
   }
 
@@ -199,14 +196,14 @@ describe("guessing solutions", () => {
   });
 
   it("limits wrong guesses per player", async () => {
-    signInAs("guesser");
+    await signInAs("guesser");
     for (let attempt = 0; attempt < 60; attempt++) {
       expect((await guess("organ")).status).toBe(406);
     }
 
     expect((await guess("organ")).status).toBe(429);
 
-    signInAs("bystander");
+    await signInAs("bystander");
     expect((await guess("organ")).status).toBe(403);
   });
 });

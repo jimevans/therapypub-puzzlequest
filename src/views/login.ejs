@@ -43,7 +43,8 @@
       </div>
     </form>
     <script type="text/javascript">
-      const user = <%- JSON.stringify(requestingUrl ? requestingUrl : "/") %>;
+      // The page to return to after signing in.
+      const requestingUrl = <%- JSON.stringify(requestingUrl ? requestingUrl : "/") %>;
     </script>
     <script type="module" src="/script/login.js"></script>
   </body>

@@ -5,46 +5,46 @@ import {
   updatePuzzleBody,
 } from "../schemas/puzzle.schemas.js";
 import { requireAdmin } from "../middleware/authorization.js";
-import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
+import { authenticateSession } from "../middleware/sessionAuthentication.js";
 import { uploadPuzzleMedia } from "../middleware/upload.js";
 import * as PuzzleController from "../controllers/puzzle.controller.js";
 
 const puzzleApiRouter = express.Router();
 puzzleApiRouter.get(
   "/list",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireAdmin,
   PuzzleController.listPuzzles
 );
 puzzleApiRouter.get(
   "/:name",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireAdmin,
   PuzzleController.retrievePuzzle
 );
 puzzleApiRouter.put(
   "/:name",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireAdmin,
   validate({ body: updatePuzzleBody }),
   PuzzleController.updatePuzzle
 );
 puzzleApiRouter.delete(
   "/:name",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireAdmin,
   PuzzleController.deletePuzzle
 );
 puzzleApiRouter.post(
   "/create",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireAdmin,
   validate({ body: createPuzzleBody }),
   PuzzleController.createPuzzle
 );
 puzzleApiRouter.post(
   "/upload",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   // Checked before the upload is stored, so rejected requests write nothing.
   requireAdmin,
   uploadPuzzleMedia,

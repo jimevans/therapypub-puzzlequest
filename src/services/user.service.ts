@@ -1,3 +1,4 @@
+import * as SessionService from "./session.service.js";
 import { AuthorizationLevel, UserModel } from "../models/user.model.js";
 import type { ServiceResult } from "../types.js";
 import * as AuthorizationService from "./authentication.service.js";
@@ -235,6 +236,7 @@ export async function deleteUser(name: string): Promise<UserResult<undefined>> {
       message: `User with user name ${name} does not exist`,
     };
   }
+  await SessionService.deleteUserSessions(name);
   return { status: "success", statusCode: 200 };
 }
 
@@ -333,7 +335,6 @@ export async function updateUser(
       userData.password
     );
     foundUser.password = password;
-    // Revokes all tokens issued before the change.
     foundUser.passwordChangedAt = new Date(Date.now());
   }
   foundUser.email = userData.email?.toLowerCase() || foundUser.email;
@@ -348,6 +349,11 @@ export async function updateUser(
       : userData.allowSmsMessages;
   foundUser.authorizationLevel =
     userData.authorizationLevel || foundUser.authorizationLevel;
+  // A new password, or a change to what the user may do, signs them out
+  // everywhere, so no session goes on with the old password or permissions.
+  const endSessions =
+    foundUser.isModified("password") ||
+    foundUser.isModified("authorizationLevel");
   try {
     await foundUser.save();
   } catch (err) {
@@ -359,6 +365,9 @@ export async function updateUser(
       };
     }
     return unexpectedErrorResult("updateUser", err);
+  }
+  if (endSessions) {
+    await SessionService.deleteUserSessions(name);
   }
   return { status: "success", statusCode: 200 };
 }
@@ -373,28 +382,46 @@ export async function listUsers(): Promise<UserResult<User[]>> {
   return { status: "success", statusCode: 200, data: users };
 }
 
-/** The data needed to decide whether an authentication token is still valid. */
-export interface TokenValidationData {
-  /** When the user's password was last changed, if ever. */
-  passwordChangedAt?: Date | null;
+/** The signed-in user, as each request sees them. */
+export interface SessionUser {
+  userName: string;
+  displayName: string;
+  email: string;
+  /** In E.164 format, or empty. */
+  phone: string;
+  /** True if the user allows SMS messages. */
+  sms: boolean;
+  /** The user's authorization level (see AuthorizationLevel). */
+  authorizationLevel: number;
 }
 
 /**
- * Gets the data needed to decide whether a user's authentication token is
- * still valid.
- * @param userName the user name from the token
- * @returns the token validation data, or null if the user does not exist
+ * Gets what each request needs to know about a signed-in user. It is read
+ * on every request, so changes, such as a new authorization level, apply at
+ * once.
+ * @param userName the user name
+ * @returns the user, or null if there is no such user
  */
-export async function getTokenValidationData(
+export async function getSessionUser(
   userName: string
-): Promise<TokenValidationData | null> {
-  return await UserModel.findOne({ userName: userName })
-    .select("passwordChangedAt")
+): Promise<SessionUser | null> {
+  const user = await UserModel.findOne({ userName })
+    .select("userName displayName email phone sms authorizationLevel")
     .lean();
+  return user
+    ? {
+        userName: user.userName,
+        displayName: user.displayName,
+        email: user.email,
+        phone: user.phone,
+        sms: user.sms,
+        authorizationLevel: user.authorizationLevel,
+      }
+    : null;
 }
 
 /**
- * Gets the signed-in user from the user data that tokenAuthenticate puts on
+ * Gets the signed-in user from the user data that authenticateSession puts on
  * the request.
  * @param requestUserData the request's user data, or null if anonymous
  * @returns the user, or null if the request is anonymous
