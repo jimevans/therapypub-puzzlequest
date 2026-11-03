@@ -72,6 +72,9 @@ the example values work for local development:
 - With `PQ_SMTP_HOST` empty, emails (such as password reset links) are printed
   to the console instead of being sent.
 - The Twilio settings can stay empty unless you are testing calls or texts.
+  Incoming calls and texts are accepted only with a valid Twilio signature,
+  which needs `PQ_TWILIO_AUTH_TOKEN`, and a `PQ_BASE_URL` that matches the
+  webhook URLs set in the Twilio console.
 
 `src/.env` is git-ignored. Every variable is documented in
 [src/.env.example](src/.env.example). Environment variables take precedence

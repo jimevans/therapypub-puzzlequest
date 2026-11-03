@@ -34,6 +34,8 @@ const QuestService = await import("../../src/services/quest.service.js");
 
 const ACCOUNT_SID = `AC${"0".repeat(32)}`;
 const MESSAGING_SERVICE_SID = `MG${"1".repeat(32)}`;
+const AUTH_TOKEN = "auth-token";
+const BASE_URL = "https://puzzlequest.example";
 
 let mongoServer: MongoMemoryServer | undefined;
 let app: Express;
@@ -51,6 +53,9 @@ afterAll(async () => {
 
 beforeEach(async () => {
   vi.clearAllMocks();
+  // Needed to check the signatures on incoming webhooks.
+  config.PQ_TWILIO_AUTH_TOKEN = AUTH_TOKEN;
+  config.PQ_BASE_URL = BASE_URL;
   await Promise.all([
     UserModel.deleteMany({}),
     TeamModel.deleteMany({}),
@@ -81,6 +86,8 @@ beforeEach(async () => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  config.PQ_TWILIO_AUTH_TOKEN = undefined;
+  config.PQ_BASE_URL = undefined;
 });
 
 function user(
@@ -114,12 +121,117 @@ async function storedQuest(name: string) {
   return (await QuestModel.findOne({ name }).lean())!;
 }
 
+/**
+ * Posts form fields to a webhook as Twilio does, signed with the account's
+ * auth token over the public URL.
+ * @param path the webhook path
+ * @param fields the form fields
+ * @param signature the signature to send instead of a valid one
+ * @returns the request
+ */
+function sendWebhook(
+  path: string,
+  fields: Record<string, string>,
+  signature = Twilio.getExpectedTwilioSignature(
+    AUTH_TOKEN,
+    `${BASE_URL}${path}`,
+    fields
+  )
+): request.Test {
+  return request(app)
+    .post(path)
+    .type("form")
+    .set("X-Twilio-Signature", signature)
+    .send(fields);
+}
+
+describe("Twilio webhook signatures", () => {
+  const webhooks = [
+    ["/api/messaging/incoming/voice", { From: "+15551230001" }],
+    ["/api/messaging/incoming/text", { From: "+15551230001", Body: "Ready" }],
+  ] as const;
+
+  beforeEach(async () => {
+    await createQuest("player-quest", "player");
+  });
+
+  it.each(webhooks)(
+    "%s accepts a request signed by Twilio",
+    async (path, fields) => {
+      const response = await sendWebhook(path, fields);
+
+      expect(response.status).toBe(200);
+    }
+  );
+
+  it.each(webhooks)("%s rejects an unsigned request", async (path, fields) => {
+    const response = await request(app).post(path).type("form").send(fields);
+
+    expect(response.status).toBe(403);
+    // A forged call must not start the caller's quests.
+    expect((await storedQuest("player-quest")).status).toBe(
+      QuestStatus.NOT_STARTED
+    );
+  });
+
+  it.each(webhooks)(
+    "%s rejects a request signed with another auth token",
+    async (path, fields) => {
+      const signature = Twilio.getExpectedTwilioSignature(
+        "another-token",
+        `${BASE_URL}${path}`,
+        fields
+      );
+
+      const response = await sendWebhook(path, fields, signature);
+
+      expect(response.status).toBe(403);
+    }
+  );
+
+  it.each(webhooks)(
+    "%s rejects a request whose fields were changed after signing",
+    async (path, fields) => {
+      const signature = Twilio.getExpectedTwilioSignature(
+        AUTH_TOKEN,
+        `${BASE_URL}${path}`,
+        fields
+      );
+
+      const response = await request(app)
+        .post(path)
+        .type("form")
+        .set("X-Twilio-Signature", signature)
+        .send({ ...fields, From: "+15551230002" });
+
+      expect(response.status).toBe(403);
+    }
+  );
+
+  it.each(webhooks)(
+    "%s rejects every request when the auth token is not configured",
+    async (path, fields) => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const signature = Twilio.getExpectedTwilioSignature(
+        AUTH_TOKEN,
+        `${BASE_URL}${path}`,
+        fields
+      );
+      config.PQ_TWILIO_AUTH_TOKEN = undefined;
+
+      const response = await sendWebhook(path, fields, signature);
+
+      expect(response.status).toBe(403);
+    }
+  );
+});
+
 describe("POST /api/messaging/incoming/voice", () => {
   function call(from?: string): request.Test {
-    return request(app)
-      .post("/api/messaging/incoming/voice")
-      .type("form")
-      .send(from === undefined ? {} : { From: from });
+    return sendWebhook(
+      "/api/messaging/incoming/voice",
+      from === undefined ? {} : { From: from }
+    );
   }
 
   it("greets a known caller and starts their quests that are waiting", async () => {
@@ -183,10 +295,10 @@ describe("POST /api/messaging/incoming/voice", () => {
 
 describe("POST /api/messaging/incoming/text", () => {
   function text(from: string, body: string): request.Test {
-    return request(app)
-      .post("/api/messaging/incoming/text")
-      .type("form")
-      .send({ From: from, Body: body });
+    return sendWebhook("/api/messaging/incoming/text", {
+      From: from,
+      Body: body,
+    });
   }
 
   beforeEach(async () => {
@@ -241,7 +353,7 @@ describe("POST /api/messaging/outgoing/text", () => {
 
   beforeEach(() => {
     config.PQ_TWILIO_ACCOUNT_SID = ACCOUNT_SID;
-    config.PQ_TWILIO_AUTH_TOKEN = "auth-token";
+    config.PQ_TWILIO_AUTH_TOKEN = AUTH_TOKEN;
     config.PQ_TWILIO_MESSAGING_SERVICE_ID = MESSAGING_SERVICE_SID;
     twilioRequests = [];
     vi.spyOn(Twilio.RequestClient.prototype, "request").mockImplementation(
