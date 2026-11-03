@@ -5,6 +5,11 @@ updates:
     schedule:
       interval: weekly
     groups:
+      # @vitest/coverage-v8 requires the exact same version of vitest, so
+      # they are always updated together, majors included. A dependency goes
+      # in the first group it matches.
+      vitest:
+        patterns: ["vitest", "@vitest/*"]
       # One PR for all non-breaking updates; major versions get their own PRs.
       npm-minor-and-patch:
         update-types: [minor, patch]

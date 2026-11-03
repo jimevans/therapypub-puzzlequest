@@ -1,22 +1,9 @@
 import { type InferSchemaType, Schema, model } from "mongoose";
+import { QuestPuzzleStatus, QuestStatus } from "../domain/quest/state.js";
 
-/** The progress of a quest. */
-export const QuestStatus = {
-  NOT_STARTED: 0,
-  IN_PROGRESS: 1,
-  COMPLETED: 2,
-} as const;
-export type QuestStatus = (typeof QuestStatus)[keyof typeof QuestStatus];
-
-/** The progress of a puzzle within a quest. */
-export const QuestPuzzleStatus = {
-  UNAVAILABLE: 0,
-  AWAITING_ACTIVATION: 1,
-  IN_PROGRESS: 2,
-  COMPLETED: 3,
-} as const;
-export type QuestPuzzleStatus =
-  (typeof QuestPuzzleStatus)[keyof typeof QuestPuzzleStatus];
+// The status values are part of the rules of the game, so they live in the
+// domain; they are re-exported here for code that already imports them.
+export { QuestPuzzleStatus, QuestStatus };
 
 /** A puzzle that is part of a quest, with the quest's progress on it. */
 const questPuzzleSchema = new Schema({

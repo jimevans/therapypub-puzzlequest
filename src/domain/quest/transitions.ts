@@ -1,0 +1,284 @@
+import type { QuestEvent } from "./events.js";
+import { type SolutionMatcher, containsAllKeywords } from "./solution.js";
+import {
+  type PuzzleRules,
+  type PuzzleState,
+  QuestPuzzleStatus,
+  type QuestState,
+  QuestStatus,
+} from "./state.js";
+
+/** Why an action isn't allowed. */
+export type QuestErrorCode =
+  | "QUEST_NOT_STARTED"
+  | "QUEST_COMPLETED"
+  | "QUEST_ALREADY_STARTED"
+  | "NO_PUZZLES"
+  | "PUZZLE_NOT_FOUND"
+  | "PUZZLE_NOT_AWAITING_ACTIVATION"
+  | "PUZZLE_NOT_IN_PROGRESS"
+  | "WRONG_ACTIVATION_CODE"
+  | "WRONG_SOLUTION"
+  | "NO_MORE_HINTS";
+
+/**
+ * The outcome of an action: the quest's new state and what happened, or why
+ * the action isn't allowed. The state passed in is never changed.
+ */
+export type TransitionResult =
+  | {
+      readonly ok: true;
+      readonly state: QuestState;
+      readonly events: readonly QuestEvent[];
+    }
+  | { readonly ok: false; readonly error: QuestErrorCode };
+
+function succeed(
+  state: QuestState,
+  events: readonly QuestEvent[]
+): TransitionResult {
+  return { ok: true, state, events };
+}
+
+function fail(error: QuestErrorCode): TransitionResult {
+  return { ok: false, error };
+}
+
+/**
+ * Checks that players can act on a quest.
+ * @param state the quest
+ * @returns why they can't, or undefined if they can
+ */
+function checkInProgress(state: QuestState): QuestErrorCode | undefined {
+  if (state.status === QuestStatus.COMPLETED) {
+    return "QUEST_COMPLETED";
+  }
+  if (state.status !== QuestStatus.IN_PROGRESS) {
+    return "QUEST_NOT_STARTED";
+  }
+  return undefined;
+}
+
+/**
+ * Finds a puzzle the players have reached. Puzzles not yet reached are
+ * reported as not found, so players can't discover what comes next.
+ * @param state the quest
+ * @param puzzleName the name of the puzzle
+ * @returns the puzzle's index, or -1 if it isn't found or not yet reached
+ */
+function findReachedPuzzle(state: QuestState, puzzleName: string): number {
+  return state.puzzles.findIndex(
+    (puzzle) =>
+      puzzle.puzzleName === puzzleName &&
+      puzzle.status !== QuestPuzzleStatus.UNAVAILABLE
+  );
+}
+
+/**
+ * Copies a quest with changes to some of its puzzles.
+ * @param state the quest
+ * @param changes the changes, by puzzle index
+ * @param status the quest's new status
+ * @returns the changed copy
+ */
+function withPuzzleChanges(
+  state: QuestState,
+  changes: ReadonlyMap<number, Partial<PuzzleState>>,
+  status: QuestStatus = state.status
+): QuestState {
+  return {
+    status,
+    puzzles: state.puzzles.map((puzzle, index) => {
+      const change = changes.get(index);
+      return change ? { ...puzzle, ...change } : puzzle;
+    }),
+  };
+}
+
+/**
+ * Starts a quest, making its first puzzle available to activate.
+ * @param state the quest
+ * @param now the current time
+ * @returns the outcome
+ */
+export function start(state: QuestState, now: Date): TransitionResult {
+  if (state.status === QuestStatus.COMPLETED) {
+    return fail("QUEST_COMPLETED");
+  }
+  if (state.status !== QuestStatus.NOT_STARTED) {
+    return fail("QUEST_ALREADY_STARTED");
+  }
+  if (state.puzzles.length === 0) {
+    return fail("NO_PUZZLES");
+  }
+  const changes = new Map([
+    [0, { status: QuestPuzzleStatus.AWAITING_ACTIVATION, startTime: now }],
+  ]);
+  return succeed(withPuzzleChanges(state, changes, QuestStatus.IN_PROGRESS), [
+    { type: "QuestStarted", at: now },
+    { type: "PuzzleStarted", puzzleName: state.puzzles[0].puzzleName, at: now },
+  ]);
+}
+
+/**
+ * Activates a puzzle that is awaiting activation, using the code the players
+ * found (usually in a QR code), so they can start solving it.
+ * @param state the quest
+ * @param puzzleName the name of the puzzle
+ * @param activationCode the code the players gave
+ * @param now the current time
+ * @returns the outcome
+ */
+export function activatePuzzle(
+  state: QuestState,
+  puzzleName: string,
+  activationCode: string,
+  now: Date
+): TransitionResult {
+  const questError = checkInProgress(state);
+  if (questError) {
+    return fail(questError);
+  }
+  const index = findReachedPuzzle(state, puzzleName);
+  if (index < 0) {
+    return fail("PUZZLE_NOT_FOUND");
+  }
+  const puzzle = state.puzzles[index];
+  if (puzzle.status !== QuestPuzzleStatus.AWAITING_ACTIVATION) {
+    return fail("PUZZLE_NOT_AWAITING_ACTIVATION");
+  }
+  if (puzzle.activationCode !== activationCode) {
+    return fail("WRONG_ACTIVATION_CODE");
+  }
+  const changes = new Map([
+    [index, { status: QuestPuzzleStatus.IN_PROGRESS, activationTime: now }],
+  ]);
+  return succeed(withPuzzleChanges(state, changes), [
+    { type: "PuzzleActivated", puzzleName, at: now },
+  ]);
+}
+
+/**
+ * Checks a guess at a puzzle's solution. A correct guess completes the
+ * puzzle and makes the next one available to activate, or completes the
+ * quest after its last puzzle.
+ * @param state the quest
+ * @param puzzleName the name of the puzzle
+ * @param guess the players' guess
+ * @param rules the puzzle's solution keywords and hints
+ * @param now the current time
+ * @param matcher decides whether the guess is correct
+ * @returns the outcome
+ */
+export function submitSolution(
+  state: QuestState,
+  puzzleName: string,
+  guess: string,
+  rules: PuzzleRules,
+  now: Date,
+  matcher: SolutionMatcher = containsAllKeywords
+): TransitionResult {
+  const questError = checkInProgress(state);
+  if (questError) {
+    return fail(questError);
+  }
+  const index = findReachedPuzzle(state, puzzleName);
+  if (index < 0) {
+    return fail("PUZZLE_NOT_FOUND");
+  }
+  if (state.puzzles[index].status !== QuestPuzzleStatus.IN_PROGRESS) {
+    return fail("PUZZLE_NOT_IN_PROGRESS");
+  }
+  if (!matcher(guess, rules.solutionKeywords)) {
+    return fail("WRONG_SOLUTION");
+  }
+
+  const changes = new Map<number, Partial<PuzzleState>>([
+    [index, { status: QuestPuzzleStatus.COMPLETED, endTime: now }],
+  ]);
+  const events: QuestEvent[] = [{ type: "PuzzleSolved", puzzleName, at: now }];
+  const next = state.puzzles[index + 1];
+  if (next) {
+    changes.set(index + 1, {
+      status: QuestPuzzleStatus.AWAITING_ACTIVATION,
+      startTime: now,
+    });
+    events.push({
+      type: "PuzzleStarted",
+      puzzleName: next.puzzleName,
+      at: now,
+    });
+    return succeed(withPuzzleChanges(state, changes), events);
+  }
+  events.push({ type: "QuestCompleted", at: now });
+  return succeed(
+    withPuzzleChanges(state, changes, QuestStatus.COMPLETED),
+    events
+  );
+}
+
+/**
+ * Reveals the next hint for a puzzle the players are solving.
+ * @param state the quest
+ * @param puzzleName the name of the puzzle
+ * @param rules the puzzle's solution keywords and hints
+ * @param now the current time
+ * @returns the outcome; the HintRevealed event says which hint was revealed
+ */
+export function revealHint(
+  state: QuestState,
+  puzzleName: string,
+  rules: PuzzleRules,
+  now: Date
+): TransitionResult {
+  const questError = checkInProgress(state);
+  if (questError) {
+    return fail(questError);
+  }
+  const index = findReachedPuzzle(state, puzzleName);
+  if (index < 0) {
+    return fail("PUZZLE_NOT_FOUND");
+  }
+  const puzzle = state.puzzles[index];
+  if (puzzle.status !== QuestPuzzleStatus.IN_PROGRESS) {
+    return fail("PUZZLE_NOT_IN_PROGRESS");
+  }
+  const hintIndex = puzzle.nextHintToDisplay;
+  if (hintIndex >= rules.hints.length) {
+    return fail("NO_MORE_HINTS");
+  }
+  const changes = new Map([[index, { nextHintToDisplay: hintIndex + 1 }]]);
+  return succeed(withPuzzleChanges(state, changes), [
+    {
+      type: "HintRevealed",
+      puzzleName,
+      hintIndex,
+      timePenalty: rules.hints[hintIndex].timePenalty,
+      at: now,
+    },
+  ]);
+}
+
+/**
+ * Clears a quest's progress, so it can be played again. Activation codes are
+ * kept. Any quest can be reset.
+ * @param state the quest
+ * @param now the current time
+ * @returns the outcome
+ */
+export function reset(state: QuestState, now: Date): TransitionResult {
+  return succeed(
+    {
+      status: QuestStatus.NOT_STARTED,
+      puzzles: state.puzzles.map((puzzle) => ({
+        ...puzzle,
+        status: QuestPuzzleStatus.UNAVAILABLE,
+        nextHintToDisplay: 0,
+        startTime: undefined,
+        activationTime: undefined,
+        endTime: undefined,
+      })),
+    },
+    [{ type: "QuestReset", at: now }]
+  );
+}

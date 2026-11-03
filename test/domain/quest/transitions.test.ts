@@ -1,0 +1,465 @@
+import { describe, expect, it, vi } from "vitest";
+import {
+  type PuzzleRules,
+  type PuzzleState,
+  QuestPuzzleStatus,
+  type QuestState,
+  QuestStatus,
+  type TransitionResult,
+  activatePuzzle,
+  reset,
+  revealHint,
+  start,
+  submitSolution,
+} from "../../../src/domain/quest/index.js";
+
+const EARLIER = new Date("2026-11-03T19:00:00Z");
+const NOW = new Date("2026-11-03T20:00:00Z");
+
+const rules: PuzzleRules = {
+  solutionKeywords: ["red", "fox"],
+  hints: [{ timePenalty: 60 }, { timePenalty: 300 }],
+};
+
+/**
+ * Builds a puzzle's progress.
+ * @param puzzleName the puzzle's name
+ * @param status the puzzle's status
+ * @param changes other fields to set
+ * @returns the puzzle
+ */
+function puzzle(
+  puzzleName: string,
+  status: QuestPuzzleStatus,
+  changes: Partial<PuzzleState> = {}
+): PuzzleState {
+  return {
+    puzzleName,
+    status,
+    nextHintToDisplay: 0,
+    activationCode: `${puzzleName}-code`,
+    ...changes,
+  };
+}
+
+/**
+ * Builds a quest's progress, frozen so a test fails if a transition changes
+ * its input.
+ * @param status the quest's status
+ * @param puzzles the puzzles' progress
+ * @returns the quest
+ */
+function quest(status: QuestStatus, puzzles: PuzzleState[]): QuestState {
+  return Object.freeze({
+    status,
+    puzzles: Object.freeze(puzzles.map((p) => Object.freeze(p))),
+  });
+}
+
+/** A three-puzzle quest that has not started. */
+const notStarted = quest(QuestStatus.NOT_STARTED, [
+  puzzle("first", QuestPuzzleStatus.UNAVAILABLE),
+  puzzle("second", QuestPuzzleStatus.UNAVAILABLE),
+  puzzle("third", QuestPuzzleStatus.UNAVAILABLE),
+]);
+
+/**
+ * Builds an in-progress quest with one puzzle of each status, in order: the
+ * first completed, the second (the target) in the given status, and the
+ * third not yet reached.
+ * @param targetStatus the status of the second puzzle
+ * @param changes other fields to set on the second puzzle
+ * @returns the quest
+ */
+function inProgressWith(
+  targetStatus: QuestPuzzleStatus,
+  changes: Partial<PuzzleState> = {}
+): QuestState {
+  return quest(QuestStatus.IN_PROGRESS, [
+    puzzle("first", QuestPuzzleStatus.COMPLETED, {
+      startTime: EARLIER,
+      activationTime: EARLIER,
+      endTime: EARLIER,
+    }),
+    puzzle("second", targetStatus, { startTime: EARLIER, ...changes }),
+    puzzle("third", QuestPuzzleStatus.UNAVAILABLE),
+  ]);
+}
+
+/** A quest whose every puzzle is solved. */
+const completed = quest(QuestStatus.COMPLETED, [
+  puzzle("first", QuestPuzzleStatus.COMPLETED),
+  puzzle("second", QuestPuzzleStatus.COMPLETED),
+]);
+
+/**
+ * Asserts that an action succeeded and narrows its result.
+ * @param result the action's result
+ * @returns the successful result
+ */
+function expectSuccess(
+  result: TransitionResult
+): Extract<TransitionResult, { ok: true }> {
+  if (!result.ok) {
+    throw new Error(`Expected success, got ${result.error}`);
+  }
+  return result;
+}
+
+describe("start", () => {
+  it("starts the quest and makes the first puzzle available", () => {
+    const result = expectSuccess(start(notStarted, NOW));
+
+    expect(result.state.status).toBe(QuestStatus.IN_PROGRESS);
+    expect(result.state.puzzles.map((p) => p.status)).toEqual([
+      QuestPuzzleStatus.AWAITING_ACTIVATION,
+      QuestPuzzleStatus.UNAVAILABLE,
+      QuestPuzzleStatus.UNAVAILABLE,
+    ]);
+    expect(result.state.puzzles[0].startTime).toBe(NOW);
+    expect(result.state.puzzles[1]).toBe(notStarted.puzzles[1]);
+    expect(result.events).toEqual([
+      { type: "QuestStarted", at: NOW },
+      { type: "PuzzleStarted", puzzleName: "first", at: NOW },
+    ]);
+  });
+
+  it.each([
+    [
+      "an in-progress quest",
+      inProgressWith(QuestPuzzleStatus.IN_PROGRESS),
+      "QUEST_ALREADY_STARTED",
+    ],
+    ["a completed quest", completed, "QUEST_COMPLETED"],
+    [
+      "a quest with no puzzles",
+      quest(QuestStatus.NOT_STARTED, []),
+      "NO_PUZZLES",
+    ],
+  ])("refuses to start %s", (_, state, error) => {
+    expect(start(state, NOW)).toEqual({ ok: false, error });
+  });
+});
+
+describe("activatePuzzle", () => {
+  it("activates a puzzle awaiting activation with its code", () => {
+    const state = inProgressWith(QuestPuzzleStatus.AWAITING_ACTIVATION);
+
+    const result = expectSuccess(
+      activatePuzzle(state, "second", "second-code", NOW)
+    );
+
+    expect(result.state.status).toBe(QuestStatus.IN_PROGRESS);
+    expect(result.state.puzzles[1]).toEqual({
+      ...state.puzzles[1],
+      status: QuestPuzzleStatus.IN_PROGRESS,
+      activationTime: NOW,
+    });
+    expect(result.state.puzzles[0]).toBe(state.puzzles[0]);
+    expect(result.state.puzzles[2]).toBe(state.puzzles[2]);
+    expect(result.events).toEqual([
+      { type: "PuzzleActivated", puzzleName: "second", at: NOW },
+    ]);
+  });
+
+  it("refuses a wrong activation code", () => {
+    const state = inProgressWith(QuestPuzzleStatus.AWAITING_ACTIVATION);
+
+    expect(activatePuzzle(state, "second", "first-code", NOW)).toEqual({
+      ok: false,
+      error: "WRONG_ACTIVATION_CODE",
+    });
+  });
+
+  it("compares activation codes exactly", () => {
+    const state = inProgressWith(QuestPuzzleStatus.AWAITING_ACTIVATION);
+
+    expect(activatePuzzle(state, "second", "SECOND-CODE", NOW)).toEqual({
+      ok: false,
+      error: "WRONG_ACTIVATION_CODE",
+    });
+  });
+
+  it.each([
+    ["a quest not started", notStarted, "first", "QUEST_NOT_STARTED"],
+    ["a completed quest", completed, "first", "QUEST_COMPLETED"],
+    [
+      "a puzzle not yet reached",
+      inProgressWith(QuestPuzzleStatus.AWAITING_ACTIVATION),
+      "third",
+      "PUZZLE_NOT_FOUND",
+    ],
+    [
+      "a puzzle not in the quest",
+      inProgressWith(QuestPuzzleStatus.AWAITING_ACTIVATION),
+      "missing",
+      "PUZZLE_NOT_FOUND",
+    ],
+    [
+      "a puzzle already in progress",
+      inProgressWith(QuestPuzzleStatus.IN_PROGRESS),
+      "second",
+      "PUZZLE_NOT_AWAITING_ACTIVATION",
+    ],
+    [
+      "a completed puzzle",
+      inProgressWith(QuestPuzzleStatus.IN_PROGRESS),
+      "first",
+      "PUZZLE_NOT_AWAITING_ACTIVATION",
+    ],
+  ])("refuses to activate %s", (_, state, puzzleName, error) => {
+    expect(
+      activatePuzzle(state, puzzleName, `${puzzleName}-code`, NOW)
+    ).toEqual({ ok: false, error });
+  });
+});
+
+describe("submitSolution", () => {
+  it("completes the puzzle and makes the next one available", () => {
+    const state = inProgressWith(QuestPuzzleStatus.IN_PROGRESS);
+
+    const result = expectSuccess(
+      submitSolution(state, "second", "Red Fox", rules, NOW)
+    );
+
+    expect(result.state.status).toBe(QuestStatus.IN_PROGRESS);
+    expect(result.state.puzzles[1]).toEqual({
+      ...state.puzzles[1],
+      status: QuestPuzzleStatus.COMPLETED,
+      endTime: NOW,
+    });
+    expect(result.state.puzzles[2]).toEqual({
+      ...state.puzzles[2],
+      status: QuestPuzzleStatus.AWAITING_ACTIVATION,
+      startTime: NOW,
+    });
+    expect(result.state.puzzles[0]).toBe(state.puzzles[0]);
+    expect(result.events).toEqual([
+      { type: "PuzzleSolved", puzzleName: "second", at: NOW },
+      { type: "PuzzleStarted", puzzleName: "third", at: NOW },
+    ]);
+  });
+
+  it("completes the quest after its last puzzle", () => {
+    const state = quest(QuestStatus.IN_PROGRESS, [
+      puzzle("first", QuestPuzzleStatus.COMPLETED),
+      puzzle("last", QuestPuzzleStatus.IN_PROGRESS),
+    ]);
+
+    const result = expectSuccess(
+      submitSolution(state, "last", "red fox", rules, NOW)
+    );
+
+    expect(result.state.status).toBe(QuestStatus.COMPLETED);
+    expect(result.state.puzzles[1].status).toBe(QuestPuzzleStatus.COMPLETED);
+    expect(result.state.puzzles[1].endTime).toBe(NOW);
+    expect(result.events).toEqual([
+      { type: "PuzzleSolved", puzzleName: "last", at: NOW },
+      { type: "QuestCompleted", at: NOW },
+    ]);
+  });
+
+  it("refuses a wrong guess", () => {
+    const state = inProgressWith(QuestPuzzleStatus.IN_PROGRESS);
+
+    expect(submitSolution(state, "second", "red dog", rules, NOW)).toEqual({
+      ok: false,
+      error: "WRONG_SOLUTION",
+    });
+  });
+
+  it("uses the matcher it is given", () => {
+    const state = inProgressWith(QuestPuzzleStatus.IN_PROGRESS);
+    const matcher = vi.fn(() => true);
+
+    const result = submitSolution(
+      state,
+      "second",
+      "guess",
+      rules,
+      NOW,
+      matcher
+    );
+
+    expect(result.ok).toBe(true);
+    expect(matcher).toHaveBeenCalledWith("guess", rules.solutionKeywords);
+  });
+
+  it.each([
+    ["a quest not started", notStarted, "first", "QUEST_NOT_STARTED"],
+    ["a completed quest", completed, "first", "QUEST_COMPLETED"],
+    [
+      "a puzzle not yet reached",
+      inProgressWith(QuestPuzzleStatus.IN_PROGRESS),
+      "third",
+      "PUZZLE_NOT_FOUND",
+    ],
+    [
+      "a puzzle not in the quest",
+      inProgressWith(QuestPuzzleStatus.IN_PROGRESS),
+      "missing",
+      "PUZZLE_NOT_FOUND",
+    ],
+    [
+      "a puzzle awaiting activation",
+      inProgressWith(QuestPuzzleStatus.AWAITING_ACTIVATION),
+      "second",
+      "PUZZLE_NOT_IN_PROGRESS",
+    ],
+    [
+      "a completed puzzle",
+      inProgressWith(QuestPuzzleStatus.IN_PROGRESS),
+      "first",
+      "PUZZLE_NOT_IN_PROGRESS",
+    ],
+  ])("refuses a solution to %s", (_, state, puzzleName, error) => {
+    expect(submitSolution(state, puzzleName, "red fox", rules, NOW)).toEqual({
+      ok: false,
+      error,
+    });
+  });
+});
+
+describe("revealHint", () => {
+  it("reveals the next hint and records its penalty", () => {
+    const state = inProgressWith(QuestPuzzleStatus.IN_PROGRESS, {
+      nextHintToDisplay: 1,
+    });
+
+    const result = expectSuccess(revealHint(state, "second", rules, NOW));
+
+    expect(result.state.status).toBe(QuestStatus.IN_PROGRESS);
+    expect(result.state.puzzles[1]).toEqual({
+      ...state.puzzles[1],
+      nextHintToDisplay: 2,
+    });
+    expect(result.state.puzzles[0]).toBe(state.puzzles[0]);
+    expect(result.state.puzzles[2]).toBe(state.puzzles[2]);
+    expect(result.events).toEqual([
+      {
+        type: "HintRevealed",
+        puzzleName: "second",
+        hintIndex: 1,
+        timePenalty: 300,
+        at: NOW,
+      },
+    ]);
+  });
+
+  it("refuses when every hint has been revealed", () => {
+    const state = inProgressWith(QuestPuzzleStatus.IN_PROGRESS, {
+      nextHintToDisplay: 2,
+    });
+
+    expect(revealHint(state, "second", rules, NOW)).toEqual({
+      ok: false,
+      error: "NO_MORE_HINTS",
+    });
+  });
+
+  it("refuses when the puzzle has no hints", () => {
+    const state = inProgressWith(QuestPuzzleStatus.IN_PROGRESS);
+
+    expect(
+      revealHint(state, "second", { solutionKeywords: [], hints: [] }, NOW)
+    ).toEqual({ ok: false, error: "NO_MORE_HINTS" });
+  });
+
+  it.each([
+    ["a quest not started", notStarted, "first", "QUEST_NOT_STARTED"],
+    ["a completed quest", completed, "first", "QUEST_COMPLETED"],
+    [
+      "a puzzle not yet reached",
+      inProgressWith(QuestPuzzleStatus.IN_PROGRESS),
+      "third",
+      "PUZZLE_NOT_FOUND",
+    ],
+    [
+      "a puzzle not in the quest",
+      inProgressWith(QuestPuzzleStatus.IN_PROGRESS),
+      "missing",
+      "PUZZLE_NOT_FOUND",
+    ],
+    [
+      "a puzzle awaiting activation",
+      inProgressWith(QuestPuzzleStatus.AWAITING_ACTIVATION),
+      "second",
+      "PUZZLE_NOT_IN_PROGRESS",
+    ],
+    [
+      "a completed puzzle",
+      inProgressWith(QuestPuzzleStatus.IN_PROGRESS),
+      "first",
+      "PUZZLE_NOT_IN_PROGRESS",
+    ],
+  ])("refuses a hint for %s", (_, state, puzzleName, error) => {
+    expect(revealHint(state, puzzleName, rules, NOW)).toEqual({
+      ok: false,
+      error,
+    });
+  });
+});
+
+describe("reset", () => {
+  it.each([
+    ["a quest not started", notStarted],
+    ["an in-progress quest", inProgressWith(QuestPuzzleStatus.IN_PROGRESS)],
+    ["a completed quest", completed],
+  ])("clears the progress of %s", (_, state) => {
+    const result = expectSuccess(reset(state, NOW));
+
+    expect(result.state.status).toBe(QuestStatus.NOT_STARTED);
+    expect(result.state.puzzles).toEqual(
+      state.puzzles.map((p) => ({
+        puzzleName: p.puzzleName,
+        status: QuestPuzzleStatus.UNAVAILABLE,
+        nextHintToDisplay: 0,
+        activationCode: p.activationCode,
+        startTime: undefined,
+        activationTime: undefined,
+        endTime: undefined,
+      }))
+    );
+    expect(result.events).toEqual([{ type: "QuestReset", at: NOW }]);
+  });
+});
+
+describe("a whole quest", () => {
+  it("plays from start to completion", () => {
+    let state = quest(QuestStatus.NOT_STARTED, [
+      puzzle("first", QuestPuzzleStatus.UNAVAILABLE),
+      puzzle("second", QuestPuzzleStatus.UNAVAILABLE),
+    ]);
+    const steps: ((s: QuestState) => TransitionResult)[] = [
+      (s) => start(s, NOW),
+      (s) => activatePuzzle(s, "first", "first-code", NOW),
+      (s) => revealHint(s, "first", rules, NOW),
+      (s) => submitSolution(s, "first", "red fox", rules, NOW),
+      (s) => activatePuzzle(s, "second", "second-code", NOW),
+      (s) => submitSolution(s, "second", "fox, red", rules, NOW),
+    ];
+    const eventTypes: string[] = [];
+    for (const step of steps) {
+      const result = expectSuccess(step(state));
+      state = result.state;
+      eventTypes.push(...result.events.map((e) => e.type));
+    }
+
+    expect(state.status).toBe(QuestStatus.COMPLETED);
+    expect(state.puzzles.map((p) => p.status)).toEqual([
+      QuestPuzzleStatus.COMPLETED,
+      QuestPuzzleStatus.COMPLETED,
+    ]);
+    expect(eventTypes).toEqual([
+      "QuestStarted",
+      "PuzzleStarted",
+      "PuzzleActivated",
+      "HintRevealed",
+      "PuzzleSolved",
+      "PuzzleStarted",
+      "PuzzleActivated",
+      "PuzzleSolved",
+      "QuestCompleted",
+    ]);
+  });
+});
