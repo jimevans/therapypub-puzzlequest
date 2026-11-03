@@ -1,15 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockRequest } from "../helpers.js";
+import type { PuzzleDefinition } from "../../src/services/puzzle.service.js";
 
 vi.mock("../../src/models/puzzle.model.js", async (importOriginal) => {
-  const original = await importOriginal();
+  const original =
+    await importOriginal<typeof import("../../src/models/puzzle.model.js")>();
   return {
     ...original,
     PuzzleModel: { findOneAndDelete: vi.fn(), find: vi.fn() },
   };
 });
 vi.mock("../../src/models/user.model.js", async (importOriginal) => {
-  const original = await importOriginal();
+  const original =
+    await importOriginal<typeof import("../../src/models/user.model.js")>();
   return {
     ...original,
     UserModel: { findOne: vi.fn() },
@@ -29,7 +32,7 @@ beforeEach(() => {
 
 describe("PuzzleService", () => {
   it("returns an error result when deleting a puzzle that does not exist", async () => {
-    PuzzleModel.findOneAndDelete.mockResolvedValue(null);
+    vi.mocked(PuzzleModel.findOneAndDelete).mockResolvedValue(null);
 
     const result = await PuzzleService.deletePuzzle("missing");
 
@@ -38,9 +41,13 @@ describe("PuzzleService", () => {
   });
 
   it("returns an error result when creating a puzzle that already exists", async () => {
-    PuzzleModel.find.mockReturnValue({ lean: async () => [{ name: "dupe" }] });
+    vi.mocked(PuzzleModel.find).mockReturnValue({
+      lean: async () => [{ name: "dupe" }],
+    } as never);
 
-    const result = await PuzzleService.createPuzzle({ name: "dupe" });
+    const result = await PuzzleService.createPuzzle({
+      name: "dupe",
+    } as PuzzleDefinition);
 
     expect(result.status).toBe("error");
     expect(result.statusCode).toBe(400);
@@ -51,6 +58,10 @@ describe("UserService", () => {
   it("never serializes the password hash", () => {
     const user = new UserService.User({
       userName: "player",
+      displayName: "Player",
+      email: "player@example.com",
+      phone: "",
+      sms: false,
       password: "$2b$10$hash",
       authorizationLevel: 1,
     });
@@ -67,12 +78,11 @@ describe("UserService", () => {
       authorizationLevel: 1,
       save: vi.fn(),
     };
-    UserModel.findOne.mockResolvedValue(foundUser);
+    vi.mocked(UserModel.findOne).mockResolvedValue(foundUser as never);
 
-    const result = await UserService.updateUser(
-      "player",
-      new UserService.User({ displayName: "New" })
-    );
+    const result = await UserService.updateUser("player", {
+      displayName: "New",
+    });
 
     expect(result.status).toBe("success");
     expect(foundUser.displayName).toBe("New");

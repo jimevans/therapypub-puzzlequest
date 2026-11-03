@@ -1,18 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/models/passwordReset.model.js", () => {
-  const PasswordResetModel = vi.fn(function (data) {
-    Object.assign(this, data);
-    this.save = vi.fn(async () => this);
-    PasswordResetModel.instances.push(this);
-  });
-  PasswordResetModel.instances = [];
-  PasswordResetModel.deleteMany = vi.fn();
-  PasswordResetModel.findOneAndDelete = vi.fn();
+  // Records the documents it creates, for the tests to inspect.
+  const instances: object[] = [];
+  const PasswordResetModel = Object.assign(
+    vi.fn(function (this: object, data: object) {
+      Object.assign(this, data, { save: vi.fn(async () => this) });
+      instances.push(this);
+    }),
+    { instances, deleteMany: vi.fn(), findOneAndDelete: vi.fn() }
+  );
   return { PasswordResetModel };
 });
 vi.mock("../../src/models/user.model.js", async (importOriginal) => {
-  const original = await importOriginal();
+  const original =
+    await importOriginal<typeof import("../../src/models/user.model.js")>();
   return { ...original, UserModel: { findOne: vi.fn() } };
 });
 vi.mock("../../src/services/email.service.js", () => ({
@@ -29,7 +31,12 @@ const AuthenticationService =
   await import("../../src/services/authentication.service.js");
 const PasswordService = await import("../../src/services/password.service.js");
 
-function createUserDocument() {
+/** The password reset documents the mocked model has created. */
+const createdResets = (PasswordResetModel as unknown as { instances: any[] })
+  .instances;
+
+// Stands in for the Mongoose document UserModel.findOne resolves to.
+function createUserDocument(): any {
   return {
     userName: "player",
     displayName: "Player",
@@ -42,7 +49,7 @@ function createUserDocument() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  PasswordResetModel.instances = [];
+  createdResets.length = 0;
   config.PQ_BASE_URL = "https://puzzlequest.example";
 });
 
@@ -99,8 +106,8 @@ describe("isTokenRevoked", () => {
 describe("changePassword", () => {
   it("rejects an incorrect current password without saving", async () => {
     const userDocument = createUserDocument();
-    UserModel.findOne.mockResolvedValue(userDocument);
-    bcrypt.compare.mockResolvedValue(false);
+    vi.mocked(UserModel.findOne).mockResolvedValue(userDocument);
+    vi.mocked(bcrypt.compare).mockResolvedValue(false as never);
 
     const result = await PasswordService.changePassword(
       "player",
@@ -115,8 +122,8 @@ describe("changePassword", () => {
 
   it("rejects a new password that fails the policy", async () => {
     const userDocument = createUserDocument();
-    UserModel.findOne.mockResolvedValue(userDocument);
-    bcrypt.compare.mockResolvedValue(true);
+    vi.mocked(UserModel.findOne).mockResolvedValue(userDocument);
+    vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
 
     const result = await PasswordService.changePassword(
       "player",
@@ -129,8 +136,8 @@ describe("changePassword", () => {
   });
 
   it("rejects reusing the current password", async () => {
-    UserModel.findOne.mockResolvedValue(createUserDocument());
-    bcrypt.compare.mockResolvedValue(true);
+    vi.mocked(UserModel.findOne).mockResolvedValue(createUserDocument());
+    vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
 
     const result = await PasswordService.changePassword(
       "player",
@@ -142,7 +149,7 @@ describe("changePassword", () => {
   });
 
   it("returns an error when the user does not exist", async () => {
-    UserModel.findOne.mockResolvedValue(null);
+    vi.mocked(UserModel.findOne).mockResolvedValue(null);
 
     const result = await PasswordService.changePassword(
       "ghost",
@@ -155,8 +162,8 @@ describe("changePassword", () => {
 
   it("saves the new password, revokes old tokens, and returns a new token", async () => {
     const userDocument = createUserDocument();
-    UserModel.findOne.mockResolvedValue(userDocument);
-    bcrypt.compare.mockResolvedValue(true);
+    vi.mocked(UserModel.findOne).mockResolvedValue(userDocument);
+    vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
 
     const before = Date.now();
     const result = await PasswordService.changePassword(
@@ -183,18 +190,18 @@ describe("changePassword", () => {
 
 describe("requestPasswordReset", () => {
   it("succeeds without creating a token or sending email for an unknown account", async () => {
-    UserModel.findOne.mockResolvedValue(null);
+    vi.mocked(UserModel.findOne).mockResolvedValue(null);
 
     const result =
       await PasswordService.requestPasswordReset("nobody@example.com");
 
     expect(result.status).toBe("success");
-    expect(PasswordResetModel.instances).toHaveLength(0);
+    expect(createdResets).toHaveLength(0);
     expect(EmailService.sendEmail).not.toHaveBeenCalled();
   });
 
   it("looks users up by normalized user name or email", async () => {
-    UserModel.findOne.mockResolvedValue(null);
+    vi.mocked(UserModel.findOne).mockResolvedValue(null);
 
     await PasswordService.requestPasswordReset("  Player@Example.com ");
 
@@ -207,7 +214,7 @@ describe("requestPasswordReset", () => {
   });
 
   it("stores only a hash of the token and emails the token in a reset link", async () => {
-    UserModel.findOne.mockResolvedValue(createUserDocument());
+    vi.mocked(UserModel.findOne).mockResolvedValue(createUserDocument());
 
     const result = await PasswordService.requestPasswordReset("player");
 
@@ -215,20 +222,20 @@ describe("requestPasswordReset", () => {
     expect(PasswordResetModel.deleteMany).toHaveBeenCalledWith({
       userName: "player",
     });
-    expect(PasswordResetModel.instances).toHaveLength(1);
-    const stored = PasswordResetModel.instances[0];
+    expect(createdResets).toHaveLength(1);
+    const stored = createdResets[0];
     expect(stored.save).toHaveBeenCalled();
     expect(stored.expiresAt.getTime()).toBeGreaterThan(Date.now());
 
-    const email = EmailService.sendEmail.mock.calls[0][0];
+    const email = vi.mocked(EmailService.sendEmail).mock.calls[0][0];
     expect(email.to).toBe("player@example.com");
-    const link = new URL(email.text.match(/https:\/\/\S+/)[0]);
+    const link = new URL(email.text.match(/https:\/\/\S+/)![0]);
     expect(link.origin).toBe("https://puzzlequest.example");
     expect(link.pathname).toBe("/user/password/reset");
     const token = link.searchParams.get("token");
     expect(token).toBeTruthy();
     expect(stored.tokenHash).not.toBe(token);
-    expect(stored.tokenHash).toBe(PasswordService.hashResetToken(token));
+    expect(stored.tokenHash).toBe(PasswordService.hashResetToken(token!));
   });
 
   it("returns an error when the base URL is not configured", async () => {
@@ -243,7 +250,7 @@ describe("requestPasswordReset", () => {
 
 describe("requestPasswordResetForUser", () => {
   it("reports when the user does not exist", async () => {
-    UserModel.findOne.mockResolvedValue(null);
+    vi.mocked(UserModel.findOne).mockResolvedValue(null);
 
     const result = await PasswordService.requestPasswordResetForUser("ghost");
 
@@ -252,7 +259,7 @@ describe("requestPasswordResetForUser", () => {
   });
 
   it("looks the user up by exact user name and emails an admin-specific reset link", async () => {
-    UserModel.findOne.mockResolvedValue(createUserDocument());
+    vi.mocked(UserModel.findOne).mockResolvedValue(createUserDocument());
 
     const result = await PasswordService.requestPasswordResetForUser("player");
 
@@ -261,20 +268,20 @@ describe("requestPasswordResetForUser", () => {
     expect(PasswordResetModel.deleteMany).toHaveBeenCalledWith({
       userName: "player",
     });
-    const email = EmailService.sendEmail.mock.calls[0][0];
+    const email = vi.mocked(EmailService.sendEmail).mock.calls[0][0];
     expect(email.to).toBe("player@example.com");
     expect(email.text).toContain("administrator requested");
     const token = new URL(
-      email.text.match(/https:\/\/\S+/)[0]
+      email.text.match(/https:\/\/\S+/)![0]
     ).searchParams.get("token");
-    expect(PasswordResetModel.instances[0].tokenHash).toBe(
-      PasswordService.hashResetToken(token)
+    expect(createdResets[0].tokenHash).toBe(
+      PasswordService.hashResetToken(token!)
     );
   });
 
   it("does not change the user's current password", async () => {
     const userDocument = createUserDocument();
-    UserModel.findOne.mockResolvedValue(userDocument);
+    vi.mocked(UserModel.findOne).mockResolvedValue(userDocument);
 
     await PasswordService.requestPasswordResetForUser("player");
 
@@ -291,8 +298,8 @@ describe("requestPasswordResetForUser", () => {
   });
 
   it("passes through email delivery failures", async () => {
-    UserModel.findOne.mockResolvedValue(createUserDocument());
-    EmailService.sendEmail.mockResolvedValueOnce({
+    vi.mocked(UserModel.findOne).mockResolvedValue(createUserDocument());
+    vi.mocked(EmailService.sendEmail).mockResolvedValueOnce({
       status: "error",
       statusCode: 500,
       message: "Email delivery is not configured",
@@ -314,15 +321,16 @@ describe("resetPassword", () => {
   });
 
   it("rejects a token that is unknown, expired, or already used", async () => {
-    PasswordResetModel.findOneAndDelete.mockResolvedValue(null);
+    vi.mocked(PasswordResetModel.findOneAndDelete).mockResolvedValue(null);
 
     const result = await PasswordService.resetPassword("token", "new password");
 
     expect(result.status).toBe("error");
     expect(result.statusCode).toBe(400);
-    const [query] = PasswordResetModel.findOneAndDelete.mock.calls[0];
-    expect(query.tokenHash).toBe(PasswordService.hashResetToken("token"));
-    expect(query.expiresAt.$gt).toBeInstanceOf(Date);
+    expect(PasswordResetModel.findOneAndDelete).toHaveBeenCalledWith({
+      tokenHash: PasswordService.hashResetToken("token"),
+      expiresAt: { $gt: expect.any(Date) },
+    });
   });
 
   it("rejects a missing token", async () => {
@@ -337,10 +345,10 @@ describe("resetPassword", () => {
 
   it("sets the new password and revokes existing tokens", async () => {
     const userDocument = createUserDocument();
-    PasswordResetModel.findOneAndDelete.mockResolvedValue({
+    vi.mocked(PasswordResetModel.findOneAndDelete).mockResolvedValue({
       userName: "player",
-    });
-    UserModel.findOne.mockResolvedValue(userDocument);
+    } as never);
+    vi.mocked(UserModel.findOne).mockResolvedValue(userDocument);
 
     const result = await PasswordService.resetPassword("token", "new password");
 

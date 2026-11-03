@@ -2,6 +2,7 @@
 // incoming webhooks receive the form-encoded fields Twilio sends and answer
 // with TwiML. Outgoing texts use the real Twilio client; only its HTTP request
 // to the Twilio API is intercepted.
+import type { Express } from "express";
 import {
   afterAll,
   afterEach,
@@ -34,8 +35,8 @@ const QuestService = await import("../../src/services/quest.service.js");
 const ACCOUNT_SID = `AC${"0".repeat(32)}`;
 const MESSAGING_SERVICE_SID = `MG${"1".repeat(32)}`;
 
-let mongoServer;
-let app;
+let mongoServer: MongoMemoryServer | undefined;
+let app: Express;
 
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
@@ -82,7 +83,14 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function user(userName, phone, { sms = false, authorizationLevel } = {}) {
+function user(
+  userName: string,
+  phone: string,
+  {
+    sms = false,
+    authorizationLevel,
+  }: { sms?: boolean; authorizationLevel?: number } = {}
+) {
   return {
     userName,
     displayName: userName,
@@ -94,7 +102,7 @@ function user(userName, phone, { sms = false, authorizationLevel } = {}) {
   };
 }
 
-async function createQuest(name, userName) {
+async function createQuest(name: string, userName: string): Promise<void> {
   await QuestService.createQuest({
     name,
     userName,
@@ -102,12 +110,12 @@ async function createQuest(name, userName) {
   });
 }
 
-function storedQuest(name) {
-  return QuestModel.findOne({ name }).lean();
+async function storedQuest(name: string) {
+  return (await QuestModel.findOne({ name }).lean())!;
 }
 
 describe("POST /api/messaging/incoming/voice", () => {
-  function call(from) {
+  function call(from?: string): request.Test {
     return request(app)
       .post("/api/messaging/incoming/voice")
       .type("form")
@@ -174,7 +182,7 @@ describe("POST /api/messaging/incoming/voice", () => {
 });
 
 describe("POST /api/messaging/incoming/text", () => {
-  function text(from, body) {
+  function text(from: string, body: string): request.Test {
     return request(app)
       .post("/api/messaging/incoming/text")
       .type("form")
@@ -229,7 +237,7 @@ describe("POST /api/messaging/incoming/text", () => {
 });
 
 describe("POST /api/messaging/outgoing/text", () => {
-  let twilioRequests;
+  let twilioRequests: unknown[];
 
   beforeEach(() => {
     config.PQ_TWILIO_ACCOUNT_SID = ACCOUNT_SID;
@@ -249,12 +257,12 @@ describe("POST /api/messaging/outgoing/text", () => {
         };
       }
     );
-    jwt.verify.mockReturnValue({
+    vi.mocked(jwt.verify).mockReturnValue({
       userName: "admin",
       displayName: "admin",
       authorizationLevel: AuthorizationLevel.ADMIN,
       iat: Math.floor(Date.now() / 1000),
-    });
+    } as never);
   });
 
   afterEach(() => {
@@ -263,7 +271,7 @@ describe("POST /api/messaging/outgoing/text", () => {
     config.PQ_TWILIO_MESSAGING_SERVICE_ID = undefined;
   });
 
-  function send(body) {
+  function send(body: object): request.Test {
     return request(app)
       .post("/api/messaging/outgoing/text")
       .set("Authorization", "Bearer token")
@@ -305,7 +313,7 @@ describe("POST /api/messaging/outgoing/text", () => {
   it("reports a Twilio API error", async () => {
     await createQuest("player-quest", "player");
     await QuestService.startQuest("player-quest");
-    Twilio.RequestClient.prototype.request.mockResolvedValue({
+    vi.mocked(Twilio.RequestClient.prototype.request).mockResolvedValue({
       statusCode: 400,
       body: JSON.stringify({
         code: 21211,

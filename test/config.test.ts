@@ -1,16 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { parseConfig } from "../src/config.js";
+import { getErrorMessage } from "../src/errors.js";
 
 const required = {
   PQ_MONGODB_URI: "mongodb://localhost:27017/puzzlequest",
   PQ_SECRET_KEY: "a-secret-key-that-is-at-least-32-characters",
 };
 
-function parseError(environment) {
+function parseError(environment: Record<string, string>): string {
   try {
     parseConfig(environment);
   } catch (err) {
-    return err.message;
+    return getErrorMessage(err);
   }
   throw new Error("expected parseConfig to throw");
 }

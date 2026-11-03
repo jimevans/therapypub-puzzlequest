@@ -1,12 +1,13 @@
 // The websocket server accepts connections from anyone, so messages it can't
 // use must be ignored rather than stop the server.
 import * as http from "http";
+import type { AddressInfo } from "net";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import WebSocket from "ws";
 import * as WebSocketService from "../src/services/websocket.service.js";
 
-let server;
-let port;
+let server: http.Server;
+let port: number;
 
 beforeAll(async () => {
   const socketServer = WebSocketService.initialize();
@@ -17,8 +18,8 @@ beforeAll(async () => {
       socketServer.emit("connection", ws, req)
     );
   });
-  await new Promise((resolve) => server.listen(0, resolve));
-  port = server.address().port;
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  port = (server.address() as AddressInfo).port;
 });
 
 afterAll(async () => {
@@ -27,7 +28,7 @@ afterAll(async () => {
 
 async function connect() {
   const socket = new WebSocket(`ws://localhost:${port}/api/updates`);
-  const messages = [];
+  const messages: { message?: string }[] = [];
   socket.on("message", (data) => messages.push(JSON.parse(data.toString())));
   await new Promise((resolve) => socket.on("open", resolve));
   return { socket, messages };

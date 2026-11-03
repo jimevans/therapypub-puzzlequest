@@ -12,10 +12,10 @@ const { QuestModel, QuestPuzzleStatus, QuestStatus } =
   await import("../../src/models/quest.model.js");
 const QuestService = await import("../../src/services/quest.service.js");
 const { Puzzle } = await import("../../src/services/puzzle.service.js");
-const { User } = await import("../../src/services/user.service.js");
+const { User, UserTeam } = await import("../../src/services/user.service.js");
 const { AuthorizationLevel } = await import("../../src/models/user.model.js");
 
-let mongoServer;
+let mongoServer: MongoMemoryServer | undefined;
 
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
@@ -65,9 +65,9 @@ const PLAYER = ["player"];
 
 /**
  * Creates a quest assigned to "player" containing the named puzzles.
- * @param {string[]} puzzleNames the puzzles, in order
- * @param {string} name the quest name
- * @returns {Promise<object>} the stored quest document
+ * @param puzzleNames the puzzles, in order
+ * @param name the quest name
+ * @returns the stored quest document
  */
 async function createQuest(
   puzzleNames = ["colors", "fruit", "finale"],
@@ -80,12 +80,12 @@ async function createQuest(
     puzzles: puzzleNames.map((puzzleName) => ({ puzzleName })),
   });
   expect(result).toEqual({ status: "success", statusCode: 200 });
-  return QuestModel.findOne({ name }).lean();
+  return (await QuestModel.findOne({ name }).lean())!;
 }
 
 /**
  * Creates and starts a quest, then activates its first puzzle.
- * @returns {Promise<object>} the stored quest document
+ * @returns the stored quest document
  */
 async function createQuestWithFirstPuzzleInProgress() {
   const quest = await createQuest();
@@ -97,34 +97,54 @@ async function createQuestWithFirstPuzzleInProgress() {
     quest.puzzles[0].activationCode
   );
   expect(result.status).toBe("success");
-  return QuestModel.findOne({ name: quest.name }).lean();
+  return (await QuestModel.findOne({ name: quest.name }).lean())!;
 }
 
-function storedQuest(name = "test-quest") {
-  return QuestModel.findOne({ name }).lean();
+async function storedQuest(name = "test-quest") {
+  return (await QuestModel.findOne({ name }).lean())!;
 }
 
-function createUser(userName, authorizationLevel, teamNames = []) {
-  const user = new User({ userName, authorizationLevel });
-  user.teams = teamNames.map((teamName) => ({ teamName }));
+function createUser(
+  userName: string,
+  authorizationLevel: number,
+  teamNames: string[] = []
+) {
+  const user = new User({
+    userName,
+    displayName: userName,
+    email: `${userName}@example.com`,
+    phone: "",
+    sms: false,
+    authorizationLevel,
+  });
+  user.teams = teamNames.map(
+    (teamName) => new UserTeam({ teamName, displayName: teamName })
+  );
   return user;
 }
 
 /**
  * Runs a service call and checks that it stamped the current time.
- * @param {() => Promise<object>} action the call to run
- * @returns {Promise<{result: object, before: Date, after: Date}>} the result and time bounds
+ * @param action the call to run
+ * @returns the result and time bounds
  */
-async function timed(action) {
+async function timed<T>(
+  action: () => Promise<T>
+): Promise<{ result: T; before: Date; after: Date }> {
   const before = new Date();
   const result = await action();
   const after = new Date();
   return { result, before, after };
 }
 
-function expectBetween(date, before, after) {
-  expect(date.getTime()).toBeGreaterThanOrEqual(before.getTime());
-  expect(date.getTime()).toBeLessThanOrEqual(after.getTime());
+function expectBetween(
+  date: Date | null | undefined,
+  before: Date,
+  after: Date
+): void {
+  expect(date).toBeInstanceOf(Date);
+  expect(date!.getTime()).toBeGreaterThanOrEqual(before.getTime());
+  expect(date!.getTime()).toBeLessThanOrEqual(after.getTime());
 }
 
 describe("createQuest", () => {
@@ -310,10 +330,12 @@ describe("activatePuzzle", () => {
 
     expect(result.status).toBe("success");
     expect(result.statusCode).toBe(200);
-    expectBetween(result.data.activationTime, before, after);
+    expectBetween(result.data!.activationTime, before, after);
     const quest = await storedQuest();
     expect(quest.puzzles[0].status).toBe(QuestPuzzleStatus.IN_PROGRESS);
-    expect(quest.puzzles[0].activationTime).toEqual(result.data.activationTime);
+    expect(quest.puzzles[0].activationTime).toEqual(
+      result.data!.activationTime
+    );
     expect(quest.puzzles[1].status).toBe(QuestPuzzleStatus.UNAVAILABLE);
   });
 
@@ -448,13 +470,13 @@ describe("finishPuzzle", () => {
         nextPuzzleDisplayName: "Fruit",
       },
     });
-    expectBetween(result.data.endTime, before, after);
+    expectBetween(result.data!.endTime, before, after);
     const quest = await storedQuest();
     expect(quest.status).toBe(QuestStatus.IN_PROGRESS);
     expect(quest.puzzles[0].status).toBe(QuestPuzzleStatus.COMPLETED);
-    expect(quest.puzzles[0].endTime).toEqual(result.data.endTime);
+    expect(quest.puzzles[0].endTime).toEqual(result.data!.endTime);
     expect(quest.puzzles[1].status).toBe(QuestPuzzleStatus.AWAITING_ACTIVATION);
-    expect(quest.puzzles[1].startTime).toEqual(result.data.endTime);
+    expect(quest.puzzles[1].startTime).toEqual(result.data!.endTime);
     expect(quest.puzzles[2].status).toBe(QuestPuzzleStatus.UNAVAILABLE);
   });
 
@@ -489,7 +511,11 @@ describe("finishPuzzle", () => {
   it("plays a whole quest from start to completion", async () => {
     const created = await createQuest();
     await QuestService.startQuest("test-quest");
-    const answers = { colors: "red blue", fruit: "apple", finale: "done" };
+    const answers: Record<string, string> = {
+      colors: "red blue",
+      fruit: "apple",
+      finale: "done",
+    };
 
     for (const [index, puzzle] of created.puzzles.entries()) {
       const activation = await QuestService.activatePuzzle(
@@ -506,7 +532,7 @@ describe("finishPuzzle", () => {
         answers[puzzle.puzzleName]
       );
       expect(solve.status).toBe("success");
-      expect(Boolean(solve.data.questComplete)).toBe(
+      expect(Boolean(solve.data!.questComplete)).toBe(
         index === created.puzzles.length - 1
       );
     }
@@ -698,11 +724,12 @@ describe("finishPuzzle", () => {
   it.each([
     [
       "finishPuzzle",
-      (quest) => QuestService.finishPuzzle(quest, "colors", PLAYER, "red blue"),
+      (quest: string) =>
+        QuestService.finishPuzzle(quest, "colors", PLAYER, "red blue"),
     ],
     [
       "getPuzzleHint",
-      (quest) => QuestService.getPuzzleHint(quest, "colors", PLAYER),
+      (quest: string) => QuestService.getPuzzleHint(quest, "colors", PLAYER),
     ],
   ])("%s rejects a quest that has not started", async (_name, action) => {
     await createQuest();
@@ -1018,7 +1045,7 @@ describe("getQuestByQuestName", () => {
     );
 
     expect(result.status).toBe("success");
-    const quest = result.data;
+    const quest = result.data!;
     expect(quest).toBeInstanceOf(QuestService.Quest);
     expect(quest.statusDescription).toBe("Not yet started");
     expect(quest.puzzles.map((p) => p.puzzleName)).toEqual([
@@ -1030,7 +1057,7 @@ describe("getQuestByQuestName", () => {
       created.puzzles[0].activationCode
     );
     expect(quest.puzzles[0].puzzleDetail).toBeInstanceOf(Puzzle);
-    expect(quest.puzzles[0].puzzleDetail.displayName).toBe("Colors");
+    expect(quest.puzzles[0].puzzleDetail!.displayName).toBe("Colors");
   });
 
   it("applies no player filtering when there is no user", async () => {
@@ -1038,7 +1065,7 @@ describe("getQuestByQuestName", () => {
 
     const result = await QuestService.getQuestByQuestName("test-quest", null);
 
-    expect(result.data.puzzles).toHaveLength(3);
+    expect(result.data!.puzzles).toHaveLength(3);
   });
 
   it("hides a quest that has not started from its player", async () => {
@@ -1067,7 +1094,7 @@ describe("getQuestByQuestName", () => {
     );
 
     expect(
-      result.data.puzzles.map((p) => [p.puzzleName, p.statusDescription])
+      result.data!.puzzles.map((p) => [p.puzzleName, p.statusDescription])
     ).toEqual([
       ["colors", "Completed"],
       ["fruit", "Awaiting activation"],
@@ -1084,7 +1111,7 @@ describe("getQuestByQuestName", () => {
       createUser("someone", AuthorizationLevel.USER, ["team-a"])
     );
 
-    expect(result.data.puzzles.map((p) => p.puzzleName)).toEqual(["colors"]);
+    expect(result.data!.puzzles.map((p) => p.puzzleName)).toEqual(["colors"]);
   });
 
   it("hides a quest from players it is not assigned to", async () => {
@@ -1108,12 +1135,12 @@ describe("quests whose puzzles were deleted", () => {
     const result = await QuestService.getQuestByQuestName("test-quest", null);
 
     expect(result.status).toBe("success");
-    expect(result.data.puzzles.map((p) => p.puzzleName)).toEqual([
+    expect(result.data!.puzzles.map((p) => p.puzzleName)).toEqual([
       "colors",
       "fruit",
     ]);
-    expect(result.data.puzzles[0].puzzleDetail.displayName).toBe("Colors");
-    expect(result.data.puzzles[1].puzzleDetail).toBeUndefined();
+    expect(result.data!.puzzles[0].puzzleDetail!.displayName).toBe("Colors");
+    expect(result.data!.puzzles[1].puzzleDetail).toBeUndefined();
   });
 });
 
@@ -1127,8 +1154,8 @@ describe("getQuestPuzzle", () => {
       null
     );
 
-    expect(result.data.puzzleName).toBe("fruit");
-    expect(result.data.puzzleDetail.solutionDisplayText).toBe("Apple");
+    expect(result.data!.puzzleName).toBe("fruit");
+    expect(result.data!.puzzleDetail!.solutionDisplayText).toBe("Apple");
   });
 
   it("returns 404 for a puzzle the player cannot see yet", async () => {
@@ -1156,11 +1183,11 @@ describe("findQuests", () => {
 
     const result = await QuestService.findQuests();
 
-    expect(result.data.map((quest) => quest.name).sort()).toEqual([
+    expect(result.data!.map((quest) => quest.name).sort()).toEqual([
       "one",
       "two",
     ]);
-    expect(result.data[0].puzzles[0].puzzleDetail).toBeUndefined();
+    expect(result.data![0].puzzles[0].puzzleDetail).toBeUndefined();
   });
 
   it("returns 404 when there are no quests", async () => {
@@ -1182,7 +1209,7 @@ describe("getPuzzleActivationQrCode", () => {
     );
 
     expect(result.status).toBe("success");
-    expect(result.data.subarray(0, 8)).toEqual(
+    expect(result.data!.subarray(0, 8)).toEqual(
       Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
     );
   });
@@ -1235,18 +1262,15 @@ describe("text responses", () => {
 
 describe("getQuestRunBook", () => {
   function createPdfRecorder() {
-    const calls = [];
-    const pdfDoc = new Proxy(
-      {},
-      {
-        get(target, method) {
-          return (...args) => {
-            calls.push([method, ...args]);
-            return pdfDoc;
-          };
-        },
-      }
-    );
+    const calls: unknown[][] = [];
+    const pdfDoc = new Proxy({} as PDFKit.PDFDocument, {
+      get(target, method) {
+        return (...args: unknown[]) => {
+          calls.push([method, ...args]);
+          return pdfDoc;
+        };
+      },
+    });
     return { pdfDoc, calls };
   }
 

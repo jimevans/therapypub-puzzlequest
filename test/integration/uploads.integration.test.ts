@@ -3,6 +3,7 @@
 import { existsSync } from "fs";
 import { readdir, readFile, rm } from "fs/promises";
 import path from "path";
+import type { Express } from "express";
 import {
   afterAll,
   afterEach,
@@ -11,6 +12,7 @@ import {
   describe,
   expect,
   it,
+  vi,
 } from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
@@ -34,8 +36,8 @@ const puzzleDataDirectory = path.join(
 );
 const uploadedFile = path.join(puzzleDataDirectory, "upload-test.png");
 
-let mongoServer;
-let app;
+let mongoServer: MongoMemoryServer | undefined;
+let app: Express;
 
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
@@ -76,25 +78,32 @@ afterEach(async () => {
 
 /**
  * Makes the (globally mocked) token verification return the given user.
- * @param {string} userName the user name
- * @param {number} authorizationLevel the user's authorization level
+ * @param userName the user name
+ * @param authorizationLevel the user's authorization level
  */
-function signInAs(userName, authorizationLevel) {
-  jwt.verify.mockReturnValue({
+function signInAs(userName: string, authorizationLevel: number): void {
+  vi.mocked(jwt.verify).mockReturnValue({
     userName,
     displayName: userName,
     authorizationLevel,
     iat: Math.floor(Date.now() / 1000),
-  });
+  } as never);
+}
+
+/** An image in the RGBA pixel format of a canvas. */
+interface PixelImage {
+  data: Buffer;
+  width: number;
+  height: number;
 }
 
 /**
  * Renders text as a QR code in the RGBA pixel format that the activation
  * page sends from its camera canvas.
- * @param {string} text the text to encode
- * @returns {{data: Buffer, width: number, height: number}} the image
+ * @param text the text to encode
+ * @returns the image
  */
-function renderQrCodePixels(text) {
+function renderQrCodePixels(text: string): PixelImage {
   const { modules } = QRCode.create(text);
   const scale = 4;
   const margin = 4;
@@ -119,7 +128,7 @@ function renderQrCodePixels(text) {
 }
 
 describe("POST /api/quest/:name/puzzle/:puzzleName/activate", () => {
-  let activationCode;
+  let activationCode: string;
 
   beforeEach(async () => {
     await PuzzleModel.create({
@@ -135,11 +144,11 @@ describe("POST /api/quest/:name/puzzle/:puzzleName/activate", () => {
     });
     await QuestService.startQuest("test-quest");
     const quest = await QuestModel.findOne({ name: "test-quest" }).lean();
-    activationCode = quest.puzzles[0].activationCode;
+    activationCode = quest!.puzzles[0].activationCode;
     signInAs("player", AuthorizationLevel.USER);
   });
 
-  function sendImage(image) {
+  function sendImage(image: PixelImage): request.Test {
     // Same field order as activate.js: dimensions first, then the pixels.
     return request(app)
       .post("/api/quest/test-quest/puzzle/colors/activate")
@@ -155,7 +164,7 @@ describe("POST /api/quest/:name/puzzle/:puzzleName/activate", () => {
     expect(response.status).toBe(200);
     expect(JSON.parse(response.text).status).toBe("success");
     const quest = await QuestModel.findOne({ name: "test-quest" }).lean();
-    expect(quest.puzzles[0].status).toBe(QuestPuzzleStatus.IN_PROGRESS);
+    expect(quest!.puzzles[0].status).toBe(QuestPuzzleStatus.IN_PROGRESS);
   });
 
   it("rejects a QR code for a different activation code", async () => {
@@ -192,12 +201,14 @@ describe("POST /api/quest/:name/puzzle/:puzzleName/activate", () => {
 
     expect(response.status).toBe(413);
     const quest = await QuestModel.findOne({ name: "test-quest" }).lean();
-    expect(quest.puzzles[0].status).toBe(QuestPuzzleStatus.AWAITING_ACTIVATION);
+    expect(quest!.puzzles[0].status).toBe(
+      QuestPuzzleStatus.AWAITING_ACTIVATION
+    );
   });
 });
 
 describe("POST /api/puzzle/upload", () => {
-  let filesBefore;
+  let filesBefore: string[];
 
   beforeEach(async () => {
     filesBefore = await readdir(puzzleDataDirectory);

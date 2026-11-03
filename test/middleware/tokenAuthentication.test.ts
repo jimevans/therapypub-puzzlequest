@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockRequest, createMockResponse } from "../helpers.js";
 
 vi.mock("../../src/services/user.service.js", async (importOriginal) => {
-  const original = await importOriginal();
+  const original =
+    await importOriginal<typeof import("../../src/services/user.service.js")>();
   return { ...original, getTokenValidationData: vi.fn() };
 });
 
@@ -21,28 +22,28 @@ function createAuthenticatedRequest() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  jwt.verify.mockReturnValue({
+  vi.mocked(jwt.verify).mockReturnValue({
     userName: "player",
     displayName: "Player",
     authorizationLevel: 1,
     iat: issuedAt,
-  });
+  } as never);
 });
 
 describe("tokenAuthenticate", () => {
   it("authenticates a valid token for a user whose password has not changed", async () => {
-    UserService.getTokenValidationData.mockResolvedValue({});
+    vi.mocked(UserService.getTokenValidationData).mockResolvedValue({});
     const req = createAuthenticatedRequest();
     const next = vi.fn();
 
     await TokenAuthenticator.tokenAuthenticate(req, createMockResponse(), next);
 
-    expect(req.user.userName).toBe("player");
+    expect(req.user?.userName).toBe("player");
     expect(next).toHaveBeenCalled();
   });
 
   it("treats a token issued before the last password change as signed out", async () => {
-    UserService.getTokenValidationData.mockResolvedValue({
+    vi.mocked(UserService.getTokenValidationData).mockResolvedValue({
       passwordChangedAt: new Date((issuedAt + 60) * 1000),
     });
     const req = createAuthenticatedRequest();
@@ -59,7 +60,7 @@ describe("tokenAuthenticate", () => {
   });
 
   it("accepts a token issued after the last password change", async () => {
-    UserService.getTokenValidationData.mockResolvedValue({
+    vi.mocked(UserService.getTokenValidationData).mockResolvedValue({
       passwordChangedAt: new Date((issuedAt - 60) * 1000),
     });
     const req = createAuthenticatedRequest();
@@ -70,11 +71,11 @@ describe("tokenAuthenticate", () => {
       vi.fn()
     );
 
-    expect(req.user.userName).toBe("player");
+    expect(req.user?.userName).toBe("player");
   });
 
   it("treats a token for a deleted user as signed out", async () => {
-    UserService.getTokenValidationData.mockResolvedValue(null);
+    vi.mocked(UserService.getTokenValidationData).mockResolvedValue(null);
     const req = createAuthenticatedRequest();
     const next = vi.fn();
 
@@ -85,14 +86,14 @@ describe("tokenAuthenticate", () => {
   });
 
   it("handles a request without a parsed body, as Express 5 sends for GET and multipart requests", async () => {
-    UserService.getTokenValidationData.mockResolvedValue({});
+    vi.mocked(UserService.getTokenValidationData).mockResolvedValue({});
     const req = createAuthenticatedRequest();
     req.body = undefined;
     const next = vi.fn();
 
     await TokenAuthenticator.tokenAuthenticate(req, createMockResponse(), next);
 
-    expect(req.user.userName).toBe("player");
+    expect(req.user?.userName).toBe("player");
     expect(next).toHaveBeenCalled();
   });
 });

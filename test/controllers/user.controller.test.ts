@@ -7,7 +7,8 @@ import {
 } from "../helpers.js";
 
 vi.mock("../../src/services/user.service.js", async (importOriginal) => {
-  const original = await importOriginal();
+  const original =
+    await importOriginal<typeof import("../../src/services/user.service.js")>();
   return {
     ...original,
     updateUser: vi.fn(async () => ({ status: "success", statusCode: 200 })),
@@ -57,7 +58,7 @@ describe("updateUser", () => {
     await UserController.updateUser(req, res);
 
     expect(res.statusCode).toBe(200);
-    const [, updatedUser] = UserService.updateUser.mock.calls[0];
+    const [, updatedUser] = vi.mocked(UserService.updateUser).mock.calls[0];
     expect(updatedUser.displayName).toBe("New Name");
     expect(updatedUser.authorizationLevel).toBeUndefined();
   });
@@ -72,7 +73,7 @@ describe("updateUser", () => {
 
     await UserController.updateUser(req, res);
 
-    const [, updatedUser] = UserService.updateUser.mock.calls[0];
+    const [, updatedUser] = vi.mocked(UserService.updateUser).mock.calls[0];
     expect(updatedUser.password).toBeUndefined();
   });
 
@@ -87,7 +88,8 @@ describe("updateUser", () => {
     await UserController.updateUser(req, res);
 
     expect(res.statusCode).toBe(200);
-    const [userName, updatedUser] = UserService.updateUser.mock.calls[0];
+    const [userName, updatedUser] = vi.mocked(UserService.updateUser).mock
+      .calls[0];
     expect(userName).toBe("player");
     expect(updatedUser.authorizationLevel).toBe(10);
   });
@@ -148,7 +150,7 @@ describe("changePassword", () => {
   });
 
   it("passes through errors from the password service", async () => {
-    PasswordService.changePassword.mockResolvedValue({
+    vi.mocked(PasswordService.changePassword).mockResolvedValue({
       status: "error",
       statusCode: 400,
       message: "Current password is incorrect",
@@ -168,7 +170,7 @@ describe("changePassword", () => {
   });
 
   it("replaces the session cookie with the new token for browser sessions", async () => {
-    PasswordService.changePassword.mockResolvedValue({
+    vi.mocked(PasswordService.changePassword).mockResolvedValue({
       status: "success",
       statusCode: 200,
       data: "new-token",
@@ -197,7 +199,7 @@ describe("changePassword", () => {
   });
 
   it("returns the new token without setting a cookie for bearer token clients", async () => {
-    PasswordService.changePassword.mockResolvedValue({
+    vi.mocked(PasswordService.changePassword).mockResolvedValue({
       status: "success",
       statusCode: 200,
       data: "new-token",
@@ -218,7 +220,7 @@ describe("changePassword", () => {
 
 describe("forgotPassword", () => {
   it("responds with success when no account matches", async () => {
-    PasswordService.requestPasswordReset.mockResolvedValue({
+    vi.mocked(PasswordService.requestPasswordReset).mockResolvedValue({
       status: "success",
       statusCode: 200,
     });
@@ -233,7 +235,7 @@ describe("forgotPassword", () => {
 
   it("responds identically and does not throw when sending fails", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    PasswordService.requestPasswordReset.mockRejectedValue(
+    vi.mocked(PasswordService.requestPasswordReset).mockRejectedValue(
       new Error("SMTP down")
     );
     const req = createMockRequest({ body: { identifier: "player" } });
@@ -259,7 +261,7 @@ describe("forgotPassword", () => {
 
 describe("resetPassword", () => {
   it("passes through an invalid token error", async () => {
-    PasswordService.resetPassword.mockResolvedValue({
+    vi.mocked(PasswordService.resetPassword).mockResolvedValue({
       status: "error",
       statusCode: 400,
       message: "Password reset link is invalid or has expired",
@@ -321,7 +323,7 @@ describe("sendPasswordResetLink", () => {
   });
 
   it("sends the reset link for an admin", async () => {
-    PasswordService.requestPasswordResetForUser.mockResolvedValue({
+    vi.mocked(PasswordService.requestPasswordResetForUser).mockResolvedValue({
       status: "success",
       statusCode: 200,
     });
@@ -340,7 +342,7 @@ describe("sendPasswordResetLink", () => {
   });
 
   it("reports errors such as an unknown user to the admin", async () => {
-    PasswordService.requestPasswordResetForUser.mockResolvedValue({
+    vi.mocked(PasswordService.requestPasswordResetForUser).mockResolvedValue({
       status: "error",
       statusCode: 404,
       message: "No user with user name ghost found",

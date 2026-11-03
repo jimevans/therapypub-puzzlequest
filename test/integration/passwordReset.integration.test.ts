@@ -23,7 +23,7 @@ const EmailService = await import("../../src/services/email.service.js");
 const PasswordService = await import("../../src/services/password.service.js");
 const UserService = await import("../../src/services/user.service.js");
 
-let mongoServer;
+let mongoServer: MongoMemoryServer | undefined;
 
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
@@ -50,9 +50,9 @@ beforeEach(async () => {
   }).save();
 });
 
-function getEmailedToken() {
-  const { text } = EmailService.sendEmail.mock.calls[0][0];
-  return new URL(text.match(/https:\/\/\S+/)[0]).searchParams.get("token");
+function getEmailedToken(): string {
+  const { text } = vi.mocked(EmailService.sendEmail).mock.calls[0][0];
+  return new URL(text.match(/https:\/\/\S+/)![0]).searchParams.get("token")!;
 }
 
 describe("password reset against MongoDB", () => {
@@ -71,8 +71,8 @@ describe("password reset against MongoDB", () => {
     expect(first.status).toBe("success");
 
     const user = await UserModel.findOne({ userName: "player" }).lean();
-    expect(user.password).toBe("hashed");
-    expect(user.passwordChangedAt).toBeInstanceOf(Date);
+    expect(user?.password).toBe("hashed");
+    expect(user?.passwordChangedAt).toBeInstanceOf(Date);
     expect(await PasswordResetModel.countDocuments()).toBe(0);
 
     const second = await PasswordService.resetPassword(
@@ -130,7 +130,7 @@ describe("password reset against MongoDB", () => {
     const token = getEmailedToken();
 
     const user = await UserModel.findOne({ userName: "player" }).lean();
-    expect(user.password).toBe("old-hash");
+    expect(user?.password).toBe("old-hash");
 
     expect(
       (await PasswordService.resetPassword(token, "new password")).status
@@ -140,11 +140,11 @@ describe("password reset against MongoDB", () => {
   it("expires tokens through a TTL index", async () => {
     const indexes = await PasswordResetModel.collection.indexes();
     const ttlIndex = indexes.find((index) => index.key.expiresAt === 1);
-    expect(ttlIndex.expireAfterSeconds).toBe(0);
+    expect(ttlIndex?.expireAfterSeconds).toBe(0);
   });
 
   it("changes the password and exposes the change time for token revocation", async () => {
-    bcrypt.compare.mockResolvedValue(true);
+    vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
 
     const result = await PasswordService.changePassword(
       "player",
@@ -154,7 +154,7 @@ describe("password reset against MongoDB", () => {
     const validationData = await UserService.getTokenValidationData("player");
 
     expect(result.status).toBe("success");
-    expect(validationData.passwordChangedAt).toBeInstanceOf(Date);
+    expect(validationData?.passwordChangedAt).toBeInstanceOf(Date);
     expect(await UserService.getTokenValidationData("nobody")).toBeNull();
   });
 });

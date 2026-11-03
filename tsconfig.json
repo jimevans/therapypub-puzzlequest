@@ -1,7 +1,7 @@
 {
-  // Type-checks the server code, which is TypeScript, and the JavaScript
-  // configuration files at the project root, from their JSDoc annotations
-  // (`npm run typecheck`). tsconfig.build.json extends this to compile src/
+  // Type-checks the server code and tests, which are TypeScript, and the
+  // JavaScript configuration files at the project root, from their JSDoc
+  // annotations (`npm run typecheck`). tsconfig.build.json extends this to compile src/
   // to dist/.
   "compilerOptions": {
     "allowJs": true,
@@ -15,10 +15,10 @@
     "skipLibCheck": true,
     "strict": true
   },
-  "include": ["src/**/*.ts", "src/**/*.js", "*.js"],
+  "include": ["src/**/*.ts", "src/**/*.js", "test/**/*.ts", "*.js"],
   // Browser scripts read globals that each EJS page defines, so they are not
-  // checked yet. Tests are not checked yet either. src/loader.cjs, the hosting
-  // startup file, is not checked because it imports the build output in dist/,
-  // which doesn't exist until after `npm run build`.
+  // checked yet. src/loader.cjs, the hosting startup file, is not checked
+  // because it imports the build output in dist/, which doesn't exist until
+  // after `npm run build`.
   "exclude": ["src/public/**"]
 }
