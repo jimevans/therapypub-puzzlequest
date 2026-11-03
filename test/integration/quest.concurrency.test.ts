@@ -219,6 +219,35 @@ describe("simultaneous actions on a quest", () => {
     );
   });
 
+  it("keeps both a player's progress and an expected text reply set at the same moment", async () => {
+    const competing = runBeforeNextSave(() =>
+      QuestService.setExpectedTextResponse("test-quest", "Ready", "Go")
+    );
+
+    const result = await QuestService.finishPuzzle(
+      "test-quest",
+      "colors",
+      PLAYER,
+      "red blue"
+    );
+
+    expect((await competing).status).toBe("success");
+    expect(result.status).toBe("success");
+    const quest = await storedQuest();
+    expect(quest.textResponse).toBe("Ready");
+    expect(quest.puzzles[0].status).toBe(QuestPuzzleStatus.COMPLETED);
+  });
+
+  it("reports setting a text reply for an unknown quest", async () => {
+    expect(
+      await QuestService.setExpectedTextResponse("missing", "Ready", "Go")
+    ).toEqual({
+      status: "error",
+      statusCode: 404,
+      message: "No quest with quest name missing found",
+    });
+  });
+
   it("reports other save failures as server errors", async () => {
     vi.spyOn(QuestModel.prototype, "save").mockRejectedValue(
       new Error("disk full")

@@ -106,6 +106,9 @@ const questSchema = new Schema(
   }
 );
 
+// Players' quests are found by the user and team names they are assigned to.
+questSchema.index({ userName: 1 });
+
 questSchema.virtual("statusDescription").get(function () {
   switch (this.status) {
     case QuestStatus.NOT_STARTED:

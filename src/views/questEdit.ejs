@@ -97,14 +97,11 @@
     </div>
     <div class="pq-form-element">
       <div class="pq-label">
-        <label for="quest-status">Quest status:</label>
+        <span>Quest status:</span>
       </div>
-      <div class="pq-select">
-        <select id="quest-status">
-          <option value="0" <%=quest === null || quest.status === 0 ? "selected" : ""%>>Not started</option>
-          <option value="1" <%=quest && quest.status === 1 ? "selected" : ""%>>In progress</option>
-          <option value="2" <%=quest && quest.status === 2 ? "selected" : ""%>>Completed</option>
-        </select>
+      <%# Progress changes only through the game's actions; the quest's details page has Start and Reset. %>
+      <div id="quest-status">
+        <%= quest ? quest.statusDescription : "Not yet started" %>
       </div>
     </div>
     <div class="pq-form-element">
