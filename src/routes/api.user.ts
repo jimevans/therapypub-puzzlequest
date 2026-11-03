@@ -56,7 +56,13 @@ userApiRouter.post(
   requireAdmin,
   UserController.sendPasswordResetLink
 );
-userApiRouter.post("/create", UserController.createUser);
+userApiRouter.post(
+  "/create",
+  // Anyone may sign up; the token identifies an administrator creating an
+  // account, who may also choose its authorization level.
+  TokenAuthenticator.tokenAuthenticate,
+  UserController.createUser
+);
 userApiRouter.post(
   "/login",
   RateLimiter.loginAddressRateLimiter,

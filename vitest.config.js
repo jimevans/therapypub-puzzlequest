@@ -25,7 +25,7 @@ export default defineConfig({
         branches: 78,
         functions: 96,
         lines: 85,
-        statements: 85,
+        statements: 86,
         "src/domain/**": {
           branches: 100,
           functions: 100,
