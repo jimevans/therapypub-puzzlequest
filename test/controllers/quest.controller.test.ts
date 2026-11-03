@@ -33,6 +33,7 @@ vi.mock("../../src/services/quest.service.js", async (importOriginal) => {
 });
 
 const QuestService = await import("../../src/services/quest.service.js");
+const PuzzleService = await import("../../src/services/puzzle.service.js");
 const QuestController =
   await import("../../src/controllers/quest.controller.js");
 
@@ -84,6 +85,76 @@ describe("retrieveQuest", () => {
     for (const puzzle of res.body.data.puzzles) {
       expect(puzzle).not.toHaveProperty("activationCode");
     }
+  });
+
+  describe("with puzzle details", () => {
+    beforeEach(() => {
+      vi.mocked(QuestService.getQuestByQuestName).mockImplementation(
+        async () => {
+          const quest = createQuest();
+          quest.textResponse = "secret reply";
+          quest.textResponseConfirmation = "Well done";
+          // p1 is solved; p2 is being solved, with one of its hints revealed.
+          quest.puzzles[1].status = 2;
+          quest.puzzles[1].nextHintToDisplay = 1;
+          for (const puzzle of quest.puzzles) {
+            puzzle.puzzleDetail = new PuzzleService.Puzzle({
+              name: puzzle.puzzleName,
+              displayName: puzzle.puzzleName.toUpperCase(),
+              type: 0,
+              text: "",
+              solutionKeyword: "answer",
+              solutionDisplayText: `${puzzle.puzzleName} solution`,
+              hints: [
+                { text: "first hint", solutionWarning: false, timePenalty: 60 },
+                {
+                  text: "second hint",
+                  solutionWarning: true,
+                  timePenalty: 300,
+                },
+              ],
+            });
+          }
+          return { status: "success", statusCode: 200, data: quest };
+        }
+      );
+    });
+
+    it("shows a player only revealed hints and solved puzzles' solutions", async () => {
+      const req = createMockRequest({
+        user: playerUser,
+        params: { name: "quest1" },
+      });
+      const res = createMockResponse();
+
+      await QuestController.retrieveQuest(req, res);
+
+      const [solved, current] = res.body.data.puzzles;
+      expect(solved.solutionDisplayText).toBe("p1 solution");
+      expect(solved.hints).toEqual([]);
+      expect(current).not.toHaveProperty("solutionDisplayText");
+      expect(current.hints).toEqual([
+        { text: "first hint", solutionWarning: false, timePenalty: 60 },
+      ]);
+      expect(current.displayName).toBe("P2");
+      expect(res.body.data).not.toHaveProperty("textResponse");
+      expect(res.body.data).not.toHaveProperty("textResponseConfirmation");
+    });
+
+    it("shows an admin every hint, solution, and the expected text reply", async () => {
+      const req = createMockRequest({
+        user: adminUser,
+        params: { name: "quest1" },
+      });
+      const res = createMockResponse();
+
+      await QuestController.retrieveQuest(req, res);
+
+      const [, current] = res.body.data.puzzles;
+      expect(current.solutionDisplayText).toBe("p2 solution");
+      expect(current.hints).toHaveLength(2);
+      expect(res.body.data.textResponse).toBe("secret reply");
+    });
   });
 
   it("returns activation codes to an admin", async () => {

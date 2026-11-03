@@ -74,18 +74,9 @@ export async function retrieveQuest(
     });
     return;
   }
-  const quest = questResponse.data.toJSON();
-  // Activation codes must be obtained by scanning the puzzle's QR code, so
-  // never reveal them to players.
   const visibleQuest = loggedInUser.isAdmin()
-    ? quest
-    : {
-        ...quest,
-        puzzles: quest.puzzles.map((puzzle) => {
-          const { activationCode, ...playerVisiblePuzzle } = puzzle.toJSON();
-          return playerVisiblePuzzle;
-        }),
-      };
+    ? questResponse.data.toJSON()
+    : questResponse.data.toPlayerJSON();
   res.send(
     JSON.stringify({
       status: "success",

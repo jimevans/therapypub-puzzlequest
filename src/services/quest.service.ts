@@ -170,6 +170,24 @@ export class QuestPuzzle {
     }
     return serializableObject;
   }
+
+  /**
+   * Gets the serialized representation of this QuestPuzzle that the players
+   * may see. It leaves out the activation code, which players must get by
+   * scanning the puzzle's QR code; the hints not yet revealed, which would
+   * avoid their time penalties; and the solution, until the puzzle is solved.
+   * @returns the object to be serialized to JSON
+   */
+  toPlayerJSON(): Record<string, unknown> {
+    const { activationCode, ...visible } = this.toJSON();
+    if (this.puzzleDetail) {
+      visible.hints = this.puzzleDetail.hints.slice(0, this.nextHintToDisplay);
+      if (this.status !== QuestPuzzleStatus.COMPLETED) {
+        delete visible.solutionDisplayText;
+      }
+    }
+    return visible;
+  }
 }
 
 /**
@@ -285,6 +303,23 @@ export class Quest {
       puzzles: this.puzzles,
     };
   }
+
+  /**
+   * Gets the serialized representation of this Quest that the players may
+   * see. It leaves out the text reply the quest is waiting for, and shows
+   * each puzzle as its players may see it.
+   * @returns the object to be serialized to JSON
+   */
+  toPlayerJSON(): QuestPlayerJSON {
+    return {
+      name: this.name,
+      displayName: this.displayName,
+      userName: this.userName,
+      status: this.status,
+      statusDescription: this.statusDescription,
+      puzzles: this.puzzles.map((puzzle) => puzzle.toPlayerJSON()),
+    };
+  }
 }
 
 /** The JSON representation of a Quest. */
@@ -299,6 +334,12 @@ export type QuestJSON = Pick<
   | "textResponseConfirmation"
   | "puzzles"
 >;
+
+/** The JSON representation of a Quest that its players may see. */
+export type QuestPlayerJSON = Pick<
+  Quest,
+  "name" | "displayName" | "userName" | "status" | "statusDescription"
+> & { puzzles: Record<string, unknown>[] };
 
 /**
  * Options for querying quests. Every option is optional.
