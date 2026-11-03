@@ -21,7 +21,8 @@ export async function index(req: Request, res: Response): Promise<void> {
   // Case 3: Logged in user is a valid end user.
   const userContexts = await loggedInUser.getAllUserContexts();
   const findOptions = { userNames: userContexts, questStatus: 1 };
-  const foundQuestsResult = await QuestService.findQuests(findOptions);
+  // Puzzle details are needed for hint penalties.
+  const foundQuestsResult = await QuestService.findQuests(findOptions, true);
   if (foundQuestsResult.status === "error") {
     if (foundQuestsResult.statusCode !== 404) {
       res.render("error", {
@@ -34,20 +35,13 @@ export async function index(req: Request, res: Response): Promise<void> {
       return;
     }
   }
-  const quests = foundQuestsResult.data.map((quest) => {
-    const startTime = quest.puzzles.length ? quest.puzzles[0].startTime : "";
-    const endTime = quest.puzzles.length
-      ? quest.puzzles[quest.puzzles.length - 1].endTime
-      : "";
-    return {
-      name: quest.name,
-      displayName: quest.displayName,
-      status: quest.status,
-      statusDescription: quest.statusDescription,
-      startTime: startTime || "",
-      endTime: endTime || "",
-    };
-  });
+  const quests = foundQuestsResult.data.map((quest) => ({
+    name: quest.name,
+    displayName: quest.displayName,
+    status: quest.status,
+    statusDescription: quest.statusDescription,
+    progress: quest.getProgress(),
+  }));
   res.render("home", { userName: loggedInUser.userName, quests: quests });
 }
 

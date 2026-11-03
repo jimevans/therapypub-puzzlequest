@@ -68,19 +68,16 @@ export function sendLiveUpdates(activity: QuestActivity): void {
         }
         break;
       case "HintRevealed":
-        notify(
-          [
-            `/quest/${questName}/puzzle/${event.puzzleName}`,
-            `/monitor/quest/${questName}/puzzle/${event.puzzleName}`,
-          ],
-          {
-            message: "hintRequested",
-            hintText: event.hintText,
-            moreHints: event.moreHints,
-            timePenalty: event.timePenalty,
-            isNextHintSolution: event.isNextHintSolution,
-          }
-        );
+        // The quest pages add the hint's penalty to their times.
+        notify(puzzlePages(questName, event.puzzleName), {
+          message: "hintRequested",
+          questName,
+          puzzleName: event.puzzleName,
+          hintText: event.hintText,
+          moreHints: event.moreHints,
+          timePenalty: event.timePenalty,
+          isNextHintSolution: event.isNextHintSolution,
+        });
         break;
     }
   }

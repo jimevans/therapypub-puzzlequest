@@ -46,9 +46,16 @@
         </a>
       </div>
     </nav>
+    <div id="quest-progress" class="pq-quest">
+      <div class="pq-quest-link">
+        <strong>Quest</strong>
+      </div>
+      <div class="pq-quest-status">
+        <%= quest.statusDescription %>
+      </div>
+      <%- include("partials/progressTimes", { progress, kind: "quest", timeClass: "pq-quest-time" }) %>
+    </div>
     <div id="puzzles">
-      <% const dateFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }); %>
-      <% const numberFormatter = new Intl.NumberFormat("en", {minimumIntegerDigits: 2}); %>
       <% quest.puzzles.filter((puzzle) => puzzle.status > 0).forEach((puzzle) => { %>
       <div class="pq-quest-puzzle" data-puzzle-name="<%=puzzle.puzzleName%>">
         <div class="pq-quest-puzzle-link">
@@ -57,32 +64,8 @@
         <div class="pq-quest-puzzle-status">
           <span><%= puzzle.statusDescription %></span>
         </div>
-        <div class="pq-quest-puzzle-time" data-time="start">
-          <strong>Start time:</strong><br>
-          <span><%= puzzle.startTime ? dateFormatter.format(puzzle.startTime) : "-" %></span>
-        </div>
-        <div class="pq-quest-puzzle-time" data-time="activation">
-          <strong>Activation time:</strong><br>
-          <span><%= puzzle.activationTime ? dateFormatter.format(puzzle.activationTime) : "-" %></span>
-        </div>
-        <div class="pq-quest-puzzle-time" data-time="solution">
-          <strong>Solution time:</strong><br>
-          <span><%= puzzle.endTime ? dateFormatter.format(puzzle.endTime) : "-" %></span>
-        </div>
-        <div class="pq-quest-puzzle-time" data-time="elapsed">
-          <strong>Elapsed time:</strong><br>
-          <% const elapsedSeconds = puzzle.endTime ? Math.trunc((puzzle.endTime - puzzle.startTime) / 1000) : Math.trunc((Date.now() - puzzle.startTime) / 1000); %>
-          <% const hours = numberFormatter.format(Math.trunc(elapsedSeconds / 3600)); %>
-          <% const minutes = numberFormatter.format(Math.trunc((elapsedSeconds % 3600) / 60)); %>
-          <% const seconds = numberFormatter.format(Math.trunc((elapsedSeconds % 3600) % 60)); %>
-          <% if (puzzle.status > 0 && puzzle.status < 3) { %>
-          <span data-puzzle-start=<%- JSON.stringify(currentPuzzleStartTime) %>>
-          <% } else { %>
-          <span>
-          <% } %>
-          <%= hours + ":" + minutes + ":" + seconds %>
-          </span>
-        </div>
+        <% const puzzleProgress = progress.puzzles.find((p) => p.puzzleName === puzzle.puzzleName); %>
+        <%- include("partials/progressTimes", { progress: puzzleProgress, kind: "puzzle", activationTime: puzzle.activationTime, timeClass: "pq-quest-puzzle-time" }) %>
         <div class="pq-quest-puzzle-solution">
           <span>
           <% if (puzzle.status >= 3) {%>

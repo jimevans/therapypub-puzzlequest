@@ -105,7 +105,7 @@ describe("sendLiveUpdates", () => {
     );
   });
 
-  it("shares a revealed hint on the puzzle's pages, except with the asker", () => {
+  it("shares a revealed hint on the quest's and puzzle's pages, except with the asker", () => {
     sendLiveUpdates({
       questName: "q1",
       connectionId: "asker",
@@ -124,10 +124,12 @@ describe("sendLiveUpdates", () => {
     });
 
     expect(notifyBrowsers).toHaveBeenCalledExactlyOnceWith(
-      ["/quest/q1/puzzle/p1", "/monitor/quest/q1/puzzle/p1"],
+      P1_PAGES,
       ["asker"],
       {
         message: "hintRequested",
+        questName: "q1",
+        puzzleName: "p1",
         hintText: "Look up",
         moreHints: true,
         timePenalty: 60,

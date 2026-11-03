@@ -7,9 +7,11 @@ import {
   type PuzzleRules,
   type QuestErrorCode,
   type QuestEvent,
+  type QuestProgress,
   type QuestState,
   type TransitionResult,
   activatePuzzle as activate,
+  calculateProgress,
   parseSolutionKeywords,
   reset,
   revealHint,
@@ -287,6 +289,39 @@ export class Quest {
   }
 
   /**
+   * Calculates how long the players have spent on this quest and each of its
+   * puzzles. Hint penalties come from the puzzles' details, so a quest loaded
+   * without them counts none.
+   * @param now the current time
+   * @returns the quest's progress
+   */
+  getProgress(now: Date = new Date()): QuestProgress {
+    const hints = new Map(
+      this.puzzles.flatMap((puzzle) =>
+        puzzle.puzzleDetail
+          ? [[puzzle.puzzleName, puzzle.puzzleDetail.hints] as const]
+          : []
+      )
+    );
+    return calculateProgress(
+      {
+        status: this.status as QuestStatus,
+        puzzles: this.puzzles.map((puzzle) => ({
+          puzzleName: puzzle.puzzleName,
+          status: puzzle.status as QuestPuzzleStatus,
+          nextHintToDisplay: puzzle.nextHintToDisplay,
+          activationCode: puzzle.activationCode,
+          startTime: puzzle.startTime,
+          activationTime: puzzle.activationTime,
+          endTime: puzzle.endTime,
+        })),
+      },
+      hints,
+      now
+    );
+  }
+
+  /**
    * Gets an object that will be serialized to JSON as the serialized representation
    * of this Quest.
    * @returns the object to be serialized to JSON
@@ -301,6 +336,7 @@ export class Quest {
       textResponse: this.textResponse,
       textResponseConfirmation: this.textResponseConfirmation,
       puzzles: this.puzzles,
+      progress: this.getProgress(),
     };
   }
 
@@ -318,6 +354,7 @@ export class Quest {
       status: this.status,
       statusDescription: this.statusDescription,
       puzzles: this.puzzles.map((puzzle) => puzzle.toPlayerJSON()),
+      progress: this.getProgress(),
     };
   }
 }
@@ -333,13 +370,16 @@ export type QuestJSON = Pick<
   | "textResponse"
   | "textResponseConfirmation"
   | "puzzles"
->;
+> & {
+  /** How long the players have spent on the quest. */
+  progress: QuestProgress;
+};
 
 /** The JSON representation of a Quest that its players may see. */
 export type QuestPlayerJSON = Pick<
   Quest,
   "name" | "displayName" | "userName" | "status" | "statusDescription"
-> & { puzzles: Record<string, unknown>[] };
+> & { puzzles: Record<string, unknown>[]; progress: QuestProgress };
 
 /**
  * Options for querying quests. Every option is optional.
