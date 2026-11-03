@@ -1,13 +1,8 @@
 import type { Request } from "express";
 import type { ServiceResult } from "../types.js";
-import { User } from "./user.service.js";
 
-/** What a request must include, and who must make it. */
+/** What a request must include. */
 export interface ValidationOptions {
-  /** True if a signed-in user must make the request. */
-  requiresUser?: boolean;
-  /** True if an administrator must make the request. */
-  requiresAdmin?: boolean;
   /** True if the request must have a body. */
   requiresBody?: boolean;
   /** True if the request must include an uploaded file. */
@@ -18,7 +13,7 @@ export interface ValidationOptions {
 
 /**
  * Validates a request.
- * @param validationOptions what the request must include, and who must make it
+ * @param validationOptions what the request must include
  * @param request the request
  * @returns a success result, or an error result describing why the request is
  *  invalid
@@ -27,27 +22,6 @@ export function validateRequest(
   validationOptions: ValidationOptions = {},
   request: Request
 ): ServiceResult<undefined> {
-  if (validationOptions.requiresUser) {
-    if (!request.user) {
-      return {
-        status: "error",
-        statusCode: 401,
-        message: "User must be logged in to perform operation",
-      };
-    }
-  }
-
-  if (validationOptions.requiresAdmin) {
-    const loggedInUser = request.user ? new User(request.user) : null;
-    if (!loggedInUser?.isAdmin()) {
-      return {
-        status: "error",
-        statusCode: 403,
-        message: `User ${loggedInUser?.userName ?? "(anonymous)"} not authorized to perform operation`,
-      };
-    }
-  }
-
   if (validationOptions.requiresFile) {
     if (!request.file) {
       return {

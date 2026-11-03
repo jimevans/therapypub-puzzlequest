@@ -1,4 +1,5 @@
 import express from "express";
+import { requireSelfOrAdmin } from "../middleware/authorization.js";
 import * as UserController from "../controllers/user.controller.js";
 import * as UseRenderMode from "../middleware/useRenderMode.js";
 import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
@@ -18,6 +19,7 @@ userRouter.get("/password/reset", UserController.renderResetPassword);
 userRouter.get(
   "/:userName",
   TokenAuthenticator.tokenAuthenticate,
+  requireSelfOrAdmin,
   UseRenderMode.useRenderMode(UseRenderMode.RenderMode.DISPLAY),
   UserController.renderUser
 );
@@ -25,6 +27,7 @@ userRouter.get(
 userRouter.get(
   "/:userName/edit",
   TokenAuthenticator.tokenAuthenticate,
+  requireSelfOrAdmin,
   UseRenderMode.useRenderMode(UseRenderMode.RenderMode.EDIT),
   UserController.renderUser
 );

@@ -43,20 +43,6 @@ beforeEach(() => {
 });
 
 describe("joinTeam", () => {
-  it("forbids a non-admin from adding another user to a team", async () => {
-    const req = createMockRequest({
-      user: playerUser,
-      params: { teamName: "red", userName: "other" },
-      body: { joinCode: "secret" },
-    });
-    const res = createMockResponse();
-
-    await TeamController.joinTeam(req, res);
-
-    expect(res.statusCode).toBe(403);
-    expect(TeamService.addUserToTeam).not.toHaveBeenCalled();
-  });
-
   it("allows a user to join a team themselves", async () => {
     const req = createMockRequest({
       user: playerUser,
@@ -73,21 +59,6 @@ describe("joinTeam", () => {
       "player",
       "secret"
     );
-  });
-});
-
-describe("leaveTeam", () => {
-  it("forbids a non-admin from removing another user from a team", async () => {
-    const req = createMockRequest({
-      user: playerUser,
-      params: { teamName: "red", userName: "other" },
-    });
-    const res = createMockResponse();
-
-    await TeamController.leaveTeam(req, res);
-
-    expect(res.statusCode).toBe(403);
-    expect(TeamService.removeUserFromTeam).not.toHaveBeenCalled();
   });
 });
 

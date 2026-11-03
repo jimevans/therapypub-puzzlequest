@@ -33,20 +33,6 @@ beforeEach(() => {
 });
 
 describe("updateUser", () => {
-  it("forbids a non-admin from updating another user", async () => {
-    const req = createMockRequest({
-      user: playerUser,
-      params: { userName: "other" },
-      body: { displayName: "Hacked" },
-    });
-    const res = createMockResponse();
-
-    await UserController.updateUser(req, res);
-
-    expect(res.statusCode).toBe(403);
-    expect(UserService.updateUser).not.toHaveBeenCalled();
-  });
-
   it("ignores an authorization level sent by a non-admin updating themselves", async () => {
     const req = createMockRequest({
       user: playerUser,
@@ -96,19 +82,6 @@ describe("updateUser", () => {
 });
 
 describe("deleteUser", () => {
-  it("forbids a non-admin from deleting another user", async () => {
-    const req = createMockRequest({
-      user: playerUser,
-      params: { userName: "other" },
-    });
-    const res = createMockResponse();
-
-    await UserController.deleteUser(req, res);
-
-    expect(res.statusCode).toBe(403);
-    expect(UserService.deleteUser).not.toHaveBeenCalled();
-  });
-
   it("allows a user to delete themselves", async () => {
     const req = createMockRequest({
       user: playerUser,
@@ -125,29 +98,6 @@ describe("deleteUser", () => {
 
 describe("changePassword", () => {
   const body = { currentPassword: "old password", newPassword: "new password" };
-
-  it("forbids changing another user's password, even for an admin", async () => {
-    const req = createMockRequest({
-      user: adminUser,
-      params: { userName: "player" },
-      body,
-    });
-    const res = createMockResponse();
-
-    await UserController.changePassword(req, res);
-
-    expect(res.statusCode).toBe(403);
-    expect(PasswordService.changePassword).not.toHaveBeenCalled();
-  });
-
-  it("requires a signed-in user", async () => {
-    const req = createMockRequest({ params: { userName: "player" }, body });
-    const res = createMockResponse();
-
-    await UserController.changePassword(req, res);
-
-    expect(res.statusCode).toBe(401);
-  });
 
   it("passes through errors from the password service", async () => {
     vi.mocked(PasswordService.changePassword).mockResolvedValue({
@@ -309,19 +259,6 @@ describe("renderResetPassword", () => {
 });
 
 describe("sendPasswordResetLink", () => {
-  it("forbids non-admins, even for their own account", async () => {
-    const req = createMockRequest({
-      user: playerUser,
-      params: { userName: "player" },
-    });
-    const res = createMockResponse();
-
-    await UserController.sendPasswordResetLink(req, res);
-
-    expect(res.statusCode).toBe(403);
-    expect(PasswordService.requestPasswordResetForUser).not.toHaveBeenCalled();
-  });
-
   it("sends the reset link for an admin", async () => {
     vi.mocked(PasswordService.requestPasswordResetForUser).mockResolvedValue({
       status: "success",

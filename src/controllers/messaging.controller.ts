@@ -40,8 +40,6 @@ export async function sendTextMessage(
 ): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
-      requiresUser: true,
-      requiresAdmin: true,
       requiresBody: true,
       requiredBodyProperties: ["questName", "message"],
     },

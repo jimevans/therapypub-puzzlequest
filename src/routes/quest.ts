@@ -1,4 +1,5 @@
 import express from "express";
+import { requireAdmin, requireUser } from "../middleware/authorization.js";
 import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
 import * as UseRenderMode from "../middleware/useRenderMode.js";
 import * as QuestController from "../controllers/quest.controller.js";
@@ -8,6 +9,7 @@ const questRouter = express.Router();
 questRouter.get(
   "/new",
   TokenAuthenticator.tokenAuthenticate,
+  requireAdmin,
   UseRenderMode.useRenderMode(UseRenderMode.RenderMode.CREATE),
   QuestController.renderQuest
 );
@@ -15,6 +17,7 @@ questRouter.get(
 questRouter.get(
   "/:name",
   TokenAuthenticator.tokenAuthenticate,
+  requireUser,
   UseRenderMode.useRenderMode(UseRenderMode.RenderMode.DISPLAY),
   QuestController.renderQuest
 );
@@ -22,6 +25,7 @@ questRouter.get(
 questRouter.get(
   "/:name/edit",
   TokenAuthenticator.tokenAuthenticate,
+  requireAdmin,
   UseRenderMode.useRenderMode(UseRenderMode.RenderMode.EDIT),
   QuestController.renderQuest
 );
@@ -29,6 +33,7 @@ questRouter.get(
 questRouter.get(
   "/:name/puzzle/:puzzleName",
   TokenAuthenticator.tokenAuthenticate,
+  requireUser,
   UseRenderMode.useRenderMode(UseRenderMode.RenderMode.DISPLAY),
   QuestController.renderQuestPuzzle
 );
@@ -36,12 +41,14 @@ questRouter.get(
 questRouter.get(
   "/:name/puzzle/:puzzleName/qrcode",
   TokenAuthenticator.tokenAuthenticate,
+  requireAdmin,
   QuestController.renderPuzzleActivationQRCode
 );
 
 questRouter.get(
   "/:name/pdf",
   TokenAuthenticator.tokenAuthenticate,
+  requireAdmin,
   QuestController.renderQuestRunBook
 );
 

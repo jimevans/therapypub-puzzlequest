@@ -2,14 +2,11 @@ import type { Request, Response } from "express";
 import type { RouteRequest } from "../types.js";
 import { RenderMode } from "../middleware/useRenderMode.js";
 import * as PuzzleService from "../services/puzzle.service.js";
-import * as UserService from "../services/user.service.js";
 import * as RequestValidationService from "../services/requestValidation.service.js";
 
 export async function createPuzzle(req: Request, res: Response): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
-      requiresUser: true,
-      requiresAdmin: true,
       requiresBody: true,
       requiredBodyProperties: [
         "name",
@@ -46,23 +43,6 @@ export async function retrievePuzzle(
   req: RouteRequest<"name">,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresUser: true,
-      requiresAdmin: true,
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
   const puzzleResponse = await PuzzleService.getPuzzleByPuzzleName(
     req.params.name
   );
@@ -85,8 +65,6 @@ export async function updatePuzzle(
 ): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
-      requiresUser: true,
-      requiresAdmin: true,
       requiresBody: true,
       requiredBodyProperties: ["name"],
     },
@@ -119,23 +97,6 @@ export async function deletePuzzle(
   req: RouteRequest<"name">,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresUser: true,
-      requiresAdmin: true,
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
   const response = await PuzzleService.deletePuzzle(req.params.name);
   if (response.status === "error") {
     res.status(response.statusCode).send(
@@ -150,22 +111,6 @@ export async function deletePuzzle(
 }
 
 export async function listPuzzles(req: Request, res: Response): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresUser: true,
-      requiresAdmin: true,
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
   const response = await PuzzleService.listPuzzles();
   res.send(JSON.stringify(response));
 }
@@ -173,8 +118,6 @@ export async function listPuzzles(req: Request, res: Response): Promise<void> {
 export function uploadBinaryData(req: Request, res: Response): void {
   const validation = RequestValidationService.validateRequest(
     {
-      requiresUser: true,
-      requiresAdmin: true,
       requiresBody: true,
       requiresFile: true,
     },
@@ -203,19 +146,6 @@ export async function renderPuzzle(
   req: RouteRequest<"name">,
   res: Response
 ): Promise<void> {
-  const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser) {
-    res.render("login", { requestingUrl: req.url });
-    return;
-  }
-  if (!loggedInUser.isAdmin()) {
-    res.render("error", {
-      errorTitle: "Unauthorized",
-      errorDetails: `User ${loggedInUser.userName} not authorized to view puzzles`,
-    });
-    return;
-  }
-
   const viewName =
     req.renderMode === RenderMode.DISPLAY ? "puzzleDetails" : "puzzleEdit";
   if (req.renderMode === RenderMode.CREATE) {
@@ -227,7 +157,7 @@ export async function renderPuzzle(
     req.params.name
   );
   if (puzzleResponse.status === "error") {
-    res.render("error", {
+    res.status(puzzleResponse.statusCode).render("error", {
       errorTitle: "Not found",
       errorDetails: puzzleResponse.message,
     });
