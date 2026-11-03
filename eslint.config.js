@@ -70,6 +70,15 @@ export default defineConfig([
       ],
     },
   },
+  {
+    // Test doubles stand in for Express and Mongoose objects without
+    // implementing their whole types, and response bodies are checked
+    // property by property.
+    files: ["test/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
   // Turns off rules that conflict with Prettier; must be last.
   prettier,
 ]);

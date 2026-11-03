@@ -1,9 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { Request } from "express";
 import request from "supertest";
 import { createMockResponse } from "./helpers.js";
 
 vi.mock("../src/services/authentication.service.js", async (importOriginal) => {
-  const original = await importOriginal();
+  const original =
+    await importOriginal<
+      typeof import("../src/services/authentication.service.js")
+    >();
   return { ...original, authenticate: vi.fn() };
 });
 
@@ -21,7 +25,7 @@ describe("error handling in the app", () => {
     const consoleError = vi
       .spyOn(console, "error")
       .mockImplementation(() => {});
-    AuthenticationService.authenticate.mockRejectedValue(
+    vi.mocked(AuthenticationService.authenticate).mockRejectedValue(
       new Error("database exploded")
     );
 
@@ -52,8 +56,8 @@ describe("error handling in the app", () => {
 });
 
 describe("errorHandler", () => {
-  function createRequest(originalUrl) {
-    return { method: "GET", originalUrl };
+  function createRequest(originalUrl: string): Request {
+    return { method: "GET", originalUrl } as Request;
   }
 
   it("responds with plain text outside the API", () => {

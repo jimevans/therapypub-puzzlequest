@@ -2,7 +2,8 @@
 // administrator, or a player, so that each EJS view is rendered with the data
 // its controller really passes. Each page is identified by the module script
 // it loads (/script/<view>.js), or by its heading for the error page.
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { Express } from "express";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
@@ -15,13 +16,13 @@ const { AuthorizationLevel, TeamModel, UserModel } =
   await import("../../src/models/user.model.js");
 const QuestService = await import("../../src/services/quest.service.js");
 
-const ACCOUNTS = {
+const ACCOUNTS: Record<string, { authorizationLevel: number }> = {
   admin: { authorizationLevel: AuthorizationLevel.ADMIN },
   player: { authorizationLevel: AuthorizationLevel.USER },
 };
 
-let mongoServer;
-let app;
+let mongoServer: MongoMemoryServer | undefined;
+let app: Express;
 
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
@@ -96,7 +97,7 @@ beforeAll(async () => {
     "running-quest",
     "text-puzzle",
     ["team-a"],
-    runningQuest.puzzles[0].activationCode
+    runningQuest!.puzzles[0].activationCode
   );
   await QuestService.getPuzzleHint("running-quest", "text-puzzle", ["team-a"]);
 }, 120000);
@@ -108,27 +109,27 @@ afterAll(async () => {
 
 /**
  * Requests a page, signed in as the given account if any.
- * @param {string} path the page to request
- * @param {string | null} account "admin", "player", or null for anonymous
- * @returns {Promise<import("supertest").Response>} the response
+ * @param path the page to request
+ * @param account "admin", "player", or null for anonymous
+ * @returns the response
  */
-function getPage(path, account) {
+function getPage(path: string, account: string | null): request.Test {
   const pageRequest = request(app).get(path);
   if (!account) {
     return pageRequest;
   }
-  jwt.verify.mockReturnValue({
+  vi.mocked(jwt.verify).mockReturnValue({
     userName: account,
     displayName: `${account} display name`,
     email: `${account}@example.com`,
     authorizationLevel: ACCOUNTS[account].authorizationLevel,
     iat: Math.floor(Date.now() / 1000),
-  });
+  } as never);
   return pageRequest.set("Authorization", "Bearer token");
 }
 
 // [description, path, account, view, text the page must contain]
-const PAGES = [
+const PAGES: [string, string, string | null, string, string[]][] = [
   ["landing page", "/", null, "index", ["Sign up"]],
   ["sign-in page", "/login", null, "login", []],
   ["sign-up page", "/user/register", null, "user", ['id="user-name"']],

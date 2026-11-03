@@ -7,7 +7,8 @@ import {
 } from "../helpers.js";
 
 vi.mock("../../src/services/team.service.js", async (importOriginal) => {
-  const original = await importOriginal();
+  const original =
+    await importOriginal<typeof import("../../src/services/team.service.js")>();
   return {
     ...original,
     getTeamsForUser: vi.fn(async () => ({
@@ -18,7 +19,10 @@ vi.mock("../../src/services/team.service.js", async (importOriginal) => {
   };
 });
 vi.mock("../../src/services/quest.service.js", async (importOriginal) => {
-  const original = await importOriginal();
+  const original =
+    await importOriginal<
+      typeof import("../../src/services/quest.service.js")
+    >();
   return {
     ...original,
     getQuestByQuestName: vi.fn(),
@@ -63,7 +67,7 @@ function createQuest() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  QuestService.getQuestByQuestName.mockImplementation(async () => ({
+  vi.mocked(QuestService.getQuestByQuestName).mockImplementation(async () => ({
     status: "success",
     statusCode: 200,
     data: createQuest(),
@@ -97,16 +101,17 @@ describe("retrieveQuest", () => {
 
     await QuestController.retrieveQuest(req, res);
 
-    expect(res.body.data.puzzles.map((p) => p.activationCode)).toEqual([
-      "code1",
-      "code2",
-    ]);
+    expect(
+      res.body.data.puzzles.map(
+        (p: { activationCode: string }) => p.activationCode
+      )
+    ).toEqual(["code1", "code2"]);
   });
 });
 
 describe("deleteQuest", () => {
   it("sends exactly one response when the quest does not exist", async () => {
-    QuestService.deleteQuest.mockResolvedValue({
+    vi.mocked(QuestService.deleteQuest).mockResolvedValue({
       status: "error",
       statusCode: 404,
       message: "Quest with name nope does not exist",
@@ -134,7 +139,9 @@ describe("updateQuest", () => {
 
     await QuestController.updateQuest(req, createMockResponse());
 
-    const [questDefinition] = QuestService.updateQuest.mock.calls.at(-1);
+    const [questDefinition] = vi
+      .mocked(QuestService.updateQuest)
+      .mock.calls.at(-1)!;
     expect(questDefinition.displayName).toBe("Renamed");
     expect(questDefinition.puzzles).toBeUndefined();
   });
@@ -148,8 +155,10 @@ describe("updateQuest", () => {
 
     await QuestController.updateQuest(req, createMockResponse());
 
-    const [questDefinition] = QuestService.updateQuest.mock.calls.at(-1);
-    expect(questDefinition.puzzles.map((p) => p.puzzleName)).toEqual([
+    const [questDefinition] = vi
+      .mocked(QuestService.updateQuest)
+      .mock.calls.at(-1)!;
+    expect(questDefinition.puzzles?.map((p) => p.puzzleName)).toEqual([
       "puzzle1",
     ]);
   });
@@ -171,7 +180,7 @@ describe("requestQuestPuzzleHint", () => {
       timePenalty: 60,
       isNextHintSolution: false,
     };
-    QuestService.getPuzzleHint.mockResolvedValue({
+    vi.mocked(QuestService.getPuzzleHint).mockResolvedValue({
       status: "success",
       statusCode: 200,
       data: hint,
@@ -189,7 +198,7 @@ describe("requestQuestPuzzleHint", () => {
   });
 
   it("does not notify other screens when there are no hints left", async () => {
-    QuestService.getPuzzleHint.mockResolvedValue({
+    vi.mocked(QuestService.getPuzzleHint).mockResolvedValue({
       status: "success",
       statusCode: 200,
       data: false,

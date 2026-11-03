@@ -7,7 +7,8 @@ import {
 } from "../helpers.js";
 
 vi.mock("../../src/services/team.service.js", async (importOriginal) => {
-  const original = await importOriginal();
+  const original =
+    await importOriginal<typeof import("../../src/services/team.service.js")>();
   return {
     ...original,
     getTeamByTeamName: vi.fn(),
@@ -34,7 +35,7 @@ const teams = [
 
 beforeEach(() => {
   vi.clearAllMocks();
-  TeamService.listTeams.mockResolvedValue({
+  vi.mocked(TeamService.listTeams).mockResolvedValue({
     status: "success",
     statusCode: 200,
     data: teams,
@@ -92,7 +93,7 @@ describe("leaveTeam", () => {
 
 describe("retrieveTeam", () => {
   it("looks up the team by the teamName route parameter", async () => {
-    TeamService.getTeamByTeamName.mockResolvedValue({
+    vi.mocked(TeamService.getTeamByTeamName).mockResolvedValue({
       status: "success",
       statusCode: 200,
       data: teams[0],
@@ -110,7 +111,7 @@ describe("retrieveTeam", () => {
   });
 
   it("sends exactly one response when the team is not found", async () => {
-    TeamService.getTeamByTeamName.mockResolvedValue({
+    vi.mocked(TeamService.getTeamByTeamName).mockResolvedValue({
       status: "error",
       statusCode: 404,
       message: "No team",
