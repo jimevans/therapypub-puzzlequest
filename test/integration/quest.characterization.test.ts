@@ -3,7 +3,15 @@
 // state machine rewrite changes behavior only on purpose. Tests whose names
 // end in "(current behavior)" pin down a known quirk or bug; when Phase 1
 // fixes one, update that test to describe the new behavior.
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 
@@ -919,30 +927,6 @@ describe("updateQuest", () => {
     expect(quest.puzzles[0].activationTime).toBeInstanceOf(Date);
   });
 
-  it("applies admin overrides to puzzle progress", async () => {
-    await createQuestWithFirstPuzzleInProgress();
-
-    await QuestService.updateQuest({
-      name: "test-quest",
-      puzzles: [
-        { puzzleName: "colors", status: QuestPuzzleStatus.COMPLETED },
-        {
-          puzzleName: "fruit",
-          status: QuestPuzzleStatus.AWAITING_ACTIVATION,
-          nextHintToDisplay: 0,
-        },
-        { puzzleName: "finale" },
-      ],
-    });
-
-    const quest = await storedQuest();
-    expect(quest.puzzles.map((p) => p.status)).toEqual([
-      QuestPuzzleStatus.COMPLETED,
-      QuestPuzzleStatus.AWAITING_ACTIVATION,
-      QuestPuzzleStatus.UNAVAILABLE,
-    ]);
-  });
-
   it("leaves the puzzles unchanged when the definition has no puzzle list", async () => {
     const before = await createQuestWithFirstPuzzleInProgress();
 
@@ -972,18 +956,6 @@ describe("updateQuest", () => {
     expect(await storedQuest()).toEqual(before);
   });
 
-  it("rejects an invalid quest status", async () => {
-    await createQuest();
-
-    expect(
-      await QuestService.updateQuest({ name: "test-quest", status: 7 })
-    ).toEqual({
-      status: "error",
-      statusCode: 400,
-      message: "Invalid quest status 7",
-    });
-  });
-
   it("removes every puzzle when given an empty list", async () => {
     await createQuest();
 
@@ -992,16 +964,145 @@ describe("updateQuest", () => {
     expect((await storedQuest()).puzzles).toEqual([]);
   });
 
-  it("can set the status back to not started", async () => {
-    await createQuest();
+  it("ignores progress in the definition, which changes only through the game's actions", async () => {
+    const before = await createQuestWithFirstPuzzleInProgress();
+
+    // The quest editor used to send these, and saving a stale editor page
+    // rewound the players.
+    expect(
+      await QuestService.updateQuest({
+        name: "test-quest",
+        status: QuestStatus.NOT_STARTED,
+        puzzles: [
+          {
+            puzzleName: "colors",
+            status: QuestPuzzleStatus.COMPLETED,
+            nextHintToDisplay: 2,
+            startTime: new Date(0),
+          },
+          {
+            puzzleName: "fruit",
+            status: QuestPuzzleStatus.AWAITING_ACTIVATION,
+          },
+          { puzzleName: "finale" },
+        ],
+      } as never)
+    ).toEqual({ status: "success", statusCode: 200 });
+
+    const quest = await storedQuest();
+    expect(quest.status).toBe(QuestStatus.IN_PROGRESS);
+    expect(quest.puzzles).toEqual(before.puzzles);
+  });
+
+  it("lets puzzles after the ones the players have reached change", async () => {
+    await createQuestWithFirstPuzzleInProgress();
+
+    expect(
+      await QuestService.updateQuest({
+        name: "test-quest",
+        puzzles: [{ puzzleName: "colors" }, { puzzleName: "finale" }],
+      })
+    ).toEqual({ status: "success", statusCode: 200 });
+
+    expect((await storedQuest()).puzzles.map((p) => p.puzzleName)).toEqual([
+      "colors",
+      "finale",
+    ]);
+  });
+
+  it.each([
+    ["moved", ["fruit", "colors", "finale"]],
+    ["removed", ["fruit", "finale"]],
+  ])(
+    "refuses to let a puzzle the players have reached be %s",
+    async (_, puzzleNames) => {
+      const before = await createQuestWithFirstPuzzleInProgress();
+
+      expect(
+        await QuestService.updateQuest({
+          name: "test-quest",
+          displayName: "Renamed",
+          puzzles: puzzleNames.map((puzzleName) => ({ puzzleName })),
+        })
+      ).toEqual({
+        status: "error",
+        statusCode: 400,
+        message:
+          "Puzzle colors has already been reached by the players, so it must stay in its place at the start of the quest",
+      });
+      expect(await storedQuest()).toEqual(before);
+    }
+  );
+
+  it("locks a completed quest's puzzle list until it is reset", async () => {
+    await createQuest(["fruit"]);
     await QuestService.startQuest("test-quest");
+    const { activationCode } = (await storedQuest()).puzzles[0];
+    await QuestService.activatePuzzle(
+      "test-quest",
+      "fruit",
+      PLAYER,
+      activationCode
+    );
+    await QuestService.finishPuzzle("test-quest", "fruit", PLAYER, "apple");
 
-    await QuestService.updateQuest({
-      name: "test-quest",
-      status: QuestStatus.NOT_STARTED,
+    const extended = [{ puzzleName: "fruit" }, { puzzleName: "finale" }];
+    expect(
+      await QuestService.updateQuest({ name: "test-quest", puzzles: extended })
+    ).toEqual({
+      status: "error",
+      statusCode: 400,
+      message:
+        "Quest test-quest is completed, so its puzzles can't change until it is reset",
     });
+    expect(
+      await QuestService.updateQuest({
+        name: "test-quest",
+        displayName: "Renamed",
+        puzzles: [{ puzzleName: "fruit" }],
+      })
+    ).toEqual({ status: "success", statusCode: 200 });
 
-    expect((await storedQuest()).status).toBe(QuestStatus.NOT_STARTED);
+    await QuestService.resetQuest("test-quest");
+    expect(
+      await QuestService.updateQuest({ name: "test-quest", puzzles: extended })
+    ).toEqual({ status: "success", statusCode: 200 });
+  });
+
+  it("checks the puzzle list again when the players progress during an edit", async () => {
+    await createQuestWithFirstPuzzleInProgress();
+    const realSave = QuestModel.prototype.save;
+    // The players solve the first puzzle just before the edit is saved, so
+    // the edit is checked again against the new progress.
+    vi.spyOn(QuestModel.prototype, "save").mockImplementationOnce(
+      async function (this: InstanceType<typeof QuestModel>) {
+        await QuestService.finishPuzzle(
+          "test-quest",
+          "colors",
+          PLAYER,
+          "red blue"
+        );
+        return realSave.call(this);
+      }
+    );
+
+    const result = await QuestService.updateQuest({
+      name: "test-quest",
+      puzzles: [{ puzzleName: "colors" }, { puzzleName: "finale" }],
+    });
+    vi.restoreAllMocks();
+
+    expect(result).toEqual({
+      status: "error",
+      statusCode: 400,
+      message:
+        "Puzzle fruit has already been reached by the players, so it must stay in its place at the start of the quest",
+    });
+    expect((await storedQuest()).puzzles.map((p) => p.status)).toEqual([
+      QuestPuzzleStatus.COMPLETED,
+      QuestPuzzleStatus.AWAITING_ACTIVATION,
+      QuestPuzzleStatus.UNAVAILABLE,
+    ]);
   });
 
   it("returns 404 for an unknown quest", async () => {

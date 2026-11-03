@@ -151,11 +151,10 @@ document
   .replaceChildren(puzzleGrid.getElement());
 
 function getQuestData() {
+  // Progress isn't sent: it changes only through the game's actions.
   const questPuzzles = puzzleGrid.getData().map((questPuzzle) => {
     return {
       puzzleName: questPuzzle.puzzleName,
-      nextHintToDisplay: questPuzzle.nextHintToDisplay,
-      status: questPuzzle.status,
       activationCode: questPuzzle.activationCode,
     };
   });
@@ -167,7 +166,6 @@ function getQuestData() {
     name: questName,
     displayName: document.querySelector("#display-name").value,
     userName: document.querySelector("#user-name").value,
-    status: parseInt(document.querySelector("#quest-status").value),
     puzzles: questPuzzles,
   };
   return questData;

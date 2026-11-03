@@ -12,6 +12,7 @@ import {
   type TransitionResult,
   activatePuzzle as activate,
   calculateProgress,
+  checkPuzzleListChange,
   parseSolutionKeywords,
   reset,
   revealHint,
@@ -397,7 +398,8 @@ export interface QuestQueryOptions {
 
 /**
  * The definition of a quest to create or update. Properties left out of an
- * update keep their stored values.
+ * update keep their stored values. Progress isn't part of a definition: it
+ * changes only through the game's actions.
  */
 export interface QuestDefinition {
   /** The unique name of the quest. */
@@ -406,10 +408,11 @@ export interface QuestDefinition {
   displayName?: string;
   /** The user or team the quest is assigned to. */
   userName?: string;
-  /** The status of the quest. */
-  status?: number;
-  /** The puzzles in the quest, in order. */
-  puzzles?: (Partial<QuestPuzzleProperties> & { puzzleName: string })[];
+  /**
+   * The puzzles in the quest, in order. An activation code may be given to
+   * set or change a puzzle's code; otherwise one is generated.
+   */
+  puzzles?: { puzzleName: string; activationCode?: string }[];
 }
 
 /**
@@ -827,79 +830,90 @@ export async function deleteQuest(
   return { status: "success", statusCode: 200 };
 }
 
-// Quest puzzle fields that an update may set. Fields left out of an update
-// keep their stored values.
-const UPDATABLE_QUEST_PUZZLE_FIELDS = [
-  "nextHintToDisplay",
-  "status",
-  "activationCode",
-  "startTime",
-  "activationTime",
-  "endTime",
-] as const;
-
 /**
- * Updates a quest in the data store.
+ * Updates a quest's name, assignee, and puzzle list. Progress can't be
+ * edited: the status and each puzzle's progress and times change only
+ * through the game's actions, such as starting or resetting the quest, and
+ * are ignored here. Once the quest has started, the puzzles the players have
+ * reached stay in place (see checkPuzzleListChange). Puzzles already in the
+ * quest keep their progress; puzzles new to it start out unavailable. A
+ * puzzle's activation code can be changed by giving it.
  * @param questDefinition quest definition containing the updated data
  * @returns a response object containing a status, status code, and data
  */
 export async function updateQuest(
   questDefinition: QuestDefinition & { name: string }
 ): Promise<QuestResult<undefined>> {
-  const foundQuest = await QuestModel.findOne({ name: questDefinition.name });
-  if (foundQuest === null) {
-    return {
-      status: "error",
-      statusCode: 404,
-      message: `No quest with quest name ${questDefinition.name} found`,
-    };
-  }
-  const status = questDefinition.status ?? foundQuest.status;
-  const validStatuses: number[] = Object.values(QuestStatus);
-  if (!validStatuses.includes(status)) {
-    return {
-      status: "error",
-      statusCode: 400,
-      message: `Invalid quest status ${status}`,
-    };
-  }
-  foundQuest.displayName = questDefinition.displayName || questDefinition.name;
-  foundQuest.userName = questDefinition.userName || foundQuest.userName;
-  foundQuest.status = status;
-  if (questDefinition.puzzles) {
-    // Puzzles already in the quest keep their stored progress and times;
-    // only the fields given in the definition change. Puzzles new to the
-    // quest start out unavailable.
-    const puzzleNames = questDefinition.puzzles.map(
-      (puzzle) => puzzle.puzzleName
-    );
+  const puzzleNames = questDefinition.puzzles?.map(
+    (puzzle) => puzzle.puzzleName
+  );
+  if (puzzleNames) {
     const puzzleError = await validateQuestPuzzleNames(puzzleNames);
     if (puzzleError) {
       return puzzleError;
     }
-    const existingPuzzles = new Map(
-      foundQuest.puzzles.map((puzzle) => [puzzle.puzzleName, puzzle.toObject()])
-    );
-    const updatedPuzzles = questDefinition.puzzles.map((puzzleDefinition) => {
-      const puzzle: Record<string, unknown> =
-        existingPuzzles.get(puzzleDefinition.puzzleName) ??
-        createQuestPuzzleEntry(puzzleDefinition.puzzleName);
-      for (const field of UPDATABLE_QUEST_PUZZLE_FIELDS) {
-        const value = puzzleDefinition[field];
-        if (value !== undefined && value !== null && value !== "") {
-          puzzle[field] = value;
-        }
+  }
+  for (let attempt = 0; attempt < MAX_QUEST_ACTION_ATTEMPTS; attempt++) {
+    const foundQuest = await loadQuest(questDefinition.name);
+    if (foundQuest === null) {
+      return {
+        status: "error",
+        statusCode: 404,
+        message: `No quest with quest name ${questDefinition.name} found`,
+      };
+    }
+    foundQuest.displayName =
+      questDefinition.displayName || questDefinition.name;
+    foundQuest.userName = questDefinition.userName || foundQuest.userName;
+    if (questDefinition.puzzles && puzzleNames) {
+      const check = checkPuzzleListChange(
+        toQuestState(foundQuest),
+        puzzleNames
+      );
+      if (!check.ok) {
+        return {
+          status: "error",
+          statusCode: 400,
+          message:
+            check.error === "QUEST_COMPLETED"
+              ? `Quest ${questDefinition.name} is completed, so its puzzles can't change until it is reset`
+              : `Puzzle ${check.puzzleName} has already been reached by the players, so it must stay in its place at the start of the quest`,
+        };
       }
-      return puzzle;
-    });
-    foundQuest.set("puzzles", updatedPuzzles);
+      const existingPuzzles = new Map(
+        foundQuest.puzzles.map((puzzle) => [
+          puzzle.puzzleName,
+          puzzle.toObject(),
+        ])
+      );
+      foundQuest.set(
+        "puzzles",
+        questDefinition.puzzles.map((puzzleDefinition) => {
+          const puzzle: Record<string, unknown> =
+            existingPuzzles.get(puzzleDefinition.puzzleName) ??
+            createQuestPuzzleEntry(puzzleDefinition.puzzleName);
+          if (puzzleDefinition.activationCode) {
+            puzzle.activationCode = puzzleDefinition.activationCode;
+          }
+          return puzzle;
+        })
+      );
+    }
+    try {
+      await foundQuest.save();
+    } catch (err) {
+      if (err instanceof mongoose.Error.VersionError) {
+        continue;
+      }
+      return {
+        status: "error",
+        statusCode: 500,
+        message: getErrorMessage(err),
+      };
+    }
+    return { status: "success", statusCode: 200 };
   }
-  try {
-    await foundQuest.save();
-  } catch (err) {
-    return { status: "error", statusCode: 500, message: getErrorMessage(err) };
-  }
-  return { status: "success", statusCode: 200 };
+  return questChangingError(questDefinition.name);
 }
 
 /** The error branch of a quest service result. */
@@ -1092,6 +1106,16 @@ async function applyQuestAction<R>(
       rules: loaded.rules,
     };
   }
+  return questChangingError(questName);
+}
+
+/**
+ * The error for an action that kept conflicting with other changes to the
+ * quest.
+ * @param questName the name of the quest
+ * @returns the error result
+ */
+function questChangingError(questName: string): QuestErrorResult {
   return {
     status: "error",
     statusCode: 409,
@@ -1577,23 +1601,30 @@ export async function setExpectedTextResponse(
   expectedResponse: string,
   responseConfirmation: string
 ): Promise<QuestResult<undefined>> {
-  const quest = await QuestModel.findOne({ name: questName });
-  if (quest === null) {
-    return {
-      status: "error",
-      statusCode: 404,
-      message: `No quest with quest name ${questName} found`,
-    };
-  }
-  quest.textResponse = expectedResponse;
-  quest.textResponseConfirmation = responseConfirmation;
+  // A single update, so it can't conflict with players' progress.
+  let result;
   try {
-    await quest.save();
+    result = await QuestModel.updateOne(
+      { name: questName },
+      {
+        $set: {
+          textResponse: expectedResponse,
+          textResponseConfirmation: responseConfirmation,
+        },
+      }
+    );
   } catch (err) {
     return {
       status: "error",
       statusCode: 500,
       message: getErrorMessage(err),
+    };
+  }
+  if (result.matchedCount === 0) {
+    return {
+      status: "error",
+      statusCode: 404,
+      message: `No quest with quest name ${questName} found`,
     };
   }
   return { status: "success", statusCode: 200 };
@@ -1640,9 +1671,19 @@ export async function validateExpectedTextResponse(
       message: `Expected response does not match`,
     };
   }
-  quest.textResponse = "";
-  quest.textResponseConfirmation = "";
-  await quest.save();
+  // Clear the expected response, unless it has changed since it was read;
+  // a single update, so it can't conflict with players' progress.
+  const cleared = await QuestModel.updateOne(
+    { _id: quest._id, textResponse: quest.textResponse },
+    { $set: { textResponse: "", textResponseConfirmation: "" } }
+  );
+  if (cleared.modifiedCount === 0) {
+    return {
+      status: "error",
+      statusCode: 418,
+      message: `Quest is not expecting a text response`,
+    };
+  }
   return {
     status: "success",
     statusCode: 200,

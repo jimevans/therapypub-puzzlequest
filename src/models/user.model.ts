@@ -91,6 +91,12 @@ const teamSchema = new Schema({
   memberNames: [String],
 });
 
+// Incoming calls and text messages find their sender by phone number.
+userSchema.index({ phone: 1 });
+
+// A player's quests include their teams' quests, found by member.
+teamSchema.index({ memberNames: 1 });
+
 /** A user as stored in the database. */
 export type UserData = InferSchemaType<typeof userSchema>;
 

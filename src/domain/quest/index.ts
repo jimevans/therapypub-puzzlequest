@@ -3,6 +3,7 @@
  * what each one changes. Pure functions with no database or other I/O, so
  * every rule can be tested directly.
  */
+export * from "./editing.js";
 export * from "./events.js";
 export * from "./progress.js";
 export * from "./solution.js";
