@@ -1,28 +1,18 @@
 import type { Request, Response } from "express";
-import type { RouteRequest } from "../types.js";
+import type { BodyRequest, RouteRequest } from "../types.js";
+import type {
+  CreateTeamBody,
+  JoinTeamBody,
+  UpdateTeamBody,
+} from "../schemas/team.schemas.js";
 import * as TeamService from "../services/team.service.js";
 import * as UserService from "../services/user.service.js";
-import * as RequestValidationService from "../services/requestValidation.service.js";
 
-export async function createTeam(req: Request, res: Response): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresBody: true,
-      requiredBodyProperties: ["teamName", "displayName", "joinCode"],
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
-  const teamToCreate = new TeamService.Team(req.body);
+export async function createTeam(
+  req: BodyRequest<CreateTeamBody>,
+  res: Response
+): Promise<void> {
+  const teamToCreate = new TeamService.Team({ ...req.body, memberNames: [] });
   const response = await TeamService.createTeam(teamToCreate);
   if (response.status === "error") {
     res.status(response.statusCode).send(
@@ -54,28 +44,10 @@ export async function retrieveTeam(
 }
 
 export async function updateTeam(
-  req: RouteRequest<"teamName">,
+  req: RouteRequest<"teamName", UpdateTeamBody>,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresBody: true,
-      requiredBodyProperties: ["teamName"],
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
-  const team = new TeamService.Team(req.body);
-  const response = await TeamService.updateTeam(req.params.teamName, team);
+  const response = await TeamService.updateTeam(req.params.teamName, req.body);
   if (response.status === "error") {
     res.status(response.statusCode).send(
       JSON.stringify({
@@ -128,26 +100,9 @@ export async function listTeams(req: Request, res: Response): Promise<void> {
 }
 
 export async function joinTeam(
-  req: RouteRequest<"teamName" | "userName">,
+  req: RouteRequest<"teamName" | "userName", JoinTeamBody>,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresBody: true,
-      requiredBodyProperties: ["joinCode"],
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
   const addUserResponse = await TeamService.addUserToTeam(
     req.params.teamName,
     req.params.userName,

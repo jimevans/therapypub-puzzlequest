@@ -1,4 +1,12 @@
 import express from "express";
+import { validate } from "../middleware/validate.js";
+import {
+  activatePuzzleBody,
+  createQuestBody,
+  requestHintBody,
+  solvePuzzleBody,
+  updateQuestBody,
+} from "../schemas/quest.schemas.js";
 import { requireAdmin, requireUser } from "../middleware/authorization.js";
 import {
   activationRateLimiter,
@@ -26,6 +34,7 @@ questApiRouter.put(
   "/:name",
   TokenAuthenticator.tokenAuthenticate,
   requireAdmin,
+  validate({ body: updateQuestBody }),
   QuestController.updateQuest
 );
 questApiRouter.delete(
@@ -38,6 +47,7 @@ questApiRouter.post(
   "/create",
   TokenAuthenticator.tokenAuthenticate,
   requireAdmin,
+  validate({ body: createQuestBody }),
   QuestController.createQuest
 );
 questApiRouter.put(
@@ -59,6 +69,7 @@ questApiRouter.post(
   requireUser,
   activationRateLimiter,
   uploadActivationImage,
+  validate({ body: activatePuzzleBody }),
   QRCodeReader.readQRCode,
   QuestController.activateQuestPuzzle
 );
@@ -67,12 +78,14 @@ questApiRouter.put(
   TokenAuthenticator.tokenAuthenticate,
   requireUser,
   solutionRateLimiter,
+  validate({ body: solvePuzzleBody }),
   QuestController.solveQuestPuzzle
 );
 questApiRouter.put(
   "/:name/puzzle/:puzzleName/hint",
   TokenAuthenticator.tokenAuthenticate,
   requireUser,
+  validate({ body: requestHintBody }),
   QuestController.requestQuestPuzzleHint
 );
 questApiRouter.get(

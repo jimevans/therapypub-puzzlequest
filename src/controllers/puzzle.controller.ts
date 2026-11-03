@@ -1,31 +1,16 @@
 import type { Request, Response } from "express";
-import type { RouteRequest } from "../types.js";
+import type { BodyRequest, RouteRequest } from "../types.js";
+import type {
+  CreatePuzzleBody,
+  UpdatePuzzleBody,
+} from "../schemas/puzzle.schemas.js";
 import { RenderMode } from "../middleware/useRenderMode.js";
 import * as PuzzleService from "../services/puzzle.service.js";
-import * as RequestValidationService from "../services/requestValidation.service.js";
 
-export async function createPuzzle(req: Request, res: Response): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresBody: true,
-      requiredBodyProperties: [
-        "name",
-        "solutionKeyword",
-        "solutionDisplayText",
-      ],
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
+export async function createPuzzle(
+  req: BodyRequest<CreatePuzzleBody>,
+  res: Response
+): Promise<void> {
   const response = await PuzzleService.createPuzzle(req.body);
   if (response.status === "error") {
     res.status(response.statusCode).send(
@@ -60,26 +45,9 @@ export async function retrievePuzzle(
 }
 
 export async function updatePuzzle(
-  req: RouteRequest<"name">,
+  req: RouteRequest<"name", UpdatePuzzleBody>,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresBody: true,
-      requiredBodyProperties: ["name"],
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
   const response = await PuzzleService.updatePuzzle(req.params.name, req.body);
   if (response.status === "error") {
     res.status(response.statusCode).send(
@@ -116,28 +84,16 @@ export async function listPuzzles(req: Request, res: Response): Promise<void> {
 }
 
 export function uploadBinaryData(req: Request, res: Response): void {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresBody: true,
-      requiresFile: true,
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
+  if (!req.file) {
+    res
+      .status(400)
+      .json({ status: "error", message: "Request must have an uploaded file" });
     return;
   }
-
   res.send(
     JSON.stringify({
       status: "success",
-      // validateRequest has checked that the request includes a file.
-      data: `/puzzleData/${req.file!.filename}`,
+      data: `/puzzleData/${req.file.filename}`,
     })
   );
 }

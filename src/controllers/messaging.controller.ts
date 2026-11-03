@@ -1,12 +1,17 @@
-import type { Request, Response } from "express";
+import type { Response } from "express";
+import type { BodyRequest } from "../types.js";
+import type {
+  IncomingCallBody,
+  IncomingTextBody,
+  SendTextBody,
+} from "../schemas/messaging.schemas.js";
 import { QuestStatus } from "../models/quest.model.js";
 import * as QuestService from "../services/quest.service.js";
 import * as UserService from "../services/user.service.js";
 import * as MessagingService from "../services/messaging.service.js";
-import * as RequestValidationService from "../services/requestValidation.service.js";
 
 export async function receiveVoiceCall(
-  req: Request,
+  req: BodyRequest<IncomingCallBody>,
   res: Response
 ): Promise<void> {
   const voice = await MessagingService.respondToVoiceCall(req.body.From);
@@ -24,7 +29,7 @@ export async function receiveVoiceCall(
 }
 
 export async function receiveTextMessage(
-  req: Request,
+  req: BodyRequest<IncomingTextBody>,
   res: Response
 ): Promise<void> {
   const text = await MessagingService.respondToTextMessage(
@@ -35,25 +40,9 @@ export async function receiveTextMessage(
 }
 
 export async function sendTextMessage(
-  req: Request,
+  req: BodyRequest<SendTextBody>,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresBody: true,
-      requiredBodyProperties: ["questName", "message"],
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
   const loggedInUser = UserService.getLoggedInUser(req.user);
   const getQuestResponse = await QuestService.getQuestByQuestName(
     req.body.questName,

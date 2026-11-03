@@ -34,5 +34,17 @@ export type ServiceResult<T> =
  * string. (Express types route parameters as string | string[] to allow for
  * wildcard routes, which this application doesn't use.)
  * @template P the names of the route parameters
+ * @template B the body, as parsed by the route's schema (see validate.ts)
  */
-export type RouteRequest<P extends string> = Request<Record<P, string>>;
+export type RouteRequest<P extends string, B = Request["body"]> = Request<
+  Record<P, string>,
+  unknown,
+  B
+>;
+
+/**
+ * An Express request whose body has been parsed by the route's schema (see
+ * validate.ts), for routes without parameters.
+ * @template B the parsed body
+ */
+export type BodyRequest<B> = RouteRequest<never, B>;

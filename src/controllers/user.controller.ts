@@ -1,33 +1,28 @@
 import type { Request, Response } from "express";
-import type { RouteRequest } from "../types.js";
+import type { BodyRequest, RouteRequest } from "../types.js";
+import type {
+  ChangePasswordBody,
+  CreateUserBody,
+  ForgotPasswordBody,
+  LoginBody,
+  ResetPasswordBody,
+  UpdateUserBody,
+} from "../schemas/user.schemas.js";
 import * as AuthenticationService from "../services/authentication.service.js";
 import * as PasswordService from "../services/password.service.js";
 import * as UserService from "../services/user.service.js";
-import * as RequestValidationService from "../services/requestValidation.service.js";
 import { RenderMode } from "../middleware/useRenderMode.js";
 import { AuthorizationLevel } from "../models/user.model.js";
+import { formatPhoneNumber } from "../schemas/common.js";
 import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
 import { getErrorMessage } from "../errors.js";
 
-export async function login(req: Request, res: Response): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresBody: true,
-      requiredBodyProperties: ["userName", "password"],
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
+export async function login(
+  req: BodyRequest<LoginBody>,
+  res: Response
+): Promise<void> {
   const response = await AuthenticationService.authenticate(
-    req.body.userName.toLowerCase(),
+    req.body.userName,
     req.body.password
   );
   if (response.status === "error") {
@@ -42,30 +37,21 @@ export async function login(req: Request, res: Response): Promise<void> {
   res.send(JSON.stringify(response));
 }
 
-export async function createUser(req: Request, res: Response): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresBody: true,
-      requiredBodyProperties: ["userName", "password", "email"],
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
-  const userToCreate = new UserService.User(req.body);
-  if (!UserService.getLoggedInUser(req.user)?.isAdmin()) {
-    // Only an administrator may choose the new account's authorization
-    // level; anyone else signing up gets an ordinary account.
-    userToCreate.authorizationLevel = AuthorizationLevel.USER;
-  }
+export async function createUser(
+  req: BodyRequest<CreateUserBody>,
+  res: Response
+): Promise<void> {
+  const { authorizationLevel, ...userDefinition } = req.body;
+  // Only an administrator may choose the new account's authorization level;
+  // anyone else signing up gets an ordinary account.
+  const isAdmin = UserService.getLoggedInUser(req.user)?.isAdmin() ?? false;
+  const userToCreate = new UserService.User({
+    ...userDefinition,
+    authorizationLevel:
+      isAdmin && authorizationLevel !== undefined
+        ? authorizationLevel
+        : AuthorizationLevel.USER,
+  });
   const response = await UserService.createUser(userToCreate);
   if (response.status === "error") {
     res.status(response.statusCode).send(
@@ -98,26 +84,15 @@ export async function retrieveUser(
 }
 
 export async function updateUser(
-  req: RouteRequest<"userName">,
+  req: RouteRequest<"userName", UpdateUserBody>,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresBody: true,
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
   const loggedInUser = UserService.requireLoggedInUser(req.user);
-  const updatedUser: Partial<UserService.User> = new UserService.User(req.body);
+  const { sms, ...changes } = req.body;
+  const updatedUser: Partial<UserService.User> = {
+    ...changes,
+    allowSmsMessages: sms,
+  };
   if (!loggedInUser.isAdmin()) {
     // Only administrators may change authorization levels. Users change
     // their own passwords through changePassword, which requires the
@@ -164,25 +139,9 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
 }
 
 export async function changePassword(
-  req: RouteRequest<"userName">,
+  req: RouteRequest<"userName", ChangePasswordBody>,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresBody: true,
-      requiredBodyProperties: ["currentPassword", "newPassword"],
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
   const response = await PasswordService.changePassword(
     req.params.userName,
     req.body.currentPassword,
@@ -206,25 +165,9 @@ export async function changePassword(
 }
 
 export async function forgotPassword(
-  req: Request,
+  req: BodyRequest<ForgotPasswordBody>,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresBody: true,
-      requiredBodyProperties: ["identifier"],
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
   // Respond before doing any work, and identically whether or not an account
   // matches, so the response reveals nothing about which accounts exist.
   res.send(JSON.stringify({ status: "success" }));
@@ -243,25 +186,9 @@ export async function forgotPassword(
 }
 
 export async function resetPassword(
-  req: Request,
+  req: BodyRequest<ResetPasswordBody>,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresBody: true,
-      requiredBodyProperties: ["resetToken", "newPassword"],
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
   const response = await PasswordService.resetPassword(
     req.body.resetToken,
     req.body.newPassword
@@ -323,6 +250,7 @@ export async function renderUser(
         renderMode: req.renderMode,
         currentUser: loggedInUser,
         user: null,
+        phone: "",
       });
     } else {
       res.render("error", {
@@ -351,5 +279,6 @@ export async function renderUser(
     renderMode: req.renderMode,
     currentUser: currentUser,
     user: userResponse.data,
+    phone: formatPhoneNumber(userResponse.data.phone),
   });
 }

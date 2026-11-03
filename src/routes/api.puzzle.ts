@@ -1,4 +1,9 @@
 import express from "express";
+import { validate } from "../middleware/validate.js";
+import {
+  createPuzzleBody,
+  updatePuzzleBody,
+} from "../schemas/puzzle.schemas.js";
 import { requireAdmin } from "../middleware/authorization.js";
 import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
 import { uploadPuzzleMedia } from "../middleware/upload.js";
@@ -21,6 +26,7 @@ puzzleApiRouter.put(
   "/:name",
   TokenAuthenticator.tokenAuthenticate,
   requireAdmin,
+  validate({ body: updatePuzzleBody }),
   PuzzleController.updatePuzzle
 );
 puzzleApiRouter.delete(
@@ -33,6 +39,7 @@ puzzleApiRouter.post(
   "/create",
   TokenAuthenticator.tokenAuthenticate,
   requireAdmin,
+  validate({ body: createPuzzleBody }),
   PuzzleController.createPuzzle
 );
 puzzleApiRouter.post(
