@@ -1,8 +1,21 @@
 import { randomUUID } from "crypto";
 import path from "path";
 import { marked, type Token } from "marked";
-import type { PipelineStage } from "mongoose";
+import mongoose, { type PipelineStage } from "mongoose";
 import QRCode from "qrcode";
+import {
+  type PuzzleRules,
+  type QuestErrorCode,
+  type QuestEvent,
+  type QuestState,
+  type TransitionResult,
+  activatePuzzle as activate,
+  parseSolutionKeywords,
+  reset,
+  revealHint,
+  start,
+  submitSolution,
+} from "../domain/quest/index.js";
 import { PuzzleModel } from "../models/puzzle.model.js";
 import {
   QuestModel,
@@ -803,6 +816,263 @@ export async function updateQuest(
   return { status: "success", statusCode: 200 };
 }
 
+/** The error branch of a quest service result. */
+type QuestErrorResult = Extract<QuestResult<never>, { status: "error" }>;
+
+/** A quest document loaded from the data store. */
+type QuestDocument = InstanceType<typeof QuestModel>;
+
+/**
+ * How many times an action is tried when another change to the same quest
+ * (usually a teammate's) is saved between loading the quest and saving it.
+ */
+const MAX_QUEST_ACTION_ATTEMPTS = 3;
+
+/** A player acting on a quest. */
+interface QuestActor {
+  /** The user name and team names of the player. */
+  userContexts: string[];
+  /** What the player is doing, for the error message if they may not. */
+  action: string;
+}
+
+/**
+ * The outcome of applying an action to a quest: a service error (such as no
+ * quest found), the rules refusing the action, or the action saved.
+ * @template R the puzzle rules the action used
+ */
+type QuestActionOutcome<R> =
+  | QuestErrorResult
+  | { status: "refused"; error: QuestErrorCode; state: QuestState }
+  | {
+      status: "applied";
+      state: QuestState;
+      events: readonly QuestEvent[];
+      now: Date;
+      rules: R;
+    };
+
+/**
+ * Loads a quest. A quest stored without a version key, which happens only if
+ * it was written outside this application, is given one first, because the
+ * version check on save can't detect a conflicting change until it has one.
+ * @param questName the name of the quest
+ * @returns the quest, or null if there is none
+ */
+async function loadQuest(questName: string): Promise<QuestDocument | null> {
+  const quest = await QuestModel.findOne({ name: questName });
+  if (quest === null || quest.__v !== undefined) {
+    return quest;
+  }
+  await QuestModel.updateOne(
+    { _id: quest._id, __v: { $exists: false } },
+    { $set: { __v: 0 } }
+  );
+  return QuestModel.findOne({ _id: quest._id });
+}
+
+/**
+ * Gets a quest's progress in the form the rules work with.
+ * @param quest the quest document
+ * @returns the quest's state
+ */
+function toQuestState(quest: QuestDocument): QuestState {
+  return {
+    status: quest.status as QuestStatus,
+    puzzles: quest.puzzles.map((puzzle) => ({
+      puzzleName: puzzle.puzzleName,
+      status: puzzle.status as QuestPuzzleStatus,
+      nextHintToDisplay: puzzle.nextHintToDisplay,
+      activationCode: puzzle.activationCode,
+      startTime: puzzle.startTime,
+      activationTime: puzzle.activationTime,
+      endTime: puzzle.endTime,
+    })),
+  };
+}
+
+/**
+ * Copies a quest's new progress onto its document. The rules never add,
+ * remove, or reorder puzzles, so they line up by index.
+ * @param quest the quest document
+ * @param state the quest's new state
+ */
+function applyQuestState(quest: QuestDocument, state: QuestState): void {
+  quest.status = state.status;
+  state.puzzles.forEach((puzzle, index) => {
+    const stored = quest.puzzles[index];
+    stored.status = puzzle.status;
+    stored.nextHintToDisplay = puzzle.nextHintToDisplay;
+    stored.startTime = puzzle.startTime;
+    stored.activationTime = puzzle.activationTime;
+    stored.endTime = puzzle.endTime;
+  });
+}
+
+/**
+ * Loads a puzzle's definition as the rules for an action on it.
+ * @param puzzleName the name of the puzzle
+ * @returns the puzzle, or an error result if it doesn't exist
+ */
+async function loadPuzzleRules(
+  puzzleName: string
+): Promise<{ rules: PuzzleService.Puzzle } | QuestErrorResult> {
+  const result = await PuzzleService.getPuzzleByPuzzleName(puzzleName);
+  return result.status === "error" ? result : { rules: result.data };
+}
+
+/**
+ * Gets the parts of a puzzle the rules need.
+ * @param puzzle the puzzle
+ * @returns the puzzle's rules
+ */
+function toPuzzleRules(puzzle: PuzzleService.Puzzle): PuzzleRules {
+  return {
+    solutionKeywords: parseSolutionKeywords(puzzle.solutionKeyword),
+    hints: puzzle.hints,
+  };
+}
+
+async function noRules(): Promise<{ rules: undefined }> {
+  return { rules: undefined };
+}
+
+/**
+ * Applies an action to a quest: loads the quest, checks that the player may
+ * act on it, applies the rules, and saves the result. If another change to
+ * the quest is saved first, the action starts over with the updated quest,
+ * so the two can't overwrite each other.
+ * @param questName the name of the quest
+ * @param actor the player acting, or null for an administrative action
+ * @param loadRules loads what the rules need; called once, after the player
+ *  is authorized
+ * @param transition applies the rules
+ * @returns the outcome
+ */
+async function applyQuestAction<R>(
+  questName: string,
+  actor: QuestActor | null,
+  loadRules: () => Promise<{ rules: R } | QuestErrorResult>,
+  transition: (state: QuestState, now: Date, rules: R) => TransitionResult
+): Promise<QuestActionOutcome<R>> {
+  let loaded: { rules: R } | undefined;
+  for (let attempt = 0; attempt < MAX_QUEST_ACTION_ATTEMPTS; attempt++) {
+    const quest = await loadQuest(questName);
+    if (quest === null) {
+      return {
+        status: "error",
+        statusCode: 404,
+        message: `No quest with quest name ${questName} found`,
+      };
+    }
+    if (actor && !actor.userContexts.includes(quest.userName)) {
+      return {
+        status: "error",
+        statusCode: 403,
+        message: `User is not authorized to ${actor.action} for quest ${questName}`,
+      };
+    }
+    if (!loaded) {
+      const rulesResult = await loadRules();
+      if ("status" in rulesResult) {
+        return rulesResult;
+      }
+      loaded = rulesResult;
+    }
+    const now = new Date(Date.now());
+    const state = toQuestState(quest);
+    const result = transition(state, now, loaded.rules);
+    if (!result.ok) {
+      return { status: "refused", error: result.error, state };
+    }
+    applyQuestState(quest, result.state);
+    try {
+      await quest.save();
+    } catch (err) {
+      if (err instanceof mongoose.Error.VersionError) {
+        continue;
+      }
+      return {
+        status: "error",
+        statusCode: 500,
+        message: getErrorMessage(err),
+      };
+    }
+    return {
+      status: "applied",
+      state: result.state,
+      events: result.events,
+      now,
+      rules: loaded.rules,
+    };
+  }
+  return {
+    status: "error",
+    statusCode: 409,
+    message: `Quest ${questName} is being changed by someone else; please try again`,
+  };
+}
+
+/**
+ * Describes why the rules refused an action on one of a quest's puzzles.
+ * @param error why the action was refused
+ * @param questName the name of the quest
+ * @param puzzleName the name of the puzzle
+ * @returns the error result
+ */
+function puzzleActionRefused(
+  error: QuestErrorCode,
+  questName: string,
+  puzzleName: string
+): QuestErrorResult {
+  switch (error) {
+    case "QUEST_COMPLETED":
+      return {
+        status: "error",
+        statusCode: 400,
+        message: `Quest ${questName} is already completed`,
+      };
+    case "PUZZLE_NOT_FOUND":
+      return {
+        status: "error",
+        statusCode: 404,
+        message: `No puzzle with name ${puzzleName} in quest ${questName}`,
+      };
+    case "PUZZLE_NOT_AWAITING_ACTIVATION":
+      return {
+        status: "error",
+        statusCode: 400,
+        message: `Puzzle ${puzzleName} in quest ${questName} is not awaiting activation`,
+      };
+    case "PUZZLE_NOT_IN_PROGRESS":
+      return {
+        status: "error",
+        statusCode: 400,
+        message: `Puzzle ${puzzleName} in quest ${questName} is not in progress`,
+      };
+    case "WRONG_ACTIVATION_CODE":
+      return {
+        status: "error",
+        statusCode: 406,
+        message: "Incorrect activation code for puzzle",
+      };
+    case "WRONG_SOLUTION":
+      return {
+        status: "error",
+        statusCode: 406,
+        message: "Incorrect guess for puzzle solution",
+      };
+    default:
+      // QUEST_NOT_STARTED; the other codes only come from starting a quest
+      // or revealing a hint, which handle them before getting here.
+      return {
+        status: "error",
+        statusCode: 400,
+        message: `Quest ${questName} is not yet started`,
+      };
+  }
+}
+
 /**
  * Starts a quest, making the first puzzle available for activation.
  * @param name the name of the quest to start
@@ -811,38 +1081,19 @@ export async function updateQuest(
 export async function startQuest(
   name: string
 ): Promise<QuestResult<undefined>> {
-  const foundQuest = await QuestModel.findOne({ name: name });
-  if (foundQuest === null) {
-    return {
-      status: "error",
-      statusCode: 404,
-      message: `No quest with quest name ${name} found`,
-    };
-  }
-
-  if (foundQuest.status !== QuestStatus.NOT_STARTED) {
+  const outcome = await applyQuestAction(name, null, noRules, start);
+  if (outcome.status === "refused") {
     return {
       status: "error",
       statusCode: 400,
-      message: `Quest ${name} cannot be started; status is ${foundQuest.status}`,
+      message:
+        outcome.error === "NO_PUZZLES"
+          ? `Quest ${name} cannot be started; it has no puzzles`
+          : `Quest ${name} cannot be started; status is ${outcome.state.status}`,
     };
   }
-
-  if (foundQuest.puzzles.length === 0) {
-    return {
-      status: "error",
-      statusCode: 400,
-      message: `Quest ${name} cannot be started; it has no puzzles`,
-    };
-  }
-
-  foundQuest.status = QuestStatus.IN_PROGRESS;
-  foundQuest.puzzles[0].status = QuestPuzzleStatus.AWAITING_ACTIVATION;
-  foundQuest.puzzles[0].startTime = new Date(Date.now());
-  try {
-    await foundQuest.save();
-  } catch (err) {
-    return { status: "error", statusCode: 500, message: getErrorMessage(err) };
+  if (outcome.status === "error") {
+    return outcome;
   }
   return { status: "success", statusCode: 200 };
 }
@@ -855,26 +1106,10 @@ export async function startQuest(
 export async function resetQuest(
   questName: string
 ): Promise<QuestResult<undefined>> {
-  const quest = await QuestModel.findOne({ name: questName });
-  if (quest === null) {
-    return {
-      status: "error",
-      statusCode: 404,
-      message: `No quest with quest name ${questName} found`,
-    };
-  }
-  quest.status = QuestStatus.NOT_STARTED;
-  quest.puzzles.forEach((puzzle) => {
-    puzzle.status = QuestPuzzleStatus.UNAVAILABLE;
-    puzzle.nextHintToDisplay = 0;
-    puzzle.startTime = undefined;
-    puzzle.endTime = undefined;
-    puzzle.activationTime = undefined;
-  });
-  try {
-    await quest.save();
-  } catch (err) {
-    return { status: "error", statusCode: 500, message: getErrorMessage(err) };
+  const outcome = await applyQuestAction(questName, null, noRules, reset);
+  // The rules never refuse a reset.
+  if (outcome.status === "error") {
+    return outcome;
   }
   return { status: "success", statusCode: 200 };
 }
@@ -893,91 +1128,23 @@ export async function activatePuzzle(
   userContexts: string[],
   activationCode: string
 ): Promise<QuestResult<{ activationTime: Date }>> {
-  const quest = await QuestModel.findOne({ name: questName });
-  if (quest === null) {
-    return {
-      status: "error",
-      statusCode: 404,
-      message: `No quest with quest name ${questName} found`,
-    };
-  }
-
-  if (!userContexts.includes(quest.userName)) {
-    return {
-      status: "error",
-      statusCode: 403,
-      message: `User is not authorized to activate puzzles for quest ${questName}`,
-    };
-  }
-
-  if (quest.status >= QuestStatus.COMPLETED) {
-    return {
-      status: "error",
-      statusCode: 400,
-      message: `Quest ${questName} is already completed`,
-    };
-  } else if (quest.status < QuestStatus.IN_PROGRESS) {
-    return {
-      status: "error",
-      statusCode: 400,
-      message: `Quest ${questName} is not yet started`,
-    };
-  }
-
-  const pendingPuzzles = quest.puzzles.filter(
-    (puzzle) =>
-      puzzle.puzzleName === puzzleName &&
-      puzzle.status > QuestPuzzleStatus.UNAVAILABLE
+  const outcome = await applyQuestAction(
+    questName,
+    { userContexts, action: "activate puzzles" },
+    noRules,
+    (state, now) => activate(state, puzzleName, activationCode, now)
   );
-
-  if (!pendingPuzzles.length) {
-    return {
-      status: "error",
-      statusCode: 404,
-      message: `No puzzle with name ${puzzleName} in quest ${questName}`,
-    };
+  if (outcome.status === "refused") {
+    return puzzleActionRefused(outcome.error, questName, puzzleName);
   }
-
-  // Should only ever be one puzzle pending activation, so get the first one.
-  const currentPuzzle = pendingPuzzles[0];
-  if (currentPuzzle.status !== QuestPuzzleStatus.AWAITING_ACTIVATION) {
-    return {
-      status: "error",
-      statusCode: 400,
-      message: `Puzzle ${puzzleName} in quest ${questName} is not awaiting activation`,
-    };
-  }
-  if (currentPuzzle.activationCode !== activationCode) {
-    return {
-      status: "error",
-      statusCode: 406,
-      message: "Incorrect activation code for puzzle",
-    };
-  }
-
-  const activationTime = new Date(Date.now());
-  currentPuzzle.activationTime = activationTime;
-  currentPuzzle.status = QuestPuzzleStatus.IN_PROGRESS;
-  try {
-    await quest.save();
-  } catch (err) {
-    return { status: "error", statusCode: 500, message: getErrorMessage(err) };
+  if (outcome.status === "error") {
+    return outcome;
   }
   return {
     status: "success",
     statusCode: 200,
-    data: { activationTime: activationTime },
+    data: { activationTime: outcome.now },
   };
-}
-
-/**
- * Escapes characters that have special meaning in a regular expression, so
- * that a solution keyword matches literally.
- * @param text the text to escape
- * @returns the escaped text
- */
-function escapeRegExp(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /**
@@ -994,114 +1161,45 @@ export async function finishPuzzle(
   userContexts: string[],
   solutionGuess: string
 ): Promise<QuestResult<PuzzleSolution>> {
-  const quest = await QuestModel.findOne({ name: questName });
-  if (quest === null) {
-    return {
-      status: "error",
-      statusCode: 404,
-      message: `No quest with quest name ${questName} found`,
-    };
-  }
-
-  if (!userContexts.includes(quest.userName)) {
-    return {
-      status: "error",
-      statusCode: 403,
-      message: `User is not authorized to solve puzzles for quest ${questName}`,
-    };
-  }
-
-  if (quest.status >= QuestStatus.COMPLETED) {
-    return {
-      status: "error",
-      statusCode: 400,
-      message: `Quest ${questName} is already completed`,
-    };
-  } else if (quest.status < QuestStatus.IN_PROGRESS) {
-    return {
-      status: "error",
-      statusCode: 400,
-      message: `Quest ${questName} is not yet started`,
-    };
-  }
-
-  const inProgressPuzzles = quest.puzzles.filter(
-    (puzzle) =>
-      puzzle.puzzleName === puzzleName &&
-      puzzle.status > QuestPuzzleStatus.UNAVAILABLE
+  const outcome = await applyQuestAction(
+    questName,
+    { userContexts, action: "solve puzzles" },
+    () => loadPuzzleRules(puzzleName),
+    (state, now, puzzle) =>
+      submitSolution(
+        state,
+        puzzleName,
+        solutionGuess,
+        toPuzzleRules(puzzle),
+        now
+      )
   );
-
-  if (!inProgressPuzzles.length) {
-    return {
-      status: "error",
-      statusCode: 404,
-      message: `No puzzle with name ${puzzleName} in quest ${questName}`,
-    };
+  if (outcome.status === "refused") {
+    return puzzleActionRefused(outcome.error, questName, puzzleName);
+  }
+  if (outcome.status === "error") {
+    return outcome;
   }
 
-  // Should only ever be one puzzle pending activation, so get the first one.
-  const currentPuzzle = inProgressPuzzles[0];
-  if (currentPuzzle.status !== QuestPuzzleStatus.IN_PROGRESS) {
-    return {
-      status: "error",
-      statusCode: 400,
-      message: `Puzzle ${puzzleName} in quest ${questName} is not in progress`,
-    };
-  }
-  const puzzleResult = await PuzzleService.getPuzzleByPuzzleName(puzzleName);
-  if (puzzleResult.status === "error") {
-    return puzzleResult;
-  }
-  const foundPuzzle = puzzleResult.data;
-  const solutionKeywords = foundPuzzle.solutionKeyword
-    .split(",")
-    .map((keyword) => keyword.trim())
-    .filter((keyword) => keyword);
-  const foundKeywords = solutionKeywords.filter((keyword) =>
-    RegExp(escapeRegExp(keyword), "i").test(solutionGuess)
-  );
-  if (foundKeywords.length !== solutionKeywords.length) {
-    return {
-      status: "error",
-      statusCode: 406,
-      message: "Incorrect guess for puzzle solution",
-    };
-  }
-
-  const currentTime = new Date(Date.now());
-  currentPuzzle.endTime = currentTime;
-  currentPuzzle.status = QuestPuzzleStatus.COMPLETED;
-  const returnData: PuzzleSolution = {
-    endTime: currentTime,
-    solutionText: foundPuzzle.solutionDisplayText,
+  const solution: PuzzleSolution = {
+    endTime: outcome.now,
+    solutionText: outcome.rules.solutionDisplayText,
   };
-  const currentPuzzleIndex = quest.puzzles.indexOf(currentPuzzle);
-  if (currentPuzzleIndex < quest.puzzles.length - 1) {
-    quest.puzzles[currentPuzzleIndex + 1].status =
-      QuestPuzzleStatus.AWAITING_ACTIVATION;
-    quest.puzzles[currentPuzzleIndex + 1].startTime = currentTime;
-    const nextPuzzleName = quest.puzzles[currentPuzzleIndex + 1].puzzleName;
-    returnData.nextPuzzleName = nextPuzzleName;
-    const nextPuzzle =
-      await PuzzleService.getPuzzleByPuzzleName(nextPuzzleName);
-    // Fall back to the name if the puzzle has since been deleted, so the
-    // player's correct solution is still recorded.
-    returnData.nextPuzzleDisplayName =
-      nextPuzzle.data?.displayName ?? nextPuzzleName;
-  } else {
-    quest.status = QuestStatus.COMPLETED;
-    returnData.questComplete = true;
+  for (const event of outcome.events) {
+    if (event.type === "PuzzleStarted") {
+      solution.nextPuzzleName = event.puzzleName;
+      const nextPuzzle = await PuzzleService.getPuzzleByPuzzleName(
+        event.puzzleName
+      );
+      // Fall back to the name if the puzzle has since been deleted; the
+      // player's correct solution has already been recorded.
+      solution.nextPuzzleDisplayName =
+        nextPuzzle.data?.displayName ?? event.puzzleName;
+    } else if (event.type === "QuestCompleted") {
+      solution.questComplete = true;
+    }
   }
-  try {
-    await quest.save();
-  } catch (err) {
-    return { status: "error", statusCode: 500, message: getErrorMessage(err) };
-  }
-  return {
-    status: "success",
-    statusCode: 200,
-    data: returnData,
-  };
+  return { status: "success", statusCode: 200, data: solution };
 }
 
 /**
@@ -1109,93 +1207,46 @@ export async function finishPuzzle(
  * @param questName the name of the quest
  * @param puzzleName the name of the puzzle for which to get the next hint
  * @param userContexts an array of all of the contexts (user names and team names) for the user attempting to solve
- * @returns a response object containing a status, status code, and data
+ * @returns a response object containing a status, status code, and data;
+ *  the data is false when every hint has already been revealed
  */
 export async function getPuzzleHint(
   questName: string,
   puzzleName: string,
   userContexts: string[]
 ): Promise<QuestResult<PuzzleHintResult | false>> {
-  const quest = await QuestModel.findOne({ name: questName });
-  if (quest === null) {
-    return {
-      status: "error",
-      statusCode: 404,
-      message: `No quest with quest name ${questName} found`,
-    };
-  }
-
-  if (!userContexts.includes(quest.userName)) {
-    return {
-      status: "error",
-      statusCode: 403,
-      message: `User is not authorized to request puzzle hints for quest ${questName}`,
-    };
-  }
-
-  if (quest.status >= QuestStatus.COMPLETED) {
-    return {
-      status: "error",
-      statusCode: 400,
-      message: `Quest ${questName} is already completed`,
-    };
-  } else if (quest.status < QuestStatus.IN_PROGRESS) {
-    return {
-      status: "error",
-      statusCode: 400,
-      message: `Quest ${questName} is not yet started`,
-    };
-  }
-
-  const inProgressPuzzles = quest.puzzles.filter(
-    (puzzle) =>
-      puzzle.puzzleName === puzzleName &&
-      puzzle.status > QuestPuzzleStatus.UNAVAILABLE
+  const outcome = await applyQuestAction(
+    questName,
+    { userContexts, action: "request puzzle hints" },
+    () => loadPuzzleRules(puzzleName),
+    (state, now, puzzle) =>
+      revealHint(state, puzzleName, toPuzzleRules(puzzle), now)
   );
-  if (!inProgressPuzzles.length) {
-    return {
-      status: "error",
-      statusCode: 404,
-      message: `No puzzle with name ${puzzleName} in quest ${questName}`,
-    };
+  if (outcome.status === "refused") {
+    if (outcome.error === "NO_MORE_HINTS") {
+      return { status: "success", statusCode: 200, data: false };
+    }
+    return puzzleActionRefused(outcome.error, questName, puzzleName);
+  }
+  if (outcome.status === "error") {
+    return outcome;
   }
 
-  // Should only ever be one puzzle pending activation, so get the first one.
-  const currentPuzzle = inProgressPuzzles[0];
-  if (currentPuzzle.status !== QuestPuzzleStatus.IN_PROGRESS) {
-    return {
-      status: "error",
-      statusCode: 400,
-      message: `Puzzle ${puzzleName} in quest ${questName} is not in progress`,
-    };
-  }
-  const puzzleResult = await PuzzleService.getPuzzleByPuzzleName(puzzleName);
-  if (puzzleResult.status === "error") {
-    return puzzleResult;
-  }
-  const foundPuzzle = puzzleResult.data;
-  if (currentPuzzle.nextHintToDisplay >= foundPuzzle.hints.length) {
-    return { status: "success", statusCode: 200, data: false };
-  }
-  const nextHint = foundPuzzle.hints[currentPuzzle.nextHintToDisplay];
-  currentPuzzle.nextHintToDisplay += 1;
-  const solutionWarning =
-    currentPuzzle.nextHintToDisplay >= foundPuzzle.hints.length
-      ? false
-      : foundPuzzle.hints[currentPuzzle.nextHintToDisplay].solutionWarning;
-  try {
-    await quest.save();
-  } catch (err) {
-    return { status: "error", statusCode: 500, message: getErrorMessage(err) };
-  }
+  const hints = outcome.rules.hints;
+  const revealed = outcome.events.find(
+    (event) => event.type === "HintRevealed"
+  );
+  // A successful revealHint always reports the hint it revealed.
+  const hintIndex = revealed?.hintIndex ?? 0;
+  const nextHint = hints.at(hintIndex + 1);
   return {
     status: "success",
     statusCode: 200,
     data: {
-      hintText: nextHint.text,
-      moreHints: currentPuzzle.nextHintToDisplay < foundPuzzle.hints.length,
-      timePenalty: nextHint.timePenalty,
-      isNextHintSolution: solutionWarning,
+      hintText: hints[hintIndex].text,
+      moreHints: nextHint !== undefined,
+      timePenalty: hints[hintIndex].timePenalty,
+      isNextHintSolution: nextHint?.solutionWarning ?? false,
     },
   };
 }
