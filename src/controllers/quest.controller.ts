@@ -178,6 +178,11 @@ export async function listQuests(req: Request, res: Response): Promise<void> {
   }
 
   const response = await QuestService.findQuests();
+  if (response.status === "error" && response.statusCode === 404) {
+    // No quests yet; the list is empty, so the first one can be created.
+    res.send(JSON.stringify({ status: "success", data: [] }));
+    return;
+  }
   if (response.status === "error") {
     res.status(response.statusCode).send(
       JSON.stringify({
