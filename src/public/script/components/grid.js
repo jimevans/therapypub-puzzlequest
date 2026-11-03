@@ -25,7 +25,9 @@ class DataGrid {
   /**
    * Initializes a new instance of the DataGrid class.
    * @param {string} titleText the text to display as the title for the grid
-   * @param {object[]} columnDefinitions the definitions for the columns of the grid
+   * @param {object[]} columnDefinitions the definitions for the columns of the
+   *  grid. A column's optional placeholder is text shown in place of a
+   *  missing value; it is only displayed, never stored in the grid's data.
    * @param {object} gridOptions an object containing the options for the grid
    */
   constructor(titleText, columnDefinitions, gridOptions = {}) {
@@ -269,7 +271,10 @@ class DataGrid {
           checkbox.addEventListener("click", (e) => e.preventDefault());
           dataCell.appendChild(checkbox);
         } else {
-          dataCell.innerText = dataItem[columnDefinition.fieldName];
+          dataCell.innerText =
+            dataItem[columnDefinition.fieldName] ??
+            columnDefinition.placeholder ??
+            "";
         }
       }
     });

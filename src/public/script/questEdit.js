@@ -45,6 +45,8 @@ const columnDefinitions = [
   {
     fieldName: "activationCode",
     title: "Activation Code",
+    // A puzzle added in the editor gets its code when the quest is saved.
+    placeholder: "Assigned when saved",
   },
 ];
 const puzzleGrid = new DataGrid(
