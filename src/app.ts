@@ -7,6 +7,7 @@ import * as http from "http";
 import mongoose from "mongoose";
 import { config } from "./config.js";
 import { createApp } from "./createApp.js";
+import { subscribeQuestEventHandlers } from "./events/subscribers.js";
 import * as WebSocketService from "./services/websocket.service.js";
 import { getErrorMessage } from "./errors.js";
 
@@ -22,6 +23,8 @@ try {
   console.error(`Unable to connect to MongoDB: ${getErrorMessage(err)}`);
   process.exit(1);
 }
+
+subscribeQuestEventHandlers();
 
 const server = http.createServer(createApp());
 

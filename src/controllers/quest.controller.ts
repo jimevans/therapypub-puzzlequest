@@ -8,7 +8,6 @@ import { PuzzleType } from "../models/puzzle.model.js";
 import { QuestPuzzleStatus } from "../models/quest.model.js";
 import * as QuestService from "../services/quest.service.js";
 import * as UserService from "../services/user.service.js";
-import * as WebSocketService from "../services/websocket.service.js";
 import * as RequestValidationService from "../services/requestValidation.service.js";
 
 export async function createQuest(req: Request, res: Response): Promise<void> {
@@ -221,7 +220,9 @@ export async function activateQuest(
     return;
   }
 
-  const startQuestResponse = await QuestService.startQuest(req.params.name);
+  const startQuestResponse = await QuestService.startQuest(req.params.name, {
+    actor: req.user?.userName,
+  });
   if (startQuestResponse.status === "error") {
     res.status(startQuestResponse.statusCode).send(
       JSON.stringify({
@@ -255,7 +256,9 @@ export async function resetQuest(
     return;
   }
 
-  const resetQuestResponse = await QuestService.resetQuest(req.params.name);
+  const resetQuestResponse = await QuestService.resetQuest(req.params.name, {
+    actor: req.user?.userName,
+  });
   if (resetQuestResponse.status === "error") {
     res.status(resetQuestResponse.statusCode).send(
       JSON.stringify({
@@ -337,7 +340,8 @@ export async function activateQuestPuzzle(
     req.params.name,
     req.params.puzzleName,
     userContexts,
-    activationCode
+    activationCode,
+    { actor: loggedInUser.userName }
   );
   if (activationResult.status === "error") {
     res.status(activationResult.statusCode).send(
@@ -349,21 +353,6 @@ export async function activateQuestPuzzle(
     return;
   }
   res.send(JSON.stringify({ status: "success" }));
-  WebSocketService.notifyBrowsers(
-    [
-      `/quest/${req.params.name}`,
-      `/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
-      `/monitor/quest/${req.params.name}`,
-      `/monitor/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
-    ],
-    [],
-    {
-      message: "puzzleActivated",
-      questName: req.params.name,
-      puzzleName: req.params.puzzleName,
-      activationTime: activationResult.data.activationTime,
-    }
-  );
 }
 
 export async function solveQuestPuzzle(
@@ -396,7 +385,8 @@ export async function solveQuestPuzzle(
     req.params.name,
     req.params.puzzleName,
     userContexts,
-    solutionGuess
+    solutionGuess,
+    { actor: loggedInUser.userName, connectionId }
   );
 
   if (solutionResult.status === "error") {
@@ -417,41 +407,6 @@ export async function solveQuestPuzzle(
       },
     })
   );
-  WebSocketService.notifyBrowsers(
-    [
-      `/quest/${req.params.name}`,
-      `/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
-      `/monitor/quest/${req.params.name}`,
-      `/monitor/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
-    ],
-    [connectionId],
-    {
-      message: "puzzleSolved",
-      questName: req.params.name,
-      puzzleName: req.params.puzzleName,
-      solutionText: solutionResult.data.solutionText,
-      endTime: solutionResult.data.endTime,
-      questComplete: solutionResult.data.questComplete,
-    }
-  );
-  if (solutionResult.data.nextPuzzleName) {
-    WebSocketService.notifyBrowsers(
-      [
-        `/quest/${req.params.name}`,
-        `/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
-        `/monitor/quest/${req.params.name}`,
-        `/monitor/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
-      ],
-      [connectionId],
-      {
-        message: "puzzleStarted",
-        questName: req.params.name,
-        puzzleName: solutionResult.data.nextPuzzleName,
-        displayName: solutionResult.data.nextPuzzleDisplayName,
-        startTime: solutionResult.data.endTime,
-      }
-    );
-  }
 }
 
 export async function requestQuestPuzzleHint(
@@ -481,7 +436,8 @@ export async function requestQuestPuzzleHint(
   const hintResult = await QuestService.getPuzzleHint(
     req.params.name,
     req.params.puzzleName,
-    userContexts
+    userContexts,
+    { actor: loggedInUser.userName, connectionId }
   );
   if (hintResult.status === "error") {
     res.status(hintResult.statusCode).send(
@@ -493,26 +449,6 @@ export async function requestQuestPuzzleHint(
     return;
   }
 
-  if (hintResult.data === false) {
-    // No hints left; there is nothing to show the other players.
-    res.send(JSON.stringify(hintResult));
-    return;
-  }
-
-  WebSocketService.notifyBrowsers(
-    [
-      `/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
-      `/monitor/quest/${req.params.name}/puzzle/${req.params.puzzleName}`,
-    ],
-    [connectionId],
-    {
-      message: "hintRequested",
-      hintText: hintResult.data.hintText,
-      moreHints: hintResult.data.moreHints,
-      timePenalty: hintResult.data.timePenalty,
-      isNextHintSolution: hintResult.data.isNextHintSolution,
-    }
-  );
   res.send(JSON.stringify(hintResult));
 }
 
