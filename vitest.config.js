@@ -11,12 +11,21 @@ export default defineConfig({
       PQ_SECRET_KEY: "test-secret-key-at-least-32-characters-long",
     },
     // `npm run test:coverage` measures coverage of the server code. The game
-    // rules in src/domain must be fully covered; the rest has no threshold
-    // yet.
+    // rules in src/domain must be fully covered. Elsewhere, coverage may not
+    // fall below the overall thresholds; when a change raises coverage, the
+    // run raises the thresholds in this file (rounded down), and the change
+    // is committed with the tests that raised it. src/app.ts only starts the
+    // server, which tests don't do.
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],
+      exclude: ["src/app.ts"],
       thresholds: {
+        autoUpdate: (threshold) => Math.floor(threshold),
+        branches: 67,
+        functions: 82,
+        lines: 71,
+        statements: 71,
         "src/domain/**": {
           branches: 100,
           functions: 100,
