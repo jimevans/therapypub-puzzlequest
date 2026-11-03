@@ -29,6 +29,8 @@ const { AuthorizationLevel, UserModel } =
 const QuestService = await import("../../src/services/quest.service.js");
 const { MAXIMUM_ACTIVATION_IMAGE_BYTES, MAXIMUM_PUZZLE_MEDIA_BYTES } =
   await import("../../src/middleware/upload.js");
+const { activationRateLimiter } =
+  await import("../../src/middleware/rateLimiter.js");
 
 const puzzleDataDirectory = path.join(
   import.meta.dirname,
@@ -146,6 +148,40 @@ describe("POST /api/quest/:name/puzzle/:puzzleName/activate", () => {
     const quest = await QuestModel.findOne({ name: "test-quest" }).lean();
     activationCode = quest!.puzzles[0].activationCode;
     signInAs("player", AuthorizationLevel.USER);
+    // Failed attempts in earlier tests count towards the limit.
+    await activationRateLimiter.resetKey("player");
+    await activationRateLimiter.resetKey("admin");
+  });
+
+  function sendCode(code: string): request.Test {
+    return request(app)
+      .post("/api/quest/test-quest/puzzle/colors/activate")
+      .set("Authorization", "Bearer token")
+      .send({ activationCode: code });
+  }
+
+  it("limits failed attempts by each user", async () => {
+    for (let attempt = 0; attempt < 20; attempt++) {
+      expect((await sendCode("wrong")).status).toBe(406);
+    }
+
+    // Even the right code is refused once the limit is reached.
+    const limited = await sendCode(activationCode);
+    expect(limited.status).toBe(429);
+    expect(JSON.parse(limited.text).status).toBe("error");
+
+    // Other users, who may share the player's network, are not affected.
+    signInAs("admin", AuthorizationLevel.ADMIN);
+    expect((await sendCode("wrong")).status).not.toBe(429);
+  });
+
+  it("does not count successful activations towards the limit", async () => {
+    for (let attempt = 0; attempt < 19; attempt++) {
+      await sendCode("wrong");
+    }
+
+    expect((await sendCode(activationCode)).status).toBe(200);
+    expect((await sendCode("wrong")).status).not.toBe(429);
   });
 
   function sendImage(image: PixelImage): request.Test {
