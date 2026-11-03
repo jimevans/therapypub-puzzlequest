@@ -3,7 +3,12 @@ import cookieParser from "cookie-parser";
 import express, { type Express } from "express";
 import helmet from "helmet";
 import { config } from "./config.js";
+import {
+  contentSecurityPolicy,
+  createScriptNonce,
+} from "./middleware/contentSecurityPolicy.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { requireSameOrigin } from "./middleware/sameOrigin.js";
 import { publicDirectory, viewsDirectory } from "./paths.js";
 import { IndexRouter } from "./routes/index.js";
 import { MessagingApiRouter } from "./routes/api.messaging.js";
@@ -38,7 +43,8 @@ export function createApp(): Express {
 
   app.use(
     helmet({
-      // Added separately, with nonces for the pages' inline scripts.
+      // Added separately (see contentSecurityPolicy.ts), with nonces for the
+      // pages' inline scripts.
       contentSecurityPolicy: false,
       // helmet's default, no-referrer, makes browsers send "Origin: null" on
       // form posts and fetches, which would defeat checking where requests
@@ -52,6 +58,8 @@ export function createApp(): Express {
     })
   );
 
+  app.use(createScriptNonce, contentSecurityPolicy);
+
   // Bodies are limited to 100 KB; uploads go through multer, which has its
   // own limits.
   app.use(express.json());
@@ -63,6 +71,7 @@ export function createApp(): Express {
   });
 
   app.use(cookieParser());
+  app.use(requireSameOrigin);
 
   app.use("/", IndexRouter);
 

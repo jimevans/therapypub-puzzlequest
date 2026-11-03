@@ -42,7 +42,7 @@
         <span>Invalid user name or password</span>
       </div>
     </form>
-    <script type="text/javascript">
+    <script nonce="<%= cspNonce %>">
       // The page to return to after signing in.
       const requestingUrl = <%- JSON.stringify(requestingUrl ? requestingUrl : "/") %>;
     </script>

@@ -111,7 +111,7 @@
     <div class="pq-error pq-hide">
       <span id="error-message"></span>
     </div>
-    <script type="text/javascript">
+    <script nonce="<%= cspNonce %>">
       const renderMode = "<%=renderMode%>";
       const quest = <%- JSON.stringify( quest ? { "name": quest.name, "puzzles": quest.puzzles } : null) %>;
     </script>

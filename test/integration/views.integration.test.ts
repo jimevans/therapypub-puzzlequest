@@ -244,6 +244,19 @@ describe.each(PAGES)("%s (%s)", (_description, path, account, view, texts) => {
       expect(response.text).toContain(text);
     }
   });
+
+  it("gives its inline scripts the Content Security Policy's nonce", async () => {
+    const response = await getPage(path, account);
+
+    const nonce = /'nonce-([^']+)'/.exec(
+      response.headers["content-security-policy"]
+    )?.[1];
+    expect(nonce).toBeDefined();
+    const inlineScripts = response.text.match(/<script(?![^>]*\ssrc=)[^>]*>/g);
+    for (const script of inlineScripts ?? []) {
+      expect(script).toBe(`<script nonce="${nonce}">`);
+    }
+  });
 });
 
 describe("a quest puzzle whose puzzle was deleted", () => {
