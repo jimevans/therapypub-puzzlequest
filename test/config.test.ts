@@ -4,7 +4,6 @@ import { getErrorMessage } from "../src/errors.js";
 
 const required = {
   PQ_MONGODB_URI: "mongodb://localhost:27017/puzzlequest",
-  PQ_SECRET_KEY: "a-secret-key-that-is-at-least-32-characters",
 };
 
 function parseError(environment: Record<string, string>): string {
@@ -31,11 +30,10 @@ describe("parseConfig", () => {
     expect(config.PQ_BASE_URL).toBeUndefined();
   });
 
-  it("reports every missing required setting at once", () => {
+  it("reports a missing required setting", () => {
     const message = parseError({});
 
     expect(message).toContain("PQ_MONGODB_URI is required");
-    expect(message).toContain("PQ_SECRET_KEY is required");
   });
 
   it("treats blank values as unset", () => {
@@ -59,21 +57,6 @@ describe("parseConfig", () => {
       parseConfig({ ...required, PQ_MONGODB_URI: "mongodb+srv://cluster/db" })
         .PQ_MONGODB_URI
     ).toBe("mongodb+srv://cluster/db");
-  });
-
-  it("rejects a short secret key", () => {
-    expect(parseError({ ...required, PQ_SECRET_KEY: "too-short" })).toContain(
-      "PQ_SECRET_KEY must be at least 32 characters"
-    );
-  });
-
-  it("rejects the placeholder secret key from .env.example", () => {
-    expect(
-      parseError({
-        ...required,
-        PQ_SECRET_KEY: "replace-with-a-long-random-string",
-      })
-    ).toContain("PQ_SECRET_KEY is still the placeholder");
   });
 
   it("rejects an invalid base URL", () => {

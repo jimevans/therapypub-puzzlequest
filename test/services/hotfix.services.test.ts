@@ -74,6 +74,7 @@ describe("UserService", () => {
       sms: false,
       authorizationLevel: 1,
       save: vi.fn(),
+      isModified: vi.fn(() => false),
     };
     vi.mocked(UserModel.findOne).mockResolvedValue(foundUser as never);
 

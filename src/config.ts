@@ -37,10 +37,6 @@ function parseTrustProxy(
   return Number.isInteger(hops) ? hops : value;
 }
 
-// The placeholder in .env.example is long enough to pass the length check, so
-// it is rejected explicitly.
-const EXAMPLE_SECRET_KEY = "replace-with-a-long-random-string";
-
 const configSchema = z
   .object({
     // "development" disables secure cookies and logs emails to the console
@@ -53,18 +49,6 @@ const configSchema = z
         .regex(
           /^mongodb(\+srv)?:\/\//,
           "must be a mongodb:// or mongodb+srv:// connection string"
-        )
-    ),
-    PQ_SECRET_KEY: setting(
-      z
-        .string({ error: "is required" })
-        .min(
-          32,
-          "must be at least 32 characters (generate one with `openssl rand -base64 48`)"
-        )
-        .refine(
-          (value) => value !== EXAMPLE_SECRET_KEY,
-          "is still the placeholder from .env.example (generate one with `openssl rand -base64 48`)"
         )
     ),
     PQ_BASE_URL: setting(z.url("must be a URL").optional()),

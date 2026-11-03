@@ -21,7 +21,7 @@ const { PasswordResetModel } =
 const { UserModel } = await import("../../src/models/user.model.js");
 const EmailService = await import("../../src/services/email.service.js");
 const PasswordService = await import("../../src/services/password.service.js");
-const UserService = await import("../../src/services/user.service.js");
+const SessionService = await import("../../src/services/session.service.js");
 
 let mongoServer: MongoMemoryServer | undefined;
 
@@ -143,18 +143,34 @@ describe("password reset against MongoDB", () => {
     expect(ttlIndex?.expireAfterSeconds).toBe(0);
   });
 
-  it("changes the password and exposes the change time for token revocation", async () => {
+  it("ends the user's other sessions when the password changes", async () => {
     vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
+    const current = await SessionService.createSession("player");
+    const other = await SessionService.createSession("player");
 
     const result = await PasswordService.changePassword(
       "player",
       "old password",
-      "new password"
+      "new password",
+      current
     );
-    const validationData = await UserService.getTokenValidationData("player");
 
     expect(result.status).toBe("success");
-    expect(validationData?.passwordChangedAt).toBeInstanceOf(Date);
-    expect(await UserService.getTokenValidationData("nobody")).toBeNull();
+    expect(await SessionService.findSession(current)).not.toBeNull();
+    expect(await SessionService.findSession(other)).toBeNull();
+    const user = await UserModel.findOne({ userName: "player" }).lean();
+    expect(user?.passwordChangedAt).toBeInstanceOf(Date);
+  });
+
+  it("ends all the user's sessions when the password is reset", async () => {
+    const session = await SessionService.createSession("player");
+    await PasswordService.requestPasswordReset("player");
+
+    await PasswordService.resetPassword(
+      getEmailedToken(),
+      "brand new password"
+    );
+
+    expect(await SessionService.findSession(session)).toBeNull();
   });
 });

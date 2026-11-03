@@ -62,11 +62,9 @@ delete `node_modules` and run `npm ci` again.
 
 ```bash
 cp src/.env.example src/.env
-openssl rand -base64 48
 ```
 
-Paste the output of `openssl` into `src/.env` as `PQ_SECRET_KEY`. The rest of
-the example values work for local development:
+The example values work for local development:
 
 - `PQ_RUNTIME_ENVIRONMENT=development` allows sign-in cookies over plain HTTP.
 - With `PQ_SMTP_HOST` empty, emails (such as password reset links) are printed

@@ -24,8 +24,6 @@ vi.mock("../../src/services/password.service.js", () => ({
 
 const UserService = await import("../../src/services/user.service.js");
 const PasswordService = await import("../../src/services/password.service.js");
-const TokenAuthenticator =
-  await import("../../src/middleware/tokenAuthentication.js");
 const UserController = await import("../../src/controllers/user.controller.js");
 
 beforeEach(() => {
@@ -119,18 +117,17 @@ describe("changePassword", () => {
     expect(res.cookie).not.toHaveBeenCalled();
   });
 
-  it("replaces the session cookie with the new token for browser sessions", async () => {
+  it("keeps the session that changed the password, and sets no cookie", async () => {
     vi.mocked(PasswordService.changePassword).mockResolvedValue({
       status: "success",
       statusCode: 200,
-      data: "new-token",
     });
     const req = createMockRequest({
       user: playerUser,
       params: { userName: "player" },
       body,
-      cookies: { [TokenAuthenticator.TOKEN_COOKIE_NAME]: "old-token" },
     });
+    req.sessionToken = "current-session";
     const res = createMockResponse();
 
     await UserController.changePassword(req, res);
@@ -138,33 +135,11 @@ describe("changePassword", () => {
     expect(PasswordService.changePassword).toHaveBeenCalledWith(
       "player",
       "old password",
-      "new password"
+      "new password",
+      "current-session"
     );
-    expect(res.cookie).toHaveBeenCalledWith(
-      TokenAuthenticator.TOKEN_COOKIE_NAME,
-      "new-token",
-      expect.objectContaining({ httpOnly: true })
-    );
-    expect(res.body).toEqual({ status: "success", data: "new-token" });
-  });
-
-  it("returns the new token without setting a cookie for bearer token clients", async () => {
-    vi.mocked(PasswordService.changePassword).mockResolvedValue({
-      status: "success",
-      statusCode: 200,
-      data: "new-token",
-    });
-    const req = createMockRequest({
-      user: playerUser,
-      params: { userName: "player" },
-      body,
-    });
-    const res = createMockResponse();
-
-    await UserController.changePassword(req, res);
-
     expect(res.cookie).not.toHaveBeenCalled();
-    expect(res.body.data).toBe("new-token");
+    expect(res.body).toEqual({ status: "success" });
   });
 });
 

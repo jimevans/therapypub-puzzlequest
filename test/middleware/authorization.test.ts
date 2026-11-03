@@ -3,7 +3,7 @@
 // guards each route uses.
 import type { RequestHandler } from "express";
 import { describe, expect, it, vi } from "vitest";
-import type { TokenUser } from "../../src/middleware/tokenAuthentication.js";
+import type { SessionUser } from "../../src/services/user.service.js";
 import {
   requireAdmin,
   requireSelf,
@@ -27,7 +27,7 @@ import {
  */
 function run(
   guard: RequestHandler,
-  user: TokenUser | null,
+  user: SessionUser | null,
   originalUrl = "/api/user/player"
 ) {
   const req = createMockRequest({ user, params: { userName: "player" } });

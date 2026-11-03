@@ -3,12 +3,12 @@
 // its controller really passes. Each page is identified by the module script
 // it loads (/script/<view>.js), or by its heading for the error page.
 import type { Express } from "express";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
+import { startSessions } from "../sessions.js";
 
-const jwt = (await import("jsonwebtoken")).default;
 const { createApp } = await import("../../src/createApp.js");
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
 const { QuestModel } = await import("../../src/models/quest.model.js");
@@ -23,6 +23,7 @@ const ACCOUNTS: Record<string, { authorizationLevel: number }> = {
 
 let mongoServer: MongoMemoryServer | undefined;
 let app: Express;
+let sessions: Record<string, string> = {};
 
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
@@ -100,6 +101,7 @@ beforeAll(async () => {
     runningQuest!.puzzles[0].activationCode
   );
   await QuestService.getPuzzleHint("running-quest", "text-puzzle", ["team-a"]);
+  sessions = await startSessions("admin", "player");
 }, 120000);
 
 afterAll(async () => {
@@ -118,14 +120,7 @@ function getPage(path: string, account: string | null): request.Test {
   if (!account) {
     return pageRequest;
   }
-  vi.mocked(jwt.verify).mockReturnValue({
-    userName: account,
-    displayName: `${account} display name`,
-    email: `${account}@example.com`,
-    authorizationLevel: ACCOUNTS[account].authorizationLevel,
-    iat: Math.floor(Date.now() / 1000),
-  } as never);
-  return pageRequest.set("Authorization", "Bearer token");
+  return pageRequest.set("Authorization", `Bearer ${sessions[account]}`);
 }
 
 // [description, path, account, view, text the page must contain]

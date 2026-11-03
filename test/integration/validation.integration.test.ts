@@ -14,8 +14,8 @@ import {
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
+import { startSessions } from "../sessions.js";
 
-const jwt = (await import("jsonwebtoken")).default;
 const { createApp } = await import("../../src/createApp.js");
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
 const { QuestModel } = await import("../../src/models/quest.model.js");
@@ -25,6 +25,7 @@ const QuestService = await import("../../src/services/quest.service.js");
 
 let mongoServer: MongoMemoryServer | undefined;
 let app: Express;
+let sessions: Record<string, string> = {};
 
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
@@ -58,6 +59,7 @@ beforeEach(async () => {
           : AuthorizationLevel.USER,
     }))
   );
+  sessions = await startSessions("admin", "player");
 });
 
 /**
@@ -74,15 +76,7 @@ function send(
 ) {
   const pending = request(app)[method](path);
   if (userName) {
-    vi.mocked(jwt.verify).mockReturnValue({
-      userName,
-      authorizationLevel:
-        userName === "admin"
-          ? AuthorizationLevel.ADMIN
-          : AuthorizationLevel.USER,
-      iat: Math.floor(Date.now() / 1000),
-    } as never);
-    pending.set("Authorization", "Bearer token");
+    pending.set("Authorization", `Bearer ${sessions[userName]}`);
   }
   return pending;
 }
@@ -170,7 +164,7 @@ describe("phone numbers", () => {
 
     const response = await request(app)
       .get("/user/player")
-      .set("Authorization", "Bearer token");
+      .set("Authorization", `Bearer ${sessions.player}`);
 
     expect(response.text).toContain("(312) 555-0142");
   });

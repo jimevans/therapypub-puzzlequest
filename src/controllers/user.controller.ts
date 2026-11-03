@@ -14,7 +14,8 @@ import * as UserService from "../services/user.service.js";
 import { RenderMode } from "../middleware/useRenderMode.js";
 import { AuthorizationLevel } from "../models/user.model.js";
 import { formatPhoneNumber } from "../schemas/common.js";
-import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
+import * as SessionAuthenticator from "../middleware/sessionAuthentication.js";
+import * as SessionService from "../services/session.service.js";
 import { getErrorMessage } from "../errors.js";
 
 export async function login(
@@ -34,7 +35,31 @@ export async function login(
     );
     return;
   }
-  res.send(JSON.stringify(response));
+  const token = await SessionService.createSession(
+    response.data.userName,
+    req.get("user-agent")
+  );
+  if (req.body.client === "native") {
+    // An app keeps the token itself and sends it as a Bearer token.
+    res.json({ status: "success", data: { token } });
+    return;
+  }
+  SessionAuthenticator.setSessionCookie(res, token);
+  res.json({ status: "success" });
+}
+
+/**
+ * Signs out: ends the session the request presents, from its cookie or
+ * Bearer token. Signing out when not signed in does nothing.
+ * @param req the request
+ * @param res the response
+ */
+export async function logout(req: Request, res: Response): Promise<void> {
+  if (req.sessionToken) {
+    await SessionService.deleteSession(req.sessionToken);
+  }
+  SessionAuthenticator.clearSessionCookie(res);
+  res.json({ status: "success" });
 }
 
 export async function createUser(
@@ -142,10 +167,12 @@ export async function changePassword(
   req: RouteRequest<"userName", ChangePasswordBody>,
   res: Response
 ): Promise<void> {
+  // The user stays signed in on this device; their other sessions end.
   const response = await PasswordService.changePassword(
     req.params.userName,
     req.body.currentPassword,
-    req.body.newPassword
+    req.body.newPassword,
+    req.sessionToken
   );
   if (response.status === "error") {
     res.status(response.statusCode).send(
@@ -156,12 +183,7 @@ export async function changePassword(
     );
     return;
   }
-  // Changing the password revokes the token used for this request, so
-  // replace it to keep the user signed in on this device.
-  if (req.cookies && TokenAuthenticator.TOKEN_COOKIE_NAME in req.cookies) {
-    TokenAuthenticator.setTokenCookie(res, response.data);
-  }
-  res.send(JSON.stringify({ status: "success", data: response.data }));
+  res.send(JSON.stringify({ status: "success" }));
 }
 
 export async function forgotPassword(

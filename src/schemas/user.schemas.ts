@@ -18,6 +18,11 @@ const authorizationLevel = wholeNumber.refine(
 export const loginBody = z.object({
   userName: z.string().trim().toLowerCase().min(1, "Required"),
   password: requiredText,
+  /**
+   * "web" (the default) keeps the session in a cookie; "native", for an app,
+   * returns the session token for it to send as a Bearer token.
+   */
+  client: z.enum(["web", "native"]).default("web"),
 });
 export type LoginBody = z.infer<typeof loginBody>;
 

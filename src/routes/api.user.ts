@@ -15,12 +15,12 @@ import {
 } from "../middleware/authorization.js";
 import * as UserController from "../controllers/user.controller.js";
 import * as RateLimiter from "../middleware/rateLimiter.js";
-import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
+import { authenticateSession } from "../middleware/sessionAuthentication.js";
 
 const userApiRouter = express.Router();
 userApiRouter.get(
   "/list",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireAdmin,
   UserController.listUsers
 );
@@ -38,34 +38,34 @@ userApiRouter.post(
 );
 userApiRouter.get(
   "/:userName",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireSelfOrAdmin,
   UserController.retrieveUser
 );
 userApiRouter.put(
   "/:userName",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireSelfOrAdmin,
   validate({ body: updateUserBody }),
   UserController.updateUser
 );
 userApiRouter.delete(
   "/:userName",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireSelfOrAdmin,
   UserController.deleteUser
 );
 userApiRouter.put(
   "/:userName/password",
   RateLimiter.passwordRateLimiter,
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireSelf,
   validate({ body: changePasswordBody }),
   UserController.changePassword
 );
 userApiRouter.post(
   "/:userName/password/reset-link",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireAdmin,
   UserController.sendPasswordResetLink
 );
@@ -73,7 +73,7 @@ userApiRouter.post(
   "/create",
   // Anyone may sign up; the token identifies an administrator creating an
   // account, who may also choose its authorization level.
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   validate({ body: createUserBody }),
   UserController.createUser
 );
@@ -84,5 +84,6 @@ userApiRouter.post(
   validate({ body: loginBody }),
   UserController.login
 );
+userApiRouter.post("/logout", authenticateSession, UserController.logout);
 
 export { userApiRouter as UserApiRouter };

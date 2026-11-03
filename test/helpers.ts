@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { vi } from "vitest";
-import type { TokenUser } from "../src/middleware/tokenAuthentication.js";
+import type { SessionUser } from "../src/services/user.service.js";
 import { AuthorizationLevel } from "../src/models/user.model.js";
 
 /** A mock Express response that records what the handler sent. */
@@ -45,7 +45,7 @@ export function createMockResponse(): MockResponse {
 /** The properties of a mock Express request. */
 export interface MockRequestOptions {
   /** The decoded token user data, or null for anonymous. */
-  user?: TokenUser | null;
+  user?: SessionUser | null;
   /** The route parameters. */
   params?: Record<string, string>;
   /** The request body. */
@@ -74,7 +74,7 @@ export function createMockRequest({
   return { user, params, body, query, cookies, headers } as Request<any>;
 }
 
-export const playerUser: TokenUser = {
+export const playerUser: SessionUser = {
   userName: "player",
   displayName: "Player",
   email: "player@example.com",
@@ -83,7 +83,7 @@ export const playerUser: TokenUser = {
   authorizationLevel: AuthorizationLevel.USER,
 };
 
-export const otherPlayerUser: TokenUser = {
+export const otherPlayerUser: SessionUser = {
   userName: "other",
   displayName: "Other",
   email: "other@example.com",
@@ -92,7 +92,7 @@ export const otherPlayerUser: TokenUser = {
   authorizationLevel: AuthorizationLevel.USER,
 };
 
-export const adminUser: TokenUser = {
+export const adminUser: SessionUser = {
   userName: "admin",
   displayName: "Admin",
   email: "admin@example.com",

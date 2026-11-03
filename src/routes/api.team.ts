@@ -11,52 +11,52 @@ import {
   requireUser,
 } from "../middleware/authorization.js";
 import * as TeamController from "../controllers/team.controller.js";
-import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
+import { authenticateSession } from "../middleware/sessionAuthentication.js";
 
 const teamApiRouter = express.Router();
 
 teamApiRouter.get(
   "/list",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireUser,
   TeamController.listTeams
 );
 teamApiRouter.get(
   "/:teamName",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireAdmin,
   TeamController.retrieveTeam
 );
 teamApiRouter.put(
   "/:teamName",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireAdmin,
   validate({ body: updateTeamBody }),
   TeamController.updateTeam
 );
 teamApiRouter.delete(
   "/:teamName",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireAdmin,
   TeamController.deleteTeam
 );
 teamApiRouter.post(
   "/create",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireAdmin,
   validate({ body: createTeamBody }),
   TeamController.createTeam
 );
 teamApiRouter.put(
   "/:teamName/member/:userName",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireSelfOrAdmin,
   validate({ body: joinTeamBody }),
   TeamController.joinTeam
 );
 teamApiRouter.delete(
   "/:teamName/member/:userName",
-  TokenAuthenticator.tokenAuthenticate,
+  authenticateSession,
   requireSelfOrAdmin,
   TeamController.leaveTeam
 );

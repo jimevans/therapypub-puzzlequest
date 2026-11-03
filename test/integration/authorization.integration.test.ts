@@ -16,6 +16,7 @@ import {
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
+import { startSessions } from "../sessions.js";
 
 // Rate limits would turn repeated requests into 429s, hiding the outcome
 // under test; they have their own tests.
@@ -43,12 +44,12 @@ vi.mock("../../src/services/messaging.service.js", async (importOriginal) => ({
   })),
 }));
 
-const jwt = (await import("jsonwebtoken")).default;
 const { createApp } = await import("../../src/createApp.js");
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
 const { QuestModel } = await import("../../src/models/quest.model.js");
 const { AuthorizationLevel, TeamModel, UserModel } =
   await import("../../src/models/user.model.js");
+const { SessionModel } = await import("../../src/models/session.model.js");
 const QuestService = await import("../../src/services/quest.service.js");
 const { IndexRouter } = await import("../../src/routes/index.js");
 const { MessagingApiRouter } =
@@ -110,7 +111,6 @@ const TWILIO: Policy = ["deny", "deny", "deny", "deny"];
 const ROUTES: [string, string, Policy][] = [
   ["get", "/", PUBLIC],
   ["get", "/login", PUBLIC],
-  ["post", "/login", PUBLIC],
   ["get", "/logout", PUBLIC],
 
   ["get", "/api/user/list", ADMIN],
@@ -123,6 +123,7 @@ const ROUTES: [string, string, Policy][] = [
   ["post", "/api/user/:userName/password/reset-link", ADMIN],
   ["post", "/api/user/create", PUBLIC],
   ["post", "/api/user/login", PUBLIC],
+  ["post", "/api/user/logout", PUBLIC],
 
   ["get", "/api/puzzle/list", ADMIN],
   ["get", "/api/puzzle/:name", ADMIN],
@@ -196,6 +197,7 @@ const BODIES: Record<string, object> = {
 
 let mongoServer: MongoMemoryServer | undefined;
 let app: Express;
+let sessions: Record<string, string> = {};
 
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
@@ -215,6 +217,7 @@ beforeEach(async () => {
     TeamModel.deleteMany({}),
     PuzzleModel.deleteMany({}),
     QuestModel.deleteMany({}),
+    SessionModel.deleteMany({}),
   ]);
   await UserModel.create(
     (["admin", "player", "other"] as const).map((userName) => ({
@@ -255,6 +258,7 @@ beforeEach(async () => {
     ["team-a"],
     quest.puzzles[0].activationCode
   );
+  sessions = await startSessions("admin", "player", "other");
 });
 
 /**
@@ -272,15 +276,7 @@ function send(method: string, routePath: string, role: Role) {
   );
   const pending = (request(app) as any)[method](path) as request.Test;
   if (role !== "anonymous") {
-    vi.mocked(jwt.verify).mockReturnValue({
-      userName: role,
-      displayName: role,
-      email: `${role}@example.com`,
-      authorizationLevel:
-        role === "admin" ? AuthorizationLevel.ADMIN : AuthorizationLevel.USER,
-      iat: Math.floor(Date.now() / 1000),
-    } as never);
-    pending.set("Authorization", "Bearer token");
+    pending.set("Authorization", `Bearer ${sessions[role]}`);
   }
   return method === "get" ? pending : pending.send(BODIES[routePath] ?? {});
 }

@@ -20,6 +20,9 @@ vi.mock("../../src/models/user.model.js", async (importOriginal) => {
 vi.mock("../../src/services/email.service.js", () => ({
   sendEmail: vi.fn(async () => ({ status: "success", statusCode: 200 })),
 }));
+vi.mock("../../src/services/session.service.js", () => ({
+  deleteUserSessions: vi.fn(async () => {}),
+}));
 
 const bcrypt = (await import("bcrypt")).default;
 const { config } = await import("../../src/config.js");
@@ -30,6 +33,7 @@ const EmailService = await import("../../src/services/email.service.js");
 const AuthenticationService =
   await import("../../src/services/authentication.service.js");
 const PasswordService = await import("../../src/services/password.service.js");
+const SessionService = await import("../../src/services/session.service.js");
 
 /** The password reset documents the mocked model has created. */
 const createdResets = (PasswordResetModel as unknown as { instances: any[] })
@@ -76,30 +80,6 @@ describe("validatePasswordPolicy", () => {
     expect(
       AuthenticationService.validatePasswordPolicy("long enough").status
     ).toBe("success");
-  });
-});
-
-describe("isTokenRevoked", () => {
-  const changedAt = new Date("2026-01-01T12:00:00.500Z");
-  const changedAtSeconds = Math.floor(changedAt.getTime() / 1000);
-
-  it("does not revoke tokens when the password has never changed", () => {
-    expect(AuthenticationService.isTokenRevoked(0, undefined)).toBe(false);
-  });
-
-  it("revokes tokens issued before the password change", () => {
-    expect(
-      AuthenticationService.isTokenRevoked(changedAtSeconds - 1, changedAt)
-    ).toBe(true);
-  });
-
-  it("keeps tokens issued in the same second as, or after, the change", () => {
-    expect(
-      AuthenticationService.isTokenRevoked(changedAtSeconds, changedAt)
-    ).toBe(false);
-    expect(
-      AuthenticationService.isTokenRevoked(changedAtSeconds + 1, changedAt)
-    ).toBe(false);
   });
 });
 
@@ -160,7 +140,7 @@ describe("changePassword", () => {
     expect(result.statusCode).toBe(404);
   });
 
-  it("saves the new password, revokes old tokens, and returns a new token", async () => {
+  it("saves the new password and ends the user's other sessions", async () => {
     const userDocument = createUserDocument();
     vi.mocked(UserModel.findOne).mockResolvedValue(userDocument);
     vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
@@ -169,11 +149,15 @@ describe("changePassword", () => {
     const result = await PasswordService.changePassword(
       "player",
       "old password",
-      "new password"
+      "new password",
+      "current-session"
     );
 
     expect(result.status).toBe("success");
-    expect(result.data).toBe("token");
+    expect(SessionService.deleteUserSessions).toHaveBeenCalledWith(
+      "player",
+      "current-session"
+    );
     expect(userDocument.password).toBe("hashed");
     expect(userDocument.passwordChangedAt.getTime()).toBeGreaterThanOrEqual(
       before
@@ -343,7 +327,7 @@ describe("resetPassword", () => {
     expect(PasswordResetModel.findOneAndDelete).not.toHaveBeenCalled();
   });
 
-  it("sets the new password and revokes existing tokens", async () => {
+  it("sets the new password and ends all the user's sessions", async () => {
     const userDocument = createUserDocument();
     vi.mocked(PasswordResetModel.findOneAndDelete).mockResolvedValue({
       userName: "player",
@@ -359,5 +343,9 @@ describe("resetPassword", () => {
     expect(PasswordResetModel.deleteMany).toHaveBeenCalledWith({
       userName: "player",
     });
+    expect(SessionService.deleteUserSessions).toHaveBeenCalledWith(
+      "player",
+      undefined
+    );
   });
 });
