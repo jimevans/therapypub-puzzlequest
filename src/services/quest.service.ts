@@ -16,6 +16,11 @@ import {
   start,
   submitSolution,
 } from "../domain/quest/index.js";
+import {
+  type PublishedQuestEvent,
+  type QuestActionOrigin,
+  questEventBus,
+} from "../events/questEventBus.js";
 import { PuzzleModel } from "../models/puzzle.model.js";
 import {
   QuestModel,
@@ -1074,12 +1079,81 @@ function puzzleActionRefused(
 }
 
 /**
+ * Adds the details players' screens show to an action's events.
+ * @param events the events
+ * @param puzzle the puzzle the action was on, if any
+ * @returns the events with their details
+ */
+async function describeEvents(
+  events: readonly QuestEvent[],
+  puzzle?: PuzzleService.Puzzle
+): Promise<PublishedQuestEvent[]> {
+  const described: PublishedQuestEvent[] = [];
+  for (const event of events) {
+    switch (event.type) {
+      case "PuzzleSolved":
+        described.push({
+          ...event,
+          solutionText: puzzle?.solutionDisplayText ?? "",
+        });
+        break;
+      case "PuzzleStarted": {
+        const startedPuzzle = await PuzzleService.getPuzzleByPuzzleName(
+          event.puzzleName
+        );
+        // Fall back to the name if the puzzle has since been deleted; the
+        // action has already been saved.
+        described.push({
+          ...event,
+          displayName: startedPuzzle.data?.displayName ?? event.puzzleName,
+        });
+        break;
+      }
+      case "HintRevealed": {
+        const nextHint = puzzle?.hints.at(event.hintIndex + 1);
+        described.push({
+          ...event,
+          hintText: puzzle?.hints.at(event.hintIndex)?.text ?? "",
+          moreHints: nextHint !== undefined,
+          isNextHintSolution: nextHint?.solutionWarning ?? false,
+        });
+        break;
+      }
+      default:
+        described.push(event);
+    }
+  }
+  return described;
+}
+
+/**
+ * Describes an action's events and publishes them.
+ * @param questName the name of the quest
+ * @param origin who or what caused the action
+ * @param events the events
+ * @param puzzle the puzzle the action was on, if any
+ * @returns the published events
+ */
+async function publishActivity(
+  questName: string,
+  origin: QuestActionOrigin,
+  events: readonly QuestEvent[],
+  puzzle?: PuzzleService.Puzzle
+): Promise<PublishedQuestEvent[]> {
+  const described = await describeEvents(events, puzzle);
+  await questEventBus.publish({ ...origin, questName, events: described });
+  return described;
+}
+
+/**
  * Starts a quest, making the first puzzle available for activation.
  * @param name the name of the quest to start
+ * @param origin who or what started the quest
  * @returns a response object containing a status, status code, and data
  */
 export async function startQuest(
-  name: string
+  name: string,
+  origin: QuestActionOrigin = {}
 ): Promise<QuestResult<undefined>> {
   const outcome = await applyQuestAction(name, null, noRules, start);
   if (outcome.status === "refused") {
@@ -1095,22 +1169,28 @@ export async function startQuest(
   if (outcome.status === "error") {
     return outcome;
   }
+  await publishActivity(name, origin, outcome.events);
   return { status: "success", statusCode: 200 };
 }
 
 /**
  * Resets a quest to its initial state.
  * @param questName the name of the quest
+ * @param origin who reset the quest
  * @returns a response object containing a status, status code, and data
  */
 export async function resetQuest(
-  questName: string
+  questName: string,
+  origin: QuestActionOrigin = {}
 ): Promise<QuestResult<undefined>> {
   const outcome = await applyQuestAction(questName, null, noRules, reset);
-  // The rules never refuse a reset.
   if (outcome.status === "error") {
     return outcome;
   }
+  if (outcome.status === "refused") {
+    throw new Error(`The rules refused to reset quest ${questName}`);
+  }
+  await publishActivity(questName, origin, outcome.events);
   return { status: "success", statusCode: 200 };
 }
 
@@ -1120,13 +1200,15 @@ export async function resetQuest(
  * @param puzzleName the name of the puzzle within the quest to activate
  * @param userContexts an array of all of the contexts (user names and team names) for the user requesting activation
  * @param activationCode the activation code of the puzzle
+ * @param origin who activated the puzzle, and from which browser connection
  * @returns a response object containing a status, status code, and data
  */
 export async function activatePuzzle(
   questName: string,
   puzzleName: string,
   userContexts: string[],
-  activationCode: string
+  activationCode: string,
+  origin: QuestActionOrigin = {}
 ): Promise<QuestResult<{ activationTime: Date }>> {
   const outcome = await applyQuestAction(
     questName,
@@ -1140,6 +1222,7 @@ export async function activatePuzzle(
   if (outcome.status === "error") {
     return outcome;
   }
+  await publishActivity(questName, origin, outcome.events);
   return {
     status: "success",
     statusCode: 200,
@@ -1153,13 +1236,15 @@ export async function activatePuzzle(
  * @param puzzleName the name of the puzzle to finish
  * @param userContexts an array of all of the contexts (user names and team names) for the user attempting to solve
  * @param solutionGuess the guess for the solution of the puzzle
+ * @param origin who solved the puzzle, and from which browser connection
  * @returns a response object containing a status, status code, and data
  */
 export async function finishPuzzle(
   questName: string,
   puzzleName: string,
   userContexts: string[],
-  solutionGuess: string
+  solutionGuess: string,
+  origin: QuestActionOrigin = {}
 ): Promise<QuestResult<PuzzleSolution>> {
   const outcome = await applyQuestAction(
     questName,
@@ -1181,20 +1266,20 @@ export async function finishPuzzle(
     return outcome;
   }
 
+  const events = await publishActivity(
+    questName,
+    origin,
+    outcome.events,
+    outcome.rules
+  );
   const solution: PuzzleSolution = {
     endTime: outcome.now,
     solutionText: outcome.rules.solutionDisplayText,
   };
-  for (const event of outcome.events) {
+  for (const event of events) {
     if (event.type === "PuzzleStarted") {
       solution.nextPuzzleName = event.puzzleName;
-      const nextPuzzle = await PuzzleService.getPuzzleByPuzzleName(
-        event.puzzleName
-      );
-      // Fall back to the name if the puzzle has since been deleted; the
-      // player's correct solution has already been recorded.
-      solution.nextPuzzleDisplayName =
-        nextPuzzle.data?.displayName ?? event.puzzleName;
+      solution.nextPuzzleDisplayName = event.displayName;
     } else if (event.type === "QuestCompleted") {
       solution.questComplete = true;
     }
@@ -1207,13 +1292,15 @@ export async function finishPuzzle(
  * @param questName the name of the quest
  * @param puzzleName the name of the puzzle for which to get the next hint
  * @param userContexts an array of all of the contexts (user names and team names) for the user attempting to solve
+ * @param origin who requested the hint, and from which browser connection
  * @returns a response object containing a status, status code, and data;
  *  the data is false when every hint has already been revealed
  */
 export async function getPuzzleHint(
   questName: string,
   puzzleName: string,
-  userContexts: string[]
+  userContexts: string[],
+  origin: QuestActionOrigin = {}
 ): Promise<QuestResult<PuzzleHintResult | false>> {
   const outcome = await applyQuestAction(
     questName,
@@ -1232,21 +1319,24 @@ export async function getPuzzleHint(
     return outcome;
   }
 
-  const hints = outcome.rules.hints;
-  const revealed = outcome.events.find(
-    (event) => event.type === "HintRevealed"
+  const events = await publishActivity(
+    questName,
+    origin,
+    outcome.events,
+    outcome.rules
   );
-  // A successful revealHint always reports the hint it revealed.
-  const hintIndex = revealed?.hintIndex ?? 0;
-  const nextHint = hints.at(hintIndex + 1);
+  const hint = events.find((event) => event.type === "HintRevealed");
+  if (!hint) {
+    throw new Error("Revealing a hint reported no HintRevealed event");
+  }
   return {
     status: "success",
     statusCode: 200,
     data: {
-      hintText: hints[hintIndex].text,
-      moreHints: nextHint !== undefined,
-      timePenalty: hints[hintIndex].timePenalty,
-      isNextHintSolution: nextHint?.solutionWarning ?? false,
+      hintText: hint.hintText,
+      moreHints: hint.moreHints,
+      timePenalty: hint.timePenalty,
+      isNextHintSolution: hint.isNextHintSolution,
     },
   };
 }
