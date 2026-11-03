@@ -4,6 +4,7 @@ import {
   activatePuzzleBody,
   createQuestBody,
   requestHintBody,
+  resetPuzzleBody,
   solvePuzzleBody,
   updateQuestBody,
 } from "../schemas/quest.schemas.js";
@@ -99,6 +100,19 @@ questApiRouter.put(
   requireUser,
   validate({ body: requestHintBody }),
   QuestController.requestQuestPuzzleHint
+);
+questApiRouter.put(
+  "/:name/puzzle/:puzzleName/skip",
+  authenticateSession,
+  requireAdmin,
+  QuestController.skipQuestPuzzle
+);
+questApiRouter.put(
+  "/:name/puzzle/:puzzleName/reset",
+  authenticateSession,
+  requireAdmin,
+  validate({ body: resetPuzzleBody }),
+  QuestController.resetQuestPuzzle
 );
 questApiRouter.get(
   "/:name/puzzle/:puzzleName/qrcode",

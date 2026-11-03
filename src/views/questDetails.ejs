@@ -110,6 +110,36 @@
     <div>No puzzles to display</div>
     <% } else { %>
     <div id="puzzles"></div>
+    <% if (quest.status !== 0) { %>
+    <div id="puzzle-rescue">
+      <div class="pq-header">
+        <span class="pq-header-text">Help the players</span>
+      </div>
+      <div class="pq-form-element">
+        <div class="pq-label">
+          <label for="rescue-puzzle">Puzzle:</label>
+        </div>
+        <div class="pq-select">
+          <select id="rescue-puzzle">
+            <% quest.puzzles.filter((puzzle) => puzzle.status > 0).forEach((puzzle) => { %>
+            <option value="<%= puzzle.puzzleName %>"><%= puzzle.puzzleDetail?.displayName ?? puzzle.puzzleName %> (<%= puzzle.statusDescription %>)</option>
+            <% }); %>
+          </select>
+        </div>
+      </div>
+      <div class="pq-form-element">
+        <button id="skip-puzzle" class="pq-button" type="button">Skip puzzle</button>
+        <button id="reset-puzzle" class="pq-button" type="button">Reset puzzle</button>
+        <input id="refund-hints" type="checkbox" />
+        <label for="refund-hints">Refund hint penalties when resetting</label>
+      </div>
+      <div class="pq-field-hint">
+        Skip completes a puzzle the players are stuck on, at no cost, and shows them its solution.
+        Reset undoes a solved puzzle so they solve it again; the puzzles after it are no longer reached.
+        To fix a puzzle first, pause the quest.
+      </div>
+    </div>
+    <% } %>
     <% } %>
     <div class="pq-error pq-hide">
       <span id="error-message"></span>

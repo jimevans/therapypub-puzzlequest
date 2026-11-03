@@ -4,6 +4,7 @@ import type {
   ActivatePuzzleBody,
   CreateQuestBody,
   RequestHintBody,
+  ResetPuzzleBody,
   SolvePuzzleBody,
   UpdateQuestBody,
 } from "../schemas/quest.schemas.js";
@@ -177,6 +178,43 @@ export async function resumeQuest(
   const response = await QuestService.resumeQuest(req.params.name, {
     actor: req.user?.userName,
   });
+  res
+    .status(response.statusCode)
+    .json(
+      response.status === "error"
+        ? { status: "error", message: response.message }
+        : { status: "success" }
+    );
+}
+
+export async function skipQuestPuzzle(
+  req: RouteRequest<"name" | "puzzleName">,
+  res: Response
+): Promise<void> {
+  const response = await QuestService.skipQuestPuzzle(
+    req.params.name,
+    req.params.puzzleName,
+    { actor: req.user?.userName }
+  );
+  res
+    .status(response.statusCode)
+    .json(
+      response.status === "error"
+        ? { status: "error", message: response.message }
+        : { status: "success" }
+    );
+}
+
+export async function resetQuestPuzzle(
+  req: RouteRequest<"name" | "puzzleName", ResetPuzzleBody>,
+  res: Response
+): Promise<void> {
+  const response = await QuestService.resetQuestPuzzle(
+    req.params.name,
+    req.params.puzzleName,
+    req.body.refundHints,
+    { actor: req.user?.userName }
+  );
   res
     .status(response.statusCode)
     .json(

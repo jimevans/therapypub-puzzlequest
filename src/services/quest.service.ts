@@ -18,8 +18,10 @@ import {
   pause,
   parseSolutionKeywords,
   reset,
+  resetPuzzle,
   resume,
   revealHint,
+  skipPuzzle,
   start,
   submitSolution,
 } from "../domain/quest/index.js";
@@ -54,7 +56,16 @@ export type QuestPuzzleProperties = Pick<
   QuestPuzzle,
   "puzzleName" | "nextHintToDisplay" | "status" | "activationCode"
 > &
-  Partial<Pick<QuestPuzzle, "startTime" | "endTime" | "activationTime">>;
+  Partial<
+    Pick<
+      QuestPuzzle,
+      | "startTime"
+      | "endTime"
+      | "activationTime"
+      | "skipped"
+      | "penaltyFreeHints"
+    >
+  >;
 
 /** The properties a Quest is created from: a stored quest, or a request. */
 export type QuestProperties = Pick<
@@ -117,6 +128,12 @@ export class QuestPuzzle {
    */
   activationTime?: Date | null;
 
+  /** True if an administrator skipped the puzzle rather than it being solved. */
+  skipped: boolean;
+
+  /** How many of the revealed hints an administrator refunded. */
+  penaltyFreeHints: number;
+
   /**
    * Gets or sets the details of the puzzle.
    */
@@ -134,6 +151,8 @@ export class QuestPuzzle {
     this.startTime = puzzleDefinition.startTime;
     this.endTime = puzzleDefinition.endTime;
     this.activationTime = puzzleDefinition.activationTime;
+    this.skipped = puzzleDefinition.skipped ?? false;
+    this.penaltyFreeHints = puzzleDefinition.penaltyFreeHints ?? 0;
     switch (this.status) {
       case QuestPuzzleStatus.AWAITING_ACTIVATION:
         this.statusDescription = "Awaiting activation";
@@ -142,7 +161,7 @@ export class QuestPuzzle {
         this.statusDescription = "In progress";
         break;
       case QuestPuzzleStatus.COMPLETED:
-        this.statusDescription = "Completed";
+        this.statusDescription = this.skipped ? "Skipped" : "Completed";
         break;
       default:
         this.statusDescription = "Unavailable";
@@ -164,6 +183,7 @@ export class QuestPuzzle {
       startTime: this.startTime,
       endTime: this.endTime,
       activationTime: this.activationTime,
+      skipped: this.skipped,
       statusDescription: this.statusDescription,
     };
     // If puzzle lookup data is present, flatten certain properties
@@ -333,6 +353,8 @@ export class Quest {
           startTime: puzzle.startTime,
           activationTime: puzzle.activationTime,
           endTime: puzzle.endTime,
+          skipped: puzzle.skipped,
+          penaltyFreeHints: puzzle.penaltyFreeHints,
         })),
       },
       hints,
@@ -1026,6 +1048,8 @@ function toQuestState(quest: QuestDocument): QuestState {
       startTime: puzzle.startTime,
       activationTime: puzzle.activationTime,
       endTime: puzzle.endTime,
+      skipped: puzzle.skipped,
+      penaltyFreeHints: puzzle.penaltyFreeHints,
     })),
   };
 }
@@ -1046,6 +1070,8 @@ function applyQuestState(quest: QuestDocument, state: QuestState): void {
     stored.startTime = puzzle.startTime;
     stored.activationTime = puzzle.activationTime;
     stored.endTime = puzzle.endTime;
+    stored.skipped = puzzle.skipped ?? false;
+    stored.penaltyFreeHints = puzzle.penaltyFreeHints ?? 0;
   });
 }
 
@@ -1207,6 +1233,18 @@ function puzzleActionRefused(
         status: "error",
         statusCode: 406,
         message: "Incorrect guess for puzzle solution",
+      };
+    case "PUZZLE_COMPLETED":
+      return {
+        status: "error",
+        statusCode: 400,
+        message: `Puzzle ${puzzleName} in quest ${questName} is already completed`,
+      };
+    case "PUZZLE_NOT_COMPLETED":
+      return {
+        status: "error",
+        statusCode: 400,
+        message: `Puzzle ${puzzleName} in quest ${questName} hasn't been completed, so there is nothing to reset`,
       };
     case "QUEST_PAUSED":
       return {
@@ -1387,6 +1425,67 @@ export async function resumeQuest(
       statusCode: 400,
       message: `Quest ${questName} isn't paused`,
     };
+  }
+  if (outcome.status === "error") {
+    return outcome;
+  }
+  await publishActivity(questName, origin, outcome.events);
+  return { status: "success", statusCode: 200 };
+}
+
+/**
+ * Completes a puzzle the players are stuck on, without a penalty; the next
+ * puzzle becomes available, or the quest is complete.
+ * @param questName the name of the quest
+ * @param puzzleName the name of the puzzle
+ * @param origin who skipped the puzzle
+ * @returns a response object containing a status, status code, and data
+ */
+export async function skipQuestPuzzle(
+  questName: string,
+  puzzleName: string,
+  origin: QuestActionOrigin = {}
+): Promise<QuestResult<undefined>> {
+  const outcome = await applyQuestAction(
+    questName,
+    null,
+    noRules,
+    (state, now) => skipPuzzle(state, puzzleName, now)
+  );
+  if (outcome.status === "refused") {
+    return puzzleActionRefused(outcome.error, questName, puzzleName);
+  }
+  if (outcome.status === "error") {
+    return outcome;
+  }
+  await publishActivity(questName, origin, outcome.events);
+  return { status: "success", statusCode: 200 };
+}
+
+/**
+ * Undoes a puzzle's completion, so the players solve it again; the puzzles
+ * after it are no longer reached.
+ * @param questName the name of the quest
+ * @param puzzleName the name of the puzzle
+ * @param refundHints true to remove the penalties of the puzzle's revealed
+ *  hints
+ * @param origin who reset the puzzle
+ * @returns a response object containing a status, status code, and data
+ */
+export async function resetQuestPuzzle(
+  questName: string,
+  puzzleName: string,
+  refundHints: boolean,
+  origin: QuestActionOrigin = {}
+): Promise<QuestResult<undefined>> {
+  const outcome = await applyQuestAction(
+    questName,
+    null,
+    noRules,
+    (state, now) => resetPuzzle(state, puzzleName, refundHints, now)
+  );
+  if (outcome.status === "refused") {
+    return puzzleActionRefused(outcome.error, questName, puzzleName);
   }
   if (outcome.status === "error") {
     return outcome;

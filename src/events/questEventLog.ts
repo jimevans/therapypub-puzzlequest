@@ -11,6 +11,9 @@ function eventData(event: PublishedQuestEvent): object | undefined {
   if (event.type === "HintRevealed") {
     return { hintIndex: event.hintIndex, timePenalty: event.timePenalty };
   }
+  if (event.type === "PuzzleReset") {
+    return { refundedHints: event.refundedHints };
+  }
   return undefined;
 }
 

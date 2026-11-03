@@ -22,7 +22,9 @@ export type QuestErrorCode =
   | "WRONG_SOLUTION"
   | "NO_MORE_HINTS"
   | "QUEST_PAUSED"
-  | "QUEST_NOT_PAUSED";
+  | "QUEST_NOT_PAUSED"
+  | "PUZZLE_COMPLETED"
+  | "PUZZLE_NOT_COMPLETED";
 
 /**
  * The outcome of an action: the quest's new state and what happened, or why
@@ -101,6 +103,30 @@ function withPuzzleChanges(
       return change ? { ...puzzle, ...change } : puzzle;
     }),
   };
+}
+
+/** The progress of a puzzle the players haven't reached. */
+const UNREACHED = {
+  status: QuestPuzzleStatus.UNAVAILABLE,
+  nextHintToDisplay: 0,
+  startTime: undefined,
+  activationTime: undefined,
+  endTime: undefined,
+  skipped: false,
+  penaltyFreeHints: 0,
+} as const;
+
+/**
+ * Checks that an administrator can rescue the players on a quest: it must
+ * have started. Unlike the players' actions, rescues work while the quest
+ * is paused, which is when an administrator fixes a problem.
+ * @param state the quest
+ * @returns why they can't, or undefined if they can
+ */
+function checkStarted(state: QuestState): QuestErrorCode | undefined {
+  return state.status === QuestStatus.NOT_STARTED
+    ? "QUEST_NOT_STARTED"
+    : undefined;
 }
 
 /**
@@ -281,11 +307,7 @@ export function reset(state: QuestState, now: Date): TransitionResult {
       pauses: [],
       puzzles: state.puzzles.map((puzzle) => ({
         ...puzzle,
-        status: QuestPuzzleStatus.UNAVAILABLE,
-        nextHintToDisplay: 0,
-        startTime: undefined,
-        activationTime: undefined,
-        endTime: undefined,
+        ...UNREACHED,
       })),
     },
     [{ type: "QuestReset", at: now }]
@@ -331,5 +353,125 @@ export function resume(state: QuestState, now: Date): TransitionResult {
       ],
     },
     [{ type: "QuestResumed", at: now }]
+  );
+}
+
+/**
+ * Completes a puzzle the players are stuck on, without a solution or a
+ * penalty, as an administrator does; the next puzzle becomes available to
+ * activate, or the quest is complete. The puzzle is marked as skipped, and
+ * its time so far still counts.
+ * @param state the quest
+ * @param puzzleName the name of the puzzle
+ * @param now the current time
+ * @returns the outcome
+ */
+export function skipPuzzle(
+  state: QuestState,
+  puzzleName: string,
+  now: Date
+): TransitionResult {
+  const questError = checkStarted(state);
+  if (questError) {
+    return fail(questError);
+  }
+  if (state.status === QuestStatus.COMPLETED) {
+    return fail("QUEST_COMPLETED");
+  }
+  const index = findReachedPuzzle(state, puzzleName);
+  if (index < 0) {
+    return fail("PUZZLE_NOT_FOUND");
+  }
+  if (state.puzzles[index].status === QuestPuzzleStatus.COMPLETED) {
+    return fail("PUZZLE_COMPLETED");
+  }
+  const changes = new Map<number, Partial<PuzzleState>>([
+    [
+      index,
+      { status: QuestPuzzleStatus.COMPLETED, endTime: now, skipped: true },
+    ],
+  ]);
+  const events: QuestEvent[] = [{ type: "PuzzleSkipped", puzzleName, at: now }];
+  const next = state.puzzles[index + 1];
+  if (next) {
+    changes.set(index + 1, {
+      status: QuestPuzzleStatus.AWAITING_ACTIVATION,
+      startTime: now,
+    });
+    events.push({
+      type: "PuzzleStarted",
+      puzzleName: next.puzzleName,
+      at: now,
+    });
+    return succeed(withPuzzleChanges(state, changes), events);
+  }
+  events.push({ type: "QuestCompleted", at: now });
+  return succeed(
+    withPuzzleChanges(state, changes, QuestStatus.COMPLETED),
+    events
+  );
+}
+
+/**
+ * Undoes a puzzle's completion, as an administrator does when a wrong answer
+ * was accepted, such as because the puzzle was badly written: the puzzle is
+ * back in progress (without being activated again), every puzzle after it
+ * is no longer reached, and a completed quest is in progress again. The
+ * puzzle's time carries on from when it started.
+ * @param state the quest
+ * @param puzzleName the name of the puzzle
+ * @param refundHints true to remove the penalties of the hints already
+ *  revealed for the puzzle; they stay revealed
+ * @param now the current time
+ * @returns the outcome
+ */
+export function resetPuzzle(
+  state: QuestState,
+  puzzleName: string,
+  refundHints: boolean,
+  now: Date
+): TransitionResult {
+  const questError = checkStarted(state);
+  if (questError) {
+    return fail(questError);
+  }
+  const index = findReachedPuzzle(state, puzzleName);
+  if (index < 0) {
+    return fail("PUZZLE_NOT_FOUND");
+  }
+  const puzzle = state.puzzles[index];
+  if (puzzle.status !== QuestPuzzleStatus.COMPLETED) {
+    return fail("PUZZLE_NOT_COMPLETED");
+  }
+  const alreadyFree = puzzle.penaltyFreeHints ?? 0;
+  const penaltyFreeHints = refundHints ? puzzle.nextHintToDisplay : alreadyFree;
+  return succeed(
+    {
+      ...state,
+      status: QuestStatus.IN_PROGRESS,
+      puzzles: state.puzzles.map((other, otherIndex) => {
+        if (otherIndex < index) {
+          return other;
+        }
+        if (otherIndex > index) {
+          return { ...other, ...UNREACHED };
+        }
+        return {
+          ...other,
+          status: QuestPuzzleStatus.IN_PROGRESS,
+          endTime: undefined,
+          skipped: false,
+          penaltyFreeHints,
+        };
+      }),
+    },
+    [
+      {
+        type: "PuzzleReset",
+        puzzleName,
+        refundedHints: penaltyFreeHints - alreadyFree,
+        at: now,
+      },
+    ]
   );
 }

@@ -133,7 +133,7 @@ export function calculateProgress(
   const paused = isPaused(state);
   const puzzles = state.puzzles.map((puzzle): PuzzleProgress => {
     const penaltyMs = (hints.get(puzzle.puzzleName) ?? [])
-      .slice(0, puzzle.nextHintToDisplay)
+      .slice(puzzle.penaltyFreeHints ?? 0, puzzle.nextHintToDisplay)
       .reduce((sum, hint) => sum + hint.timePenalty * 1000, 0);
     const active =
       Boolean(puzzle.startTime) &&

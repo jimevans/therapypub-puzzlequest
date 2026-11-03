@@ -148,6 +148,8 @@ const ROUTES: [string, string, Policy][] = [
   ["post", "/api/quest/:name/puzzle/:puzzleName/activate", QUEST_PLAYER],
   ["put", "/api/quest/:name/puzzle/:puzzleName/solve", QUEST_PLAYER],
   ["put", "/api/quest/:name/puzzle/:puzzleName/hint", QUEST_PLAYER],
+  ["put", "/api/quest/:name/puzzle/:puzzleName/skip", ADMIN],
+  ["put", "/api/quest/:name/puzzle/:puzzleName/reset", ADMIN],
   ["get", "/api/quest/:name/puzzle/:puzzleName/qrcode", ADMIN],
 
   ["get", "/api/team/list", SIGNED_IN],

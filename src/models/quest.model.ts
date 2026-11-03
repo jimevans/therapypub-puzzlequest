@@ -42,6 +42,19 @@ const questPuzzleSchema = new Schema({
   activationTime: {
     type: Date,
   },
+  /** True if an administrator skipped the puzzle rather than it being solved. */
+  skipped: {
+    type: Boolean,
+    default: false,
+  },
+  /**
+   * How many of the puzzle's revealed hints carry no penalty, because an
+   * administrator refunded them when resetting the puzzle.
+   */
+  penaltyFreeHints: {
+    type: Number,
+    default: 0,
+  },
 });
 
 questPuzzleSchema.virtual("statusDescription").get(function () {
