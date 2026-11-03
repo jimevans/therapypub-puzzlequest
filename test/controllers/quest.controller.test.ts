@@ -29,6 +29,7 @@ vi.mock("../../src/services/quest.service.js", async (importOriginal) => {
     deleteQuest: vi.fn(),
     updateQuest: vi.fn(async () => ({ status: "success", statusCode: 200 })),
     getPuzzleHint: vi.fn(),
+    findQuests: vi.fn(),
   };
 });
 
@@ -171,6 +172,42 @@ describe("retrieveQuest", () => {
         (p: { activationCode: string }) => p.activationCode
       )
     ).toEqual(["code1", "code2"]);
+  });
+});
+
+describe("listQuests", () => {
+  it("returns an empty list when there are no quests", async () => {
+    vi.mocked(QuestService.findQuests).mockResolvedValue({
+      status: "error",
+      statusCode: 404,
+      message: "no quests found",
+    });
+    const res = createMockResponse();
+
+    await QuestController.listQuests(
+      createMockRequest({ user: adminUser }),
+      res
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ status: "success", data: [] });
+  });
+
+  it("reports other errors", async () => {
+    vi.mocked(QuestService.findQuests).mockResolvedValue({
+      status: "error",
+      statusCode: 500,
+      message: "database down",
+    });
+    const res = createMockResponse();
+
+    await QuestController.listQuests(
+      createMockRequest({ user: adminUser }),
+      res
+    );
+
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toEqual({ status: "error", message: "database down" });
   });
 });
 

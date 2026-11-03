@@ -1,6 +1,8 @@
 import { DataGrid } from "./components/grid.js";
 import { callDataApi } from "./fetch.js";
 
+const LIST_ERROR = "The list could not be loaded. Please try again.";
+
 function showError(errorMessage) {
   const errorNotifier = document.querySelector(".pq-error");
   const errorDisplay = errorNotifier.querySelector("span");
@@ -39,6 +41,8 @@ document.querySelector("#users").addEventListener("click", async (e) => {
     // grid.onDeleteRequested = (itemUrl) => console.log(itemUrl);
     gridElement.replaceChildren(grid.getElement());
     gridElement.classList.remove("pq-hide");
+  } else {
+    showError(LIST_ERROR);
   }
 });
 
@@ -73,6 +77,8 @@ document.querySelector("#puzzles").addEventListener("click", async (e) => {
     // grid.onDeleteRequested = (itemUrl) => console.log(itemUrl);
     gridElement.replaceChildren(grid.getElement());
     gridElement.classList.remove("pq-hide");
+  } else {
+    showError(LIST_ERROR);
   }
 });
 
@@ -113,10 +119,13 @@ document.querySelector("#quests").addEventListener("click", async (e) => {
     // grid.onDeleteRequested = (itemUrl) => console.log(itemUrl);
     gridElement.replaceChildren(grid.getElement());
     gridElement.classList.remove("pq-hide");
+  } else {
+    showError(LIST_ERROR);
   }
 });
 
 document.querySelector("#teams").addEventListener("click", async (e) => {
+  e.preventDefault();
   const gridElement = document.querySelector("#data-grid");
   gridElement.classList.add("pq-hide");
   const teamData = await callDataApi(
@@ -188,5 +197,7 @@ document.querySelector("#teams").addEventListener("click", async (e) => {
     // grid.onDeleteRequested = (itemUrl) => console.log(itemUrl);
     gridElement.replaceChildren(grid.getElement());
     gridElement.classList.remove("pq-hide");
+  } else {
+    showError(LIST_ERROR);
   }
 });
