@@ -30,6 +30,11 @@ export function createMockResponse(): MockResponse {
     res.body = typeof body === "string" ? JSON.parse(body) : body;
     return res;
   });
+  res.json = vi.fn((body?: unknown) => {
+    res.sendCount++;
+    res.body = body;
+    return res;
+  });
   res.render = vi.fn(() => res) as unknown as Response["render"];
   res.set = vi.fn(() => res);
   res.cookie = vi.fn(() => res);

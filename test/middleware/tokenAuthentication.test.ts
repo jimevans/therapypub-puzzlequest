@@ -96,4 +96,58 @@ describe("tokenAuthenticate", () => {
     expect(req.user?.userName).toBe("player");
     expect(next).toHaveBeenCalled();
   });
+
+  it("rejects an invalid token with a JSON error and clears the cookie", async () => {
+    vi.mocked(jwt.verify).mockImplementation(() => {
+      throw Object.assign(new Error("invalid signature"), {
+        name: "JsonWebTokenError",
+      });
+    });
+    const req = createAuthenticatedRequest();
+    const res = createMockResponse();
+    const next = vi.fn();
+
+    await TokenAuthenticator.tokenAuthenticate(req, res, next);
+
+    expect(res.statusCode).toBe(401);
+    expect(res.body).toEqual({
+      status: "error",
+      message: "Invalid authentication token",
+    });
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      TokenAuthenticator.TOKEN_COOKIE_NAME
+    );
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("treats an expired token as signed out", async () => {
+    vi.mocked(jwt.verify).mockImplementation(() => {
+      throw Object.assign(new Error("jwt expired"), {
+        name: "TokenExpiredError",
+      });
+    });
+    const req = createAuthenticatedRequest();
+    const next = vi.fn();
+
+    await TokenAuthenticator.tokenAuthenticate(req, createMockResponse(), next);
+
+    expect(req.user).toBeNull();
+    expect(next).toHaveBeenCalled();
+  });
+
+  it("passes database errors on instead of reporting an invalid token", async () => {
+    vi.mocked(UserService.getTokenValidationData).mockRejectedValue(
+      new Error("connection lost")
+    );
+    const res = createMockResponse();
+
+    await expect(
+      TokenAuthenticator.tokenAuthenticate(
+        createAuthenticatedRequest(),
+        res,
+        vi.fn()
+      )
+    ).rejects.toThrow("connection lost");
+    expect(res.clearCookie).not.toHaveBeenCalled();
+  });
 });
