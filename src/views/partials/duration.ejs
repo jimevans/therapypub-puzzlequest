@@ -2,7 +2,8 @@
   One part of quest or puzzle progress (see QuestProgress), shown as hh:mm:ss.
   part is "elapsed", "penalty", or "total". data-duration holds milliseconds;
   while the clock runs, script/questProgress.js adds the time since
-  data-clock-start and keeps the shown time current.
+  data-clock-start, the clock's start adjusted for any pauses, and keeps the
+  shown time current.
 %>
 <%
   const running = progress.running && part !== "penalty";
@@ -12,4 +13,4 @@
   const pad = (n) => String(n).padStart(2, "0");
   const text = `${pad(Math.trunc(seconds / 3600))}:${pad(Math.trunc((seconds % 3600) / 60))}:${pad(seconds % 60)}`;
 -%>
-<span data-progress="<%= part %>" data-duration="<%= baseMs %>"<% if (running) { %> data-clock-start="<%= progress.startTime.toISOString() %>"<% } %>><%= text %></span>
+<span data-progress="<%= part %>" data-duration="<%= baseMs %>"<% if (running) { %> data-clock-start="<%= progress.clockStart.toISOString() %>"<% } %>><%= text %></span>

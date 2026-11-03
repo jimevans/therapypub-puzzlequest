@@ -70,4 +70,42 @@ describe("websocket server", () => {
     await vi.waitFor(() => expect(messages[1]).toEqual({ message: "update" }));
     socket.close();
   });
+
+  it("notifies every page of a quest, and only that quest", async () => {
+    const pages = [
+      "/quest/q3",
+      "/quest/q3/puzzle/p1",
+      "/monitor/quest/q3",
+      "/monitor/quest/q3/puzzle/p1",
+      "/quest/q30",
+      "/quest/other",
+    ];
+    const browsers = await Promise.all(pages.map(() => connect()));
+    browsers.forEach(({ socket }, index) =>
+      socket.send(
+        JSON.stringify({
+          message: "init",
+          url: `http://localhost${pages[index]}`,
+        })
+      )
+    );
+    await vi.waitFor(() =>
+      browsers.forEach(({ messages }) => expect(messages).toHaveLength(1))
+    );
+
+    WebSocketService.notifyQuestPages("q3", { message: "questUpdated" });
+
+    await vi.waitFor(() =>
+      browsers
+        .slice(0, 4)
+        .forEach(({ messages }) =>
+          expect(messages[1]).toEqual({ message: "questUpdated" })
+        )
+    );
+    // The others only ever got their connection message.
+    browsers
+      .slice(4)
+      .forEach(({ messages }) => expect(messages).toHaveLength(1));
+    browsers.forEach(({ socket }) => socket.close());
+  });
 });

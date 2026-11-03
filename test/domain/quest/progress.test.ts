@@ -116,6 +116,7 @@ describe("calculateProgress", () => {
         startTime: at(20),
         endTime: undefined,
         running: true,
+        clockStart: at(20),
         elapsedMs: 10 * MINUTE,
         penaltyMs: 120 * 1000,
         totalMs: 10 * MINUTE + 120 * 1000,
@@ -245,6 +246,93 @@ describe("calculateProgress", () => {
       running: false,
       elapsedMs: 0,
       puzzles: [],
+    });
+  });
+
+  describe("with pauses", () => {
+    // The first puzzle ran from 0 to 30, with a pause from 10 to 15; the
+    // second started at 30, and the quest was paused again from 40.
+    const pausedQuest = (status = QuestStatus.IN_PROGRESS) => ({
+      status,
+      pauses: [{ startTime: at(10), endTime: at(15) }, { startTime: at(40) }],
+      puzzles: [
+        puzzle("first", QuestPuzzleStatus.COMPLETED, {
+          startTime: at(0),
+          endTime: at(30),
+        }),
+        puzzle("second", QuestPuzzleStatus.IN_PROGRESS, {
+          startTime: at(30),
+        }),
+      ],
+    });
+
+    it("leaves paused time out of each clock it overlaps", () => {
+      const progress = calculateProgress(pausedQuest(), hints, at(50));
+
+      expect(progress.puzzles[0].elapsedMs).toBe(25 * MINUTE);
+      // 30 to 40; paused since.
+      expect(progress.puzzles[1].elapsedMs).toBe(10 * MINUTE);
+      // 0 to 50, less 5 and 10 minutes of pauses.
+      expect(progress.elapsedMs).toBe(35 * MINUTE);
+    });
+
+    it("stops every clock while the quest is paused", () => {
+      const progress = calculateProgress(pausedQuest(), hints, at(50));
+
+      expect(progress.running).toBe(false);
+      expect(progress.clockStart).toBeUndefined();
+      expect(progress.puzzles[1]).toMatchObject({
+        running: false,
+        clockStart: undefined,
+      });
+      // Frozen: later, the same time.
+      expect(calculateProgress(pausedQuest(), hints, at(90)).elapsedMs).toBe(
+        35 * MINUTE
+      );
+    });
+
+    it("restarts the clocks from where they stopped once the quest resumes", () => {
+      const resumed = {
+        ...pausedQuest(),
+        pauses: [
+          { startTime: at(10), endTime: at(15) },
+          { startTime: at(40), endTime: at(45) },
+        ],
+      };
+
+      const progress = calculateProgress(resumed, hints, at(50));
+
+      // 30 to 50, less the pause from 40 to 45.
+      expect(progress.puzzles[1]).toMatchObject({
+        running: true,
+        elapsedMs: 15 * MINUTE,
+        clockStart: at(35),
+      });
+      // 0 to 50, less 10 minutes of pauses; a page's clock counts up from
+      // 40 minutes ago.
+      expect(progress).toMatchObject({
+        running: true,
+        elapsedMs: 40 * MINUTE,
+        clockStart: at(10),
+      });
+    });
+
+    it("ignores pauses outside a clock's span", () => {
+      const progress = calculateProgress(
+        {
+          status: QuestStatus.IN_PROGRESS,
+          pauses: [{ startTime: at(0), endTime: at(5) }],
+          puzzles: [
+            puzzle("first", QuestPuzzleStatus.IN_PROGRESS, {
+              startTime: at(10),
+            }),
+          ],
+        },
+        hints,
+        at(20)
+      );
+
+      expect(progress.puzzles[0].elapsedMs).toBe(10 * MINUTE);
     });
   });
 });

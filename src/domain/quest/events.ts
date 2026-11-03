@@ -42,6 +42,18 @@ export interface QuestCompleted {
   readonly at: Date;
 }
 
+/** An administrator paused the quest, stopping its clocks. */
+export interface QuestPaused {
+  readonly type: "QuestPaused";
+  readonly at: Date;
+}
+
+/** An administrator resumed the quest, restarting its clocks. */
+export interface QuestResumed {
+  readonly type: "QuestResumed";
+  readonly at: Date;
+}
+
 /** The quest's progress was cleared. */
 export interface QuestReset {
   readonly type: "QuestReset";
@@ -56,4 +68,6 @@ export type QuestEvent =
   | PuzzleSolved
   | HintRevealed
   | QuestCompleted
+  | QuestPaused
+  | QuestResumed
   | QuestReset;

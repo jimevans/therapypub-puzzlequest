@@ -58,6 +58,22 @@ questPuzzleSchema.virtual("statusDescription").get(function () {
 
 questPuzzleSchema.set("toJSON", { virtuals: true });
 
+/** A time when an administrator paused a quest. */
+const pauseSchema = new Schema(
+  {
+    /** When the pause began. */
+    startTime: {
+      type: Date,
+      required: true,
+    },
+    /** When the quest resumed; absent while the pause goes on. */
+    endTime: {
+      type: Date,
+    },
+  },
+  { _id: false }
+);
+
 /** A quest: a sequence of puzzles assigned to a user or a team. */
 const questSchema = new Schema(
   {
@@ -96,6 +112,11 @@ const questSchema = new Schema(
     },
     /** The puzzles in the quest, in order. */
     puzzles: [questPuzzleSchema],
+    /**
+     * The times an administrator paused the quest, in order; the last may
+     * still be going on. Paused time doesn't count toward the players' time.
+     */
+    pauses: [pauseSchema],
   },
   {
     // Saving fails with a VersionError if the quest was saved by someone else

@@ -49,15 +49,16 @@
         </a>
       </div>
     </nav>
+    <%- include("partials/pausedBanner", { paused: paused }) %>
     <div>
       Activate puzzle by
     </div>
-    <div id="activation-mode">
+    <fieldset id="activation-mode" class="pq-fieldset" <%= paused ? "disabled" : "" %>>
       <input type="radio" id="qr-code" name="auth-method" value="qr" />
       <label for="qr-code">Scanning QR code</label>
       <input type="radio" id="text-value" name="auth-method" value="text" />
       <label for="text-value">Entering code text</label>
-    </div>
+    </fieldset>
     <div id="qr-code-scanner" class="pq-hide">
       <div class="pq-code-scanner">
         <div id="camera-image" class="pq-camera-image">

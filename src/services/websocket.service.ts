@@ -87,3 +87,25 @@ export function notifyBrowsers(
     connection.socket.send(JSON.stringify(notificationData))
   );
 }
+
+/**
+ * Notifies every browser showing a page of a quest: the quest page, its
+ * puzzle pages, and their monitor views.
+ * @param questName the name of the quest
+ * @param notificationData the data to send to the connected browsers
+ */
+export function notifyQuestPages(
+  questName: string,
+  notificationData: object
+): void {
+  const prefixes = [`/quest/${questName}`, `/monitor/quest/${questName}`];
+  webSocketSessions.forEach((session) => {
+    const url = session.url;
+    if (
+      url !== undefined &&
+      prefixes.some((prefix) => url === prefix || url.startsWith(`${prefix}/`))
+    ) {
+      session.socket.send(JSON.stringify(notificationData));
+    }
+  });
+}

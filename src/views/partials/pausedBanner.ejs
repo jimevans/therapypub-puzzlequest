@@ -1,0 +1,9 @@
+<%#
+  Shown on a quest's pages while an administrator has paused it. paused is
+  true if the quest is paused.
+%>
+<% if (paused) { %>
+<div id="paused-banner" class="pq-reminder">
+  Paused by the puzzle master. The clock is stopped, and you can carry on as soon as the quest resumes.
+</div>
+<% } %>

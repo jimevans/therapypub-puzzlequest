@@ -32,6 +32,12 @@ const worker = new Worker("/script/socket.js");
 worker.postMessage({ message: "init", url: window.location.href });
 worker.addEventListener("message", (evt) => {
   const messageData = JSON.parse(evt.data);
+  if (messageData.message === "questUpdated") {
+    // An administrator changed the quest, such as pausing it; reload to show
+    // its current state.
+    window.location.reload();
+    return;
+  }
   if (messageData.message === "puzzleSolved") {
     const solutionElement = displaySolution(messageData.solutionText);
     solutionElement.classList.add("pq-data-highlight");

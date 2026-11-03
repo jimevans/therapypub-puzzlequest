@@ -154,6 +154,38 @@ export async function resetQuest(
   res.send(JSON.stringify(resetQuestResponse));
 }
 
+export async function pauseQuest(
+  req: RouteRequest<"name">,
+  res: Response
+): Promise<void> {
+  const response = await QuestService.pauseQuest(req.params.name, {
+    actor: req.user?.userName,
+  });
+  res
+    .status(response.statusCode)
+    .json(
+      response.status === "error"
+        ? { status: "error", message: response.message }
+        : { status: "success" }
+    );
+}
+
+export async function resumeQuest(
+  req: RouteRequest<"name">,
+  res: Response
+): Promise<void> {
+  const response = await QuestService.resumeQuest(req.params.name, {
+    actor: req.user?.userName,
+  });
+  res
+    .status(response.statusCode)
+    .json(
+      response.status === "error"
+        ? { status: "error", message: response.message }
+        : { status: "success" }
+    );
+}
+
 export async function generatePuzzleActivationQRCode(
   req: RouteRequest<"name" | "puzzleName">,
   res: Response
@@ -316,7 +348,7 @@ export async function renderQuestPuzzle(
   // The route requires a signed-in user.
   const loggedInUser = UserService.requireLoggedInUser(req.user);
   const questName = req.params.name;
-  const questPuzzleResponse = await QuestService.getQuestPuzzle(
+  const questPuzzleResponse = await QuestService.getQuestAndPuzzle(
     questName,
     req.params.puzzleName,
     loggedInUser
@@ -328,7 +360,7 @@ export async function renderQuestPuzzle(
     });
     return;
   }
-  const puzzle = questPuzzleResponse.data;
+  const { quest, puzzle } = questPuzzleResponse.data;
   // A puzzle deleted after it was added to the quest has no details.
   const puzzleDetail = puzzle.puzzleDetail;
   if (!puzzleDetail) {
@@ -341,6 +373,7 @@ export async function renderQuestPuzzle(
 
   if (puzzle.status === QuestPuzzleStatus.AWAITING_ACTIVATION) {
     res.render("activate", {
+      paused: quest.paused,
       userName: loggedInUser.userName,
       quest: questName,
       puzzle: {
@@ -374,6 +407,7 @@ export async function renderQuestPuzzle(
       : undefined;
 
   res.render("puzzle", {
+    paused: quest.paused,
     userName: loggedInUser.userName,
     quest: questName,
     puzzle: {
@@ -470,7 +504,7 @@ export async function renderMonitoredQuestPuzzle(
   res: Response
 ): Promise<void> {
   const questName = req.params.name;
-  const questPuzzleResponse = await QuestService.getQuestPuzzle(
+  const questPuzzleResponse = await QuestService.getQuestAndPuzzle(
     questName,
     req.params.puzzleName
   );
@@ -481,7 +515,7 @@ export async function renderMonitoredQuestPuzzle(
     });
     return;
   }
-  const puzzle = questPuzzleResponse.data;
+  const { quest, puzzle } = questPuzzleResponse.data;
   // A puzzle deleted after it was added to the quest has no details.
   const puzzleDetail = puzzle.puzzleDetail;
   if (!puzzleDetail) {
@@ -518,6 +552,7 @@ export async function renderMonitoredQuestPuzzle(
   }
 
   res.render("monitorPuzzle", {
+    paused: quest.paused,
     quest: questName,
     puzzle: {
       puzzleName: puzzle.puzzleName,

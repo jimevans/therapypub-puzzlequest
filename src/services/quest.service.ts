@@ -8,13 +8,17 @@ import {
   type QuestErrorCode,
   type QuestEvent,
   type QuestProgress,
+  type Pause,
   type QuestState,
   type TransitionResult,
   activatePuzzle as activate,
   calculateProgress,
   checkPuzzleListChange,
+  isPaused,
+  pause,
   parseSolutionKeywords,
   reset,
+  resume,
   revealHint,
   start,
   submitSolution,
@@ -59,6 +63,7 @@ export type QuestProperties = Pick<
 > &
   Partial<Pick<Quest, "textResponse" | "textResponseConfirmation">> & {
     puzzles?: QuestPuzzleProperties[];
+    pauses?: readonly Pause[];
   };
 
 /** A quest as returned by the findQuests aggregation, with puzzle details. */
@@ -240,6 +245,12 @@ export class Quest {
    */
   puzzles: QuestPuzzle[] = [];
 
+  /** The times an administrator paused the quest, in order. */
+  pauses: readonly Pause[];
+
+  /** True if an administrator has paused the quest. */
+  paused: boolean;
+
   /**
    * Initializes a new instance of the Quest class.
    * @param questDefinition an object containing the definition of quest properties
@@ -256,12 +267,18 @@ export class Quest {
         (puzzle) => new QuestPuzzle(puzzle)
       );
     }
+    this.pauses = questDefinition.pauses ?? [];
+    this.paused = isPaused({
+      status: this.status as QuestStatus,
+      puzzles: [],
+      pauses: this.pauses,
+    });
     switch (this.status) {
       case QuestStatus.NOT_STARTED:
         this.statusDescription = "Not yet started";
         break;
       case QuestStatus.IN_PROGRESS:
-        this.statusDescription = "In progress";
+        this.statusDescription = this.paused ? "Paused" : "In progress";
         break;
       case QuestStatus.COMPLETED:
         this.statusDescription = "Completed";
@@ -307,6 +324,7 @@ export class Quest {
     return calculateProgress(
       {
         status: this.status as QuestStatus,
+        pauses: this.pauses,
         puzzles: this.puzzles.map((puzzle) => ({
           puzzleName: puzzle.puzzleName,
           status: puzzle.status as QuestPuzzleStatus,
@@ -336,6 +354,7 @@ export class Quest {
       statusDescription: this.statusDescription,
       textResponse: this.textResponse,
       textResponseConfirmation: this.textResponseConfirmation,
+      paused: this.paused,
       puzzles: this.puzzles,
       progress: this.getProgress(),
     };
@@ -354,6 +373,7 @@ export class Quest {
       userName: this.userName,
       status: this.status,
       statusDescription: this.statusDescription,
+      paused: this.paused,
       puzzles: this.puzzles.map((puzzle) => puzzle.toPlayerJSON()),
       progress: this.getProgress(),
     };
@@ -370,6 +390,7 @@ export type QuestJSON = Pick<
   | "statusDescription"
   | "textResponse"
   | "textResponseConfirmation"
+  | "paused"
   | "puzzles"
 > & {
   /** How long the players have spent on the quest. */
@@ -379,7 +400,12 @@ export type QuestJSON = Pick<
 /** The JSON representation of a Quest that its players may see. */
 export type QuestPlayerJSON = Pick<
   Quest,
-  "name" | "displayName" | "userName" | "status" | "statusDescription"
+  | "name"
+  | "displayName"
+  | "userName"
+  | "status"
+  | "statusDescription"
+  | "paused"
 > & { puzzles: Record<string, unknown>[]; progress: QuestProgress };
 
 /**
@@ -560,6 +586,7 @@ function createFindResultProjectionParameter(
     status: true,
     textResponse: true,
     textResponseConfirmation: true,
+    pauses: true,
   };
   if (queryOptions?.puzzleStatus) {
     const filter = {
@@ -657,39 +684,51 @@ export async function getQuestByQuestName(
 }
 
 /**
- * Gets a quest with the specified name.
- * @param questName the name of the quest to retrieve
- * @param puzzleName the name of the puzzle in the quest to retrieve
+ * Gets a quest and one of its puzzles.
+ * @param questName the name of the quest
+ * @param puzzleName the name of the puzzle in the quest
  * @param user the user and teams for which to retrieve quests; omit for no filtering
- * @returns a Promise resolving to a result containing the array of quests matching
- *  the parameters or an error result if no quests are found.
+ * @returns a result containing the quest and the puzzle, or an error result
+ *  if either isn't found (or the user may not see it)
  */
-export async function getQuestPuzzle(
+export async function getQuestAndPuzzle(
   questName: string,
   puzzleName: string,
   user?: User | null
-): Promise<QuestResult<QuestPuzzle>> {
+): Promise<QuestResult<{ quest: Quest; puzzle: QuestPuzzle }>> {
   const queryResult = await getQuestByQuestName(questName, user);
   if (queryResult.status === "error") {
     return queryResult;
   }
-
   const quest = queryResult.data;
-  const filteredPuzzles = quest.puzzles.filter(
-    (puzzle) => puzzle.puzzleName === puzzleName
-  );
-  if (!filteredPuzzles.length) {
+  const puzzle = quest.getPuzzle(puzzleName);
+  if (puzzle === null) {
     return {
       status: "error",
       statusCode: 404,
       message: `No puzzle named ${puzzleName} found for quest ${questName}`,
     };
   }
+  return { status: "success", statusCode: 200, data: { quest, puzzle } };
+}
 
-  // The filtered puzzles array should only contain one entry
-  // since we are filtering by unique puzzle name, so we can
-  // just take the 0th entry.
-  return { status: "success", statusCode: 200, data: filteredPuzzles[0] };
+/**
+ * Gets one of a quest's puzzles.
+ * @param questName the name of the quest
+ * @param puzzleName the name of the puzzle in the quest to retrieve
+ * @param user the user and teams for which to retrieve quests; omit for no filtering
+ * @returns a result containing the puzzle, or an error result if it isn't
+ *  found (or the user may not see it)
+ */
+export async function getQuestPuzzle(
+  questName: string,
+  puzzleName: string,
+  user?: User | null
+): Promise<QuestResult<QuestPuzzle>> {
+  const result = await getQuestAndPuzzle(questName, puzzleName, user);
+  return result.status === "error"
+    ? result
+    : { status: "success", statusCode: 200, data: result.data.puzzle };
 }
 
 /**
@@ -975,6 +1014,10 @@ async function loadQuest(questName: string): Promise<QuestDocument | null> {
 function toQuestState(quest: QuestDocument): QuestState {
   return {
     status: quest.status as QuestStatus,
+    pauses: quest.pauses.map(({ startTime, endTime }) => ({
+      startTime,
+      endTime,
+    })),
     puzzles: quest.puzzles.map((puzzle) => ({
       puzzleName: puzzle.puzzleName,
       status: puzzle.status as QuestPuzzleStatus,
@@ -995,6 +1038,7 @@ function toQuestState(quest: QuestDocument): QuestState {
  */
 function applyQuestState(quest: QuestDocument, state: QuestState): void {
   quest.status = state.status;
+  quest.set("pauses", state.pauses ?? []);
   state.puzzles.forEach((puzzle, index) => {
     const stored = quest.puzzles[index];
     stored.status = puzzle.status;
@@ -1164,6 +1208,12 @@ function puzzleActionRefused(
         statusCode: 406,
         message: "Incorrect guess for puzzle solution",
       };
+    case "QUEST_PAUSED":
+      return {
+        status: "error",
+        statusCode: 409,
+        message: `Quest ${questName} is paused by the puzzle master; please wait until it resumes`,
+      };
     default:
       // QUEST_NOT_STARTED; the other codes only come from starting a quest
       // or revealing a hint, which handle them before getting here.
@@ -1286,6 +1336,60 @@ export async function resetQuest(
   }
   if (outcome.status === "refused") {
     throw new Error(`The rules refused to reset quest ${questName}`);
+  }
+  await publishActivity(questName, origin, outcome.events);
+  return { status: "success", statusCode: 200 };
+}
+
+/**
+ * Pauses a quest in progress, stopping its clocks; its players can't act
+ * until it resumes.
+ * @param questName the name of the quest
+ * @param origin who paused the quest
+ * @returns a response object containing a status, status code, and data
+ */
+export async function pauseQuest(
+  questName: string,
+  origin: QuestActionOrigin = {}
+): Promise<QuestResult<undefined>> {
+  const outcome = await applyQuestAction(questName, null, noRules, pause);
+  if (outcome.status === "refused") {
+    return {
+      status: "error",
+      statusCode: 400,
+      message:
+        outcome.error === "QUEST_PAUSED"
+          ? `Quest ${questName} is already paused`
+          : `Quest ${questName} can be paused only while it is in progress`,
+    };
+  }
+  if (outcome.status === "error") {
+    return outcome;
+  }
+  await publishActivity(questName, origin, outcome.events);
+  return { status: "success", statusCode: 200 };
+}
+
+/**
+ * Resumes a paused quest, restarting its clocks.
+ * @param questName the name of the quest
+ * @param origin who resumed the quest
+ * @returns a response object containing a status, status code, and data
+ */
+export async function resumeQuest(
+  questName: string,
+  origin: QuestActionOrigin = {}
+): Promise<QuestResult<undefined>> {
+  const outcome = await applyQuestAction(questName, null, noRules, resume);
+  if (outcome.status === "refused") {
+    return {
+      status: "error",
+      statusCode: 400,
+      message: `Quest ${questName} isn't paused`,
+    };
+  }
+  if (outcome.status === "error") {
+    return outcome;
   }
   await publishActivity(questName, origin, outcome.events);
   return { status: "success", statusCode: 200 };

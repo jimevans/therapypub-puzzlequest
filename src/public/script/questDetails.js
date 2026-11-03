@@ -74,6 +74,33 @@ document.querySelector("#reset-link")?.addEventListener("click", async (e) => {
   window.location.href = e.target.href;
 });
 
+for (const action of ["pause", "resume"]) {
+  document
+    .querySelector(`#${action}-link`)
+    ?.addEventListener("click", async (e) => {
+      e.preventDefault();
+      document.querySelector("#nav-checkbox").checked = false;
+      if (
+        action === "pause" &&
+        !window.confirm(
+          "Pause this quest? Its clock stops, and the players can't do anything until you resume it."
+        )
+      ) {
+        return;
+      }
+      const response = await callDataApi(
+        `/api/quest/${quest.name}/${action}`,
+        "put",
+        {}
+      );
+      if (response.status === "error") {
+        window.alert(response.message);
+        return;
+      }
+      window.location.reload();
+    });
+}
+
 document.querySelector("#notify-link")?.addEventListener("click", (e) => {
   e.preventDefault();
   document.querySelector("#nav-checkbox").checked = false;

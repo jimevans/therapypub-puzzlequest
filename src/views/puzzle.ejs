@@ -49,6 +49,7 @@
         </a>
       </div>
     </nav>
+    <%- include("partials/pausedBanner", { paused: paused }) %>
     <div id="puzzle-content">
       <%- rendered %>
     </div>
@@ -56,7 +57,9 @@
       <div class="pq-header">
         <span class="pq-header-text">Hints</span>
         <% if (puzzle.status < 3) { %>
-          <% if (puzzle.nextHintSolutionWarning === undefined) { %>
+          <% if (paused) { %>
+          <span id="request-hint" class="pq-float-right">Hints are unavailable while the quest is paused</span>
+          <% } else if (puzzle.nextHintSolutionWarning === undefined) { %>
           <span id="request-hint" class="pq-float-right">No available hints</span>
           <% } else if (puzzle.nextHintSolutionWarning) { %>
           <a id="request-hint" href="#" class="pq-menu-link pq-float-right" data-solution-warning="true">Request hint</a>
@@ -78,6 +81,7 @@
     <% if (puzzle.status === 2) { %>
     <div id="solve">
       <form id="submit-form">
+        <fieldset class="pq-fieldset" <%= paused ? "disabled" : "" %>>
         <div class="pq-label">
           <label for="solution">Solution</label>
         </div>
@@ -85,6 +89,7 @@
           <input id="solution-guess" autocomplete="off" />&nbsp;
           <button id="submit-button" class="pq-button" type="submit">Submit solution</button>
         </div>
+        </fieldset>
         <div id="solution-errors" class="pq-hide">
         </div>
       </form>

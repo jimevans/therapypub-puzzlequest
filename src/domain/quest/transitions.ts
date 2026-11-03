@@ -6,6 +6,7 @@ import {
   QuestPuzzleStatus,
   type QuestState,
   QuestStatus,
+  isPaused,
 } from "./state.js";
 
 /** Why an action isn't allowed. */
@@ -19,7 +20,9 @@ export type QuestErrorCode =
   | "PUZZLE_NOT_IN_PROGRESS"
   | "WRONG_ACTIVATION_CODE"
   | "WRONG_SOLUTION"
-  | "NO_MORE_HINTS";
+  | "NO_MORE_HINTS"
+  | "QUEST_PAUSED"
+  | "QUEST_NOT_PAUSED";
 
 /**
  * The outcome of an action: the quest's new state and what happened, or why
@@ -45,7 +48,8 @@ function fail(error: QuestErrorCode): TransitionResult {
 }
 
 /**
- * Checks that players can act on a quest.
+ * Checks that players can act on a quest: it must be in progress and not
+ * paused.
  * @param state the quest
  * @returns why they can't, or undefined if they can
  */
@@ -55,6 +59,9 @@ function checkInProgress(state: QuestState): QuestErrorCode | undefined {
   }
   if (state.status !== QuestStatus.IN_PROGRESS) {
     return "QUEST_NOT_STARTED";
+  }
+  if (isPaused(state)) {
+    return "QUEST_PAUSED";
   }
   return undefined;
 }
@@ -87,6 +94,7 @@ function withPuzzleChanges(
   status: QuestStatus = state.status
 ): QuestState {
   return {
+    ...state,
     status,
     puzzles: state.puzzles.map((puzzle, index) => {
       const change = changes.get(index);
@@ -260,8 +268,8 @@ export function revealHint(
 }
 
 /**
- * Clears a quest's progress, so it can be played again. Activation codes are
- * kept. Any quest can be reset.
+ * Clears a quest's progress, including its pauses, so it can be played
+ * again. Activation codes are kept. Any quest can be reset.
  * @param state the quest
  * @param now the current time
  * @returns the outcome
@@ -270,6 +278,7 @@ export function reset(state: QuestState, now: Date): TransitionResult {
   return succeed(
     {
       status: QuestStatus.NOT_STARTED,
+      pauses: [],
       puzzles: state.puzzles.map((puzzle) => ({
         ...puzzle,
         status: QuestPuzzleStatus.UNAVAILABLE,
@@ -280,5 +289,47 @@ export function reset(state: QuestState, now: Date): TransitionResult {
       })),
     },
     [{ type: "QuestReset", at: now }]
+  );
+}
+
+/**
+ * Pauses a quest in progress, as an administrator does for a reason beyond
+ * the players' control, such as correcting a badly written puzzle. Its
+ * clocks stop, and the players can't act until it resumes.
+ * @param state the quest
+ * @param now the current time
+ * @returns the outcome
+ */
+export function pause(state: QuestState, now: Date): TransitionResult {
+  const questError = checkInProgress(state);
+  if (questError) {
+    return fail(questError);
+  }
+  return succeed(
+    { ...state, pauses: [...(state.pauses ?? []), { startTime: now }] },
+    [{ type: "QuestPaused", at: now }]
+  );
+}
+
+/**
+ * Resumes a paused quest, restarting its clocks.
+ * @param state the quest
+ * @param now the current time
+ * @returns the outcome
+ */
+export function resume(state: QuestState, now: Date): TransitionResult {
+  const pauses = state.pauses ?? [];
+  if (!isPaused(state)) {
+    return fail("QUEST_NOT_PAUSED");
+  }
+  return succeed(
+    {
+      ...state,
+      pauses: [
+        ...pauses.slice(0, -1),
+        { ...pauses[pauses.length - 1], endTime: now },
+      ],
+    },
+    [{ type: "QuestResumed", at: now }]
   );
 }

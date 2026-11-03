@@ -62,6 +62,18 @@ questApiRouter.put(
   requireAdmin,
   QuestController.resetQuest
 );
+questApiRouter.put(
+  "/:name/pause",
+  authenticateSession,
+  requireAdmin,
+  QuestController.pauseQuest
+);
+questApiRouter.put(
+  "/:name/resume",
+  authenticateSession,
+  requireAdmin,
+  QuestController.resumeQuest
+);
 questApiRouter.post(
   "/:name/puzzle/:puzzleName/activate",
   authenticateSession,
