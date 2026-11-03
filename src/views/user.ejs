@@ -249,7 +249,7 @@
     <div class="pq-error pq-hide">
       <span></span>
     </div>
-    <script type="text/javascript">
+    <script nonce="<%= cspNonce %>">
       const renderMode = "<%=renderMode%>";
       const user = <%- JSON.stringify(user ? { "name" : user.userName, "teams": user.teams } : null) %>;
     </script>

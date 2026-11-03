@@ -85,7 +85,7 @@
       </form>
     </div>
     <div id="error-details" class="pq-hide"></div>
-    <script type="text/javascript">
+    <script nonce="<%= cspNonce %>">
       const questName = <%- JSON.stringify(quest ? quest : null) %>;
       const puzzleName = <%- JSON.stringify(puzzle ? puzzle.puzzleName : null) %>;
     </script>

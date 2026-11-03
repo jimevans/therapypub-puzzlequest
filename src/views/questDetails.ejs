@@ -110,7 +110,7 @@
     <div>
       <img id="qr-code" class="pq-qr-code pq-hide" />
     </div>
-    <script type="text/javascript">
+    <script nonce="<%= cspNonce %>">
       const renderMode = "<%=renderMode%>";
       const quest = <%- JSON.stringify(quest ? { "name": quest.name, "puzzles": quest.puzzles } : null) %>;
     </script>
