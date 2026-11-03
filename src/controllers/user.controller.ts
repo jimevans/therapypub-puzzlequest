@@ -77,34 +77,6 @@ export async function retrieveUser(
   req: RouteRequest<"userName">,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresUser: true,
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-  const loggedInUser = UserService.requireLoggedInUser(req.user);
-  if (
-    !loggedInUser.isCurrentUser(req.params.userName) &&
-    !loggedInUser.isAdmin()
-  ) {
-    res.status(403).send(
-      JSON.stringify({
-        status: "error",
-        message: `User ${loggedInUser.userName} not authorized to retrieve user ${req.params.userName}`,
-      })
-    );
-    return;
-  }
   const userResponse = await UserService.getUserByUserName(req.params.userName);
   if (userResponse.status === "error") {
     res.status(userResponse.statusCode).send(
@@ -125,7 +97,6 @@ export async function updateUser(
 ): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
-      requiresUser: true,
       requiresBody: true,
     },
     req
@@ -140,18 +111,6 @@ export async function updateUser(
     return;
   }
   const loggedInUser = UserService.requireLoggedInUser(req.user);
-  if (
-    !loggedInUser.isCurrentUser(req.params.userName) &&
-    !loggedInUser.isAdmin()
-  ) {
-    res.status(403).send(
-      JSON.stringify({
-        status: "error",
-        message: `User ${loggedInUser.userName} not authorized to update user ${req.params.userName}`,
-      })
-    );
-    return;
-  }
   const updatedUser: Partial<UserService.User> = new UserService.User(req.body);
   if (!loggedInUser.isAdmin()) {
     // Only administrators may change authorization levels. Users change
@@ -180,35 +139,6 @@ export async function deleteUser(
   req: RouteRequest<"userName">,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresUser: true,
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
-  const loggedInUser = UserService.requireLoggedInUser(req.user);
-  if (
-    !loggedInUser.isCurrentUser(req.params.userName) &&
-    !loggedInUser.isAdmin()
-  ) {
-    res.status(403).send(
-      JSON.stringify({
-        status: "error",
-        message: `User ${loggedInUser.userName} not authorized to delete user ${req.params.userName}`,
-      })
-    );
-    return;
-  }
   const response = await UserService.deleteUser(req.params.userName);
   if (response.status === "error") {
     res.status(500).send(
@@ -223,22 +153,6 @@ export async function deleteUser(
 }
 
 export async function listUsers(req: Request, res: Response): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresUser: true,
-      requiresAdmin: true,
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
   const response = await UserService.listUsers();
   res.send(JSON.stringify(response));
 }
@@ -249,7 +163,6 @@ export async function changePassword(
 ): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
-      requiresUser: true,
       requiresBody: true,
       requiredBodyProperties: ["currentPassword", "newPassword"],
     },
@@ -260,16 +173,6 @@ export async function changePassword(
       JSON.stringify({
         status: "error",
         message: validation.message,
-      })
-    );
-    return;
-  }
-  const loggedInUser = UserService.requireLoggedInUser(req.user);
-  if (!loggedInUser.isCurrentUser(req.params.userName)) {
-    res.status(403).send(
-      JSON.stringify({
-        status: "error",
-        message: `User ${loggedInUser.userName} not authorized to change the password of user ${req.params.userName}`,
       })
     );
     return;
@@ -373,22 +276,6 @@ export async function sendPasswordResetLink(
   req: RouteRequest<"userName">,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresUser: true,
-      requiresAdmin: true,
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
   const response = await PasswordService.requestPasswordResetForUser(
     req.params.userName
   );
@@ -440,28 +327,14 @@ export async function renderUser(
     return;
   }
 
-  if (!loggedInUser) {
-    res.render("login", { requestingUrl: req.url });
-    return;
-  }
-
-  if (
-    !loggedInUser.isCurrentUser(req.params.userName) &&
-    !loggedInUser.isAdmin()
-  ) {
-    res.render("error", {
-      errorTitle: "Unauthorized",
-      errorDetails: `User ${req.params.userName} not authorized to retrieve user ${req.params.userName}`,
-    });
-    return;
-  }
-
+  // The route lets through only the user and administrators.
+  const currentUser = UserService.requireLoggedInUser(req.user);
   const userResponse = await UserService.getUserByUserName(
     req.params.userName,
     true
   );
   if (userResponse.status === "error") {
-    res.render("error", {
+    res.status(userResponse.statusCode).render("error", {
       errorTitle: "Not found",
       errorDetails: userResponse.message,
     });
@@ -470,7 +343,7 @@ export async function renderUser(
 
   res.render("user", {
     renderMode: req.renderMode,
-    currentUser: loggedInUser,
+    currentUser: currentUser,
     user: userResponse.data,
   });
 }

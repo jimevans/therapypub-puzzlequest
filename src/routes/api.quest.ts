@@ -1,5 +1,5 @@
 import express from "express";
-import { requireUser } from "../middleware/authorization.js";
+import { requireAdmin, requireUser } from "../middleware/authorization.js";
 import {
   activationRateLimiter,
   solutionRateLimiter,
@@ -13,36 +13,43 @@ const questApiRouter = express.Router();
 questApiRouter.get(
   "/list",
   TokenAuthenticator.tokenAuthenticate,
+  requireAdmin,
   QuestController.listQuests
 );
 questApiRouter.get(
   "/:name",
   TokenAuthenticator.tokenAuthenticate,
+  requireUser,
   QuestController.retrieveQuest
 );
 questApiRouter.put(
   "/:name",
   TokenAuthenticator.tokenAuthenticate,
+  requireAdmin,
   QuestController.updateQuest
 );
 questApiRouter.delete(
   "/:name",
   TokenAuthenticator.tokenAuthenticate,
+  requireAdmin,
   QuestController.deleteQuest
 );
 questApiRouter.post(
   "/create",
   TokenAuthenticator.tokenAuthenticate,
+  requireAdmin,
   QuestController.createQuest
 );
 questApiRouter.put(
   "/:name/activate",
   TokenAuthenticator.tokenAuthenticate,
+  requireAdmin,
   QuestController.activateQuest
 );
 questApiRouter.put(
   "/:name/reset",
   TokenAuthenticator.tokenAuthenticate,
+  requireAdmin,
   QuestController.resetQuest
 );
 questApiRouter.post(
@@ -65,11 +72,13 @@ questApiRouter.put(
 questApiRouter.put(
   "/:name/puzzle/:puzzleName/hint",
   TokenAuthenticator.tokenAuthenticate,
+  requireUser,
   QuestController.requestQuestPuzzleHint
 );
 questApiRouter.get(
   "/:name/puzzle/:puzzleName/qrcode",
   TokenAuthenticator.tokenAuthenticate,
+  requireAdmin,
   QuestController.generatePuzzleActivationQRCode
 );
 

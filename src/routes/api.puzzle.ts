@@ -8,26 +8,31 @@ const puzzleApiRouter = express.Router();
 puzzleApiRouter.get(
   "/list",
   TokenAuthenticator.tokenAuthenticate,
+  requireAdmin,
   PuzzleController.listPuzzles
 );
 puzzleApiRouter.get(
   "/:name",
   TokenAuthenticator.tokenAuthenticate,
+  requireAdmin,
   PuzzleController.retrievePuzzle
 );
 puzzleApiRouter.put(
   "/:name",
   TokenAuthenticator.tokenAuthenticate,
+  requireAdmin,
   PuzzleController.updatePuzzle
 );
 puzzleApiRouter.delete(
   "/:name",
   TokenAuthenticator.tokenAuthenticate,
+  requireAdmin,
   PuzzleController.deletePuzzle
 );
 puzzleApiRouter.post(
   "/create",
   TokenAuthenticator.tokenAuthenticate,
+  requireAdmin,
   PuzzleController.createPuzzle
 );
 puzzleApiRouter.post(

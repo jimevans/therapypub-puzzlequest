@@ -7,8 +7,6 @@ import * as RequestValidationService from "../services/requestValidation.service
 export async function createTeam(req: Request, res: Response): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
-      requiresUser: true,
-      requiresAdmin: true,
       requiresBody: true,
       requiredBodyProperties: ["teamName", "displayName", "joinCode"],
     },
@@ -42,23 +40,6 @@ export async function retrieveTeam(
   req: RouteRequest<"teamName">,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresUser: true,
-      requiresAdmin: true,
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
   const teamResponse = await TeamService.getTeamByTeamName(req.params.teamName);
   if (teamResponse.status === "error") {
     res.status(teamResponse.statusCode).send(
@@ -78,8 +59,6 @@ export async function updateTeam(
 ): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
-      requiresUser: true,
-      requiresAdmin: true,
       requiresBody: true,
       requiredBodyProperties: ["teamName"],
     },
@@ -113,23 +92,6 @@ export async function deleteTeam(
   req: RouteRequest<"teamName">,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresUser: true,
-      requiresAdmin: true,
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
   const response = await TeamService.deleteTeam(req.params.teamName);
   if (response.status === "error") {
     res.status(500).send(
@@ -144,22 +106,6 @@ export async function deleteTeam(
 }
 
 export async function listTeams(req: Request, res: Response): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresUser: true,
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
   const response = await TeamService.listTeams();
   if (response.status === "error") {
     res
@@ -187,7 +133,6 @@ export async function joinTeam(
 ): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
-      requiresUser: true,
       requiresBody: true,
       requiredBodyProperties: ["joinCode"],
     },
@@ -198,20 +143,6 @@ export async function joinTeam(
       JSON.stringify({
         status: "error",
         message: validation.message,
-      })
-    );
-    return;
-  }
-
-  const loggedInUser = UserService.requireLoggedInUser(req.user);
-  if (
-    !loggedInUser.isCurrentUser(req.params.userName) &&
-    !loggedInUser.isAdmin()
-  ) {
-    res.status(403).send(
-      JSON.stringify({
-        status: "error",
-        message: `User ${loggedInUser.userName} not authorized to retrieve user ${req.params.userName}`,
       })
     );
     return;
@@ -238,36 +169,6 @@ export async function leaveTeam(
   req: RouteRequest<"teamName" | "userName">,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresUser: true,
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
-  const loggedInUser = UserService.requireLoggedInUser(req.user);
-  if (
-    !loggedInUser.isCurrentUser(req.params.userName) &&
-    !loggedInUser.isAdmin()
-  ) {
-    res.status(403).send(
-      JSON.stringify({
-        status: "error",
-        message: `User ${loggedInUser.userName} not authorized to retrieve user ${req.params.userName}`,
-      })
-    );
-    return;
-  }
-
   const leaveUserResponse = await TeamService.removeUserFromTeam(
     req.params.teamName,
     req.params.userName

@@ -1,4 +1,5 @@
 import express from "express";
+import { requireAdmin } from "../middleware/authorization.js";
 import * as MessagingController from "../controllers/messaging.controller.js";
 import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
 import { requireTwilioSignature } from "../middleware/twilioSignature.js";
@@ -18,6 +19,7 @@ messagingApiRouter.post(
 messagingApiRouter.post(
   "/outgoing/text",
   TokenAuthenticator.tokenAuthenticate,
+  requireAdmin,
   MessagingController.sendTextMessage
 );
 

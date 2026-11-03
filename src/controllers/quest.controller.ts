@@ -13,8 +13,6 @@ import * as RequestValidationService from "../services/requestValidation.service
 export async function createQuest(req: Request, res: Response): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
-      requiresUser: true,
-      requiresAdmin: true,
       requiresBody: true,
       requiredBodyProperties: ["name", "displayName", "userName"],
     },
@@ -46,22 +44,6 @@ export async function retrieveQuest(
   req: RouteRequest<"name">,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresUser: true,
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
   const loggedInUser = UserService.requireLoggedInUser(req.user);
   const questResponse = await QuestService.getQuestByQuestName(
     req.params.name,
@@ -88,8 +70,6 @@ export async function retrieveQuest(
 export async function updateQuest(req: Request, res: Response): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
-      requiresUser: true,
-      requiresAdmin: true,
       requiresBody: true,
       requiredBodyProperties: ["name"],
     },
@@ -129,23 +109,6 @@ export async function deleteQuest(
   req: RouteRequest<"name">,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresUser: true,
-      requiresAdmin: true,
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
   const response = await QuestService.deleteQuest(req.params.name);
   if (response.status === "error") {
     res.status(response.statusCode).send(
@@ -160,23 +123,6 @@ export async function deleteQuest(
 }
 
 export async function listQuests(req: Request, res: Response): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresUser: true,
-      requiresAdmin: true,
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
   const response = await QuestService.findQuests();
   if (response.status === "error" && response.statusCode === 404) {
     // No quests yet; the list is empty, so the first one can be created.
@@ -199,23 +145,6 @@ export async function activateQuest(
   req: RouteRequest<"name">,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresUser: true,
-      requiresAdmin: true,
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
   const startQuestResponse = await QuestService.startQuest(req.params.name, {
     actor: req.user?.userName,
   });
@@ -235,23 +164,6 @@ export async function resetQuest(
   req: RouteRequest<"name">,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresUser: true,
-      requiresAdmin: true,
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
   const resetQuestResponse = await QuestService.resetQuest(req.params.name, {
     actor: req.user?.userName,
   });
@@ -271,23 +183,6 @@ export async function generatePuzzleActivationQRCode(
   req: RouteRequest<"name" | "puzzleName">,
   res: Response
 ): Promise<void> {
-  const validation = RequestValidationService.validateRequest(
-    {
-      requiresUser: true,
-      requiresAdmin: true,
-    },
-    req
-  );
-  if (validation.status === "error") {
-    res.status(validation.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: validation.message,
-      })
-    );
-    return;
-  }
-
   const qrCodeResponse = await QuestService.getPuzzleActivationQrCode(
     req.params.name,
     req.params.puzzleName
@@ -310,7 +205,6 @@ export async function activateQuestPuzzle(
 ): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
-      requiresUser: true,
       requiresBody: true,
       requiredBodyProperties: ["activationCode"],
     },
@@ -357,7 +251,6 @@ export async function solveQuestPuzzle(
 ): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
-      requiresUser: true,
       requiresBody: true,
       requiredBodyProperties: ["guess"],
     },
@@ -411,7 +304,6 @@ export async function requestQuestPuzzleHint(
 ): Promise<void> {
   const validation = RequestValidationService.validateRequest(
     {
-      requiresUser: true,
       requiresBody: true,
     },
     req
@@ -452,12 +344,8 @@ export async function renderQuest(
   req: RouteRequest<"name">,
   res: Response
 ): Promise<void> {
-  const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser) {
-    res.render("login", { requestingUrl: req.url });
-    return;
-  }
-
+  // The route requires a signed-in user.
+  const loggedInUser = UserService.requireLoggedInUser(req.user);
   const viewName = loggedInUser.isAdmin()
     ? req.renderMode === RenderMode.DISPLAY
       ? "questDetails"
@@ -465,13 +353,6 @@ export async function renderQuest(
     : "quest";
 
   if (req.renderMode === RenderMode.CREATE) {
-    if (!loggedInUser.isAdmin()) {
-      res.render("error", {
-        errorTitle: "Unauthorized",
-        errorDetails: `User ${loggedInUser.userName} not authorized to create new quests`,
-      });
-      return;
-    }
     res.render(viewName, { renderMode: req.renderMode, quest: null });
     return;
   }
@@ -502,12 +383,8 @@ export async function renderQuestPuzzle(
   req: RouteRequest<"name" | "puzzleName">,
   res: Response
 ): Promise<void> {
-  const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser) {
-    res.render("login", { requestingUrl: req.url });
-    return;
-  }
-
+  // The route requires a signed-in user.
+  const loggedInUser = UserService.requireLoggedInUser(req.user);
   const questName = req.params.name;
   const questPuzzleResponse = await QuestService.getQuestPuzzle(
     questName,
@@ -586,19 +463,6 @@ export async function renderPuzzleActivationQRCode(
   req: RouteRequest<"name" | "puzzleName">,
   res: Response
 ): Promise<void> {
-  const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser) {
-    res.render("login", { requestingUrl: req.url.replace(/\/qrcode$/i, "") });
-    return;
-  }
-
-  if (!loggedInUser.isAdmin()) {
-    res.status(403).render("error", {
-      errorTitle: "Forbidden",
-      errorDetails: `User ${loggedInUser.userName} not authorized to generate puzzle activation QR codes`,
-    });
-    return;
-  }
   const qrCodeResponse = await QuestService.getPuzzleActivationQrCode(
     req.params.name,
     req.params.puzzleName
@@ -626,19 +490,6 @@ export async function renderQuestRunBook(
   req: RouteRequest<"name">,
   res: Response
 ): Promise<void> {
-  const loggedInUser = UserService.getLoggedInUser(req.user);
-  if (!loggedInUser) {
-    res.render("login", { requestingUrl: req.url.replace(/\/pdf$/i, "") });
-    return;
-  }
-
-  if (!loggedInUser.isAdmin()) {
-    res.render("error", {
-      errorTitle: "Unauthorized",
-      errorDetails: `User ${loggedInUser.userName} not authorized to generate quest PDFs`,
-    });
-    return;
-  }
   const buffers: Buffer[] = [];
   const pdfDoc = new PDFDocument({ autoFirstPage: false, bufferPages: true });
   pdfDoc.on("data", buffers.push.bind(buffers));
