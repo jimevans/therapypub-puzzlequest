@@ -42,6 +42,25 @@ export interface QuestCompleted {
   readonly at: Date;
 }
 
+/** An administrator completed a puzzle for the players, without a penalty. */
+export interface PuzzleSkipped {
+  readonly type: "PuzzleSkipped";
+  readonly puzzleName: string;
+  readonly at: Date;
+}
+
+/**
+ * An administrator undid a puzzle's solution, so the players solve it
+ * again; the puzzles after it are no longer reached.
+ */
+export interface PuzzleReset {
+  readonly type: "PuzzleReset";
+  readonly puzzleName: string;
+  /** How many revealed hints had their penalties refunded. */
+  readonly refundedHints: number;
+  readonly at: Date;
+}
+
 /** An administrator paused the quest, stopping its clocks. */
 export interface QuestPaused {
   readonly type: "QuestPaused";
@@ -68,6 +87,8 @@ export type QuestEvent =
   | PuzzleSolved
   | HintRevealed
   | QuestCompleted
+  | PuzzleSkipped
+  | PuzzleReset
   | QuestPaused
   | QuestResumed
   | QuestReset;

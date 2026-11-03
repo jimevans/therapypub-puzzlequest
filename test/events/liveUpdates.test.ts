@@ -157,10 +157,15 @@ describe("sendLiveUpdates", () => {
     expect(notifyBrowsers).not.toHaveBeenCalled();
   });
 
-  it.each(["QuestPaused", "QuestResumed"] as const)(
-    "tells every page of the quest to reload when it is %s",
-    (type) => {
-      sendLiveUpdates({ questName: "q1", events: [{ type, at: AT }] });
+  it.each([
+    { type: "QuestPaused", at: AT },
+    { type: "QuestResumed", at: AT },
+    { type: "PuzzleSkipped", puzzleName: "p1", at: AT },
+    { type: "PuzzleReset", puzzleName: "p1", refundedHints: 0, at: AT },
+  ] as const)(
+    "tells every page of the quest to reload after $type",
+    (event) => {
+      sendLiveUpdates({ questName: "q1", events: [event] });
 
       expect(notifyQuestPages).toHaveBeenCalledExactlyOnceWith("q1", {
         message: "questUpdated",

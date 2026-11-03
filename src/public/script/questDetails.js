@@ -101,6 +101,46 @@ for (const action of ["pause", "resume"]) {
     });
 }
 
+/**
+ * Sends one of the rescue actions for the puzzle chosen in "Help the
+ * players", after asking the admin to confirm it.
+ * @param {string} action "skip" or "reset"
+ */
+async function rescuePuzzle(action) {
+  const select = document.querySelector("#rescue-puzzle");
+  const puzzleName = select.value;
+  const puzzleLabel = select.selectedOptions[0]?.text ?? puzzleName;
+  const refundHints = document.querySelector("#refund-hints").checked;
+  const question =
+    action === "skip"
+      ? `Skip ${puzzleLabel}? It will be completed with no penalty, the players will see its solution, and the next puzzle will become available.`
+      : `Reset ${puzzleLabel}? The players will have to solve it again, and every puzzle after it will no longer be reached.${
+          refundHints
+            ? " The penalties of its revealed hints will be refunded."
+            : ""
+        }`;
+  if (!puzzleName || !window.confirm(question)) {
+    return;
+  }
+  const response = await callDataApi(
+    `/api/quest/${quest.name}/puzzle/${encodeURIComponent(puzzleName)}/${action}`,
+    "put",
+    action === "reset" ? { refundHints } : {}
+  );
+  if (response.status === "error") {
+    window.alert(response.message);
+    return;
+  }
+  window.location.reload();
+}
+
+document
+  .querySelector("#skip-puzzle")
+  ?.addEventListener("click", () => rescuePuzzle("skip"));
+document
+  .querySelector("#reset-puzzle")
+  ?.addEventListener("click", () => rescuePuzzle("reset"));
+
 document.querySelector("#notify-link")?.addEventListener("click", (e) => {
   e.preventDefault();
   document.querySelector("#nav-checkbox").checked = false;

@@ -335,4 +335,24 @@ describe("calculateProgress", () => {
       expect(progress.puzzles[0].elapsedMs).toBe(10 * MINUTE);
     });
   });
+
+  it("leaves refunded hints out of the penalties", () => {
+    const progress = calculateProgress(
+      {
+        status: QuestStatus.IN_PROGRESS,
+        puzzles: [
+          puzzle("first", QuestPuzzleStatus.IN_PROGRESS, {
+            startTime: at(0),
+            nextHintToDisplay: 2,
+            penaltyFreeHints: 1,
+          }),
+        ],
+      },
+      hints,
+      at(10)
+    );
+
+    // Only the second hint, of 300 seconds, counts.
+    expect(progress.penaltyMs).toBe(300 * 1000);
+  });
 });

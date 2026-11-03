@@ -157,6 +157,29 @@ describe("the quest event log", () => {
     expect(started.actor).toBeUndefined();
   });
 
+  it("records how many hint penalties a puzzle reset refunded", async () => {
+    await QuestService.startQuest("test-quest");
+    await QuestService.activatePuzzle(
+      "test-quest",
+      "colors",
+      PLAYER,
+      await activationCode("colors")
+    );
+    await QuestService.getPuzzleHint("test-quest", "colors", PLAYER);
+    await QuestService.finishPuzzle("test-quest", "colors", PLAYER, "red blue");
+
+    await QuestService.resetQuestPuzzle("test-quest", "colors", true, {
+      actor: "admin",
+    });
+
+    expect((await loggedEvents()).at(-1)).toEqual({
+      type: "PuzzleReset",
+      puzzleName: "colors",
+      actor: "admin",
+      data: { refundedHints: 1 },
+    });
+  });
+
   it("keeps earlier events when a quest is reset", async () => {
     await QuestService.startQuest("test-quest");
     await QuestService.resetQuest("test-quest", { actor: "admin" });

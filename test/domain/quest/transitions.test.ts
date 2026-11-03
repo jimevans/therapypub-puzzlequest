@@ -10,8 +10,10 @@ import {
   isPaused,
   pause,
   reset,
+  resetPuzzle,
   resume,
   revealHint,
+  skipPuzzle,
   start,
   submitSolution,
 } from "../../../src/domain/quest/index.js";
@@ -421,6 +423,8 @@ describe("reset", () => {
         startTime: undefined,
         activationTime: undefined,
         endTime: undefined,
+        skipped: false,
+        penaltyFreeHints: 0,
       }))
     );
     expect(result.events).toEqual([{ type: "QuestReset", at: NOW }]);
@@ -535,6 +539,202 @@ describe("a paused quest", () => {
     );
 
     expect(result.state.pauses).toEqual([]);
+  });
+});
+
+describe("skipPuzzle", () => {
+  it.each([
+    ["in progress", QuestPuzzleStatus.IN_PROGRESS],
+    ["awaiting activation", QuestPuzzleStatus.AWAITING_ACTIVATION],
+  ])("completes a puzzle %s and starts the next", (_, status) => {
+    const state = inProgressWith(status);
+
+    const result = expectSuccess(skipPuzzle(state, "second", NOW));
+
+    expect(result.state.puzzles[1]).toEqual({
+      ...state.puzzles[1],
+      status: QuestPuzzleStatus.COMPLETED,
+      endTime: NOW,
+      skipped: true,
+    });
+    expect(result.state.puzzles[2]).toMatchObject({
+      status: QuestPuzzleStatus.AWAITING_ACTIVATION,
+      startTime: NOW,
+    });
+    expect(result.events).toEqual([
+      { type: "PuzzleSkipped", puzzleName: "second", at: NOW },
+      { type: "PuzzleStarted", puzzleName: "third", at: NOW },
+    ]);
+  });
+
+  it("completes the quest when the last puzzle is skipped", () => {
+    const state = quest(QuestStatus.IN_PROGRESS, [
+      puzzle("first", QuestPuzzleStatus.COMPLETED),
+      puzzle("last", QuestPuzzleStatus.IN_PROGRESS),
+    ]);
+
+    const result = expectSuccess(skipPuzzle(state, "last", NOW));
+
+    expect(result.state.status).toBe(QuestStatus.COMPLETED);
+    expect(result.events).toEqual([
+      { type: "PuzzleSkipped", puzzleName: "last", at: NOW },
+      { type: "QuestCompleted", at: NOW },
+    ]);
+  });
+
+  it("works while the quest is paused", () => {
+    const state = {
+      ...inProgressWith(QuestPuzzleStatus.IN_PROGRESS),
+      pauses: [{ startTime: EARLIER }],
+    };
+
+    const result = expectSuccess(skipPuzzle(state, "second", NOW));
+
+    expect(result.state.pauses).toEqual(state.pauses);
+  });
+
+  it.each([
+    ["in a quest not started", notStarted, "first", "QUEST_NOT_STARTED"],
+    ["in a completed quest", completed, "first", "QUEST_COMPLETED"],
+    [
+      "not yet reached",
+      inProgressWith(QuestPuzzleStatus.IN_PROGRESS),
+      "third",
+      "PUZZLE_NOT_FOUND",
+    ],
+    [
+      "already completed",
+      inProgressWith(QuestPuzzleStatus.IN_PROGRESS),
+      "first",
+      "PUZZLE_COMPLETED",
+    ],
+  ])("refuses to skip a puzzle %s", (_, state, puzzleName, error) => {
+    expect(skipPuzzle(state, puzzleName, NOW)).toEqual({ ok: false, error });
+  });
+});
+
+describe("resetPuzzle", () => {
+  // The first puzzle was solved with two hints; the second is in progress
+  // with one hint; the third isn't reached.
+  const solvedFirst = () =>
+    quest(QuestStatus.IN_PROGRESS, [
+      puzzle("first", QuestPuzzleStatus.COMPLETED, {
+        startTime: EARLIER,
+        activationTime: EARLIER,
+        endTime: EARLIER,
+        nextHintToDisplay: 2,
+      }),
+      puzzle("second", QuestPuzzleStatus.IN_PROGRESS, {
+        startTime: EARLIER,
+        activationTime: EARLIER,
+        nextHintToDisplay: 1,
+      }),
+      puzzle("third", QuestPuzzleStatus.UNAVAILABLE),
+    ]);
+
+  it("puts the puzzle back in progress, and the later puzzles back to unreached", () => {
+    const state = solvedFirst();
+
+    const result = expectSuccess(resetPuzzle(state, "first", false, NOW));
+
+    expect(result.state.status).toBe(QuestStatus.IN_PROGRESS);
+    expect(result.state.puzzles[0]).toEqual({
+      ...state.puzzles[0],
+      status: QuestPuzzleStatus.IN_PROGRESS,
+      endTime: undefined,
+      skipped: false,
+      penaltyFreeHints: 0,
+    });
+    expect(result.state.puzzles.slice(1)).toEqual(
+      state.puzzles.slice(1).map((p) => ({
+        ...p,
+        status: QuestPuzzleStatus.UNAVAILABLE,
+        nextHintToDisplay: 0,
+        startTime: undefined,
+        activationTime: undefined,
+        endTime: undefined,
+        skipped: false,
+        penaltyFreeHints: 0,
+      }))
+    );
+    expect(result.events).toEqual([
+      { type: "PuzzleReset", puzzleName: "first", refundedHints: 0, at: NOW },
+    ]);
+  });
+
+  it("refunds the revealed hints' penalties when asked, keeping them revealed", () => {
+    const result = expectSuccess(
+      resetPuzzle(solvedFirst(), "first", true, NOW)
+    );
+
+    expect(result.state.puzzles[0]).toMatchObject({
+      nextHintToDisplay: 2,
+      penaltyFreeHints: 2,
+    });
+    expect(result.events).toEqual([
+      { type: "PuzzleReset", puzzleName: "first", refundedHints: 2, at: NOW },
+    ]);
+  });
+
+  it("counts only newly refunded hints", () => {
+    const state = quest(QuestStatus.IN_PROGRESS, [
+      puzzle("first", QuestPuzzleStatus.COMPLETED, {
+        nextHintToDisplay: 3,
+        penaltyFreeHints: 2,
+      }),
+    ]);
+
+    const kept = expectSuccess(resetPuzzle(state, "first", false, NOW));
+    const refunded = expectSuccess(resetPuzzle(state, "first", true, NOW));
+
+    expect(kept.state.puzzles[0].penaltyFreeHints).toBe(2);
+    expect(kept.events[0]).toMatchObject({ refundedHints: 0 });
+    expect(refunded.state.puzzles[0].penaltyFreeHints).toBe(3);
+    expect(refunded.events[0]).toMatchObject({ refundedHints: 1 });
+  });
+
+  it("reopens a completed quest, and clears a skip", () => {
+    const state = quest(QuestStatus.COMPLETED, [
+      puzzle("first", QuestPuzzleStatus.COMPLETED),
+      puzzle("last", QuestPuzzleStatus.COMPLETED, { skipped: true }),
+    ]);
+
+    const result = expectSuccess(resetPuzzle(state, "last", false, NOW));
+
+    expect(result.state.status).toBe(QuestStatus.IN_PROGRESS);
+    expect(result.state.puzzles[1]).toMatchObject({
+      status: QuestPuzzleStatus.IN_PROGRESS,
+      skipped: false,
+    });
+  });
+
+  it("works while the quest is paused", () => {
+    const state = { ...solvedFirst(), pauses: [{ startTime: EARLIER }] };
+
+    const result = expectSuccess(resetPuzzle(state, "first", true, NOW));
+
+    expect(result.state.pauses).toEqual(state.pauses);
+  });
+
+  it.each([
+    ["in a quest not started", notStarted, "first", "QUEST_NOT_STARTED"],
+    [
+      "not yet reached",
+      inProgressWith(QuestPuzzleStatus.IN_PROGRESS),
+      "third",
+      "PUZZLE_NOT_FOUND",
+    ],
+    [
+      "still in progress",
+      inProgressWith(QuestPuzzleStatus.IN_PROGRESS),
+      "second",
+      "PUZZLE_NOT_COMPLETED",
+    ],
+  ])("refuses to reset a puzzle %s", (_, state, puzzleName, error) => {
+    expect(resetPuzzle(state, puzzleName, false, NOW)).toEqual({
+      ok: false,
+      error,
+    });
   });
 });
 

@@ -33,8 +33,15 @@ export interface PuzzleState {
   readonly startTime?: Date | null;
   /** When the puzzle was activated. */
   readonly activationTime?: Date | null;
-  /** When the puzzle was solved. */
+  /** When the puzzle was solved, or skipped. */
   readonly endTime?: Date | null;
+  /** True if an administrator skipped the puzzle rather than it being solved. */
+  readonly skipped?: boolean | null;
+  /**
+   * How many of the puzzle's revealed hints carry no penalty, because an
+   * administrator refunded them when resetting the puzzle.
+   */
+  readonly penaltyFreeHints?: number | null;
 }
 
 /** A time when an administrator paused a quest. */

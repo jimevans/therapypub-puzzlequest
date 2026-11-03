@@ -55,3 +55,10 @@ export type SolvePuzzleBody = z.infer<typeof solvePuzzleBody>;
 /** PUT /api/quest/:name/puzzle/:puzzleName/hint */
 export const requestHintBody = z.object({ connectionId });
 export type RequestHintBody = z.infer<typeof requestHintBody>;
+
+/** PUT /api/quest/:name/puzzle/:puzzleName/reset */
+export const resetPuzzleBody = z.object({
+  /** True to remove the penalties of the puzzle's revealed hints. */
+  refundHints: z.boolean().default(false),
+});
+export type ResetPuzzleBody = z.infer<typeof resetPuzzleBody>;

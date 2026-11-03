@@ -21,8 +21,9 @@ function puzzlePages(questName: string, puzzleName: string): string[] {
  * Sends quest activity to the browsers showing the quest, except the one the
  * action came from, so every player and monitor sees progress as it happens.
  * Starting and resetting quests send nothing; the pages for a quest that
- * hasn't started don't listen for updates. Pausing and resuming tell every
- * page of the quest to reload.
+ * hasn't started don't listen for updates. An administrator's rescues
+ * (pausing, resuming, skipping, and resetting) tell every page of the quest
+ * to reload, since they can change much of it.
  * @param activity the activity
  */
 export function sendLiveUpdates(activity: QuestActivity): void {
@@ -70,6 +71,8 @@ export function sendLiveUpdates(activity: QuestActivity): void {
         break;
       case "QuestPaused":
       case "QuestResumed":
+      case "PuzzleSkipped":
+      case "PuzzleReset":
         // The pages reload, to show the change everywhere at once.
         WebSocketService.notifyQuestPages(questName, {
           message: "questUpdated",
