@@ -74,3 +74,9 @@ export const resetPasswordBody = z.object({
   newPassword: requiredText,
 });
 export type ResetPasswordBody = z.infer<typeof resetPasswordBody>;
+
+/** POST /api/user/email/verify: the token from a verification link. */
+export const verifyEmailBody = z.object({
+  token: requiredText,
+});
+export type VerifyEmailBody = z.infer<typeof verifyEmailBody>;

@@ -32,7 +32,11 @@ export async function index(req: Request, res: Response): Promise<void> {
       });
       return;
     } else {
-      res.render("home", { userName: loggedInUser.userName, quests: [] });
+      res.render("home", {
+        userName: loggedInUser.userName,
+        emailVerified: req.user?.emailVerified ?? false,
+        quests: [],
+      });
       return;
     }
   }
@@ -43,7 +47,11 @@ export async function index(req: Request, res: Response): Promise<void> {
     statusDescription: quest.statusDescription,
     progress: quest.getProgress(),
   }));
-  res.render("home", { userName: loggedInUser.userName, quests: quests });
+  res.render("home", {
+    userName: loggedInUser.userName,
+    emailVerified: req.user?.emailVerified ?? false,
+    quests: quests,
+  });
 }
 
 export function login(req: Request, res: Response): void {

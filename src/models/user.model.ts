@@ -48,11 +48,16 @@ const userSchema = new Schema({
     type: Number,
     default: 0,
   },
-  /**
-   * When the password was last changed; tokens issued before this are no
-   * longer valid.
-   */
+  /** When the password was last changed, if ever, for the record. */
   passwordChangedAt: {
+    type: Date,
+  },
+  /**
+   * When the user proved they receive email at their address, by following
+   * a verification link. Unset until then, and again when the address
+   * changes. Password reset links go only to verified addresses.
+   */
+  emailVerifiedAt: {
     type: Date,
   },
 });

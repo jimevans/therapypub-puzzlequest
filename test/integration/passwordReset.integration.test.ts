@@ -47,6 +47,7 @@ beforeEach(async () => {
     email: "player@example.com",
     password: "old-hash",
     authorizationLevel: 1,
+    emailVerifiedAt: new Date(),
   }).save();
 });
 

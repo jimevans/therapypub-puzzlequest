@@ -136,6 +136,13 @@ const PAGES: [string, string, string | null, string, string[]][] = [
     "resetPassword",
     ['"abc_123"'],
   ],
+  [
+    "email verification page",
+    "/user/email/verify?token=abc_123",
+    null,
+    "verifyEmail",
+    ['"abc_123"'],
+  ],
   ["sign-in for a protected page", "/puzzle/text-puzzle", null, "login", []],
 
   ["administrator home", "/", "admin", "admin", []],

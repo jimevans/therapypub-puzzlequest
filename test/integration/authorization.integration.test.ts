@@ -29,6 +29,8 @@ vi.mock("../../src/middleware/rateLimiter.js", () => {
     passwordRateLimiter: passThrough,
     activationRateLimiter: passThrough,
     solutionRateLimiter: passThrough,
+    emailVerificationRateLimiter: passThrough,
+    verificationEmailRateLimiter: passThrough,
   };
 });
 vi.mock("../../src/services/email.service.js", () => ({
@@ -116,6 +118,8 @@ const ROUTES: [string, string, Policy][] = [
   ["get", "/api/user/list", ADMIN],
   ["post", "/api/user/password/forgot", PUBLIC],
   ["post", "/api/user/password/reset", PUBLIC],
+  ["post", "/api/user/email/verify", PUBLIC],
+  ["post", "/api/user/:userName/email/verification", SELF_OR_ADMIN],
   ["get", "/api/user/:userName", SELF_OR_ADMIN],
   ["put", "/api/user/:userName", SELF_OR_ADMIN],
   ["delete", "/api/user/:userName", SELF_OR_ADMIN],
@@ -159,6 +163,7 @@ const ROUTES: [string, string, Policy][] = [
   ["get", "/user/register", PUBLIC],
   ["get", "/user/password/forgot", PUBLIC],
   ["get", "/user/password/reset", PUBLIC],
+  ["get", "/user/email/verify", PUBLIC],
   ["get", "/user/:userName", SELF_OR_ADMIN],
   ["get", "/user/:userName/edit", SELF_OR_ADMIN],
 
