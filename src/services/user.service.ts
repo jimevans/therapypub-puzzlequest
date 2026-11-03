@@ -2,7 +2,7 @@ import { AuthorizationLevel, UserModel } from "../models/user.model.js";
 import type { ServiceResult } from "../types.js";
 import * as AuthorizationService from "./authentication.service.js";
 import * as TeamService from "./team.service.js";
-import { getErrorMessage } from "../errors.js";
+import { isDuplicateKeyError, unexpectedErrorResult } from "../errors.js";
 
 /**
  * The result of a user service operation; data is a User unless the
@@ -287,11 +287,21 @@ export async function createUser(user: User): Promise<UserResult<undefined>> {
     const newUser = new UserModel(userData);
     await newUser.save();
   } catch (err) {
-    return {
-      status: "error",
-      statusCode: 500,
-      message: `New user not created - ${getErrorMessage(err)}`,
-    };
+    if (isDuplicateKeyError(err, "userName")) {
+      return {
+        status: "error",
+        statusCode: 400,
+        message: "That user name is already in use",
+      };
+    }
+    if (isDuplicateKeyError(err, "email")) {
+      return {
+        status: "error",
+        statusCode: 400,
+        message: "That email address is already in use",
+      };
+    }
+    return unexpectedErrorResult("createUser", err);
   }
   return { status: "success", statusCode: 200 };
 }
@@ -344,11 +354,14 @@ export async function updateUser(
   try {
     await foundUser.save();
   } catch (err) {
-    return {
-      status: "error",
-      statusCode: 500,
-      message: `User not updated - ${getErrorMessage(err)}`,
-    };
+    if (isDuplicateKeyError(err, "email")) {
+      return {
+        status: "error",
+        statusCode: 400,
+        message: "That email address is already in use",
+      };
+    }
+    return unexpectedErrorResult("updateUser", err);
   }
   return { status: "success", statusCode: 200 };
 }

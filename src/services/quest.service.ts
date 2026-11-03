@@ -34,7 +34,7 @@ import { publicDirectory } from "../paths.js";
 import type { ServiceResult } from "../types.js";
 import * as PuzzleService from "./puzzle.service.js";
 import type { User } from "./user.service.js";
-import { getErrorMessage } from "../errors.js";
+import { unexpectedErrorResult } from "../errors.js";
 
 /**
  * The result of a quest service operation; data is a Quest unless the
@@ -806,7 +806,7 @@ export async function createQuest(
   try {
     await quest.save();
   } catch (err) {
-    return { status: "error", statusCode: 500, message: getErrorMessage(err) };
+    return unexpectedErrorResult("createQuest", err);
   }
   return { status: "success", statusCode: 200 };
 }
@@ -905,11 +905,7 @@ export async function updateQuest(
       if (err instanceof mongoose.Error.VersionError) {
         continue;
       }
-      return {
-        status: "error",
-        statusCode: 500,
-        message: getErrorMessage(err),
-      };
+      return unexpectedErrorResult("updateQuest", err);
     }
     return { status: "success", statusCode: 200 };
   }
@@ -1092,11 +1088,7 @@ async function applyQuestAction<R>(
       if (err instanceof mongoose.Error.VersionError) {
         continue;
       }
-      return {
-        status: "error",
-        statusCode: 500,
-        message: getErrorMessage(err),
-      };
+      return unexpectedErrorResult("applyQuestAction", err);
     }
     return {
       status: "applied",
@@ -1482,11 +1474,7 @@ export async function getPuzzleActivationQrCode(
     const qrCodeData = await QRCode.toBuffer(puzzle.activationCode);
     return { status: "success", statusCode: 200, data: qrCodeData };
   } catch (err) {
-    return {
-      status: "error",
-      statusCode: 500,
-      message: getErrorMessage(err),
-    };
+    return unexpectedErrorResult("getPuzzleActivationQrCode", err);
   }
 }
 
@@ -1543,7 +1531,7 @@ export async function getQuestRunBook(
     }
     pdfDoc.end();
   } catch (err) {
-    return { status: "error", statusCode: 500, message: getErrorMessage(err) };
+    return unexpectedErrorResult("getQuestRunBook", err);
   }
   return { status: "success", statusCode: 200 };
 }
@@ -1614,11 +1602,7 @@ export async function setExpectedTextResponse(
       }
     );
   } catch (err) {
-    return {
-      status: "error",
-      statusCode: 500,
-      message: getErrorMessage(err),
-    };
+    return unexpectedErrorResult("setExpectedTextResponse", err);
   }
   if (result.matchedCount === 0) {
     return {

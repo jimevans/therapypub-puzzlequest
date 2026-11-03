@@ -422,7 +422,8 @@ describe("POST /api/messaging/outgoing/text", () => {
     });
   });
 
-  it("reports a Twilio API error", async () => {
+  it("reports a Twilio API error without its details, which it logs", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
     await createQuest("player-quest", "player");
     await QuestService.startQuest("player-quest");
     vi.mocked(Twilio.RequestClient.prototype.request).mockResolvedValue({
@@ -438,9 +439,16 @@ describe("POST /api/messaging/outgoing/text", () => {
     const response = await send({ questName: "player-quest", message: "Hi" });
 
     expect(response.status).toBe(500);
-    expect(JSON.parse(response.text).message).toContain(
-      "The 'To' number is not a valid phone number."
+    expect(JSON.parse(response.text).message).toBe(
+      "An unexpected error occurred"
     );
+    expect(error).toHaveBeenCalledWith(
+      "sendOutgoingTextMessage failed:",
+      expect.objectContaining({
+        message: "The 'To' number is not a valid phone number.",
+      })
+    );
+    error.mockRestore();
   });
 
   it("refuses when no one on the quest accepts texts", async () => {
