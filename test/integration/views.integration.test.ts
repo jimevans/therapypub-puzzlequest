@@ -316,3 +316,109 @@ describe("error page", () => {
     expect(response.text).toContain(`<h1>${title}</h1>`);
   });
 });
+
+describe("quest progress", () => {
+  beforeAll(async () => {
+    // A finished quest: 45 minutes, plus one revealed 60-second hint.
+    await QuestModel.create({
+      name: "finished-quest",
+      displayName: "Finished Quest",
+      userName: "player",
+      status: 2,
+      puzzles: [
+        {
+          puzzleName: "text-puzzle",
+          status: 3,
+          nextHintToDisplay: 1,
+          activationCode: "code1",
+          startTime: new Date("2026-11-03T19:00:00Z"),
+          activationTime: new Date("2026-11-03T19:05:00Z"),
+          endTime: new Date("2026-11-03T19:30:00Z"),
+        },
+        {
+          puzzleName: "image-puzzle",
+          status: 3,
+          nextHintToDisplay: 0,
+          activationCode: "code2",
+          startTime: new Date("2026-11-03T19:30:00Z"),
+          activationTime: new Date("2026-11-03T19:35:00Z"),
+          endTime: new Date("2026-11-03T19:45:00Z"),
+        },
+      ],
+    });
+  });
+
+  /**
+   * Gets the HTML of the card whose opening tag contains the given text.
+   * @param html the page
+   * @param marker text in the card's opening tag
+   * @returns the card's HTML, up to the next card
+   */
+  function card(html: string, marker: string): string {
+    const start = html.indexOf(marker);
+    expect(start).toBeGreaterThan(-1);
+    // Search for the next card after the end of this card's opening tag.
+    const bodyStart = html.indexOf(">", start) + 1;
+    const next = html.slice(bodyStart).search(/class="pq-quest(-puzzle)?"/);
+    return html.slice(start, next < 0 ? undefined : bodyStart + next);
+  }
+
+  it("shows a finished quest's elapsed time, penalties, and total on the player's home page", async () => {
+    const response = await getPage("/", "player");
+
+    const finished = card(response.text, 'data-quest-name="finished-quest"');
+    expect(finished).toContain(
+      '<span data-progress="elapsed" data-duration="2700000">00:45:00</span>'
+    );
+    expect(finished).toContain(
+      '<span data-progress="penalty" data-duration="60000">00:01:00</span>'
+    );
+    expect(finished).toContain(
+      '<span data-progress="total" data-duration="2760000">00:46:00</span>'
+    );
+    expect(finished).not.toContain("data-clock-start");
+  });
+
+  it("runs the clocks of a quest in progress, adding its penalties to the total", async () => {
+    const response = await getPage("/", "player");
+
+    const running = card(response.text, 'data-quest-name="running-quest"');
+    expect(running).toMatch(
+      /data-progress="elapsed" data-duration="0" data-clock-start="[^"]+"/
+    );
+    expect(running).toContain(
+      '<span data-progress="penalty" data-duration="60000">00:01:00</span>'
+    );
+    expect(running).toMatch(
+      /data-progress="total" data-duration="60000" data-clock-start="[^"]+"/
+    );
+  });
+
+  it.each([
+    ["quest page", "/quest/running-quest", "player"],
+    ["quest monitor", "/monitor/quest/running-quest", "admin"],
+  ])(
+    "shows the penalties on the %s, for the quest and the puzzle",
+    async (_page, path, account) => {
+      const response = await getPage(path, account);
+
+      const penalty =
+        '<span data-progress="penalty" data-duration="60000">00:01:00</span>';
+      expect(card(response.text, 'id="quest-progress"')).toContain(penalty);
+      expect(card(response.text, 'data-puzzle-name="text-puzzle"')).toContain(
+        penalty
+      );
+    }
+  );
+
+  it("includes progress in the quest's JSON", async () => {
+    const response = await getPage("/api/quest/finished-quest", "player");
+
+    expect(JSON.parse(response.text).data.progress).toMatchObject({
+      running: false,
+      elapsedMs: 45 * 60 * 1000,
+      penaltyMs: 60 * 1000,
+      totalMs: 46 * 60 * 1000,
+    });
+  });
+});

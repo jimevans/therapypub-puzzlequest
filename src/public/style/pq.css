@@ -423,11 +423,25 @@ button.pq-modal-footer-button:disabled {
   padding: 0.25em;
 }
 
+/* Hint penalties and the total time go on the row below the other times. */
+.pq-quest-time[data-time="penalty"],
+.pq-quest-time[data-time="total"],
+.pq-quest-puzzle-time[data-time="penalty"],
+.pq-quest-puzzle-time[data-time="total"] {
+  grid-row-start: 3;
+  grid-row-end: 3;
+}
+
+/* The total time is the players' score. */
+[data-time="total"] span {
+  font-weight: bold;
+}
+
 .pq-quest-puzzle-solution {
   grid-column-start: 1;
   grid-column-end: -1;
-  grid-row-start: 3;
-  grid-row-end: 3;
+  grid-row-start: 4;
+  grid-row-end: 4;
   display: flex;
   padding: 0.25em;
 }

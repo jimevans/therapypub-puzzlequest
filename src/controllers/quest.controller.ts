@@ -490,22 +490,11 @@ export async function renderQuest(
 
   const quest = questResponse.data;
 
-  // In general, there is only one active puzzle at a time. We
-  // already filter the returned puzzles to those being either
-  // awaiting activation, activated and in progress, or completed.
-  // So all that is left is to get the start time of the single
-  // puzzle, if any, that is not completed.
-  const inProgressStartTimes = quest.puzzles
-    .filter((puzzle) => puzzle.status < QuestPuzzleStatus.COMPLETED)
-    .map((puzzle) => puzzle.startTime);
-  const currentPuzzleStartTime = inProgressStartTimes.length
-    ? inProgressStartTimes[0]
-    : undefined;
   res.render(viewName, {
     userName: loggedInUser.userName,
     renderMode: req.renderMode,
     quest: quest,
-    currentPuzzleStartTime,
+    progress: quest.getProgress(),
   });
 }
 
@@ -689,20 +678,9 @@ export async function renderMonitoredQuest(
 
   const quest = questResponse.data;
 
-  // In general, there is only one active puzzle at a time. We
-  // already filter the returned puzzles to those being either
-  // awaiting activation, activated and in progress, or completed.
-  // So all that is left is to get the start time of the single
-  // puzzle, if any, that is not completed.
-  const inProgressStartTimes = quest.puzzles
-    .filter((puzzle) => puzzle.status < QuestPuzzleStatus.COMPLETED)
-    .map((puzzle) => puzzle.startTime);
-  const currentPuzzleStartTime = inProgressStartTimes.length
-    ? inProgressStartTimes[0]
-    : undefined;
   res.render("monitorQuest", {
     quest: quest,
-    currentPuzzleStartTime,
+    progress: quest.getProgress(),
   });
 }
 

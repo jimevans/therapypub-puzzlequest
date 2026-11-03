@@ -1,0 +1,34 @@
+<%#
+  The time fields of a quest or puzzle card: when it started (and, for a
+  puzzle, was activated) and ended, the elapsed time, the hint penalties, and
+  the total. kind is "quest" or "puzzle"; a puzzle card also needs its
+  activationTime. timeClass is the card's time field class.
+%>
+<% const dateFormatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }); -%>
+<% const formatDate = (date) => date ? dateFormatter.format(date) : "-"; -%>
+<div class="<%= timeClass %>" data-time="start">
+  <strong>Start time:</strong><br>
+  <span><%= formatDate(progress.startTime) %></span>
+</div>
+<% if (kind === "puzzle") { -%>
+<div class="<%= timeClass %>" data-time="activation">
+  <strong>Activation time:</strong><br>
+  <span><%= formatDate(activationTime) %></span>
+</div>
+<% } -%>
+<div class="<%= timeClass %>" data-time="end">
+  <strong><%= kind === "puzzle" ? "Solution time:" : "End time:" %></strong><br>
+  <span><%= formatDate(progress.endTime) %></span>
+</div>
+<div class="<%= timeClass %>" data-time="elapsed">
+  <strong>Elapsed time:</strong><br>
+  <%- include("duration", { progress, part: "elapsed" }) %>
+</div>
+<div class="<%= timeClass %>" data-time="penalty">
+  <strong>Hint penalties:</strong><br>
+  <%- include("duration", { progress, part: "penalty" }) %>
+</div>
+<div class="<%= timeClass %>" data-time="total">
+  <strong>Total time:</strong><br>
+  <%- include("duration", { progress, part: "total" }) %>
+</div>
