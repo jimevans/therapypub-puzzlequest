@@ -18,27 +18,9 @@ function showError(errorMessage) {
 }
 
 async function uploadBinary(data) {
-  try {
-    const response = await callDataApi("/api/puzzle/upload", {
-      method: "post",
-      body: data,
-      serializeBody: false,
-      headers: {},
-    });
-    if (response.ok) {
-      return await response.json();
-    } else {
-      const responseData = await response.json();
-      if (responseData.status === "error") {
-        console.log(
-          `${response.status} received with error ${responseData.message}`
-        );
-      }
-      return responseData;
-    }
-  } catch (err) {
-    console.log("error: " + err);
-  }
+  // Sent as multipart form data: not serialized as JSON, and with no
+  // Content-Type header, so the browser adds the multipart boundary.
+  return await callDataApi("/api/puzzle/upload", "post", data, false, {});
 }
 
 function validateInput(puzzleData) {
