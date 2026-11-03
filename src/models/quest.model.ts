@@ -59,43 +59,52 @@ questPuzzleSchema.virtual("statusDescription").get(function () {
 questPuzzleSchema.set("toJSON", { virtuals: true });
 
 /** A quest: a sequence of puzzles assigned to a user or a team. */
-const questSchema = new Schema({
-  /** The unique name of the quest. */
-  name: {
-    type: String,
-    default: "",
-    required: true,
-    unique: true,
+const questSchema = new Schema(
+  {
+    /** The unique name of the quest. */
+    name: {
+      type: String,
+      default: "",
+      required: true,
+      unique: true,
+    },
+    /** The display name of the quest. */
+    displayName: {
+      type: String,
+      default: "",
+    },
+    /** The user name or team name the quest is assigned to. */
+    userName: {
+      type: String,
+      required: true,
+    },
+    /** The status of the quest (see QuestStatus). */
+    status: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    /** The reply the quest is waiting for by text message, if any. */
+    textResponse: {
+      type: String,
+      default: "",
+    },
+    /** The confirmation sent when the expected reply arrives. */
+    textResponseConfirmation: {
+      type: String,
+      default: "",
+    },
+    /** The puzzles in the quest, in order. */
+    puzzles: [questPuzzleSchema],
   },
-  /** The display name of the quest. */
-  displayName: {
-    type: String,
-    default: "",
-  },
-  /** The user name or team name the quest is assigned to. */
-  userName: {
-    type: String,
-    required: true,
-  },
-  /** The status of the quest (see QuestStatus). */
-  status: {
-    type: Number,
-    required: true,
-    default: 0,
-  },
-  /** The reply the quest is waiting for by text message, if any. */
-  textResponse: {
-    type: String,
-    default: "",
-  },
-  /** The confirmation sent when the expected reply arrives. */
-  textResponseConfirmation: {
-    type: String,
-    default: "",
-  },
-  /** The puzzles in the quest, in order. */
-  puzzles: [questPuzzleSchema],
-});
+  {
+    // Saving fails with a VersionError if the quest was saved by someone else
+    // since it was loaded, so simultaneous changes (such as two teammates
+    // solving the same puzzle) can't overwrite each other. The quest service
+    // reloads and retries.
+    optimisticConcurrency: true,
+  }
+);
 
 questSchema.virtual("statusDescription").get(function () {
   switch (this.status) {
