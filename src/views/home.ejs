@@ -34,6 +34,9 @@
         </div>
       </div>
     </nav>
+    <% if (!emailVerified) { %>
+    <%- include("partials/emailReminder", { userName }) %>
+    <% } %>
     <p>
       Quests
     </p>

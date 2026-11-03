@@ -140,7 +140,10 @@ export async function requestPasswordReset(
   const userDocument = await UserModel.findOne({
     $or: [{ userName: normalizedIdentifier }, { email: normalizedIdentifier }],
   });
-  if (userDocument === null) {
+  // A reset link goes only to an address the user has proved is theirs, so
+  // a mistyped address can't receive control of the account. The response
+  // is the same either way, so it doesn't reveal which accounts exist.
+  if (userDocument === null || !userDocument.emailVerifiedAt) {
     return { status: "success", statusCode: 200 };
   }
   return await sendPasswordResetLink(userDocument, false);
@@ -166,6 +169,13 @@ export async function requestPasswordResetForUser(
       status: "error",
       statusCode: 404,
       message: `No user with user name ${userName} found`,
+    };
+  }
+  if (!userDocument.emailVerifiedAt) {
+    return {
+      status: "error",
+      statusCode: 400,
+      message: `${userName} hasn't verified their email address yet, so a reset link can't be sent to it`,
     };
   }
   return await sendPasswordResetLink(userDocument, true);

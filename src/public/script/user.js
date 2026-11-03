@@ -2,6 +2,7 @@
 import { DataGrid } from "./components/grid.js";
 import { Lookup } from "./components/lookup.js";
 import { callDataApi } from "./fetch.js";
+import "./emailReminder.js";
 
 const MINIMUM_PASSWORD_LENGTH = 8;
 

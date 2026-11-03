@@ -1,3 +1,4 @@
+import * as EmailVerificationService from "./emailVerification.service.js";
 import * as SessionService from "./session.service.js";
 import { AuthorizationLevel, UserModel } from "../models/user.model.js";
 import type { ServiceResult } from "../types.js";
@@ -25,6 +26,8 @@ export interface UserDefinition {
   authorizationLevel: number;
   password?: string;
   authorizationLevelDescription?: string;
+  /** When the user verified their email address, if they have. */
+  emailVerifiedAt?: Date | null;
 }
 
 /**
@@ -89,6 +92,9 @@ export class User {
   /** The description of the user's authorization level. */
   authorizationLevelDescription?: string;
 
+  /** True if the user has verified their email address. */
+  emailVerified: boolean;
+
   /** The teams the user belongs to, once loaded by getTeams. */
   teams?: UserTeam[];
 
@@ -106,6 +112,7 @@ export class User {
     this.authorizationLevel = userDefinition.authorizationLevel;
     this.authorizationLevelDescription =
       userDefinition.authorizationLevelDescription;
+    this.emailVerified = Boolean(userDefinition.emailVerifiedAt);
   }
 
   /**
@@ -159,7 +166,10 @@ export class User {
    * password is never included.
    * @returns the object to be serialized to JSON
    */
-  toJSON(): Omit<UserDefinition, "password"> & { teams?: UserTeam[] } {
+  toJSON(): Omit<UserDefinition, "password" | "emailVerifiedAt"> & {
+    emailVerified: boolean;
+    teams?: UserTeam[];
+  } {
     return {
       userName: this.userName,
       displayName: this.displayName,
@@ -168,6 +178,7 @@ export class User {
       sms: this.allowSmsMessages,
       authorizationLevel: this.authorizationLevel,
       authorizationLevelDescription: this.authorizationLevelDescription,
+      emailVerified: this.emailVerified,
       teams: this.teams,
     };
   }
@@ -302,6 +313,7 @@ export async function createUser(user: User): Promise<UserResult<undefined>> {
     }
     return unexpectedErrorResult("createUser", err);
   }
+  await EmailVerificationService.trySendVerificationEmail(userData.userName);
   return { status: "success", statusCode: 200 };
 }
 
@@ -354,6 +366,11 @@ export async function updateUser(
   const endSessions =
     foundUser.isModified("password") ||
     foundUser.isModified("authorizationLevel");
+  // A new address must be verified again.
+  const emailChanged = foundUser.isModified("email");
+  if (emailChanged) {
+    foundUser.emailVerifiedAt = undefined;
+  }
   try {
     await foundUser.save();
   } catch (err) {
@@ -368,6 +385,9 @@ export async function updateUser(
   }
   if (endSessions) {
     await SessionService.deleteUserSessions(name);
+  }
+  if (emailChanged) {
+    await EmailVerificationService.trySendVerificationEmail(name);
   }
   return { status: "success", statusCode: 200 };
 }
@@ -393,6 +413,8 @@ export interface SessionUser {
   sms: boolean;
   /** The user's authorization level (see AuthorizationLevel). */
   authorizationLevel: number;
+  /** True if the user has verified their email address. */
+  emailVerified?: boolean;
 }
 
 /**
@@ -406,7 +428,9 @@ export async function getSessionUser(
   userName: string
 ): Promise<SessionUser | null> {
   const user = await UserModel.findOne({ userName })
-    .select("userName displayName email phone sms authorizationLevel")
+    .select(
+      "userName displayName email phone sms authorizationLevel emailVerifiedAt"
+    )
     .lean();
   return user
     ? {
@@ -416,6 +440,7 @@ export async function getSessionUser(
         phone: user.phone,
         sms: user.sms,
         authorizationLevel: user.authorizationLevel,
+        emailVerified: Boolean(user.emailVerifiedAt),
       }
     : null;
 }

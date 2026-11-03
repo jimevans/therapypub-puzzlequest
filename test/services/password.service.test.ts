@@ -47,6 +47,7 @@ function createUserDocument(): any {
     email: "player@example.com",
     password: "old-hash",
     authorizationLevel: 1,
+    emailVerifiedAt: new Date("2026-11-01T00:00:00Z"),
     save: vi.fn(),
   };
 }

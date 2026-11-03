@@ -77,3 +77,30 @@ export const solutionRateLimiter = rateLimit({
   legacyHeaders: false,
   message: rateLimitedResponse,
 });
+
+/**
+ * Limits failed attempts to verify an email address from one network
+ * address. Players at a venue share an address, so it is generous; tokens
+ * are random enough that guessing one isn't practical anyway.
+ */
+export const emailVerificationRateLimiter = rateLimit({
+  windowMs: FIFTEEN_MINUTES,
+  limit: 20,
+  skipSuccessfulRequests: true,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: rateLimitedResponse,
+});
+
+/**
+ * Limits how often a verification email can be sent for one account, so
+ * the button can't be used to flood someone's inbox.
+ */
+export const verificationEmailRateLimiter = rateLimit({
+  windowMs: FIFTEEN_MINUTES,
+  limit: 3,
+  keyGenerator: (req) => String(req.params.userName ?? ""),
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: rateLimitedResponse,
+});

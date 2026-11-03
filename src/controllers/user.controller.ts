@@ -7,8 +7,10 @@ import type {
   LoginBody,
   ResetPasswordBody,
   UpdateUserBody,
+  VerifyEmailBody,
 } from "../schemas/user.schemas.js";
 import * as AuthenticationService from "../services/authentication.service.js";
+import * as EmailVerificationService from "../services/emailVerification.service.js";
 import * as PasswordService from "../services/password.service.js";
 import * as UserService from "../services/user.service.js";
 import { RenderMode } from "../middleware/useRenderMode.js";
@@ -303,4 +305,62 @@ export async function renderUser(
     user: userResponse.data,
     phone: formatPhoneNumber(userResponse.data.phone),
   });
+}
+
+/**
+ * Renders the page a verification link opens. The page verifies the
+ * address only when the user presses its button, because email scanners
+ * often follow links by themselves, which would use up the token.
+ * @param req the request
+ * @param res the response
+ */
+export function renderVerifyEmail(req: Request, res: Response): void {
+  // Keep the token in the URL from leaking to other sites.
+  res.set("Referrer-Policy", "no-referrer");
+  // Tokens are base64url; rejecting anything else also keeps arbitrary
+  // query string content out of the page's inline script.
+  const token = req.query.token;
+  const isWellFormed =
+    typeof token === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(token);
+  res.render("verifyEmail", { verificationToken: isWellFormed ? token : "" });
+}
+
+/**
+ * Verifies an email address with the token from a verification link.
+ * @param req the request
+ * @param res the response
+ */
+export async function verifyEmail(
+  req: BodyRequest<VerifyEmailBody>,
+  res: Response
+): Promise<void> {
+  const response = await EmailVerificationService.verifyEmail(req.body.token);
+  res
+    .status(response.statusCode)
+    .json(
+      response.status === "error"
+        ? { status: "error", message: response.message }
+        : { status: "success" }
+    );
+}
+
+/**
+ * Sends a new verification email for a user's address.
+ * @param req the request
+ * @param res the response
+ */
+export async function sendVerificationEmail(
+  req: RouteRequest<"userName">,
+  res: Response
+): Promise<void> {
+  const response = await EmailVerificationService.sendVerificationEmail(
+    req.params.userName
+  );
+  res
+    .status(response.statusCode)
+    .json(
+      response.status === "error"
+        ? { status: "error", message: response.message }
+        : { status: "success" }
+    );
 }

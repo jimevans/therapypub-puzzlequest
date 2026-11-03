@@ -7,6 +7,7 @@ import {
   loginBody,
   resetPasswordBody,
   updateUserBody,
+  verifyEmailBody,
 } from "../schemas/user.schemas.js";
 import {
   requireAdmin,
@@ -35,6 +36,19 @@ userApiRouter.post(
   RateLimiter.passwordRateLimiter,
   validate({ body: resetPasswordBody }),
   UserController.resetPassword
+);
+userApiRouter.post(
+  "/email/verify",
+  RateLimiter.emailVerificationRateLimiter,
+  validate({ body: verifyEmailBody }),
+  UserController.verifyEmail
+);
+userApiRouter.post(
+  "/:userName/email/verification",
+  authenticateSession,
+  requireSelfOrAdmin,
+  RateLimiter.verificationEmailRateLimiter,
+  UserController.sendVerificationEmail
 );
 userApiRouter.get(
   "/:userName",

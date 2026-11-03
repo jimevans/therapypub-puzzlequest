@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Verify your PuzzleQuest email address</title>
+    <link rel="stylesheet" type="text/css" href="/style/pq.css" />
+    <link rel="icon" type="image/png" href="/image/pq-logo-64.png" sizes="64x64 32x32 24x24 16x16" />
+    <link rel="icon" type="image/png" href="/image/pq-logo-192.png" sizes="192x192" />
+  </head>
+  <body>
+    <div class="pq-header">
+      <span class="pq-header-text">Verify your email address</span>
+    </div>
+    <form id="verify-form">
+      <div class="pq-form-element">
+        <div class="pq-label">
+          Confirm that you received the email we sent to this address.
+        </div>
+      </div>
+      <div class="pq-form-element">
+        <div>
+          <button id="verify" class="pq-button" type="submit">Verify my email address</button>
+        </div>
+      </div>
+      <div class="pq-error pq-hide">
+        <span></span>
+      </div>
+    </form>
+    <div id="verify-complete" class="pq-form-element pq-hide">
+      <div class="pq-label">
+        Thank you. Your email address is verified.
+      </div>
+      <div class="pq-label">
+        <a href="/" class="pq-link">Go to PuzzleQuest</a>
+      </div>
+    </div>
+    <script nonce="<%= cspNonce %>">
+      const verificationToken = <%- JSON.stringify(verificationToken) %>;
+    </script>
+    <script type="module" src="/script/verifyEmail.js"></script>
+  </body>
+</html>

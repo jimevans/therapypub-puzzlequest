@@ -1,0 +1,10 @@
+<%#
+  A reminder to verify the signed-in user's email address, with a button
+  that sends a new verification email (see script/emailReminder.js).
+  userName is the signed-in user.
+%>
+<div id="email-reminder" class="pq-reminder" data-user-name="<%= userName %>">
+  <span>Please verify your email address: follow the link in the email we sent you.</span>
+  <button id="resend-verification" class="pq-button" type="button">Send it again</button>
+  <span id="resend-verification-result"></span>
+</div>

@@ -645,3 +645,12 @@ button.pq-modal-footer-button:disabled {
 .pq-field-hint {
   font-size: 0.75em;
 }
+
+/* A reminder shown at the top of a page, such as to verify an email address. */
+.pq-reminder {
+  margin: 1em 0;
+  padding: 0.5em;
+  border: solid #e6a23c;
+  border-radius: 5px;
+  background-color: #fdf3e2;
+}
