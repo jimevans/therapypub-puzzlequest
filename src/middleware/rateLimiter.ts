@@ -29,3 +29,18 @@ export const passwordRateLimiter = rateLimit({
   legacyHeaders: false,
   message: rateLimitedResponse,
 });
+
+/**
+ * Limits failed puzzle activation attempts by a single user. It is keyed by
+ * user rather than by IP address, because players at a venue often share one
+ * network. Must run after requireUser.
+ */
+export const activationRateLimiter = rateLimit({
+  windowMs: FIFTEEN_MINUTES,
+  limit: 20,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => req.user?.userName ?? "",
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: rateLimitedResponse,
+});

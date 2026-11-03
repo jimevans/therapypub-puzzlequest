@@ -1,5 +1,6 @@
 import express from "express";
 import { requireUser } from "../middleware/authorization.js";
+import { activationRateLimiter } from "../middleware/rateLimiter.js";
 import * as TokenAuthenticator from "../middleware/tokenAuthentication.js";
 import { uploadActivationImage } from "../middleware/upload.js";
 import * as QuestController from "../controllers/quest.controller.js";
@@ -46,6 +47,7 @@ questApiRouter.post(
   TokenAuthenticator.tokenAuthenticate,
   // Checked before the image is read into memory.
   requireUser,
+  activationRateLimiter,
   uploadActivationImage,
   QRCodeReader.readQRCode,
   QuestController.activateQuestPuzzle
