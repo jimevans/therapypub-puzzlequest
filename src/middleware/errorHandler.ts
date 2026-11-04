@@ -1,4 +1,6 @@
+import { STATUS_CODES } from "http";
 import type { NextFunction, Request, Response } from "express";
+import { Problems, isV1Request, sendProblem } from "../api/problems.js";
 
 /**
  * Handles errors thrown by routes and middleware, including rejected promises
@@ -34,7 +36,21 @@ export function errorHandler(
   const statusCode = isClientError ? status : 500;
   const message =
     isClientError && err.expose ? err.message : "An unexpected error occurred";
-  if (req.originalUrl.startsWith("/api/")) {
+  if (isV1Request(req)) {
+    // Client errors here come from Express or its parsers, such as malformed
+    // JSON, so they have no problem type of their own.
+    sendProblem(
+      res,
+      isClientError
+        ? {
+            type: "about:blank",
+            title: STATUS_CODES[statusCode] ?? "Error",
+            status: statusCode,
+          }
+        : Problems.unexpected,
+      message
+    );
+  } else if (req.originalUrl.startsWith("/api/")) {
     res.status(statusCode).send(JSON.stringify({ status: "error", message }));
   } else {
     res.status(statusCode).type("text").send(message);

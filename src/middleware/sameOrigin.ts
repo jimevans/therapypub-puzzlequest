@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { config } from "../config.js";
+import { Problems, sendApiError } from "../api/problems.js";
 
 /** Methods that change things, which other sites must not be able to send. */
 const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -60,8 +61,10 @@ export function requireSameOrigin(
     next();
     return;
   }
-  res.status(403).json({
-    status: "error",
-    message: "Request refused: it didn't come from this site",
-  });
+  sendApiError(
+    req,
+    res,
+    Problems.crossSiteRequest,
+    "Request refused: it didn't come from this site"
+  );
 }

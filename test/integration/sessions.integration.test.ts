@@ -91,7 +91,7 @@ async function whoAmI(
 
 function signIn(body: object = {}) {
   return request(app)
-    .post("/api/user/login")
+    .post("/api/v1/sessions")
     .send({ userName: "player", password: "right password", ...body });
 }
 
@@ -99,8 +99,11 @@ describe("signing in from a browser", () => {
   it("sets an httpOnly, SameSite cookie, and never shows the page the token", async () => {
     const response = await signIn();
 
-    expect(response.status).toBe(200);
-    expect(JSON.parse(response.text)).toEqual({ status: "success" });
+    expect(response.status).toBe(201);
+    expect(response.headers.location).toBe("/api/v1/sessions/current");
+    expect(JSON.parse(response.text)).toEqual({
+      user: expect.objectContaining({ userName: "player" }),
+    });
     const cookie = sessionCookie(response)!;
     expect(cookie).toMatch(/HttpOnly/);
     expect(cookie).toMatch(/SameSite=Lax/);
@@ -138,7 +141,7 @@ describe("signing in from an app", () => {
     const response = await signIn({ client: "native" });
 
     expect(sessionCookie(response)).toBeUndefined();
-    const { token } = JSON.parse(response.text).data;
+    const { token } = JSON.parse(response.text);
     expect(
       await whoAmI((pending) => pending.set("Authorization", `Bearer ${token}`))
     ).toBe(200);
@@ -151,9 +154,9 @@ describe("signing out", () => {
     const bearer = (pending: request.Test) =>
       pending.set("Authorization", `Bearer ${player}`);
 
-    expect((await bearer(request(app).post("/api/user/logout"))).status).toBe(
-      200
-    );
+    expect(
+      (await bearer(request(app).delete("/api/v1/sessions/current"))).status
+    ).toBe(204);
 
     expect(await whoAmI(bearer)).toBe(401);
   });
@@ -169,7 +172,9 @@ describe("signing out", () => {
   });
 
   it("does nothing for an anonymous visitor", async () => {
-    expect((await request(app).post("/api/user/logout")).status).toBe(200);
+    expect((await request(app).delete("/api/v1/sessions/current")).status).toBe(
+      204
+    );
   });
 });
 
