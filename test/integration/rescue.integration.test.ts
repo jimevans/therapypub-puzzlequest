@@ -108,7 +108,7 @@ function rescue(
   body: object = {}
 ) {
   return request(app)
-    .put(`/api/quest/quest/puzzle/${puzzleName}/${action}`)
+    .post(`/api/v1/quests/quest/puzzles/${puzzleName}/${action}`)
     .set("Authorization", `Bearer ${sessions.admin}`)
     .send(body);
 }
@@ -119,9 +119,9 @@ async function storedQuest() {
 
 async function playerView() {
   const response = await request(app)
-    .get("/api/quest/quest")
+    .get("/api/v1/quests/quest")
     .set("Authorization", `Bearer ${sessions.player}`);
-  return JSON.parse(response.text).data;
+  return JSON.parse(response.text);
 }
 
 describe("skipping a puzzle", () => {
@@ -181,7 +181,7 @@ describe("skipping a puzzle", () => {
       "a puzzle already completed",
       "riddle",
       async () => rescue("skip", "riddle"),
-      400,
+      409,
       "Puzzle riddle in quest quest is already completed",
     ],
     [
@@ -197,7 +197,7 @@ describe("skipping a puzzle", () => {
     const response = await rescue("skip", puzzleName);
 
     expect(response.status).toBe(status);
-    expect(JSON.parse(response.text).message).toBe(message);
+    expect(JSON.parse(response.text).detail).toBe(message);
   });
 });
 
@@ -286,8 +286,8 @@ describe("resetting a puzzle", () => {
   it("is refused for a puzzle still in progress", async () => {
     const response = await rescue("reset", "riddle");
 
-    expect(response.status).toBe(400);
-    expect(JSON.parse(response.text).message).toBe(
+    expect(response.status).toBe(409);
+    expect(JSON.parse(response.text).detail).toBe(
       "Puzzle riddle in quest quest hasn't been completed, so there is nothing to reset"
     );
   });

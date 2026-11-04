@@ -175,6 +175,130 @@ export function toPuzzleResource(puzzle: PuzzleService.Puzzle): PuzzleResource {
   };
 }
 
+/** A moment, in ISO 8601 format. */
+const time = z.iso.datetime();
+
+/** How long players have spent on part of a quest. */
+const progressFields = {
+  startTime: time.optional().meta({ description: "When the clock started." }),
+  endTime: time.optional().meta({ description: "When the clock stopped." }),
+  running: z.boolean().meta({
+    description: "True while the clock runs: started, not stopped or paused.",
+  }),
+  clockStart: time.optional().meta({
+    description:
+      "While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.",
+  }),
+  elapsedMs: z.number().meta({
+    description: "Milliseconds on the clock, leaving out paused time.",
+  }),
+  penaltyMs: z.number().meta({
+    description: "The revealed hints' time penalties, in milliseconds.",
+  }),
+  totalMs: z.number().meta({
+    description: "The score: elapsed time plus penalties. Lower is better.",
+  }),
+};
+
+/** One of a quest's puzzles, with the players' progress on it. */
+const questPuzzleSchema = z
+  .object({
+    puzzleName: z.string(),
+    displayName: z.string().optional(),
+    status: z.number().int().meta({
+      description:
+        "0 not reached, 1 awaiting activation, 2 in progress, 3 completed.",
+    }),
+    statusDescription: z.string(),
+    nextHintToDisplay: z
+      .number()
+      .int()
+      .meta({ description: "How many hints have been revealed." }),
+    activationCode: z
+      .string()
+      .optional()
+      .meta({ description: "Only for administrators." }),
+    activationTime: time.nullish(),
+    startTime: time.nullish(),
+    endTime: time.nullish(),
+    skipped: z.boolean(),
+    solutionDisplayText: z.string().optional().meta({
+      description:
+        "Shown to the players once the puzzle is completed; always to administrators.",
+    }),
+    hints: z
+      .array(
+        z.object({
+          text: z.string(),
+          solutionWarning: z.boolean(),
+          timePenalty: z.number().int(),
+        })
+      )
+      .optional()
+      .meta({
+        description:
+          "The players see the hints they have revealed; administrators see them all.",
+      }),
+  })
+  .meta({ id: "QuestPuzzle" });
+
+/**
+ * A quest. Players see only the puzzles they have reached, and not the
+ * activation codes or the text reply the quest is waiting for.
+ */
+export const questSchema = z
+  .object({
+    name: z.string(),
+    displayName: z.string(),
+    assignee: z.object({
+      kind: z.enum(["user", "team"]),
+      id: z.string(),
+      name: z.string().optional().meta({
+        description: "Missing if the user or team has been deleted.",
+      }),
+      displayName: z.string().optional(),
+    }),
+    status: z.number().int().meta({
+      description: "0 not started, 1 in progress, 2 completed.",
+    }),
+    statusDescription: z.string(),
+    paused: z.boolean(),
+    textResponse: z.string().optional().meta({
+      description:
+        "The text message reply the quest is waiting for; only for administrators.",
+    }),
+    textResponseConfirmation: z.string().optional().meta({
+      description:
+        "What is sent back when the reply arrives; only for administrators.",
+    }),
+    puzzles: z.array(questPuzzleSchema),
+    progress: z.object({
+      ...progressFields,
+      puzzles: z.array(z.object({ puzzleName: z.string(), ...progressFields })),
+    }),
+  })
+  .meta({ id: "Quest" });
+
+/** Something that happened in a quest, from its event log. */
+export const questEventSchema = z
+  .object({
+    type: z.string().meta({
+      description:
+        "What happened: QuestStarted, PuzzleActivated, PuzzleSolved, PuzzleStarted, HintRevealed, QuestCompleted, QuestReset, QuestPaused, QuestResumed, PuzzleSkipped, or PuzzleReset.",
+    }),
+    at: time,
+    puzzleName: z.string().optional(),
+    actor: z.string().optional().meta({
+      description:
+        "The user name of whoever acted; missing when the system did, such as on an incoming call.",
+    }),
+    data: z
+      .record(z.string(), z.unknown())
+      .optional()
+      .meta({ description: "Details particular to the type." }),
+  })
+  .meta({ id: "QuestEvent" });
+
 /**
  * Gets the path of a resource in the v1 API.
  * @param segments the path's segments, such as "users" and a user name

@@ -265,14 +265,31 @@ describe("createQuest", () => {
     ).toEqual({
       status: "error",
       statusCode: 400,
+      reason: "invalid-quest",
       message: "Quest definition must contain a name or display name",
     });
+  });
+
+  it("uses an activation code given for a puzzle, and generates the others", async () => {
+    await QuestService.createQuest({
+      name: "coded",
+      assignee: { kind: "user", name: "player" },
+      puzzles: [
+        { puzzleName: "colors", activationCode: "printed-code" },
+        { puzzleName: "fruit" },
+      ],
+    });
+
+    const quest = await storedQuest("coded");
+    expect(quest.puzzles[0].activationCode).toBe("printed-code");
+    expect(quest.puzzles[1].activationCode).toMatch(/^[0-9a-f]{32}$/);
   });
 
   it("rejects a definition without a user or team to assign it to", async () => {
     expect(await QuestService.createQuest({ name: "orphan" })).toEqual({
       status: "error",
       statusCode: 400,
+      reason: "invalid-quest",
       message: "Quest definition must contain a user or team to assign it to",
     });
   });
@@ -292,6 +309,7 @@ describe("createQuest", () => {
       ).toEqual({
         status: "error",
         statusCode: 400,
+        reason: "invalid-quest",
         message: `No ${kind} with name ${name} found`,
       });
       expect(await QuestModel.countDocuments({ name: "orphan" })).toBe(0);
@@ -309,6 +327,7 @@ describe("createQuest", () => {
     ).toEqual({
       status: "error",
       statusCode: 400,
+      reason: "already-exists",
       message: "Quest with name test-quest already exists",
     });
   });
@@ -327,6 +346,7 @@ describe("createQuest", () => {
     ).toEqual({
       status: "error",
       statusCode: 400,
+      reason: "invalid-quest",
       message: "No puzzles found with names: nope, nada",
     });
     expect(await storedQuest("bad")).toBeNull();
@@ -342,6 +362,7 @@ describe("createQuest", () => {
     ).toEqual({
       status: "error",
       statusCode: 400,
+      reason: "invalid-quest",
       message: "Puzzles may appear only once in a quest: fruit",
     });
   });
@@ -371,6 +392,7 @@ describe("startQuest", () => {
     expect(await QuestService.startQuest("missing")).toEqual({
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: "No quest with quest name missing found",
     });
   });
@@ -384,6 +406,7 @@ describe("startQuest", () => {
     expect(await QuestService.startQuest("empty")).toEqual({
       status: "error",
       statusCode: 400,
+      reason: "wrong-state",
       message: "Quest empty cannot be started; it has no puzzles",
     });
   });
@@ -395,6 +418,7 @@ describe("startQuest", () => {
     expect(await QuestService.startQuest("test-quest")).toEqual({
       status: "error",
       statusCode: 400,
+      reason: "wrong-state",
       message: "Quest test-quest cannot be started; status is 1",
     });
   });
@@ -449,6 +473,7 @@ describe("activatePuzzle", () => {
     ).toEqual({
       status: "error",
       statusCode: 406,
+      reason: "wrong-activation-code",
       message: "Incorrect activation code for puzzle",
     });
     expect((await storedQuest()).puzzles[0].status).toBe(
@@ -470,6 +495,7 @@ describe("activatePuzzle", () => {
     ).toEqual({
       status: "error",
       statusCode: 403,
+      reason: "forbidden",
       message:
         "User is not authorized to activate puzzles for quest test-quest",
     });
@@ -488,6 +514,7 @@ describe("activatePuzzle", () => {
     ).toEqual({
       status: "error",
       statusCode: 400,
+      reason: "wrong-state",
       message: "Puzzle colors in quest test-quest is not awaiting activation",
     });
   });
@@ -506,6 +533,7 @@ describe("activatePuzzle", () => {
     ).toEqual({
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: "No puzzle with name fruit in quest test-quest",
     });
   });
@@ -523,6 +551,7 @@ describe("activatePuzzle", () => {
     ).toEqual({
       status: "error",
       statusCode: 400,
+      reason: "wrong-state",
       message: "Quest test-quest is not yet started",
     });
   });
@@ -533,6 +562,7 @@ describe("activatePuzzle", () => {
     ).toEqual({
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: "No quest with quest name missing found",
     });
   });
@@ -638,6 +668,7 @@ describe("finishPuzzle", () => {
     ).toEqual({
       status: "error",
       statusCode: 406,
+      reason: "wrong-answer",
       message: "Incorrect guess for puzzle solution",
     });
     expect((await storedQuest()).puzzles[0].status).toBe(
@@ -732,6 +763,7 @@ describe("finishPuzzle", () => {
     ).toEqual({
       status: "error",
       statusCode: 400,
+      reason: "wrong-state",
       message: "Puzzle colors in quest test-quest is not in progress",
     });
   });
@@ -753,6 +785,7 @@ describe("finishPuzzle", () => {
     ).toEqual({
       status: "error",
       statusCode: 400,
+      reason: "wrong-state",
       message: "Quest test-quest is already completed",
     });
   });
@@ -770,6 +803,7 @@ describe("finishPuzzle", () => {
     ).toEqual({
       status: "error",
       statusCode: 403,
+      reason: "forbidden",
       message: "User is not authorized to solve puzzles for quest test-quest",
     });
   });
@@ -832,6 +866,7 @@ describe("finishPuzzle", () => {
     expect(await action("test-quest")).toEqual({
       status: "error",
       statusCode: 400,
+      reason: "wrong-state",
       message: "Quest test-quest is not yet started",
     });
   });
@@ -904,6 +939,7 @@ describe("getPuzzleHint", () => {
     ).toEqual({
       status: "error",
       statusCode: 400,
+      reason: "wrong-state",
       message: "Puzzle colors in quest test-quest is not in progress",
     });
   });
@@ -920,6 +956,7 @@ describe("getPuzzleHint", () => {
     ).toEqual({
       status: "error",
       statusCode: 403,
+      reason: "forbidden",
       message:
         "User is not authorized to request puzzle hints for quest test-quest",
     });
@@ -1048,6 +1085,7 @@ describe("updateQuest", () => {
     ).toEqual({
       status: "error",
       statusCode: 400,
+      reason: "invalid-quest",
       message: "No puzzles found with names: nope",
     });
     expect(await storedQuest()).toEqual(before);
@@ -1124,6 +1162,7 @@ describe("updateQuest", () => {
       ).toEqual({
         status: "error",
         statusCode: 400,
+        reason: "wrong-state",
         message:
           "Puzzle colors has already been reached by the players, so it must stay in its place at the start of the quest",
       });
@@ -1149,6 +1188,7 @@ describe("updateQuest", () => {
     ).toEqual({
       status: "error",
       statusCode: 400,
+      reason: "wrong-state",
       message:
         "Quest test-quest is completed, so its puzzles can't change until it is reset",
     });
@@ -1192,6 +1232,7 @@ describe("updateQuest", () => {
     expect(result).toEqual({
       status: "error",
       statusCode: 400,
+      reason: "wrong-state",
       message:
         "Puzzle fruit has already been reached by the players, so it must stay in its place at the start of the quest",
     });
@@ -1208,6 +1249,7 @@ describe("updateQuest", () => {
     ).toEqual({
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: "No quest with quest name missing found",
     });
   });
@@ -1228,6 +1270,7 @@ describe("deleteQuest", () => {
     expect(await QuestService.deleteQuest("missing")).toEqual({
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: "Quest with name missing does not exist",
     });
   });
@@ -1277,6 +1320,7 @@ describe("getQuestByQuestName", () => {
     ).toEqual({
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message:
         "no quests found matching quest name equal to test-quest and assigned to the user or one of their teams and status greater than or equal to 1",
     });
@@ -1404,6 +1448,7 @@ describe("getQuestPuzzle", () => {
     ).toEqual({
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: "No puzzle named fruit found for quest test-quest",
     });
   });
@@ -1427,6 +1472,7 @@ describe("findQuests", () => {
     expect(await QuestService.findQuests()).toEqual({
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: "no quests found",
     });
   });

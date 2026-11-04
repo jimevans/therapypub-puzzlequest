@@ -43,7 +43,16 @@ export type ServiceErrorReason =
   | "wrong-join-code"
   | "email-not-verified"
   | "invalid-link"
-  | "in-use";
+  | "in-use"
+  | "forbidden"
+  | "invalid-quest"
+  | "wrong-state"
+  | "quest-paused"
+  | "busy"
+  | "wrong-activation-code"
+  | "wrong-answer"
+  | "no-recipients"
+  | "messaging-failed";
 
 /**
  * An Express request whose route provides the named parameters, each a single

@@ -2,7 +2,10 @@
 import { DataGrid } from "./components/grid.js";
 import { Modal } from "./components/modal.js";
 import { TextMessageComposer } from "./components/textMessageComposer.js";
-import { callDataApi } from "./fetch.js";
+import { callApi } from "./api.js";
+
+/** The quest's path in the v1 API. */
+const questPath = `/quests/${encodeURIComponent(quest.name)}`;
 
 function addGeneratorButtons(gridElement) {
   const buttonCells = [
@@ -45,15 +48,9 @@ document
   ?.addEventListener("click", async (e) => {
     e.preventDefault();
     document.querySelector("#nav-checkbox").checked = false;
-    const activationResponse = await callDataApi(
-      `/api/quest/${quest.name}/activate`,
-      "put",
-      {}
-    );
-    if (activationResponse.status === "error") {
-      console.log(
-        `Error received activating quest: ${activationResponse.message}`
-      );
+    const response = await callApi(`${questPath}/start`, { method: "POST" });
+    if (!response.ok) {
+      window.alert(response.problem.detail ?? response.problem.title);
       return;
     }
     window.location.href = e.target.href;
@@ -62,13 +59,9 @@ document
 document.querySelector("#reset-link")?.addEventListener("click", async (e) => {
   e.preventDefault();
   document.querySelector("#nav-checkbox").checked = false;
-  const resetResponse = await callDataApi(
-    `/api/quest/${quest.name}/reset`,
-    "put",
-    {}
-  );
-  if (resetResponse.status === "error") {
-    console.log(`Error received resetting quest ${resetResponse.message}`);
+  const response = await callApi(`${questPath}/reset`, { method: "POST" });
+  if (!response.ok) {
+    window.alert(response.problem.detail ?? response.problem.title);
     return;
   }
   window.location.href = e.target.href;
@@ -88,13 +81,11 @@ for (const action of ["pause", "resume"]) {
       ) {
         return;
       }
-      const response = await callDataApi(
-        `/api/quest/${quest.name}/${action}`,
-        "put",
-        {}
-      );
-      if (response.status === "error") {
-        window.alert(response.message);
+      const response = await callApi(`${questPath}/${action}`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        window.alert(response.problem.detail ?? response.problem.title);
         return;
       }
       window.location.reload();
@@ -122,13 +113,12 @@ async function rescuePuzzle(action) {
   if (!puzzleName || !window.confirm(question)) {
     return;
   }
-  const response = await callDataApi(
-    `/api/quest/${quest.name}/puzzle/${encodeURIComponent(puzzleName)}/${action}`,
-    "put",
-    action === "reset" ? { refundHints } : {}
+  const response = await callApi(
+    `${questPath}/puzzles/${encodeURIComponent(puzzleName)}/${action}`,
+    { method: "POST", body: action === "reset" ? { refundHints } : undefined }
   );
-  if (response.status === "error") {
-    window.alert(response.message);
+  if (!response.ok) {
+    window.alert(response.problem.detail ?? response.problem.title);
     return;
   }
   window.location.reload();
@@ -161,10 +151,7 @@ document.querySelector("#notify-link")?.addEventListener("click", (e) => {
       e.target.disabled = false;
       return;
     }
-    const messagePayload = {
-      questName: quest.name,
-      message: message,
-    };
+    const messagePayload = { message };
     if (expectedResponse) {
       if (!responseConfirmation) {
         composer.setError(
@@ -175,13 +162,14 @@ document.querySelector("#notify-link")?.addEventListener("click", (e) => {
       messagePayload.expectedResponse = expectedResponse;
       messagePayload.responseConfirmation = responseConfirmation;
     }
-    const sendMessageResponse = await callDataApi(
-      "/api/messaging/outgoing/text",
-      "post",
-      messagePayload
-    );
-    if (sendMessageResponse.status === "error") {
-      composer.setError(sendMessageResponse.message);
+    const sendMessageResponse = await callApi(`${questPath}/text-messages`, {
+      method: "POST",
+      body: messagePayload,
+    });
+    if (!sendMessageResponse.ok) {
+      composer.setError(
+        sendMessageResponse.problem.detail ?? sendMessageResponse.problem.title
+      );
       e.target.disabled = false;
       return;
     }

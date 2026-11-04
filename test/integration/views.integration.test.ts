@@ -441,9 +441,9 @@ describe("quest progress", () => {
   );
 
   it("includes progress in the quest's JSON", async () => {
-    const response = await getPage("/api/quest/finished-quest", "player");
+    const response = await getPage("/api/v1/quests/finished-quest", "player");
 
-    expect(JSON.parse(response.text).data.progress).toMatchObject({
+    expect(JSON.parse(response.text).progress).toMatchObject({
       running: false,
       elapsedMs: 45 * 60 * 1000,
       penaltyMs: 60 * 1000,

@@ -31,6 +31,7 @@ import {
   questEventBus,
 } from "../events/questEventBus.js";
 import { PuzzleModel } from "../models/puzzle.model.js";
+import { QuestEventModel } from "../models/questEvent.model.js";
 import {
   type AssigneeKind,
   QuestModel,
@@ -40,6 +41,7 @@ import {
 import { TeamModel, UserModel } from "../models/user.model.js";
 import { publicDirectory } from "../paths.js";
 import type { ServiceResult } from "../types.js";
+import { type Page, type PageQuery, findPage } from "../api/paging.js";
 import * as PuzzleService from "./puzzle.service.js";
 import type { User } from "./user.service.js";
 import { unexpectedErrorResult } from "../errors.js";
@@ -470,6 +472,8 @@ export type QuestPlayerJSON = Pick<
 export interface QuestQueryOptions {
   /** The name of the quest to retrieve. */
   questName?: string;
+  /** The IDs of the quests to retrieve. */
+  questIds?: Types.ObjectId[];
   /** The IDs of the users and teams for which to retrieve quests. */
   assigneeIds?: string[];
   /** The status that the quest must be greater than or equal to be included in the result. */
@@ -559,6 +563,9 @@ function createFindMatchParameter(queryOptions?: QuestQueryOptions): object {
     // Limit results to only quests having the specified quest name.
     // NOTE: this should only ever return a single quest.
     matchParam.name = queryOptions.questName;
+  }
+  if (queryOptions?.questIds) {
+    matchParam._id = { $in: queryOptions.questIds };
   }
   if (queryOptions?.assigneeIds) {
     // Limit results to only quests assigned to one of the specified users
@@ -669,7 +676,7 @@ export async function findQuests(
 ): Promise<QuestResult<Quest[]>> {
   const pipelineStages: PipelineStage[] = [];
   const matchParam = createFindMatchParameter(queryOptions);
-  pipelineStages.push({ $match: matchParam });
+  pipelineStages.push({ $match: matchParam }, { $sort: { _id: 1 } });
   // Quests refer to their puzzles by ID; the puzzles' details, including
   // their names, are looked up.
   const puzzleDetailsParams = createFindPuzzleDetailsParameters();
@@ -686,6 +693,7 @@ export async function findQuests(
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `no quests found${
         returnedError ? " matching " + returnedError : ""
       }`,
@@ -784,10 +792,85 @@ async function findAssignee(assignee: {
     return {
       status: "error",
       statusCode: 400,
+      reason: "invalid-quest",
       message: `No ${assignee.kind} with name ${assignee.name} found`,
     };
   }
   return { kind: assignee.kind, id: found._id };
+}
+
+/**
+ * Gets a page of the quests, in the order they were created, with their
+ * puzzles' details.
+ * @param query the page wanted
+ * @returns the page of quests
+ */
+export async function listQuestsPage(query: PageQuery): Promise<Page<Quest>> {
+  const page = await findPage(
+    (conditions) => QuestModel.find(conditions, { _id: 1 }).lean(),
+    query
+  );
+  if (!page.items.length) {
+    return { items: [], next: null };
+  }
+  const found = await findQuests(
+    { questIds: page.items.map((quest) => quest._id) },
+    true
+  );
+  return { items: found.data ?? [], next: page.next };
+}
+
+/**
+ * Gets a page of what happened in a quest, oldest first, from its event log.
+ * The log keeps names as they were, as history.
+ * @param questName the quest
+ * @param query the page wanted
+ * @returns the page of events, or an error result if there is no such quest
+ */
+export async function listQuestEventsPage(
+  questName: string,
+  query: PageQuery
+): Promise<
+  QuestResult<
+    Page<{
+      type: string;
+      at: Date;
+      puzzleName?: string | null;
+      actor?: string | null;
+      data?: unknown;
+    }>
+  >
+> {
+  if (!(await QuestModel.exists({ name: questName }))) {
+    return {
+      status: "error",
+      statusCode: 404,
+      reason: "not-found",
+      message: `No quest with quest name ${questName} found`,
+    };
+  }
+  const page = await findPage(
+    (conditions) =>
+      QuestEventModel.find(
+        { questName, ...conditions },
+        { questName: 0 }
+      ).lean(),
+    query
+  );
+  return {
+    status: "success",
+    statusCode: 200,
+    data: {
+      next: page.next,
+      items: page.items.map(({ type, at, puzzleName, actor, data }) => ({
+        type,
+        at,
+        ...(puzzleName ? { puzzleName } : {}),
+        ...(actor ? { actor } : {}),
+        ...(data ? { data } : {}),
+      })),
+    },
+  };
 }
 
 /**
@@ -841,6 +924,7 @@ export async function getQuestAndPuzzle(
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `No puzzle named ${puzzleName} found for quest ${questName}`,
     };
   }
@@ -883,6 +967,7 @@ async function findQuestPuzzleIds(
     return {
       status: "error",
       statusCode: 400,
+      reason: "invalid-quest",
       message: `Puzzles may appear only once in a quest: ${[
         ...new Set(duplicates),
       ].join(", ")}`,
@@ -898,6 +983,7 @@ async function findQuestPuzzleIds(
     return {
       status: "error",
       statusCode: 400,
+      reason: "invalid-quest",
       message: `No puzzles found with names: ${missing.join(", ")}`,
     };
   }
@@ -955,6 +1041,7 @@ export async function createQuest(
     return {
       status: "error",
       statusCode: 400,
+      reason: "invalid-quest",
       message: "Quest definition must contain a name or display name",
     };
   }
@@ -962,6 +1049,7 @@ export async function createQuest(
     return {
       status: "error",
       statusCode: 400,
+      reason: "invalid-quest",
       message: "Quest definition must contain a user or team to assign it to",
     };
   }
@@ -974,6 +1062,7 @@ export async function createQuest(
     return {
       status: "error",
       statusCode: 400,
+      reason: "already-exists",
       message: `Quest with name ${questName} already exists`,
     };
   }
@@ -994,9 +1083,11 @@ export async function createQuest(
       return ids;
     }
     quest.puzzles.push(
-      ...puzzleNames.map((puzzleName) =>
-        createQuestPuzzleEntry(puzzleIdOf(ids, puzzleName))
-      )
+      ...questDefinition.puzzles.map(({ puzzleName, activationCode }) => ({
+        ...createQuestPuzzleEntry(puzzleIdOf(ids, puzzleName)),
+        // A code given for the puzzle replaces the generated one.
+        ...(activationCode ? { activationCode } : {}),
+      }))
     );
   }
   try {
@@ -1020,6 +1111,7 @@ export async function deleteQuest(
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `Quest with name ${name} does not exist`,
     };
   }
@@ -1061,6 +1153,7 @@ export async function updateQuest(
       return {
         status: "error",
         statusCode: 404,
+        reason: "not-found",
         message: `No quest with quest name ${questDefinition.name} found`,
       };
     }
@@ -1078,6 +1171,7 @@ export async function updateQuest(
         return {
           status: "error",
           statusCode: 400,
+          reason: "wrong-state",
           message:
             check.error === "QUEST_COMPLETED"
               ? `Quest ${questDefinition.name} is completed, so its puzzles can't change until it is reset`
@@ -1293,6 +1387,7 @@ async function applyQuestAction<R>(
       return {
         status: "error",
         statusCode: 404,
+        reason: "not-found",
         message: `No quest with quest name ${questName} found`,
       };
     }
@@ -1301,6 +1396,7 @@ async function applyQuestAction<R>(
       return {
         status: "error",
         statusCode: 403,
+        reason: "forbidden",
         message: `User is not authorized to ${actor.action} for quest ${questName}`,
       };
     }
@@ -1347,6 +1443,7 @@ function questChangingError(questName: string): QuestErrorResult {
   return {
     status: "error",
     statusCode: 409,
+    reason: "busy",
     message: `Quest ${questName} is being changed by someone else; please try again`,
   };
 }
@@ -1368,54 +1465,63 @@ function puzzleActionRefused(
       return {
         status: "error",
         statusCode: 400,
+        reason: "wrong-state",
         message: `Quest ${questName} is already completed`,
       };
     case "PUZZLE_NOT_FOUND":
       return {
         status: "error",
         statusCode: 404,
+        reason: "not-found",
         message: `No puzzle with name ${puzzleName} in quest ${questName}`,
       };
     case "PUZZLE_NOT_AWAITING_ACTIVATION":
       return {
         status: "error",
         statusCode: 400,
+        reason: "wrong-state",
         message: `Puzzle ${puzzleName} in quest ${questName} is not awaiting activation`,
       };
     case "PUZZLE_NOT_IN_PROGRESS":
       return {
         status: "error",
         statusCode: 400,
+        reason: "wrong-state",
         message: `Puzzle ${puzzleName} in quest ${questName} is not in progress`,
       };
     case "WRONG_ACTIVATION_CODE":
       return {
         status: "error",
         statusCode: 406,
+        reason: "wrong-activation-code",
         message: "Incorrect activation code for puzzle",
       };
     case "WRONG_SOLUTION":
       return {
         status: "error",
         statusCode: 406,
+        reason: "wrong-answer",
         message: "Incorrect guess for puzzle solution",
       };
     case "PUZZLE_COMPLETED":
       return {
         status: "error",
         statusCode: 400,
+        reason: "wrong-state",
         message: `Puzzle ${puzzleName} in quest ${questName} is already completed`,
       };
     case "PUZZLE_NOT_COMPLETED":
       return {
         status: "error",
         statusCode: 400,
+        reason: "wrong-state",
         message: `Puzzle ${puzzleName} in quest ${questName} hasn't been completed, so there is nothing to reset`,
       };
     case "QUEST_PAUSED":
       return {
         status: "error",
         statusCode: 409,
+        reason: "quest-paused",
         message: `Quest ${questName} is paused by the puzzle master; please wait until it resumes`,
       };
     default:
@@ -1424,6 +1530,7 @@ function puzzleActionRefused(
       return {
         status: "error",
         statusCode: 400,
+        reason: "wrong-state",
         message: `Quest ${questName} is not yet started`,
       };
   }
@@ -1511,6 +1618,7 @@ export async function startQuest(
     return {
       status: "error",
       statusCode: 400,
+      reason: "wrong-state",
       message:
         outcome.error === "NO_PUZZLES"
           ? `Quest ${name} cannot be started; it has no puzzles`
@@ -1561,6 +1669,7 @@ export async function pauseQuest(
     return {
       status: "error",
       statusCode: 400,
+      reason: "wrong-state",
       message:
         outcome.error === "QUEST_PAUSED"
           ? `Quest ${questName} is already paused`
@@ -1589,6 +1698,7 @@ export async function resumeQuest(
     return {
       status: "error",
       statusCode: 400,
+      reason: "wrong-state",
       message: `Quest ${questName} isn't paused`,
     };
   }
@@ -1822,6 +1932,7 @@ export async function getPuzzleActivationQrCode(
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `No quest with quest name ${questName} found`,
     };
   }
@@ -1831,6 +1942,7 @@ export async function getPuzzleActivationQrCode(
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `No puzzle with name ${puzzleName} in quest ${questName}`,
     };
   }
@@ -1858,6 +1970,7 @@ export async function getQuestRunBook(
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `No quest with quest name ${questName} found`,
     };
   }
@@ -1972,6 +2085,7 @@ export async function setExpectedTextResponse(
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `No quest with quest name ${questName} found`,
     };
   }
@@ -1993,6 +2107,7 @@ export async function validateExpectedTextResponse(
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `No quest with quest name ${questName} found`,
     };
   }

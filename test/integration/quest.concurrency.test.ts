@@ -137,6 +137,7 @@ describe("simultaneous actions on a quest", () => {
     expect(result).toEqual({
       status: "error",
       statusCode: 400,
+      reason: "wrong-state",
       message: "Puzzle colors in quest test-quest is not in progress",
     });
     const quest = await storedQuest();
@@ -184,6 +185,7 @@ describe("simultaneous actions on a quest", () => {
     expect(result).toEqual({
       status: "error",
       statusCode: 400,
+      reason: "wrong-state",
       message: "Puzzle colors in quest test-quest is not in progress",
     });
     expect((await storedQuest()).puzzles[0].nextHintToDisplay).toBe(0);
@@ -232,6 +234,7 @@ describe("simultaneous actions on a quest", () => {
     expect(result).toEqual({
       status: "error",
       statusCode: 409,
+      reason: "busy",
       message:
         "Quest test-quest is being changed by someone else; please try again",
     });
@@ -266,6 +269,7 @@ describe("simultaneous actions on a quest", () => {
     ).toEqual({
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: "No quest with quest name missing found",
     });
   });

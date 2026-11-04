@@ -129,7 +129,9 @@ describe("problems", () => {
   });
 
   it("aren't sent by the older API", async () => {
-    const response = await request(app).get("/api/quest/list");
+    const response = await request(app)
+      .put("/api/quest/quest/puzzle/riddle/solve")
+      .send({ guess: "x" });
 
     expect(response.status).toBe(401);
     expect(response.type).toBe("application/json");

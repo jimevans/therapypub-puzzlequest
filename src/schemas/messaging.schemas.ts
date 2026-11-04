@@ -1,15 +1,25 @@
 import { z } from "zod";
 import { requiredText } from "./common.js";
 
-/** POST /api/messaging/outgoing/text */
-export const sendTextBody = z.object({
-  questName: requiredText,
-  message: requiredText.max(1600, "Must be at most 1600 characters"),
-  /** A reply to wait for, and the confirmation to send when it arrives. */
-  expectedResponse: z.string().optional(),
-  responseConfirmation: z.string().optional(),
-});
-export type SendTextBody = z.infer<typeof sendTextBody>;
+/**
+ * POST /api/v1/quests/{name}/text-messages. A reply to wait for needs the
+ * confirmation to send back when it arrives.
+ */
+export const sendTextBody = z
+  .object({
+    message: requiredText.max(1600, "Must be at most 1600 characters"),
+    expectedResponse: z.string().optional().meta({
+      description:
+        "A reply for the quest to wait for; letter case doesn't matter.",
+    }),
+    responseConfirmation: z.string().optional().meta({
+      description: "What is texted back when the reply arrives.",
+    }),
+  })
+  .refine((body) => !body.expectedResponse || body.responseConfirmation, {
+    message: "A reply to wait for needs a confirmation to send back",
+    path: ["responseConfirmation"],
+  });
 
 /**
  * Twilio's webhooks (signature-checked before this). From is the caller's

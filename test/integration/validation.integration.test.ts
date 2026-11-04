@@ -111,7 +111,7 @@ describe("invalid input", () => {
   });
 
   it("reports a quest assigned to something other than a user or team", async () => {
-    const response = await send("post", "/api/quest/create").send({
+    const response = await send("post", "/api/v1/quests").send({
       name: "quest",
       displayName: "Quest",
       assignee: { kind: "group", name: "player" },
@@ -124,7 +124,7 @@ describe("invalid input", () => {
   });
 
   it("reports a missing field", async () => {
-    const response = await send("post", "/api/quest/create").send({
+    const response = await send("post", "/api/v1/quests").send({
       name: "quest",
       assignee: { kind: "user", name: "player" },
     });
@@ -136,7 +136,7 @@ describe("invalid input", () => {
   });
 
   it("is checked only after authorization", async () => {
-    const response = await send("post", "/api/quest/create", "player").send({});
+    const response = await send("post", "/api/v1/quests", "player").send({});
 
     expect(response.status).toBe(403);
   });
@@ -244,7 +244,7 @@ describe("fields a request adds", () => {
       });
     }
 
-    await send("put", "/api/quest/first").send({
+    await send("patch", "/api/v1/quests/first").send({
       name: "second",
       displayName: "Renamed",
     });

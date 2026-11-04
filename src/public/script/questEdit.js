@@ -1,8 +1,7 @@
 /* global renderMode, quest -- defined by an inline script in the page */
 import { DataGrid } from "./components/grid.js";
 import { Lookup } from "./components/lookup.js";
-import { listAll } from "./api.js";
-import { callDataApi } from "./fetch.js";
+import { callApi, listAll } from "./api.js";
 
 function clearError() {
   const errorNotifier = document.querySelector(".pq-error");
@@ -229,15 +228,15 @@ async function saveQuest() {
     return false;
   }
 
-  const dataApiVerb = renderMode === "edit" ? "put" : "post";
-  const dataApiUrl =
+  const response =
     renderMode === "edit"
-      ? `/api/quest/${questData.name}`
-      : `/api/quest/create`;
-
-  const dataReturn = await callDataApi(dataApiUrl, dataApiVerb, questData);
-  if (dataReturn.status === "error") {
-    showError(dataReturn.message);
+      ? await callApi(`/quests/${encodeURIComponent(questData.name)}`, {
+          method: "PATCH",
+          body: { ...questData, name: undefined },
+        })
+      : await callApi("/quests", { method: "POST", body: questData });
+  if (!response.ok) {
+    showError(response.problem.detail ?? response.problem.title);
     return false;
   }
   return true;

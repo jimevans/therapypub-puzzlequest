@@ -153,6 +153,9 @@ function sendWebhook(
 
 describe("Twilio webhook signatures", () => {
   const webhooks = [
+    ["/api/v1/twilio/voice", { From: "+15551230001" }],
+    ["/api/v1/twilio/messages", { From: "+15551230001", Body: "Ready" }],
+    // The original URLs, until the Twilio console points at the v1 ones.
     ["/api/messaging/incoming/voice", { From: "+15551230001" }],
     ["/api/messaging/incoming/text", { From: "+15551230001", Body: "Ready" }],
   ] as const;
@@ -232,10 +235,10 @@ describe("Twilio webhook signatures", () => {
   );
 });
 
-describe("POST /api/messaging/incoming/voice", () => {
+describe("POST /api/v1/twilio/voice", () => {
   function call(from?: string): request.Test {
     return sendWebhook(
-      "/api/messaging/incoming/voice",
+      "/api/v1/twilio/voice",
       from === undefined ? {} : { From: from }
     );
   }
@@ -299,9 +302,9 @@ describe("POST /api/messaging/incoming/voice", () => {
   });
 });
 
-describe("POST /api/messaging/incoming/text", () => {
+describe("POST /api/v1/twilio/messages", () => {
   function text(from: string, body: string): request.Test {
-    return sendWebhook("/api/messaging/incoming/text", {
+    return sendWebhook("/api/v1/twilio/messages", {
       From: from,
       Body: body,
     });
@@ -354,7 +357,7 @@ describe("POST /api/messaging/incoming/text", () => {
   });
 });
 
-describe("POST /api/messaging/outgoing/text", () => {
+describe("POST /api/v1/quests/{name}/text-messages", () => {
   let twilioRequests: { data?: unknown }[];
 
   let adminToken = "";
@@ -386,9 +389,12 @@ describe("POST /api/messaging/outgoing/text", () => {
     config.PQ_TWILIO_MESSAGING_SERVICE_ID = undefined;
   });
 
-  function send(body: object): request.Test {
+  function send({
+    questName,
+    ...body
+  }: { questName: string } & Record<string, string>): request.Test {
     return request(app)
-      .post("/api/messaging/outgoing/text")
+      .post(`/api/v1/quests/${questName}/text-messages`)
       .set("Authorization", `Bearer ${adminToken}`)
       .send(body);
   }
@@ -404,8 +410,7 @@ describe("POST /api/messaging/outgoing/text", () => {
       responseConfirmation: "Well done!",
     });
 
-    expect(response.status).toBe(200);
-    expect(JSON.parse(response.text)).toEqual({ status: "success" });
+    expect(response.status).toBe(204);
     expect(twilioRequests).toHaveLength(1);
     expect(twilioRequests[0]).toMatchObject({
       method: "post",
@@ -438,7 +443,7 @@ describe("POST /api/messaging/outgoing/text", () => {
       responseConfirmation: "Well done!",
     });
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(204);
     expect(
       twilioRequests.map((sent) => (sent.data as { To: string }).To)
     ).toEqual(["+15551230002"]);
@@ -457,7 +462,7 @@ describe("POST /api/messaging/outgoing/text", () => {
     });
 
     expect(response.status).toBe(404);
-    expect(JSON.parse(response.text).message).toBe(
+    expect(JSON.parse(response.text).detail).toBe(
       "The team this quest is assigned to no longer exists"
     );
     expect(twilioRequests).toHaveLength(0);
@@ -479,10 +484,11 @@ describe("POST /api/messaging/outgoing/text", () => {
 
     const response = await send({ questName: "player-quest", message: "Hi" });
 
-    expect(response.status).toBe(500);
-    expect(JSON.parse(response.text).message).toBe(
-      "An unexpected error occurred"
-    );
+    expect(response.status).toBe(502);
+    expect(JSON.parse(response.text)).toMatchObject({
+      type: "/problems/messaging-failed",
+      detail: "An unexpected error occurred",
+    });
     expect(error).toHaveBeenCalledWith(
       "sendOutgoingTextMessage failed:",
       expect.objectContaining({
@@ -496,13 +502,21 @@ describe("POST /api/messaging/outgoing/text", () => {
     await createQuest("quiet-quest", "quiet");
     await QuestService.startQuest("quiet-quest");
 
-    const response = await send({ questName: "quiet-quest", message: "Hi" });
+    const response = await send({
+      questName: "quiet-quest",
+      message: "Hi",
+      expectedResponse: "Found it",
+      responseConfirmation: "Well done!",
+    });
 
-    expect(response.status).toBe(400);
-    expect(JSON.parse(response.text).message).toBe(
-      "No users accepting text messages found for quest"
-    );
+    expect(response.status).toBe(409);
+    expect(JSON.parse(response.text)).toMatchObject({
+      type: "/problems/no-recipients",
+      detail: "No users accepting text messages found for quest",
+    });
     expect(twilioRequests).toHaveLength(0);
+    // Nothing was sent, so the quest isn't waiting for a reply to it.
+    expect((await storedQuest("quiet-quest")).textResponse).toBe("");
   });
 
   it("refuses a quest that is not in progress", async () => {
@@ -510,7 +524,27 @@ describe("POST /api/messaging/outgoing/text", () => {
 
     const response = await send({ questName: "player-quest", message: "Hi" });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(409);
+    expect(JSON.parse(response.text).type).toBe("/problems/wrong-state");
     expect(twilioRequests).toHaveLength(0);
+  });
+
+  it("refuses a reply to wait for without a confirmation to send back", async () => {
+    await createQuest("player-quest", "player");
+    await QuestService.startQuest("player-quest");
+
+    const response = await send({
+      questName: "player-quest",
+      message: "Hi",
+      expectedResponse: "Found it",
+    });
+
+    expect(response.status).toBe(400);
+    expect(JSON.parse(response.text).errors).toEqual([
+      {
+        path: "body.responseConfirmation",
+        message: "A reply to wait for needs a confirmation to send back",
+      },
+    ]);
   });
 });

@@ -1,6 +1,7 @@
 import { setTimeout } from "timers/promises";
 import Twilio from "twilio";
 import { config } from "../config.js";
+import { QuestStatus } from "../models/quest.model.js";
 import * as QuestService from "../services/quest.service.js";
 import { TeamModel, UserModel } from "../models/user.model.js";
 import * as UserService from "../services/user.service.js";
@@ -204,6 +205,7 @@ export async function getPhoneNumbersToMessage(
       return {
         status: "error",
         statusCode: 404,
+        reason: "not-found",
         message: "The team this quest is assigned to no longer exists",
       };
     }
@@ -217,6 +219,7 @@ export async function getPhoneNumbersToMessage(
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: "The user this quest is assigned to no longer exists",
     };
   }
@@ -250,7 +253,10 @@ export async function sendOutgoingTextMessage(
         to: phoneNumber,
       });
     } catch (err) {
-      return unexpectedErrorResult("sendOutgoingTextMessage", err);
+      return {
+        ...unexpectedErrorResult("sendOutgoingTextMessage", err),
+        reason: "messaging-failed",
+      };
     }
     // Regulatory throttling means that only one message can be sent every
     // four seconds for AT&T (on per second for other carriers), so we back
@@ -258,4 +264,56 @@ export async function sendOutgoingTextMessage(
     await setTimeout(5000);
   }
   return { status: "success", statusCode: 200 };
+}
+
+/**
+ * Texts a message to the players of an in-progress quest who accept text
+ * messages, and optionally sets the reply the quest then waits for.
+ * @param questName the quest
+ * @param message the message
+ * @param reply the reply to wait for, and the confirmation to send back
+ *  when it arrives; omit to wait for none
+ * @returns a success result, or an error result saying why it wasn't sent
+ */
+export async function sendQuestTextMessage(
+  questName: string,
+  message: string,
+  reply?: { expectedResponse: string; responseConfirmation: string }
+): Promise<ServiceResult<undefined>> {
+  const found = await QuestService.getQuestByQuestName(questName);
+  if (found.status === "error") {
+    return found;
+  }
+  const quest = found.data;
+  if (quest.status !== QuestStatus.IN_PROGRESS) {
+    return {
+      status: "error",
+      statusCode: 400,
+      reason: "wrong-state",
+      message: `Quest ${quest.name} is not in progress`,
+    };
+  }
+  const numbers = await getPhoneNumbersToMessage(quest.assignee);
+  if (numbers.status === "error") {
+    return numbers;
+  }
+  if (!numbers.data.length) {
+    return {
+      status: "error",
+      statusCode: 400,
+      reason: "no-recipients",
+      message: "No users accepting text messages found for quest",
+    };
+  }
+  if (reply) {
+    const expectation = await setupExpectedTextMessage(
+      quest.name,
+      reply.expectedResponse,
+      reply.responseConfirmation
+    );
+    if (expectation.status === "error") {
+      return expectation;
+    }
+  }
+  return sendOutgoingTextMessage(numbers.data, message);
 }
