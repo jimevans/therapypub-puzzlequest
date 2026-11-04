@@ -12,7 +12,7 @@ import {
 } from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
-import { assigneeIdsOf } from "../references.js";
+import { assigneeIdsOf, withPuzzleNames } from "../references.js";
 
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
 const { QuestModel } = await import("../../src/models/quest.model.js");
@@ -84,7 +84,9 @@ afterEach(() => {
 });
 
 async function activationCode(puzzleName: string) {
-  const quest = (await QuestModel.findOne({ name: "test-quest" }).lean())!;
+  const quest = await withPuzzleNames(
+    (await QuestModel.findOne({ name: "test-quest" }).lean())!
+  );
   return quest.puzzles.find((p) => p.puzzleName === puzzleName)!.activationCode;
 }
 

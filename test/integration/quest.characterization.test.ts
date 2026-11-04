@@ -14,13 +14,14 @@ import {
 } from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
-import { assigneeIdsOf } from "../references.js";
+import { assigneeIdsOf, puzzleIdsOf, withPuzzleNames } from "../references.js";
 
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
 const { QuestModel, QuestPuzzleStatus, QuestStatus } =
   await import("../../src/models/quest.model.js");
 const QuestService = await import("../../src/services/quest.service.js");
-const { Puzzle } = await import("../../src/services/puzzle.service.js");
+const PuzzleService = await import("../../src/services/puzzle.service.js");
+const { Puzzle } = PuzzleService;
 const { User, UserTeam } = await import("../../src/services/user.service.js");
 const { AuthorizationLevel, TeamModel, UserModel } =
   await import("../../src/models/user.model.js");
@@ -107,7 +108,7 @@ async function createQuest(
     puzzles: puzzleNames.map((puzzleName) => ({ puzzleName })),
   });
   expect(result).toEqual({ status: "success", statusCode: 200 });
-  return (await QuestModel.findOne({ name }).lean())!;
+  return withPuzzleNames((await QuestModel.findOne({ name }).lean())!);
 }
 
 /**
@@ -124,7 +125,9 @@ async function createQuestWithFirstPuzzleInProgress() {
     quest.puzzles[0].activationCode
   );
   expect(result.status).toBe("success");
-  return (await QuestModel.findOne({ name: quest.name }).lean())!;
+  return withPuzzleNames(
+    (await QuestModel.findOne({ name: quest.name }).lean())!
+  );
 }
 
 /** Assigns the test quest to team-a, whose member is "someone". */
@@ -137,7 +140,7 @@ async function assignToTeamA() {
 }
 
 async function storedQuest(name = "test-quest") {
-  return (await QuestModel.findOne({ name }).lean())!;
+  return withPuzzleNames((await QuestModel.findOne({ name }).lean())!);
 }
 
 async function createUser(
@@ -791,6 +794,9 @@ describe("finishPuzzle", () => {
 
   it("records the solution and names the next puzzle when its details are missing", async () => {
     await createQuestWithFirstPuzzleInProgress();
+    // Deleted behind the quest's back: the service refuses to delete a puzzle
+    // a quest uses, but data stored before that rule may lack one.
+    const [fruitId] = await puzzleIdsOf("fruit");
     await PuzzleModel.deleteOne({ name: "fruit" });
 
     const result = await QuestService.finishPuzzle(
@@ -801,8 +807,8 @@ describe("finishPuzzle", () => {
     );
 
     expect(result.data).toMatchObject({
-      nextPuzzleName: "fruit",
-      nextPuzzleDisplayName: "fruit",
+      nextPuzzleName: `deleted-puzzle-${fruitId.toString()}`,
+      nextPuzzleDisplayName: `deleted-puzzle-${fruitId.toString()}`,
     });
     const quest = await storedQuest();
     expect(quest.puzzles[0].status).toBe(QuestPuzzleStatus.COMPLETED);
@@ -1318,9 +1324,43 @@ describe("getQuestByQuestName", () => {
   });
 });
 
+describe("deleting a puzzle", () => {
+  it("is refused while a quest uses it", async () => {
+    await createQuest(["colors", "fruit"]);
+    await createQuest(["fruit"], "other-quest");
+
+    expect(await PuzzleService.deletePuzzle("fruit")).toEqual({
+      status: "error",
+      statusCode: 409,
+      message:
+        "Puzzle fruit is used by quests test-quest, other-quest; remove it from those quests first",
+    });
+    expect(await PuzzleModel.countDocuments({ name: "fruit" })).toBe(1);
+  });
+
+  it("is allowed once no quest uses it", async () => {
+    await createQuest(["colors", "fruit"]);
+    expect(
+      await QuestService.updateQuest({
+        name: "test-quest",
+        puzzles: [{ puzzleName: "colors" }],
+      })
+    ).toEqual({ status: "success", statusCode: 200 });
+
+    expect(await PuzzleService.deletePuzzle("fruit")).toEqual({
+      status: "success",
+      statusCode: 200,
+    });
+    expect(await PuzzleModel.countDocuments({ name: "fruit" })).toBe(0);
+  });
+});
+
 describe("quests whose puzzles were deleted", () => {
   it("still load, without details for the deleted puzzle", async () => {
     await createQuest(["colors", "fruit"]);
+    // Deleted behind the quest's back, as data stored before the service
+    // refused to delete a puzzle a quest uses may be.
+    const [fruitId] = await puzzleIdsOf("fruit");
     await PuzzleModel.deleteOne({ name: "fruit" });
 
     const result = await QuestService.getQuestByQuestName("test-quest", null);
@@ -1328,7 +1368,7 @@ describe("quests whose puzzles were deleted", () => {
     expect(result.status).toBe("success");
     expect(result.data!.puzzles.map((p) => p.puzzleName)).toEqual([
       "colors",
-      "fruit",
+      `deleted-puzzle-${fruitId.toString()}`,
     ]);
     expect(result.data!.puzzles[0].puzzleDetail!.displayName).toBe("Colors");
     expect(result.data!.puzzles[1].puzzleDetail).toBeUndefined();

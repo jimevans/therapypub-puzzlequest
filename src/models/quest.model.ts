@@ -12,9 +12,10 @@ export type AssigneeKind = (typeof AssigneeKind)[number];
 
 /** A puzzle that is part of a quest, with the quest's progress on it. */
 const questPuzzleSchema = new Schema({
-  /** The unique name of the puzzle. */
-  puzzleName: {
-    type: String,
+  /** The ID of the puzzle. */
+  puzzleId: {
+    type: Schema.Types.ObjectId,
+    ref: "Puzzle",
     required: true,
   },
   /** The index in the puzzle's hints of the next hint to reveal. */
@@ -162,6 +163,9 @@ questSchema.index({ organizationId: 1, name: 1 }, { unique: true });
 // assigned to. IDs are unique across users and teams, so the kind isn't
 // needed to find them.
 questSchema.index({ "assignee.id": 1 });
+
+// A puzzle can't be deleted while a quest uses it, found by the puzzle's ID.
+questSchema.index({ "puzzles.puzzleId": 1 });
 
 questSchema.virtual("statusDescription").get(function () {
   switch (this.status) {

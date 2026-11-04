@@ -92,12 +92,31 @@ export type QuestProperties = Pick<Quest, "name" | "displayName" | "status"> & {
     pauses?: readonly Pause[];
   };
 
+/**
+ * A quest's progress on a puzzle as stored: the puzzle is referred to by its
+ * ID, and its name is looked up when the quest is loaded.
+ */
+type StoredQuestPuzzle = Omit<QuestPuzzleProperties, "puzzleName"> & {
+  puzzleId: Types.ObjectId;
+};
+
 /** A quest as returned by the findQuests aggregation, with puzzle details. */
 type AggregatedQuest = Omit<QuestProperties, "puzzles"> & {
-  puzzles: (QuestPuzzleProperties & {
+  puzzles: (StoredQuestPuzzle & {
     details?: PuzzleService.PuzzleDefinition;
   })[];
 };
+
+/**
+ * The name used for a quest's puzzle whose puzzle no longer exists. Puzzles
+ * a quest uses can't be deleted, so this happens only to data stored before
+ * that rule.
+ * @param puzzleId the ID the quest refers to the puzzle by
+ * @returns the name
+ */
+function missingPuzzleName(puzzleId: Types.ObjectId): string {
+  return `deleted-puzzle-${puzzleId.toString()}`;
+}
 
 /**
  * A data class describing a puzzle in a quest
@@ -573,8 +592,8 @@ function createFindPuzzleDetailsParameters(): {
   };
   detailsParams.lookupParam = {
     from: "puzzles",
-    localField: "puzzles.puzzleName",
-    foreignField: "name",
+    localField: "puzzles.puzzleId",
+    foreignField: "_id",
     as: "lookupPuzzles",
   };
   detailsParams.addFieldsParam = {
@@ -592,7 +611,7 @@ function createFindPuzzleDetailsParameters(): {
                   $filter: {
                     input: "$lookupPuzzles",
                     cond: {
-                      $eq: ["$$this.name", "$$questPuzzle.puzzleName"],
+                      $eq: ["$$this._id", "$$questPuzzle.puzzleId"],
                     },
                   },
                 },
@@ -651,11 +670,11 @@ export async function findQuests(
   const pipelineStages: PipelineStage[] = [];
   const matchParam = createFindMatchParameter(queryOptions);
   pipelineStages.push({ $match: matchParam });
-  if (includeExtendedAttributes) {
-    const puzzleDetailsParams = createFindPuzzleDetailsParameters();
-    pipelineStages.push({ $lookup: puzzleDetailsParams.lookupParam });
-    pipelineStages.push({ $addFields: puzzleDetailsParams.addFieldsParam });
-  }
+  // Quests refer to their puzzles by ID; the puzzles' details, including
+  // their names, are looked up.
+  const puzzleDetailsParams = createFindPuzzleDetailsParameters();
+  pipelineStages.push({ $lookup: puzzleDetailsParams.lookupParam });
+  pipelineStages.push({ $addFields: puzzleDetailsParams.addFieldsParam });
   const projectParam = createFindResultProjectionParameter(queryOptions);
   pipelineStages.push({
     $project: projectParam as PipelineStage.Project["$project"],
@@ -673,16 +692,18 @@ export async function findQuests(
     };
   }
   const quests = foundQuests.map((foundQuest) => {
-    const quest = new Quest(foundQuest);
+    const quest = new Quest({
+      ...foundQuest,
+      puzzles: foundQuest.puzzles.map(({ puzzleId, details, ...progress }) => ({
+        ...progress,
+        puzzleName: details?.name ?? missingPuzzleName(puzzleId),
+      })),
+    });
     if (includeExtendedAttributes) {
-      quest.puzzles.forEach((puzzle) => {
-        const filtered = foundQuest.puzzles.filter(
-          (questPuzzle) => questPuzzle.puzzleName === puzzle.puzzleName
-        );
+      foundQuest.puzzles.forEach(({ details }, index) => {
         // A puzzle deleted after it was added to the quest has no details.
-        const details = filtered[0]?.details;
         if (details) {
-          puzzle.puzzleDetail = new PuzzleService.Puzzle(details);
+          quest.puzzles[index].puzzleDetail = new PuzzleService.Puzzle(details);
         }
       });
     }
@@ -846,13 +867,15 @@ export async function getQuestPuzzle(
 }
 
 /**
- * Checks a quest's list of puzzles: each puzzle must exist and appear only once.
+ * Checks a quest's list of puzzles, and finds their IDs: each puzzle must
+ * exist and appear only once.
  * @param puzzleNames the names of the puzzles in the quest
- * @returns an error result, or null if the list is valid
+ * @returns the puzzles' IDs, by name, or an error result if the list isn't
+ *  valid
  */
-async function validateQuestPuzzleNames(
+async function findQuestPuzzleIds(
   puzzleNames: string[]
-): Promise<QuestResult<undefined> | null> {
+): Promise<Map<string, Types.ObjectId> | QuestErrorResult> {
   const duplicates = puzzleNames.filter(
     (puzzleName, index) => puzzleNames.indexOf(puzzleName) !== index
   );
@@ -865,13 +888,12 @@ async function validateQuestPuzzleNames(
       ].join(", ")}`,
     };
   }
-  const foundPuzzles = await PuzzleModel.find({
-    name: { $in: puzzleNames },
-  }).select("name");
-  const foundNames = new Set(foundPuzzles.map((puzzle) => puzzle.name));
-  const missing = puzzleNames.filter(
-    (puzzleName) => !foundNames.has(puzzleName)
-  );
+  const foundPuzzles = await PuzzleModel.find(
+    { name: { $in: puzzleNames } },
+    { name: 1 }
+  ).lean();
+  const ids = new Map(foundPuzzles.map((puzzle) => [puzzle.name, puzzle._id]));
+  const missing = puzzleNames.filter((puzzleName) => !ids.has(puzzleName));
   if (missing.length) {
     return {
       status: "error",
@@ -879,17 +901,34 @@ async function validateQuestPuzzleNames(
       message: `No puzzles found with names: ${missing.join(", ")}`,
     };
   }
-  return null;
+  return ids;
+}
+
+/**
+ * Gets the ID of one of a quest's puzzles, found by findQuestPuzzleIds.
+ * @param ids the puzzles' IDs, by name
+ * @param puzzleName the name of the puzzle
+ * @returns the puzzle's ID
+ */
+function puzzleIdOf(
+  ids: Map<string, Types.ObjectId>,
+  puzzleName: string
+): Types.ObjectId {
+  const id = ids.get(puzzleName);
+  if (!id) {
+    throw new Error(`Puzzle ${puzzleName} was not found with the others`);
+  }
+  return id;
 }
 
 /**
  * Creates a new quest puzzle entry that has not yet been made available.
- * @param puzzleName the name of the puzzle
+ * @param puzzleId the ID of the puzzle
  * @returns the quest puzzle data
  */
-function createQuestPuzzleEntry(puzzleName: string): QuestPuzzleProperties {
+function createQuestPuzzleEntry(puzzleId: Types.ObjectId): StoredQuestPuzzle {
   return {
-    puzzleName,
+    puzzleId,
     nextHintToDisplay: 0,
     status: QuestPuzzleStatus.UNAVAILABLE,
     activationCode: randomUUID().replaceAll("-", ""),
@@ -950,11 +989,15 @@ export async function createQuest(
     const puzzleNames = questDefinition.puzzles.map(
       (puzzleDefinition) => puzzleDefinition.puzzleName
     );
-    const puzzleError = await validateQuestPuzzleNames(puzzleNames);
-    if (puzzleError) {
-      return puzzleError;
+    const ids = await findQuestPuzzleIds(puzzleNames);
+    if ("status" in ids) {
+      return ids;
     }
-    quest.puzzles.push(...puzzleNames.map(createQuestPuzzleEntry));
+    quest.puzzles.push(
+      ...puzzleNames.map((puzzleName) =>
+        createQuestPuzzleEntry(puzzleIdOf(ids, puzzleName))
+      )
+    );
   }
   try {
     await quest.save();
@@ -1000,11 +1043,11 @@ export async function updateQuest(
   const puzzleNames = questDefinition.puzzles?.map(
     (puzzle) => puzzle.puzzleName
   );
-  if (puzzleNames) {
-    const puzzleError = await validateQuestPuzzleNames(puzzleNames);
-    if (puzzleError) {
-      return puzzleError;
-    }
+  const puzzleIds = puzzleNames
+    ? await findQuestPuzzleIds(puzzleNames)
+    : undefined;
+  if (puzzleIds && "status" in puzzleIds) {
+    return puzzleIds;
   }
   const assignee = questDefinition.assignee
     ? await findAssignee(questDefinition.assignee)
@@ -1026,9 +1069,9 @@ export async function updateQuest(
     if (assignee) {
       foundQuest.assignee = assignee;
     }
-    if (questDefinition.puzzles && puzzleNames) {
+    if (questDefinition.puzzles && puzzleNames && puzzleIds) {
       const check = checkPuzzleListChange(
-        toQuestState(foundQuest),
+        toQuestState(foundQuest, await puzzleNamesOf(foundQuest)),
         puzzleNames
       );
       if (!check.ok) {
@@ -1043,16 +1086,17 @@ export async function updateQuest(
       }
       const existingPuzzles = new Map(
         foundQuest.puzzles.map((puzzle) => [
-          puzzle.puzzleName,
+          puzzle.puzzleId.toString(),
           puzzle.toObject(),
         ])
       );
       foundQuest.set(
         "puzzles",
         questDefinition.puzzles.map((puzzleDefinition) => {
+          const puzzleId = puzzleIdOf(puzzleIds, puzzleDefinition.puzzleName);
           const puzzle: Record<string, unknown> =
-            existingPuzzles.get(puzzleDefinition.puzzleName) ??
-            createQuestPuzzleEntry(puzzleDefinition.puzzleName);
+            existingPuzzles.get(puzzleId.toString()) ??
+            createQuestPuzzleEntry(puzzleId);
           if (puzzleDefinition.activationCode) {
             puzzle.activationCode = puzzleDefinition.activationCode;
           }
@@ -1129,19 +1173,40 @@ async function loadQuest(questName: string): Promise<QuestDocument | null> {
 }
 
 /**
+ * Gets the names of a quest's puzzles, which the quest refers to by ID.
+ * @param quest the quest document
+ * @returns the puzzles' names, in the quest's order
+ */
+async function puzzleNamesOf(quest: QuestDocument): Promise<string[]> {
+  const ids = quest.puzzles.map((puzzle) => puzzle.puzzleId);
+  const found = await PuzzleModel.find(
+    { _id: { $in: ids } },
+    { name: 1 }
+  ).lean();
+  const names = new Map(
+    found.map((puzzle) => [puzzle._id.toString(), puzzle.name])
+  );
+  return ids.map((id) => names.get(id.toString()) ?? missingPuzzleName(id));
+}
+
+/**
  * Gets a quest's progress in the form the rules work with.
  * @param quest the quest document
+ * @param puzzleNames the names of the quest's puzzles, from puzzleNamesOf
  * @returns the quest's state
  */
-function toQuestState(quest: QuestDocument): QuestState {
+function toQuestState(
+  quest: QuestDocument,
+  puzzleNames: readonly string[]
+): QuestState {
   return {
     status: quest.status as QuestStatus,
     pauses: quest.pauses.map(({ startTime, endTime }) => ({
       startTime,
       endTime,
     })),
-    puzzles: quest.puzzles.map((puzzle) => ({
-      puzzleName: puzzle.puzzleName,
+    puzzles: quest.puzzles.map((puzzle, index) => ({
+      puzzleName: puzzleNames[index],
       status: puzzle.status as QuestPuzzleStatus,
       nextHintToDisplay: puzzle.nextHintToDisplay,
       activationCode: puzzle.activationCode,
@@ -1247,7 +1312,7 @@ async function applyQuestAction<R>(
       loaded = rulesResult;
     }
     const now = new Date(Date.now());
-    const state = toQuestState(quest);
+    const state = toQuestState(quest, await puzzleNamesOf(quest));
     const result = transition(state, now, loaded.rules);
     if (!result.ok) {
       return { status: "refused", error: result.error, state };
@@ -1761,19 +1826,15 @@ export async function getPuzzleActivationQrCode(
     };
   }
 
-  const puzzles = quest.puzzles.filter(
-    (puzzle) => puzzle.puzzleName === puzzleName
-  );
-  if (!puzzles.length) {
+  const index = (await puzzleNamesOf(quest)).indexOf(puzzleName);
+  if (index === -1) {
     return {
       status: "error",
       statusCode: 404,
       message: `No puzzle with name ${puzzleName} in quest ${questName}`,
     };
   }
-
-  // Should only ever be one puzzle with this name, so get the first one.
-  const puzzle = puzzles[0];
+  const puzzle = quest.puzzles[index];
   try {
     const qrCodeData = await QRCode.toBuffer(puzzle.activationCode);
     return { status: "success", statusCode: 200, data: qrCodeData };
@@ -1802,10 +1863,9 @@ export async function getQuestRunBook(
   }
 
   try {
-    for (const puzzle of quest.puzzles) {
-      const puzzleResult = await PuzzleService.getPuzzleByPuzzleName(
-        puzzle.puzzleName
-      );
+    for (const puzzleName of await puzzleNamesOf(quest)) {
+      const puzzleResult =
+        await PuzzleService.getPuzzleByPuzzleName(puzzleName);
       if (puzzleResult.status === "error") {
         throw new Error(puzzleResult.message);
       }

@@ -8,7 +8,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
 import { startSessions } from "../sessions.js";
-import { assigneeIdsOf, userIdsOf } from "../references.js";
+import { assigneeIdsOf, puzzleIdsOf, userIdsOf } from "../references.js";
 
 const { createApp } = await import("../../src/createApp.js");
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
@@ -294,7 +294,9 @@ describe("a quest puzzle whose puzzle was deleted", () => {
 
     expect(response.status).toBe(404);
     expect(response.text).toContain("<h1>Not found</h1>");
-    expect(response.text).toContain("Puzzle doomed-puzzle no longer exists");
+    expect(response.text).toContain(
+      "No puzzle named doomed-puzzle found for quest doomed-quest"
+    );
   });
 });
 
@@ -340,6 +342,10 @@ describe("error page", () => {
 describe("quest progress", () => {
   beforeAll(async () => {
     // A finished quest: 45 minutes, plus one revealed 60-second hint.
+    const [textPuzzleId, imagePuzzleId] = await puzzleIdsOf(
+      "text-puzzle",
+      "image-puzzle"
+    );
     await QuestModel.create({
       name: "finished-quest",
       displayName: "Finished Quest",
@@ -350,7 +356,7 @@ describe("quest progress", () => {
       status: 2,
       puzzles: [
         {
-          puzzleName: "text-puzzle",
+          puzzleId: textPuzzleId,
           status: 3,
           nextHintToDisplay: 1,
           activationCode: "code1",
@@ -359,7 +365,7 @@ describe("quest progress", () => {
           endTime: new Date("2026-11-03T19:30:00Z"),
         },
         {
-          puzzleName: "image-puzzle",
+          puzzleId: imagePuzzleId,
           status: 3,
           nextHintToDisplay: 0,
           activationCode: "code2",
