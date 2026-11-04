@@ -1,4 +1,5 @@
 import { PuzzleModel, PuzzleType } from "../models/puzzle.model.js";
+import { QuestModel } from "../models/quest.model.js";
 import type { ServiceResult } from "../types.js";
 
 /**
@@ -172,14 +173,28 @@ export async function getPuzzleByPuzzleName(
 export async function deletePuzzle(
   name: string
 ): Promise<PuzzleResult<undefined>> {
-  const result = await PuzzleModel.findOneAndDelete({ name: name });
-  if (result === null) {
+  const puzzle = await PuzzleModel.findOne({ name: name }, { _id: 1 }).lean();
+  if (puzzle === null) {
     return {
       status: "error",
       statusCode: 404,
       message: `Puzzle with puzzle name ${name} does not exist`,
     };
   }
+  // Quests refer to their puzzles by ID, so deleting one a quest uses would
+  // leave the quest with a puzzle it can't show.
+  const quests = await QuestModel.find(
+    { "puzzles.puzzleId": puzzle._id },
+    { name: 1 }
+  ).lean();
+  if (quests.length) {
+    return {
+      status: "error",
+      statusCode: 409,
+      message: `Puzzle ${name} is used by ${quests.length === 1 ? "quest" : "quests"} ${quests.map((quest) => quest.name).join(", ")}; remove it from ${quests.length === 1 ? "that quest" : "those quests"} first`,
+    };
+  }
+  await PuzzleModel.deleteOne({ _id: puzzle._id });
   return { status: "success", statusCode: 200 };
 }
 

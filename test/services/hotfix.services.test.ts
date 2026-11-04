@@ -6,7 +6,7 @@ vi.mock("../../src/models/puzzle.model.js", async (importOriginal) => {
     await importOriginal<typeof import("../../src/models/puzzle.model.js")>();
   return {
     ...original,
-    PuzzleModel: { findOneAndDelete: vi.fn(), find: vi.fn() },
+    PuzzleModel: { findOne: vi.fn(), find: vi.fn() },
   };
 });
 vi.mock("../../src/models/user.model.js", async (importOriginal) => {
@@ -29,7 +29,9 @@ beforeEach(() => {
 
 describe("PuzzleService", () => {
   it("returns an error result when deleting a puzzle that does not exist", async () => {
-    vi.mocked(PuzzleModel.findOneAndDelete).mockResolvedValue(null);
+    vi.mocked(PuzzleModel.findOne).mockReturnValue({
+      lean: async () => null,
+    } as never);
 
     const result = await PuzzleService.deletePuzzle("missing");
 

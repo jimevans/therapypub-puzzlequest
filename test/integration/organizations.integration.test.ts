@@ -199,3 +199,44 @@ describe("a team's members and a quest's assignee", () => {
     });
   });
 });
+
+describe("a quest's puzzles", () => {
+  it("survive renaming a puzzle, which the players then use by its new name", async () => {
+    await UserModel.create(user("player"));
+    await PuzzleModel.create({
+      name: "riddle",
+      displayName: "Riddle",
+      solutionKeyword: "piano",
+      solutionDisplayText: "A piano",
+    });
+    await QuestService.createQuest({
+      name: "quest",
+      assignee: { kind: "user", name: "player" },
+      puzzles: [{ puzzleName: "riddle" }],
+    });
+    await QuestService.startQuest("quest");
+
+    await PuzzleModel.updateOne({ name: "riddle" }, { name: "enigma" });
+
+    const quest = (await QuestService.getQuestByQuestName("quest")).data!;
+    expect(quest.puzzles.map((puzzle) => puzzle.puzzleName)).toEqual([
+      "enigma",
+    ]);
+    const player = (await UserService.getUserByUserName("player")).data!;
+    const playerIds = await player.getAssigneeIds();
+    expect(
+      (
+        await QuestService.activatePuzzle(
+          "quest",
+          "enigma",
+          playerIds,
+          quest.puzzles[0].activationCode
+        )
+      ).status
+    ).toBe("success");
+    expect(
+      (await QuestService.finishPuzzle("quest", "enigma", playerIds, "piano"))
+        .status
+    ).toBe("success");
+  });
+});

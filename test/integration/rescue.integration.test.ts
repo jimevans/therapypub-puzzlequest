@@ -15,7 +15,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
 import { startSessions } from "../sessions.js";
-import { assigneeIdsOf } from "../references.js";
+import { assigneeIdsOf, withPuzzleNames } from "../references.js";
 
 const { createApp } = await import("../../src/createApp.js");
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
@@ -93,7 +93,9 @@ afterEach(() => {
 });
 
 async function activate(puzzleName: string) {
-  const quest = (await QuestModel.findOne({ name: "quest" }).lean())!;
+  const quest = await withPuzzleNames(
+    (await QuestModel.findOne({ name: "quest" }).lean())!
+  );
   const code = quest.puzzles.find(
     (p) => p.puzzleName === puzzleName
   )!.activationCode;
