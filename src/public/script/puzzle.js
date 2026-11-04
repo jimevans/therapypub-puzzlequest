@@ -120,8 +120,9 @@ document
   .querySelector("#request-hint")
   ?.addEventListener("click", async (e) => {
     e.preventDefault();
-    if (e.target.hasAttribute("href")) {
-      if (e.target.hasAttribute("data-solution-warning")) {
+    const hintLink = e.target;
+    if (hintLink.hasAttribute("href")) {
+      if (hintLink.hasAttribute("data-solution-warning")) {
         const modal = new Modal();
         modal.setConfirmButtonText("Yes");
         modal.setCancelButtonText("No");
@@ -130,9 +131,9 @@ document
         modalBody.innerText =
           "The next hint will show you the solution. Are you sure you want to do this?";
         modal.setBodyContent(modalBody);
-        modal.onConfirmButtonClick = async (e) => {
+        modal.onConfirmButtonClick = async () => {
           modal.hide();
-          await requestHint(e.target);
+          await requestHint(hintLink);
         };
         modal.onCancelButtonClick = (e) => {
           modal.hide();
@@ -140,7 +141,7 @@ document
         modal.show();
         return;
       }
-      await requestHint(e.target);
+      await requestHint(hintLink);
     }
   });
 

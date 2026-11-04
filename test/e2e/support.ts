@@ -1,0 +1,173 @@
+// What the browser tests share: where the server is, and ways to set up data
+// and see what the server sent without going through a browser.
+import { readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import twilio from "twilio";
+
+/** Where wdio.conf.ts starts the application. */
+export const BASE_URL = "http://localhost:3950";
+
+/** The Twilio auth token the test server checks webhooks' signatures with. */
+export const TWILIO_AUTH_TOKEN = "e2e-twilio-auth-token";
+
+/** Where the test server's output goes, including the emails it would send. */
+export const SERVER_LOG = path.join(tmpdir(), "puzzlequest-e2e-server.log");
+
+/** The password of every account the tests create, unless they change it. */
+export const PASSWORD = "a long enough password";
+
+/** The administrator wdio.conf.ts creates: the first account to sign up. */
+export const ADMIN = "e2e-admin";
+
+/**
+ * Makes names unique, since each browser runs each spec against one server.
+ * @param name the base of the name
+ * @returns the name, with a suffix unique to this run of the spec
+ */
+export function unique(name: string): string {
+  return `${name}-${Date.now().toString(36)}`;
+}
+
+/**
+ * Calls the API.
+ * @param method the HTTP method
+ * @param apiPath the path below /api/v1
+ * @param token the session token, if signed in
+ * @param body the JSON body, if any
+ * @returns the response
+ */
+async function call(
+  method: string,
+  apiPath: string,
+  token?: string,
+  body?: unknown
+): Promise<Response> {
+  return fetch(`${BASE_URL}/api/v1${apiPath}`, {
+    method,
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
+/**
+ * Calls the API as part of a test's setup, failing the test if it fails.
+ * @param method the HTTP method
+ * @param apiPath the path below /api/v1
+ * @param token the session token, if signed in
+ * @param body the JSON body, if any
+ * @returns the response's JSON, if it has any
+ */
+export async function api(
+  method: string,
+  apiPath: string,
+  token?: string,
+  body?: unknown
+): Promise<any> {
+  const response = await call(method, apiPath, token, body);
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(`${method} ${apiPath}: ${response.status} ${text}`);
+  }
+  return text ? JSON.parse(text) : undefined;
+}
+
+/**
+ * Starts a session without a browser, as an app would.
+ * @param userName the user
+ * @returns the session token
+ */
+export async function sessionToken(userName: string): Promise<string> {
+  const session = await api("POST", "/sessions", undefined, {
+    userName,
+    password: PASSWORD,
+    client: "native",
+  });
+  return session.token;
+}
+
+/**
+ * Calls the quest's phone number, as Twilio reports a call: a signed webhook.
+ * @param from the caller's number, in E.164 format
+ * @returns what the caller hears, as TwiML
+ */
+export async function callQuestNumber(from: string): Promise<string> {
+  const url = `${BASE_URL}/api/v1/webhooks/twilio/voice`;
+  const fields = { From: from };
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "X-Twilio-Signature": twilio.getExpectedTwilioSignature(
+        TWILIO_AUTH_TOKEN,
+        url,
+        fields
+      ),
+    },
+    body: new URLSearchParams(fields),
+  });
+  if (!response.ok) {
+    throw new Error(`The simulated call failed: ${response.status}`);
+  }
+  return response.text();
+}
+
+/**
+ * Waits for a link in an email the server sent. With no mail server
+ * configured, it writes emails to its output.
+ * @param to the address the email went to
+ * @param linkPath the path of the link, such as /user/email/verify
+ * @returns the link
+ */
+export async function emailedLink(
+  to: string,
+  linkPath: string
+): Promise<string> {
+  let link: string | undefined;
+  await browser.waitUntil(
+    () => {
+      const emails = readFileSync(SERVER_LOG, "utf8")
+        .split(`To: ${to}\n`)
+        .slice(1);
+      link = emails
+        .flatMap((email) => email.match(/https?:\/\/\S+/g) ?? [])
+        .findLast((url) => new URL(url).pathname === linkPath);
+      return link !== undefined;
+    },
+    { timeoutMsg: `No email to ${to} with a link to ${linkPath}` }
+  );
+  return link as string;
+}
+
+/**
+ * Signs in through the sign-in page.
+ * @param userName the user
+ * @param password the password
+ */
+export async function signIn(
+  userName: string,
+  password = PASSWORD
+): Promise<void> {
+  await browser.url("/login");
+  await $("#user-name").setValue(userName);
+  await $("#password").setValue(password);
+  await $("#login").click();
+}
+
+/**
+ * Selects the marker a page sets once the server is sending it live updates.
+ * An update sent before then never reaches the page, so a test that expects
+ * one must wait for this first.
+ */
+export const LIVE_UPDATES_CONNECTED = 'body[data-live-updates="connected"]';
+
+/**
+ * Picks an item in the open lookup dialog, by what one of its cells shows.
+ * @param text the cell's text
+ */
+export async function pickInLookup(text: string): Promise<void> {
+  await $(`//article[contains(@class,"pq-modal")]//td[.="${text}"]`).click();
+}

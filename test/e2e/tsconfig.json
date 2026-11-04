@@ -1,0 +1,11 @@
+{
+  // Type-checks the browser tests, which run under WebdriverIO rather than
+  // Vitest, with its globals (`npm run typecheck`).
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "@wdio/globals/types", "@wdio/mocha-framework"],
+    "lib": ["es2023", "dom"]
+  },
+  "include": ["**/*.ts"],
+  "exclude": []
+}
