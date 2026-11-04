@@ -15,8 +15,6 @@ import { IndexRouter } from "./routes/index.js";
 import { MessagingApiRouter } from "./routes/api.messaging.js";
 import { PuzzleApiRouter } from "./routes/api.puzzle.js";
 import { QuestApiRouter } from "./routes/api.quest.js";
-import { TeamApiRouter } from "./routes/api.team.js";
-import { UserApiRouter } from "./routes/api.user.js";
 import { MonitorRouter } from "./routes/monitor.js";
 import { PuzzleRouter } from "./routes/puzzle.js";
 import { QuestRouter } from "./routes/quest.js";
@@ -80,10 +78,8 @@ export function createApp(): Express {
   app.use("/api/v1", V1Router);
 
   // API routes for data manipulation
-  app.use("/api/user", UserApiRouter);
   app.use("/api/puzzle", PuzzleApiRouter);
   app.use("/api/quest", QuestApiRouter);
-  app.use("/api/team", TeamApiRouter);
   app.use("/api/messaging", MessagingApiRouter);
 
   // UI routes for data display

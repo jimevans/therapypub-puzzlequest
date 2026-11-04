@@ -60,8 +60,6 @@ const { MessagingApiRouter } =
   await import("../../src/routes/api.messaging.js");
 const { PuzzleApiRouter } = await import("../../src/routes/api.puzzle.js");
 const { QuestApiRouter } = await import("../../src/routes/api.quest.js");
-const { TeamApiRouter } = await import("../../src/routes/api.team.js");
-const { UserApiRouter } = await import("../../src/routes/api.user.js");
 const { MonitorRouter } = await import("../../src/routes/monitor.js");
 const { PuzzleRouter } = await import("../../src/routes/puzzle.js");
 const { QuestRouter } = await import("../../src/routes/quest.js");
@@ -71,10 +69,8 @@ const { UserRouter } = await import("../../src/routes/user.js");
 const MOUNTS: [string, Router][] = [
   ["", IndexRouter],
   ["/api/v1", V1Router],
-  ["/api/user", UserApiRouter],
   ["/api/puzzle", PuzzleApiRouter],
   ["/api/quest", QuestApiRouter],
-  ["/api/team", TeamApiRouter],
   ["/api/messaging", MessagingApiRouter],
   ["/user", UserRouter],
   ["/puzzle", PuzzleRouter],
@@ -122,18 +118,28 @@ const ROUTES: [string, string, Policy][] = [
   ["post", "/api/v1/sessions", PUBLIC],
   ["get", "/api/v1/sessions/current", SIGNED_IN],
   ["delete", "/api/v1/sessions/current", PUBLIC],
-
-  ["get", "/api/user/list", ADMIN],
-  ["post", "/api/user/password/forgot", PUBLIC],
-  ["post", "/api/user/password/reset", PUBLIC],
-  ["post", "/api/user/email/verify", PUBLIC],
-  ["post", "/api/user/:userName/email/verification", SELF_OR_ADMIN],
-  ["get", "/api/user/:userName", SELF_OR_ADMIN],
-  ["put", "/api/user/:userName", SELF_OR_ADMIN],
-  ["delete", "/api/user/:userName", SELF_OR_ADMIN],
-  ["put", "/api/user/:userName/password", SELF],
-  ["post", "/api/user/:userName/password/reset-link", ADMIN],
-  ["post", "/api/user/create", PUBLIC],
+  ["get", "/api/v1/users", ADMIN],
+  ["post", "/api/v1/users", PUBLIC],
+  ["get", "/api/v1/users/:userName", SELF_OR_ADMIN],
+  ["patch", "/api/v1/users/:userName", SELF_OR_ADMIN],
+  ["delete", "/api/v1/users/:userName", SELF_OR_ADMIN],
+  ["put", "/api/v1/users/:userName/password", SELF],
+  ["post", "/api/v1/users/:userName/password-reset-links", ADMIN],
+  [
+    "post",
+    "/api/v1/users/:userName/email-verification-requests",
+    SELF_OR_ADMIN,
+  ],
+  ["post", "/api/v1/password-reset-requests", PUBLIC],
+  ["post", "/api/v1/password-resets", PUBLIC],
+  ["post", "/api/v1/email-verifications", PUBLIC],
+  ["get", "/api/v1/teams", SIGNED_IN],
+  ["post", "/api/v1/teams", ADMIN],
+  ["get", "/api/v1/teams/:teamName", ADMIN],
+  ["patch", "/api/v1/teams/:teamName", ADMIN],
+  ["delete", "/api/v1/teams/:teamName", ADMIN],
+  ["put", "/api/v1/teams/:teamName/members/:userName", SELF_OR_ADMIN],
+  ["delete", "/api/v1/teams/:teamName/members/:userName", SELF_OR_ADMIN],
 
   ["get", "/api/puzzle/list", ADMIN],
   ["get", "/api/puzzle/:name", ADMIN],
@@ -157,14 +163,6 @@ const ROUTES: [string, string, Policy][] = [
   ["put", "/api/quest/:name/puzzle/:puzzleName/skip", ADMIN],
   ["put", "/api/quest/:name/puzzle/:puzzleName/reset", ADMIN],
   ["get", "/api/quest/:name/puzzle/:puzzleName/qrcode", ADMIN],
-
-  ["get", "/api/team/list", SIGNED_IN],
-  ["get", "/api/team/:teamName", ADMIN],
-  ["put", "/api/team/:teamName", ADMIN],
-  ["delete", "/api/team/:teamName", ADMIN],
-  ["post", "/api/team/create", ADMIN],
-  ["put", "/api/team/:teamName/member/:userName", SELF_OR_ADMIN],
-  ["delete", "/api/team/:teamName/member/:userName", SELF_OR_ADMIN],
 
   ["post", "/api/messaging/incoming/voice", TWILIO],
   ["post", "/api/messaging/incoming/text", TWILIO],

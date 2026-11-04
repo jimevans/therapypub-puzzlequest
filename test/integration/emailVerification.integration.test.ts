@@ -87,7 +87,7 @@ function emailedToken(): string {
 }
 
 function verify(token: string) {
-  return request(app).post("/api/user/email/verify").send({ token });
+  return request(app).post("/api/v1/email-verifications").send({ token });
 }
 
 async function isVerified(userName: string): Promise<boolean> {
@@ -97,7 +97,7 @@ async function isVerified(userName: string): Promise<boolean> {
 
 describe("signing up", () => {
   it("emails a link to verify the address, keeping only a hash of its token", async () => {
-    await request(app).post("/api/user/create").send({
+    await request(app).post("/api/v1/users").send({
       userName: "newcomer",
       email: "newcomer@example.com",
       password: "a long enough password",
@@ -126,13 +126,13 @@ describe("signing up", () => {
       message: "SMTP down",
     });
 
-    const response = await request(app).post("/api/user/create").send({
+    const response = await request(app).post("/api/v1/users").send({
       userName: "newcomer",
       email: "newcomer@example.com",
       password: "a long enough password",
     });
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(201);
     expect(console.error).toHaveBeenCalledWith(
       "Sending a verification email to newcomer failed: SMTP down"
     );
@@ -147,12 +147,12 @@ describe("following the link", () => {
   it("verifies the address, once", async () => {
     const token = emailedToken();
 
-    expect((await verify(token)).status).toBe(200);
+    expect((await verify(token)).status).toBe(204);
     expect(await isVerified("player")).toBe(true);
 
     const again = await verify(token);
-    expect(again.status).toBe(400);
-    expect(JSON.parse(again.text).message).toBe(
+    expect(again.status).toBe(422);
+    expect(JSON.parse(again.text).detail).toBe(
       "This verification link is invalid or has expired. Sign in to send a new one."
     );
   });
@@ -164,7 +164,7 @@ describe("following the link", () => {
       { expiresAt: new Date(Date.now() - 1000) }
     );
 
-    expect((await verify(token)).status).toBe(400);
+    expect((await verify(token)).status).toBe(422);
     expect(await isVerified("player")).toBe(false);
   });
 
@@ -175,7 +175,7 @@ describe("following the link", () => {
       { email: "elsewhere@example.com" }
     );
 
-    expect((await verify(token)).status).toBe(400);
+    expect((await verify(token)).status).toBe(422);
     expect(await isVerified("player")).toBe(false);
   });
 
@@ -183,8 +183,8 @@ describe("following the link", () => {
     const first = emailedToken();
     await EmailVerificationService.sendVerificationEmail("player");
 
-    expect((await verify(first)).status).toBe(400);
-    expect((await verify(emailedToken())).status).toBe(200);
+    expect((await verify(first)).status).toBe(422);
+    expect((await verify(emailedToken())).status).toBe(204);
   });
 
   it("opens a page that verifies only when the button is pressed", async () => {
@@ -218,7 +218,7 @@ describe("changing an email address", () => {
     const { player } = await startSessions("player");
 
     await request(app)
-      .put("/api/user/player")
+      .patch("/api/v1/users/player")
       .set("Authorization", `Bearer ${player}`)
       .send({ email: "new@example.com" });
 
@@ -236,7 +236,7 @@ describe("changing an email address", () => {
     const { player } = await startSessions("player");
 
     await request(app)
-      .put("/api/user/player")
+      .patch("/api/v1/users/player")
       .set("Authorization", `Bearer ${player}`)
       .send({ displayName: "New name", email: "player@example.com" });
 
@@ -248,14 +248,14 @@ describe("changing an email address", () => {
 describe("sending the link again", () => {
   function resend(token: string) {
     return request(app)
-      .post("/api/user/player/email/verification")
+      .post("/api/v1/users/player/email-verification-requests")
       .set("Authorization", `Bearer ${token}`);
   }
 
   it("emails a new link", async () => {
     const { player } = await startSessions("player");
 
-    expect((await resend(player)).status).toBe(200);
+    expect((await resend(player)).status).toBe(204);
     expect(EmailService.sendEmail).toHaveBeenCalledTimes(1);
   });
 
@@ -266,14 +266,14 @@ describe("sending the link again", () => {
     );
     const { player } = await startSessions("player");
 
-    expect((await resend(player)).status).toBe(200);
+    expect((await resend(player)).status).toBe(204);
     expect(EmailService.sendEmail).not.toHaveBeenCalled();
   });
 
   it("is limited, so it can't flood an inbox", async () => {
     const { player } = await startSessions("player");
     for (let attempt = 0; attempt < 3; attempt++) {
-      expect((await resend(player)).status).toBe(200);
+      expect((await resend(player)).status).toBe(204);
     }
 
     expect((await resend(player)).status).toBe(429);
@@ -307,11 +307,14 @@ describe("password reset", () => {
     const { admin } = await startSessions("admin");
 
     const response = await request(app)
-      .post("/api/user/player/password/reset-link")
+      .post("/api/v1/users/player/password-reset-links")
       .set("Authorization", `Bearer ${admin}`);
 
-    expect(response.status).toBe(400);
-    expect(JSON.parse(response.text).message).toBe(
+    expect(response.status).toBe(409);
+    expect(JSON.parse(response.text)).toMatchObject({
+      type: "/problems/email-not-verified",
+    });
+    expect(JSON.parse(response.text).detail).toBe(
       "player hasn't verified their email address yet, so a reset link can't be sent to it"
     );
   });

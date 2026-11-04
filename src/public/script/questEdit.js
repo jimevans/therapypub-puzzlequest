@@ -1,6 +1,7 @@
 /* global renderMode, quest -- defined by an inline script in the page */
 import { DataGrid } from "./components/grid.js";
 import { Lookup } from "./components/lookup.js";
+import { listAll } from "./api.js";
 import { callDataApi } from "./fetch.js";
 
 function clearError() {
@@ -15,6 +16,20 @@ function showError(errorMessage) {
   const errorDisplay = errorNotifier.querySelector("span");
   errorDisplay.innerText = errorMessage;
   errorNotifier.classList.remove("pq-hide");
+}
+
+/**
+ * Fills a lookup with every item of a v1 list.
+ * @param {Lookup} lookup the lookup
+ * @param {string} path the list's path below /api/v1
+ */
+async function renderLookup(lookup, path) {
+  const list = await listAll(path);
+  if (!list.ok) {
+    showError(list.problem.detail ?? list.problem.title);
+    return;
+  }
+  lookup.renderItems(list.items);
 }
 
 const puzzleGridOptions = {
@@ -120,7 +135,7 @@ document.querySelector("#set-user-button").addEventListener("click", (e) => {
       setAssignee("user", selectedUser[0].userName);
     }
   };
-  userLookup.render("/api/user/list", "data");
+  renderLookup(userLookup, "/users");
   userLookup.show();
 });
 
@@ -144,7 +159,7 @@ document.querySelector("#set-team-button").addEventListener("click", (e) => {
       setAssignee("team", selectedTeam[0].teamName);
     }
   };
-  userLookup.render("/api/team/list", "data");
+  renderLookup(userLookup, "/teams");
   userLookup.show();
 });
 

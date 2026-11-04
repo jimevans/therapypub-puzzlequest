@@ -26,8 +26,23 @@ export type ServiceResult<T> =
       status: "error";
       statusCode: number;
       message: string;
+      /** Why it failed, for the API to report it precisely. */
+      reason?: ServiceErrorReason;
       data?: undefined;
     };
+
+/**
+ * Why a service operation failed, beyond its status code: the v1 API
+ * reports each reason as its own kind of problem (see api/problems.ts).
+ */
+export type ServiceErrorReason =
+  | "not-found"
+  | "already-exists"
+  | "incorrect-password"
+  | "password-not-allowed"
+  | "wrong-join-code"
+  | "email-not-verified"
+  | "invalid-link";
 
 /**
  * An Express request whose route provides the named parameters, each a single

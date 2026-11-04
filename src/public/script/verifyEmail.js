@@ -1,5 +1,5 @@
 /* global verificationToken -- defined by an inline script in the page */
-import { callDataApi } from "./fetch.js";
+import { callApi } from "./api.js";
 
 function showError(errorMessage) {
   const errorNotifier = document.querySelector(".pq-error");
@@ -20,11 +20,12 @@ if (!verificationToken) {
 document.querySelector("#verify").addEventListener("click", async (e) => {
   e.preventDefault();
   document.querySelector(".pq-error").classList.add("pq-hide");
-  const response = await callDataApi("/api/user/email/verify", "post", {
-    token: verificationToken,
+  const response = await callApi("/email-verifications", {
+    method: "POST",
+    body: { token: verificationToken },
   });
-  if (response.status === "error") {
-    showError(response.message);
+  if (!response.ok) {
+    showError(response.problem.detail ?? response.problem.title);
     return;
   }
   document.querySelector("#verify-form").classList.add("pq-hide");

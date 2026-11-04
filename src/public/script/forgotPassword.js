@@ -1,4 +1,4 @@
-import { callDataApi } from "./fetch.js";
+import { callApi } from "./api.js";
 
 function showError(errorMessage) {
   const errorNotifier = document.querySelector(".pq-error");
@@ -14,11 +14,12 @@ document.querySelector("#send").addEventListener("click", async (e) => {
     showError("Enter your user name or email address");
     return;
   }
-  const response = await callDataApi("/api/user/password/forgot", "post", {
-    identifier,
+  const response = await callApi("/password-reset-requests", {
+    method: "POST",
+    body: { identifier },
   });
-  if (response.status === "error") {
-    showError(response.message);
+  if (!response.ok) {
+    showError(response.problem.detail ?? response.problem.title);
     return;
   }
   document.querySelector("#forgot-form").classList.add("pq-hide");

@@ -1,8 +1,10 @@
 // Errors from the v1 API are problem details (RFC 9457): a JSON object,
 // sent as application/problem+json, whose "type" says what kind of problem
 // it is, so clients can act on the type rather than parse the message.
+import { STATUS_CODES } from "http";
 import type { Request, Response } from "express";
 import { z } from "zod";
+import type { ServiceErrorReason } from "../types.js";
 
 /** A kind of problem the API reports. */
 export interface ProblemType {
@@ -62,6 +64,46 @@ export const Problems = {
     status: 404,
     description:
       "There is no such resource, or the signed-in user may not know about it.",
+  },
+  alreadyExists: {
+    type: "/problems/already-exists",
+    title: "Already exists",
+    status: 409,
+    description:
+      "Something with that name, email address, or join code already exists, or the user is already a member of the team.",
+  },
+  emailNotVerified: {
+    type: "/problems/email-not-verified",
+    title: "Email address not verified",
+    status: 409,
+    description:
+      "The user hasn't verified their email address, so nothing can be sent to it that depends on it, such as a password reset link.",
+  },
+  incorrectPassword: {
+    type: "/problems/incorrect-password",
+    title: "Incorrect password",
+    status: 422,
+    description: "The current password given isn't the user's password.",
+  },
+  passwordNotAllowed: {
+    type: "/problems/password-not-allowed",
+    title: "Password not allowed",
+    status: 422,
+    description:
+      "The new password doesn't meet the password policy, such as its length, or is the same as the current one.",
+  },
+  wrongJoinCode: {
+    type: "/problems/wrong-join-code",
+    title: "Wrong join code",
+    status: 422,
+    description: "The join code isn't the team's.",
+  },
+  invalidLink: {
+    type: "/problems/invalid-link",
+    title: "Link invalid or expired",
+    status: 422,
+    description:
+      "The token from a password reset or email verification link isn't valid: it is malformed, already used, or expired.",
   },
   tooManyRequests: {
     type: "/problems/too-many-requests",
@@ -168,4 +210,44 @@ export function sendApiError(
     return;
   }
   res.status(problem.status).json({ status: "error", message });
+}
+
+/** The kind of problem each reason a service operation fails stands for. */
+const PROBLEM_FOR_REASON: Record<ServiceErrorReason, ProblemType> = {
+  "not-found": Problems.notFound,
+  "already-exists": Problems.alreadyExists,
+  "incorrect-password": Problems.incorrectPassword,
+  "password-not-allowed": Problems.passwordNotAllowed,
+  "wrong-join-code": Problems.wrongJoinCode,
+  "email-not-verified": Problems.emailNotVerified,
+  "invalid-link": Problems.invalidLink,
+};
+
+/**
+ * Sends the problem a failed service operation stands for, by its reason;
+ * one without a reason is reported by its status code.
+ * @param res the response
+ * @param error the service's error result
+ */
+export function sendServiceProblem(
+  res: Response,
+  error: { statusCode: number; message: string; reason?: ServiceErrorReason }
+): void {
+  if (error.reason) {
+    sendProblem(res, PROBLEM_FOR_REASON[error.reason], error.message);
+    return;
+  }
+  if (error.statusCode >= 500) {
+    sendProblem(res, Problems.unexpected, error.message);
+    return;
+  }
+  sendProblem(
+    res,
+    {
+      type: "about:blank",
+      title: STATUS_CODES[error.statusCode] ?? "Error",
+      status: error.statusCode,
+    },
+    error.message
+  );
 }

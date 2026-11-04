@@ -56,7 +56,7 @@ async function createAdmin() {
  * @returns the response
  */
 async function signUpAsAdmin(signedInAs: "admin" | "player" | null) {
-  const pending = request(app).post("/api/user/create");
+  const pending = request(app).post("/api/v1/users");
   if (signedInAs) {
     const tokens = await startSessions(signedInAs);
     pending.set("Authorization", `Bearer ${tokens[signedInAs]}`);
@@ -76,15 +76,38 @@ async function storedLevel() {
 }
 
 describe("signing up", () => {
-  it("gives an anonymous visitor an ordinary account, whatever level they ask for", async () => {
+  it("gives an anonymous visitor an ordinary account", async () => {
     await createAdmin();
 
-    expect((await signUpAsAdmin(null)).status).toBe(200);
+    const response = await request(app).post("/api/v1/users").send({
+      userName: "newcomer",
+      displayName: "Newcomer",
+      email: "newcomer@example.com",
+      password: "a long enough password",
+    });
 
+    expect(response.status).toBe(201);
+    expect(response.headers.location).toBe("/api/v1/users/newcomer");
+    expect(JSON.parse(response.text)).toMatchObject({
+      userName: "newcomer",
+      authorizationLevel: AuthorizationLevel.USER,
+      emailVerified: false,
+      teams: [],
+    });
     expect(await storedLevel()).toBe(AuthorizationLevel.USER);
   });
 
-  it("gives an account created by a player an ordinary level", async () => {
+  it("refuses an anonymous visitor asking for a level, creating nothing", async () => {
+    await createAdmin();
+
+    const response = await signUpAsAdmin(null);
+
+    expect(response.status).toBe(403);
+    expect(JSON.parse(response.text).type).toBe("/problems/forbidden");
+    expect(await storedLevel()).toBeUndefined();
+  });
+
+  it("refuses a player asking for a level for a new account", async () => {
     await createAdmin();
     await UserModel.create({
       userName: "player",
@@ -94,28 +117,28 @@ describe("signing up", () => {
       authorizationLevel: AuthorizationLevel.USER,
     });
 
-    expect((await signUpAsAdmin("player")).status).toBe(200);
+    expect((await signUpAsAdmin("player")).status).toBe(403);
 
-    expect(await storedLevel()).toBe(AuthorizationLevel.USER);
+    expect(await storedLevel()).toBeUndefined();
   });
 
   it("lets an administrator choose the level", async () => {
     await createAdmin();
 
-    expect((await signUpAsAdmin("admin")).status).toBe(200);
+    expect((await signUpAsAdmin("admin")).status).toBe(201);
 
     expect(await storedLevel()).toBe(AuthorizationLevel.ADMIN);
   });
 
   it("still makes the very first account an administrator", async () => {
-    const response = await request(app).post("/api/user/create").send({
+    const response = await request(app).post("/api/v1/users").send({
       userName: "newcomer",
       displayName: "Newcomer",
       email: "newcomer@example.com",
       password: "a long enough password",
     });
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(201);
     expect(await storedLevel()).toBe(AuthorizationLevel.ADMIN);
   });
 });

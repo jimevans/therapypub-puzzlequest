@@ -5,6 +5,8 @@ import { Problems, sendProblem } from "../problems.js";
 import { createOpenApiDocument } from "./openapi.js";
 import { type AnyRoute, defineRoute, registerRoutes } from "./route.js";
 import { sessionRoutes } from "./sessions.js";
+import { teamRoutes } from "./teams.js";
+import { userRoutes } from "./users.js";
 
 /** The document describing the API, made on first request. */
 let openApiDocument: string | undefined;
@@ -31,6 +33,8 @@ export const v1Routes: AnyRoute[] = [
     },
   }),
   ...sessionRoutes,
+  ...userRoutes,
+  ...teamRoutes,
 ];
 
 const v1Router = express.Router();

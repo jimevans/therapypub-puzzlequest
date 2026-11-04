@@ -61,6 +61,7 @@ export function validatePasswordPolicy(
     return {
       status: "error",
       statusCode: 400,
+      reason: "password-not-allowed",
       message: `Password must be at least ${MINIMUM_PASSWORD_LENGTH} characters long`,
     };
   }
@@ -68,6 +69,7 @@ export function validatePasswordPolicy(
     return {
       status: "error",
       statusCode: 400,
+      reason: "password-not-allowed",
       message: `Password must be no more than ${MAXIMUM_PASSWORD_BYTES} bytes long`,
     };
   }

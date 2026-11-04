@@ -83,6 +83,7 @@ export async function changePassword(
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `No user with user name ${userName} found`,
     };
   }
@@ -95,6 +96,7 @@ export async function changePassword(
     return {
       status: "error",
       statusCode: 400,
+      reason: "incorrect-password",
       message: "Current password is incorrect",
     };
   }
@@ -107,6 +109,7 @@ export async function changePassword(
     return {
       status: "error",
       statusCode: 400,
+      reason: "password-not-allowed",
       message: "New password must be different from the current password",
     };
   }
@@ -165,6 +168,7 @@ export async function requestPasswordResetForUser(
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `No user with user name ${userName} found`,
     };
   }
@@ -172,6 +176,7 @@ export async function requestPasswordResetForUser(
     return {
       status: "error",
       statusCode: 400,
+      reason: "email-not-verified",
       message: `${userName} hasn't verified their email address yet, so a reset link can't be sent to it`,
     };
   }
@@ -247,6 +252,7 @@ export async function resetPassword(
   const invalidTokenResult: ServiceResult<undefined> = {
     status: "error",
     statusCode: 400,
+    reason: "invalid-link",
     message: "Password reset link is invalid or has expired",
   };
   if (typeof token !== "string" || !token) {

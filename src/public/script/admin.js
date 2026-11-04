@@ -1,4 +1,5 @@
 import { DataGrid } from "./components/grid.js";
+import { callApi, listAll } from "./api.js";
 import { callDataApi } from "./fetch.js";
 
 const LIST_ERROR = "The list could not be loaded. Please try again.";
@@ -14,10 +15,8 @@ document.querySelector("#users").addEventListener("click", async (e) => {
   e.preventDefault();
   const gridElement = document.querySelector("#data-grid");
   gridElement.classList.add("pq-hide");
-  const userData = await callDataApi(
-    e.currentTarget.getAttribute("data-api-endpoint")
-  );
-  if (userData && userData.status === "success") {
+  const users = await listAll("/users");
+  if (users.ok) {
     const fieldDefinitions = [
       {
         fieldName: "userName",
@@ -33,7 +32,7 @@ document.querySelector("#users").addEventListener("click", async (e) => {
       },
     ];
     const grid = new DataGrid("Users", fieldDefinitions);
-    grid.render(userData.data);
+    grid.render(users.items);
     grid.onAddDataRequested = (e) => {
       window.location.href = "/user/register";
     };
@@ -102,8 +101,8 @@ document.querySelector("#quests").addEventListener("click", async (e) => {
         title: "Display Name",
       },
       {
-        fieldName: "userName",
-        title: "User Name",
+        fieldName: "assignedTo",
+        title: "Assigned To",
       },
       {
         fieldName: "statusDescription",
@@ -111,7 +110,12 @@ document.querySelector("#quests").addEventListener("click", async (e) => {
       },
     ];
     const grid = new DataGrid("Quests", fieldDefinitions);
-    grid.render(questData.data);
+    grid.render(
+      questData.data.map((quest) => ({
+        ...quest,
+        assignedTo: `${quest.assignee.name ?? "(deleted)"} (${quest.assignee.kind})`,
+      }))
+    );
     grid.onAddDataRequested = (e) => {
       window.location.href = "/quest/new";
     };
@@ -128,10 +132,8 @@ document.querySelector("#teams").addEventListener("click", async (e) => {
   e.preventDefault();
   const gridElement = document.querySelector("#data-grid");
   gridElement.classList.add("pq-hide");
-  const teamData = await callDataApi(
-    e.currentTarget.getAttribute("data-api-endpoint")
-  );
-  if (teamData && teamData.status === "success") {
+  const teams = await listAll("/teams");
+  if (teams.ok) {
     const fieldDefinitions = [
       {
         fieldName: "teamName",
@@ -152,7 +154,7 @@ document.querySelector("#teams").addEventListener("click", async (e) => {
     const grid = new DataGrid("Teams", fieldDefinitions, {
       allowRowEditing: true,
     });
-    grid.render(teamData.data);
+    grid.render(teams.items);
     grid.onAddDataRequested = (e) => {
       grid.addDataRow({
         teamName: "",
@@ -177,20 +179,21 @@ document.querySelector("#teams").addEventListener("click", async (e) => {
         gridRow.removeAttribute("data-edit-mode");
       }
       const dataItem = grid.getData()[index];
-      const updateApi = isUpdate
-        ? `/api/team/${dataItem.teamName}`
-        : "/api/team/create";
-      const method = isUpdate ? "put" : "post";
       const teamData = {
         displayName: dataItem.displayName,
         joinCode: dataItem.joinCode,
       };
-      if (!isUpdate) {
-        teamData.teamName = dataItem.teamName;
-      }
-      const updateResponse = await callDataApi(updateApi, method, teamData);
-      if (updateResponse.status === "error") {
-        showError(updateResponse.message);
+      const response = isUpdate
+        ? await callApi(`/teams/${encodeURIComponent(dataItem.teamName)}`, {
+            method: "PATCH",
+            body: teamData,
+          })
+        : await callApi("/teams", {
+            method: "POST",
+            body: { ...teamData, teamName: dataItem.teamName },
+          });
+      if (!response.ok) {
+        showError(response.problem.detail ?? response.problem.title);
       }
     };
     // TODO: Wire up quest deletion

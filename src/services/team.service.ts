@@ -1,6 +1,7 @@
 import type { Types } from "mongoose";
 import { TeamModel, UserModel } from "../models/user.model.js";
 import type { ServiceResult } from "../types.js";
+import { type Page, type PageQuery, findPage } from "../api/paging.js";
 import { isDuplicateKeyError, unexpectedErrorResult } from "../errors.js";
 
 /**
@@ -82,6 +83,7 @@ export async function getTeamByTeamName(name: string): Promise<TeamResult> {
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `No team with team name ${name} found`,
     };
   }
@@ -99,6 +101,7 @@ export async function deleteTeam(name: string): Promise<TeamResult<undefined>> {
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `Team with team name ${name} does not exist`,
     };
   }
@@ -121,6 +124,7 @@ export async function createTeam(
     return {
       status: "error",
       statusCode: 400,
+      reason: "already-exists",
       message: `Team with team name ${team.teamName} already exists`,
     };
   }
@@ -137,6 +141,7 @@ export async function createTeam(
       return {
         status: "error",
         statusCode: 400,
+        reason: "already-exists",
         message: "That team name is already in use",
       };
     }
@@ -144,6 +149,7 @@ export async function createTeam(
       return {
         status: "error",
         statusCode: 400,
+        reason: "already-exists",
         message: "That join code is already in use",
       };
     }
@@ -167,6 +173,7 @@ export async function updateTeam(
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `No team with team name ${name} found`,
     };
   }
@@ -179,6 +186,7 @@ export async function updateTeam(
       return {
         status: "error",
         statusCode: 400,
+        reason: "already-exists",
         message: "That join code is already in use",
       };
     }
@@ -195,6 +203,43 @@ export async function listTeams(): Promise<TeamResult<Team[]>> {
   const foundTeams = await TeamModel.find({});
   const teams = foundTeams.map((team) => new Team(team));
   return { status: "success", statusCode: 200, data: teams };
+}
+
+/**
+ * Gets a page of the teams, in the order they were created.
+ * @param query the page wanted
+ * @returns the page of teams
+ */
+export async function listTeamsPage(query: PageQuery): Promise<Page<Team>> {
+  const page = await findPage(
+    (conditions) => TeamModel.find(conditions),
+    query
+  );
+  return { ...page, items: page.items.map((team) => new Team(team)) };
+}
+
+/**
+ * Gets the user names and display names of teams' members, with one query.
+ * @param teams the teams
+ * @returns each member's names, by user ID; a member who no longer exists
+ *  is missing
+ */
+export async function describeMembers(
+  teams: Team[]
+): Promise<Map<string, { userName: string; displayName: string }>> {
+  const ids = [...new Set(teams.flatMap((team) => team.memberIds))];
+  const users = ids.length
+    ? await UserModel.find(
+        { _id: { $in: ids } },
+        { userName: 1, displayName: 1 }
+      ).lean()
+    : [];
+  return new Map(
+    users.map((user) => [
+      user._id.toString(),
+      { userName: user.userName, displayName: user.displayName ?? "" },
+    ])
+  );
 }
 
 /**
@@ -232,6 +277,7 @@ async function findTeamAndUser(
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `No team with team name ${teamName} found`,
     };
   }
@@ -240,6 +286,7 @@ async function findTeamAndUser(
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `No user with user name ${userName} found`,
     };
   }
@@ -268,6 +315,7 @@ export async function addUserToTeam(
     return {
       status: "error",
       statusCode: 400,
+      reason: "already-exists",
       message: `User ${userName} is already a member of team ${teamName}`,
     };
   }
@@ -275,6 +323,7 @@ export async function addUserToTeam(
     return {
       status: "error",
       statusCode: 400,
+      reason: "wrong-join-code",
       message: `Invalid join code for team ${teamName}`,
     };
   }
@@ -308,6 +357,7 @@ export async function removeUserFromTeam(
     return {
       status: "error",
       statusCode: 400,
+      reason: "not-found",
       message: `User ${userName} is not a member of team ${teamName}`,
     };
   }

@@ -28,7 +28,7 @@ import {
 function run(
   guard: RequestHandler,
   user: SessionUser | null,
-  originalUrl = "/api/user/player"
+  originalUrl = "/api/puzzle/riddle"
 ) {
   const req = createMockRequest({ user, params: { userName: "player" } });
   req.originalUrl = originalUrl;

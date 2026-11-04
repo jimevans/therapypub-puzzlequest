@@ -121,7 +121,9 @@ export function toExpressPath(path: string): string {
  */
 export function problemsOf(route: AnyRoute): ProblemType[] {
   const implied: ProblemType[] = [];
-  if (route.request) {
+  // Path parameters are plain names, so only a body or query can be
+  // invalid.
+  if (route.request?.body || route.request?.query) {
     implied.push(Problems.invalidRequest);
   }
   if (route.access !== "public") {
