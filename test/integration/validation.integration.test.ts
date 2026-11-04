@@ -110,10 +110,23 @@ describe("invalid input", () => {
     expect(await UserModel.countDocuments()).toBe(2);
   });
 
+  it("reports a quest assigned to something other than a user or team", async () => {
+    const response = await send("post", "/api/quest/create").send({
+      name: "quest",
+      displayName: "Quest",
+      assignee: { kind: "group", name: "player" },
+    });
+
+    expect(response.status).toBe(400);
+    expect(JSON.parse(response.text).errors).toEqual([
+      { path: "body.assignee.kind", message: expect.any(String) },
+    ]);
+  });
+
   it("reports a missing field", async () => {
     const response = await send("post", "/api/quest/create").send({
       name: "quest",
-      userName: "player",
+      assignee: { kind: "user", name: "player" },
     });
 
     expect(response.status).toBe(400);
@@ -220,7 +233,7 @@ describe("fields a request adds", () => {
       await QuestService.createQuest({
         name,
         displayName: name,
-        userName: "player",
+        assignee: { kind: "user", name: "player" },
         puzzles: [],
       });
     }

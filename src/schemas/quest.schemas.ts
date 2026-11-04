@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AssigneeKind } from "../models/quest.model.js";
 import { displayName, newName, requiredText, wholeNumber } from "./common.js";
 
 /**
@@ -11,11 +12,17 @@ const questPuzzle = z.object({
   activationCode: z.string().optional(),
 });
 
+/** The user or team a quest is assigned to, by name. */
+const assignee = z.object({
+  kind: z.enum(AssigneeKind),
+  name: requiredText,
+});
+
 /** POST /api/quest/create */
 export const createQuestBody = z.object({
   name: newName,
   displayName: displayName.min(1, "Required"),
-  userName: requiredText,
+  assignee,
   puzzles: z.array(questPuzzle).default([]),
 });
 export type CreateQuestBody = z.infer<typeof createQuestBody>;
@@ -26,7 +33,7 @@ export type CreateQuestBody = z.infer<typeof createQuestBody>;
  */
 export const updateQuestBody = z.object({
   displayName: displayName.optional(),
-  userName: requiredText.optional(),
+  assignee: assignee.optional(),
   puzzles: z.array(questPuzzle).optional(),
 });
 export type UpdateQuestBody = z.infer<typeof updateQuestBody>;

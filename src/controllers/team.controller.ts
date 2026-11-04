@@ -12,7 +12,7 @@ export async function createTeam(
   req: BodyRequest<CreateTeamBody>,
   res: Response
 ): Promise<void> {
-  const teamToCreate = new TeamService.Team({ ...req.body, memberNames: [] });
+  const teamToCreate = new TeamService.Team(req.body);
   const response = await TeamService.createTeam(teamToCreate);
   if (response.status === "error") {
     res.status(response.statusCode).send(

@@ -84,7 +84,7 @@ export async function sendTextMessage(
   }
 
   const numbersToMessageResponse =
-    await MessagingService.getPhoneNumbersToMessage(quest.userName);
+    await MessagingService.getPhoneNumbersToMessage(quest.assignee);
   if (numbersToMessageResponse.status === "error") {
     res.status(numbersToMessageResponse.statusCode).send(
       JSON.stringify({

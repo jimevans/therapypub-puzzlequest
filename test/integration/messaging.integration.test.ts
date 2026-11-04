@@ -17,6 +17,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
 import { startSessions } from "../sessions.js";
+import { userIdsOf } from "../references.js";
 import Twilio from "twilio";
 
 // The service waits between outgoing messages to respect carrier limits.
@@ -74,7 +75,7 @@ beforeEach(async () => {
     teamName: "team-a",
     displayName: "Team A",
     joinCode: "join",
-    memberNames: ["teammate", "quiet"],
+    memberIds: await userIdsOf("teammate", "quiet"),
   });
   await PuzzleModel.create({
     name: "colors",
@@ -109,12 +110,17 @@ function user(
   };
 }
 
-async function createQuest(name: string, userName: string): Promise<void> {
-  await QuestService.createQuest({
+async function createQuest(
+  name: string,
+  assigneeName: string,
+  kind: "user" | "team" = assigneeName.startsWith("team") ? "team" : "user"
+): Promise<void> {
+  const result = await QuestService.createQuest({
     name,
-    userName,
+    assignee: { kind, name: assigneeName },
     puzzles: [{ puzzleName: "colors" }],
   });
+  expect(result.status).toBe("success");
 }
 
 async function storedQuest(name: string) {
@@ -349,7 +355,7 @@ describe("POST /api/messaging/incoming/text", () => {
 });
 
 describe("POST /api/messaging/outgoing/text", () => {
-  let twilioRequests: unknown[];
+  let twilioRequests: { data?: unknown }[];
 
   let adminToken = "";
 
@@ -417,6 +423,44 @@ describe("POST /api/messaging/outgoing/text", () => {
       textResponse: "Found it",
       textResponseConfirmation: "Well done!",
     });
+  });
+
+  it("texts the team's members, even when a user has the team's name", async () => {
+    // Names alone couldn't tell these apart; the quest refers to the team.
+    await UserModel.create(user("team-a", "+15551230009", { sms: true }));
+    await createQuest("team-quest", "team-a", "team");
+    await QuestService.startQuest("team-quest");
+
+    const response = await send({
+      questName: "team-quest",
+      message: "Check the garden.",
+      expectedResponse: "Found it",
+      responseConfirmation: "Well done!",
+    });
+
+    expect(response.status).toBe(200);
+    expect(
+      twilioRequests.map((sent) => (sent.data as { To: string }).To)
+    ).toEqual(["+15551230002"]);
+  });
+
+  it("reports that the team a quest is assigned to no longer exists", async () => {
+    await createQuest("team-quest", "team-a");
+    await QuestService.startQuest("team-quest");
+    await TeamModel.deleteMany({});
+
+    const response = await send({
+      questName: "team-quest",
+      message: "Check the garden.",
+      expectedResponse: "Found it",
+      responseConfirmation: "Well done!",
+    });
+
+    expect(response.status).toBe(404);
+    expect(JSON.parse(response.text).message).toBe(
+      "The team this quest is assigned to no longer exists"
+    );
+    expect(twilioRequests).toHaveLength(0);
   });
 
   it("reports a Twilio API error without its details, which it logs", async () => {

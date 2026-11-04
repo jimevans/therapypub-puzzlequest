@@ -14,6 +14,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
 import { startSessions } from "../sessions.js";
+import { assigneeIdsOf } from "../references.js";
 
 const { createApp } = await import("../../src/createApp.js");
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
@@ -27,6 +28,7 @@ const { questEventBus } = await import("../../src/events/questEventBus.js");
 let mongoServer: MongoMemoryServer | undefined;
 let app: Express;
 let sessions: Record<string, string> = {};
+let PLAYER: string[] = [];
 
 const MINUTE = 60 * 1000;
 
@@ -77,15 +79,16 @@ beforeEach(async () => {
   await QuestService.createQuest({
     name: "quest",
     displayName: "Quest",
-    userName: "player",
+    assignee: { kind: "user", name: "player" },
     puzzles: [{ puzzleName: "riddle" }, { puzzleName: "finale" }],
   });
+  PLAYER = await assigneeIdsOf("player");
   await QuestService.startQuest("quest");
   const quest = (await QuestModel.findOne({ name: "quest" }).lean())!;
   await QuestService.activatePuzzle(
     "quest",
     "riddle",
-    ["player"],
+    PLAYER,
     quest.puzzles[0].activationCode
   );
   sessions = await startSessions("admin", "player");
@@ -186,7 +189,7 @@ describe("pausing a quest", () => {
     const result = await QuestService.finishPuzzle(
       "quest",
       "riddle",
-      ["player"],
+      PLAYER,
       "piano"
     );
 

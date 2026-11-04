@@ -42,7 +42,7 @@ function createQuest() {
   return new QuestService.Quest({
     name: "quest1",
     displayName: "Quest 1",
-    userName: "player",
+    assignee: { kind: "user", id: playerUser.id, name: "player" },
     status: 1,
     puzzles: [
       {
@@ -288,7 +288,7 @@ describe("requestQuestPuzzleHint", () => {
     expect(QuestService.getPuzzleHint).toHaveBeenCalledWith(
       "quest1",
       "puzzle1",
-      ["player"],
+      [playerUser.id],
       { actor: "player", connectionId: "connection1" }
     );
   });

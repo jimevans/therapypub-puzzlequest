@@ -20,8 +20,8 @@ export async function index(req: Request, res: Response): Promise<void> {
   }
 
   // Case 3: Logged in user is a valid end user.
-  const userContexts = await loggedInUser.getAllUserContexts();
-  const findOptions = { userNames: userContexts, questStatus: 1 };
+  const assigneeIds = await loggedInUser.getAssigneeIds();
+  const findOptions = { assigneeIds, questStatus: 1 };
   // Puzzle details are needed for hint penalties.
   const foundQuestsResult = await QuestService.findQuests(findOptions, true);
   if (foundQuestsResult.status === "error") {

@@ -8,6 +8,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
 import { startSessions } from "../sessions.js";
+import { assigneeIdsOf, userIdsOf } from "../references.js";
 
 const { createApp } = await import("../../src/createApp.js");
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
@@ -46,7 +47,7 @@ beforeAll(async () => {
     teamName: "team-a",
     displayName: "Team A",
     joinCode: "join-code",
-    memberNames: ["player"],
+    memberIds: await userIdsOf("player"),
   });
   await PuzzleModel.create([
     {
@@ -79,7 +80,7 @@ beforeAll(async () => {
   await QuestService.createQuest({
     name: "waiting-quest",
     displayName: "Waiting Quest",
-    userName: "player",
+    assignee: { kind: "user", name: "player" },
     puzzles,
   });
   await QuestService.startQuest("waiting-quest");
@@ -87,7 +88,7 @@ beforeAll(async () => {
   await QuestService.createQuest({
     name: "running-quest",
     displayName: "Running Quest",
-    userName: "team-a",
+    assignee: { kind: "team", name: "team-a" },
     puzzles,
   });
   await QuestService.startQuest("running-quest");
@@ -97,10 +98,14 @@ beforeAll(async () => {
   await QuestService.activatePuzzle(
     "running-quest",
     "text-puzzle",
-    ["team-a"],
+    await assigneeIdsOf("team-a"),
     runningQuest!.puzzles[0].activationCode
   );
-  await QuestService.getPuzzleHint("running-quest", "text-puzzle", ["team-a"]);
+  await QuestService.getPuzzleHint(
+    "running-quest",
+    "text-puzzle",
+    await assigneeIdsOf("team-a")
+  );
   sessions = await startSessions("admin", "player");
 }, 120000);
 
@@ -183,14 +188,14 @@ const PAGES: [string, string, string | null, string, string[]][] = [
     "/quest/running-quest",
     "admin",
     "questDetails",
-    ["Running Quest"],
+    ["Running Quest", "team-a (team)"],
   ],
   [
     "quest editor",
     "/quest/running-quest/edit",
     "admin",
     "questEdit",
-    ["Running Quest"],
+    ["Running Quest", 'value="team-a" data-kind="team"'],
   ],
   [
     "quest monitor",
@@ -276,7 +281,7 @@ describe("a quest puzzle whose puzzle was deleted", () => {
     });
     await QuestService.createQuest({
       name: "doomed-quest",
-      userName: "player",
+      assignee: { kind: "user", name: "player" },
       puzzles: [{ puzzleName: "doomed-puzzle" }],
     });
     await QuestService.startQuest("doomed-quest");
@@ -338,7 +343,10 @@ describe("quest progress", () => {
     await QuestModel.create({
       name: "finished-quest",
       displayName: "Finished Quest",
-      userName: "player",
+      assignee: {
+        kind: "user",
+        id: (await userIdsOf("player"))[0],
+      },
       status: 2,
       puzzles: [
         {

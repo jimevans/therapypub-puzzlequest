@@ -23,8 +23,8 @@ afterAll(async () => {
 
 describe("indexes", () => {
   it.each([
-    ["quests", QuestModel, { userName: 1 }],
-    ["teams", TeamModel, { memberNames: 1 }],
+    ["quests", QuestModel, { "assignee.id": 1 }],
+    ["teams", TeamModel, { memberIds: 1 }],
     ["users", UserModel, { phone: 1 }],
     ["questEvents", QuestEventModel, { questName: 1, at: 1 }],
     ["users", UserModel, { organizationId: 1, userName: 1 }],
