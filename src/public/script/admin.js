@@ -1,6 +1,5 @@
 import { DataGrid } from "./components/grid.js";
 import { callApi, listAll } from "./api.js";
-import { callDataApi } from "./fetch.js";
 
 const LIST_ERROR = "The list could not be loaded. Please try again.";
 
@@ -83,10 +82,8 @@ document.querySelector("#quests").addEventListener("click", async (e) => {
   e.preventDefault();
   const gridElement = document.querySelector("#data-grid");
   gridElement.classList.add("pq-hide");
-  const questData = await callDataApi(
-    e.currentTarget.getAttribute("data-api-endpoint")
-  );
-  if (questData && questData.status === "success") {
+  const quests = await listAll("/quests");
+  if (quests.ok) {
     const fieldDefinitions = [
       {
         fieldName: "name",
@@ -109,7 +106,7 @@ document.querySelector("#quests").addEventListener("click", async (e) => {
     ];
     const grid = new DataGrid("Quests", fieldDefinitions);
     grid.render(
-      questData.data.map((quest) => ({
+      quests.items.map((quest) => ({
         ...quest,
         assignedTo: `${quest.assignee.name ?? "(deleted)"} (${quest.assignee.kind})`,
       }))

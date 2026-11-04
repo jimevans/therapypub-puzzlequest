@@ -125,6 +125,60 @@ export const Problems = {
     status: 413,
     description: "The uploaded file is larger than allowed.",
   },
+  invalidQuest: {
+    type: "/problems/invalid-quest",
+    title: "Quest not valid",
+    status: 422,
+    description:
+      "The quest is assigned to a user or team that doesn't exist, or lists a puzzle that doesn't exist or appears twice.",
+  },
+  wrongState: {
+    type: "/problems/wrong-state",
+    title: "Not possible now",
+    status: 409,
+    description:
+      "The quest or puzzle isn't in a state that allows this: for example, the quest has already started, isn't paused, or is completed, or the puzzle hasn't been reached or solved. The detail says which.",
+  },
+  questPaused: {
+    type: "/problems/quest-paused",
+    title: "Quest paused",
+    status: 409,
+    description:
+      "The puzzle master has paused the quest; the players can't act until it resumes.",
+  },
+  tryAgain: {
+    type: "/problems/try-again",
+    title: "Changed at the same time",
+    status: 409,
+    description:
+      "Someone else changed the quest at the same moment, several times over. Try again.",
+  },
+  wrongActivationCode: {
+    type: "/problems/wrong-activation-code",
+    title: "Wrong activation code",
+    status: 422,
+    description: "The activation code, typed or scanned, isn't the puzzle's.",
+  },
+  wrongAnswer: {
+    type: "/problems/wrong-answer",
+    title: "Not the answer",
+    status: 422,
+    description: "The guess isn't the puzzle's solution.",
+  },
+  noRecipients: {
+    type: "/problems/no-recipients",
+    title: "Nobody to text",
+    status: 409,
+    description:
+      "Nobody the quest is assigned to has a phone number and accepts text messages.",
+  },
+  messagingFailed: {
+    type: "/problems/messaging-failed",
+    title: "Text message not sent",
+    status: 502,
+    description:
+      "The text messaging service refused or failed to send a message. The details are logged.",
+  },
   tooManyRequests: {
     type: "/problems/too-many-requests",
     title: "Too many requests",
@@ -242,6 +296,15 @@ const PROBLEM_FOR_REASON: Record<ServiceErrorReason, ProblemType> = {
   "email-not-verified": Problems.emailNotVerified,
   "invalid-link": Problems.invalidLink,
   "in-use": Problems.inUse,
+  forbidden: Problems.forbidden,
+  "invalid-quest": Problems.invalidQuest,
+  "wrong-state": Problems.wrongState,
+  "quest-paused": Problems.questPaused,
+  busy: Problems.tryAgain,
+  "wrong-activation-code": Problems.wrongActivationCode,
+  "wrong-answer": Problems.wrongAnswer,
+  "no-recipients": Problems.noRecipients,
+  "messaging-failed": Problems.messagingFailed,
 };
 
 /**

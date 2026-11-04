@@ -39,8 +39,9 @@ const questEventSchema = new Schema(
   { versionKey: false }
 );
 
-// A quest's history is read in order.
+// A quest's history is read in order, and a page at a time by ID.
 questEventSchema.index({ questName: 1, at: 1 });
+questEventSchema.index({ questName: 1, _id: 1 });
 
 /** A quest event as stored in the database. */
 export type QuestEventData = InferSchemaType<typeof questEventSchema>;

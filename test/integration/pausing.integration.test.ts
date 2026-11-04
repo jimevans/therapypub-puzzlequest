@@ -100,7 +100,7 @@ afterEach(() => {
 
 function asAdmin(action: "pause" | "resume") {
   return request(app)
-    .put(`/api/quest/quest/${action}`)
+    .post(`/api/v1/quests/quest/${action}`)
     .set("Authorization", `Bearer ${sessions.admin}`);
 }
 
@@ -124,8 +124,10 @@ describe("pausing a quest", () => {
     expect(quest.pauses).toHaveLength(1);
     expect(quest.pauses[0].startTime.getTime()).toBeGreaterThanOrEqual(before);
     expect(quest.pauses[0].endTime).toBeUndefined();
-    const json = JSON.parse((await asPlayer("get", "/api/quest/quest")).text);
-    expect(json.data).toMatchObject({
+    const json = JSON.parse(
+      (await asPlayer("get", "/api/v1/quests/quest")).text
+    );
+    expect(json).toMatchObject({
       paused: true,
       statusDescription: "Paused",
       progress: { running: false },
@@ -213,8 +215,11 @@ describe("pausing a quest", () => {
 
     const response = await asAdmin("pause");
 
-    expect(response.status).toBe(400);
-    expect(JSON.parse(response.text).message).toBe(message);
+    expect(response.status).toBe(409);
+    expect(JSON.parse(response.text)).toMatchObject({
+      type: "/problems/wrong-state",
+      detail: message,
+    });
   });
 });
 
@@ -236,8 +241,8 @@ describe("resuming a quest", () => {
   it("is refused when the quest isn't paused", async () => {
     const response = await asAdmin("resume");
 
-    expect(response.status).toBe(400);
-    expect(JSON.parse(response.text).message).toBe("Quest quest isn't paused");
+    expect(response.status).toBe(409);
+    expect(JSON.parse(response.text).detail).toBe("Quest quest isn't paused");
   });
 });
 
@@ -260,9 +265,11 @@ describe("the players' time", () => {
       }
     );
 
-    const json = JSON.parse((await asPlayer("get", "/api/quest/quest")).text);
+    const json = JSON.parse(
+      (await asPlayer("get", "/api/v1/quests/quest")).text
+    );
 
-    const elapsed = json.data.progress.puzzles[0].elapsedMs;
+    const elapsed = json.progress.puzzles[0].elapsedMs;
     expect(elapsed).toBeGreaterThanOrEqual(20 * MINUTE);
     expect(elapsed).toBeLessThan(21 * MINUTE);
   });

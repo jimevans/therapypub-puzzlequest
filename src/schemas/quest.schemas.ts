@@ -18,7 +18,7 @@ const assignee = z.object({
   name: requiredText,
 });
 
-/** POST /api/quest/create */
+/** POST /api/v1/quests */
 export const createQuestBody = z.object({
   name: newName,
   displayName: displayName.min(1, "Required"),
@@ -28,7 +28,7 @@ export const createQuestBody = z.object({
 export type CreateQuestBody = z.infer<typeof createQuestBody>;
 
 /**
- * PUT /api/quest/:name. Fields left out keep their stored values; leaving
+ * PATCH /api/v1/quests/{name}. Fields left out keep their stored values; leaving
  * out the puzzle list keeps the puzzles unchanged.
  */
 export const updateQuestBody = z.object({
@@ -63,7 +63,7 @@ export type SolvePuzzleBody = z.infer<typeof solvePuzzleBody>;
 export const requestHintBody = z.object({ connectionId });
 export type RequestHintBody = z.infer<typeof requestHintBody>;
 
-/** PUT /api/quest/:name/puzzle/:puzzleName/reset */
+/** POST /api/v1/quests/{name}/puzzles/{puzzleName}/reset */
 export const resetPuzzleBody = z.object({
   /** True to remove the penalties of the puzzle's revealed hints. */
   refundHints: z.boolean().default(false),

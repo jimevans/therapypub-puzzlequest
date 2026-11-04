@@ -36,8 +36,10 @@ const ACCESS_MIDDLEWARE: Record<Access, RequestHandler[]> = {
 /** A response a route can give, other than a problem. */
 export interface RouteResponse {
   description: string;
-  /** The body's schema, sent as JSON; leave it out for no body. */
+  /** The body's schema; leave it out for no body. */
   body?: z.ZodType;
+  /** The body's media type, if it isn't JSON, such as image/png. */
+  mediaType?: string;
   /** Headers the response has, by name. */
   headers?: Record<string, { description: string }>;
 }
@@ -72,7 +74,17 @@ export interface Route<
    * is only described: the route's own middleware (multer) reads and checks
    * it.
    */
-  request?: { body?: B; query?: Q; params?: P; multipart?: z.ZodObject };
+  request?: {
+    body?: B;
+    query?: Q;
+    params?: P;
+    multipart?: z.ZodObject;
+    /**
+     * The body's media type, if it isn't JSON: form fields, as Twilio's
+     * webhooks send them, are validated the same way.
+     */
+    bodyMediaType?: "application/x-www-form-urlencoded";
+  };
   /** The successful responses, by status code. */
   responses: Record<number, RouteResponse>;
   /**

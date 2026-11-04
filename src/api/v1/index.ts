@@ -5,8 +5,10 @@ import { Problems, sendProblem } from "../problems.js";
 import { createOpenApiDocument } from "./openapi.js";
 import { type AnyRoute, defineRoute, registerRoutes } from "./route.js";
 import { puzzleRoutes } from "./puzzles.js";
+import { questRoutes } from "./quests.js";
 import { sessionRoutes } from "./sessions.js";
 import { teamRoutes } from "./teams.js";
+import { twilioRoutes } from "./twilio.js";
 import { userRoutes } from "./users.js";
 
 /** The document describing the API, made on first request. */
@@ -37,6 +39,8 @@ export const v1Routes: AnyRoute[] = [
   ...userRoutes,
   ...teamRoutes,
   ...puzzleRoutes,
+  ...questRoutes,
+  ...twilioRoutes,
 ];
 
 const v1Router = express.Router();

@@ -3,13 +3,12 @@ import { validate } from "../middleware/validate.js";
 import {
   incomingCallBody,
   incomingTextBody,
-  sendTextBody,
 } from "../schemas/messaging.schemas.js";
-import { requireAdmin } from "../middleware/authorization.js";
 import * as MessagingController from "../controllers/messaging.controller.js";
-import { authenticateSession } from "../middleware/sessionAuthentication.js";
 import { requireTwilioSignature } from "../middleware/twilioSignature.js";
 
+// Twilio's webhooks at their original URLs, kept until the Twilio console
+// points at the v1 ones (/api/v1/twilio/voice and /api/v1/twilio/messages).
 const messagingApiRouter = express.Router();
 
 messagingApiRouter.post(
@@ -24,12 +23,4 @@ messagingApiRouter.post(
   validate({ body: incomingTextBody }),
   MessagingController.receiveTextMessage
 );
-messagingApiRouter.post(
-  "/outgoing/text",
-  authenticateSession,
-  requireAdmin,
-  validate({ body: sendTextBody }),
-  MessagingController.sendTextMessage
-);
-
 export { messagingApiRouter as MessagingApiRouter };

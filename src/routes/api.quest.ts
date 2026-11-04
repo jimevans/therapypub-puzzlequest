@@ -2,13 +2,10 @@ import express from "express";
 import { validate } from "../middleware/validate.js";
 import {
   activatePuzzleBody,
-  createQuestBody,
   requestHintBody,
-  resetPuzzleBody,
   solvePuzzleBody,
-  updateQuestBody,
 } from "../schemas/quest.schemas.js";
-import { requireAdmin, requireUser } from "../middleware/authorization.js";
+import { requireUser } from "../middleware/authorization.js";
 import {
   activationRateLimiter,
   solutionRateLimiter,
@@ -18,63 +15,9 @@ import { uploadActivationImage } from "../middleware/upload.js";
 import * as QuestController from "../controllers/quest.controller.js";
 import * as QRCodeReader from "../middleware/qrCodeReader.js";
 
+// Playing a quest. Everything else about quests is in the v1 API, and these
+// move there next.
 const questApiRouter = express.Router();
-questApiRouter.get(
-  "/list",
-  authenticateSession,
-  requireAdmin,
-  QuestController.listQuests
-);
-questApiRouter.get(
-  "/:name",
-  authenticateSession,
-  requireUser,
-  QuestController.retrieveQuest
-);
-questApiRouter.put(
-  "/:name",
-  authenticateSession,
-  requireAdmin,
-  validate({ body: updateQuestBody }),
-  QuestController.updateQuest
-);
-questApiRouter.delete(
-  "/:name",
-  authenticateSession,
-  requireAdmin,
-  QuestController.deleteQuest
-);
-questApiRouter.post(
-  "/create",
-  authenticateSession,
-  requireAdmin,
-  validate({ body: createQuestBody }),
-  QuestController.createQuest
-);
-questApiRouter.put(
-  "/:name/activate",
-  authenticateSession,
-  requireAdmin,
-  QuestController.activateQuest
-);
-questApiRouter.put(
-  "/:name/reset",
-  authenticateSession,
-  requireAdmin,
-  QuestController.resetQuest
-);
-questApiRouter.put(
-  "/:name/pause",
-  authenticateSession,
-  requireAdmin,
-  QuestController.pauseQuest
-);
-questApiRouter.put(
-  "/:name/resume",
-  authenticateSession,
-  requireAdmin,
-  QuestController.resumeQuest
-);
 questApiRouter.post(
   "/:name/puzzle/:puzzleName/activate",
   authenticateSession,
@@ -101,24 +44,4 @@ questApiRouter.put(
   validate({ body: requestHintBody }),
   QuestController.requestQuestPuzzleHint
 );
-questApiRouter.put(
-  "/:name/puzzle/:puzzleName/skip",
-  authenticateSession,
-  requireAdmin,
-  QuestController.skipQuestPuzzle
-);
-questApiRouter.put(
-  "/:name/puzzle/:puzzleName/reset",
-  authenticateSession,
-  requireAdmin,
-  validate({ body: resetPuzzleBody }),
-  QuestController.resetQuestPuzzle
-);
-questApiRouter.get(
-  "/:name/puzzle/:puzzleName/qrcode",
-  authenticateSession,
-  requireAdmin,
-  QuestController.generatePuzzleActivationQRCode
-);
-
 export { questApiRouter as QuestApiRouter };
