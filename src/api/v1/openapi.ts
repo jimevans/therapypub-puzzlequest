@@ -132,7 +132,7 @@ export function createOpenApiDocument(
   routes: AnyRoute[]
 ): ReturnType<typeof createDocument> {
   const paths: ZodOpenApiPathsObject = {};
-  for (const route of routes) {
+  for (const route of routes.filter((r) => r.documented !== false)) {
     paths[route.path] = {
       ...paths[route.path],
       [route.method]: describeOperation(route),

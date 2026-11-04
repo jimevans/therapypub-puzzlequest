@@ -66,6 +66,11 @@ export interface Route<
   description?: string;
   /** The groups the route is listed under in the documentation. */
   tags: string[];
+  /**
+   * False to leave the route out of the API's description: for webhooks,
+   * which only the service that calls them uses.
+   */
+  documented?: boolean;
   access: Access;
   /** Middleware that runs before validation, such as rate limits. */
   before?: RequestHandler[];

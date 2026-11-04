@@ -8,7 +8,7 @@ import { puzzleRoutes } from "./puzzles.js";
 import { questRoutes } from "./quests.js";
 import { sessionRoutes } from "./sessions.js";
 import { teamRoutes } from "./teams.js";
-import { twilioRoutes } from "./twilio.js";
+import { webhookRoutes } from "./webhooks.js";
 import { userRoutes } from "./users.js";
 
 /** The document describing the API, made on first request. */
@@ -40,7 +40,7 @@ export const v1Routes: AnyRoute[] = [
   ...teamRoutes,
   ...puzzleRoutes,
   ...questRoutes,
-  ...twilioRoutes,
+  ...webhookRoutes,
 ];
 
 const v1Router = express.Router();

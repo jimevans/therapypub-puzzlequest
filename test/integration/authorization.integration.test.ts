@@ -158,6 +158,8 @@ const ROUTES: [string, string, Policy][] = [
   ["get", "/api/v1/quests/:name/puzzles/:puzzleName/qr-code", ADMIN],
   ["get", "/api/v1/quests/:name/events", ADMIN],
   ["post", "/api/v1/quests/:name/text-messages", ADMIN],
+  ["post", "/api/v1/webhooks/twilio/voice", TWILIO],
+  ["post", "/api/v1/webhooks/twilio/messages", TWILIO],
   ["post", "/api/v1/twilio/voice", TWILIO],
   ["post", "/api/v1/twilio/messages", TWILIO],
 
