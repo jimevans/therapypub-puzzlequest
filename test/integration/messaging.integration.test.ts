@@ -153,9 +153,14 @@ function sendWebhook(
 
 describe("Twilio webhook signatures", () => {
   const webhooks = [
+    ["/api/v1/webhooks/twilio/voice", { From: "+15551230001" }],
+    [
+      "/api/v1/webhooks/twilio/messages",
+      { From: "+15551230001", Body: "Ready" },
+    ],
+    // The earlier URLs, until the Twilio console points at the ones above.
     ["/api/v1/twilio/voice", { From: "+15551230001" }],
     ["/api/v1/twilio/messages", { From: "+15551230001", Body: "Ready" }],
-    // The original URLs, until the Twilio console points at the v1 ones.
     ["/api/messaging/incoming/voice", { From: "+15551230001" }],
     ["/api/messaging/incoming/text", { From: "+15551230001", Body: "Ready" }],
   ] as const;
@@ -177,6 +182,8 @@ describe("Twilio webhook signatures", () => {
     const response = await request(app).post(path).type("form").send(fields);
 
     expect(response.status).toBe(403);
+    // A bare refusal, which tells the sender nothing.
+    expect(response.text).toBe("Forbidden");
     // A forged call must not start the caller's quests.
     expect((await storedQuest("player-quest")).status).toBe(
       QuestStatus.NOT_STARTED
@@ -235,10 +242,10 @@ describe("Twilio webhook signatures", () => {
   );
 });
 
-describe("POST /api/v1/twilio/voice", () => {
+describe("POST /api/v1/webhooks/twilio/voice", () => {
   function call(from?: string): request.Test {
     return sendWebhook(
-      "/api/v1/twilio/voice",
+      "/api/v1/webhooks/twilio/voice",
       from === undefined ? {} : { From: from }
     );
   }
@@ -302,9 +309,9 @@ describe("POST /api/v1/twilio/voice", () => {
   });
 });
 
-describe("POST /api/v1/twilio/messages", () => {
+describe("POST /api/v1/webhooks/twilio/messages", () => {
   function text(from: string, body: string): request.Test {
-    return sendWebhook("/api/v1/twilio/messages", {
+    return sendWebhook("/api/v1/webhooks/twilio/messages", {
       From: from,
       Body: body,
     });

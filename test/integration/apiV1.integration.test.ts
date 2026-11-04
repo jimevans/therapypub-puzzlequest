@@ -214,7 +214,7 @@ describe("the OpenAPI document", () => {
     expect(document.openapi).toBe("3.1.0");
   });
 
-  it("describes every route the API registers, and no others", async () => {
+  it("describes every route the API registers, except webhooks, and no others", async () => {
     const document = await getDocument();
     const described = Object.entries(
       document.paths as Record<string, object>
@@ -232,8 +232,21 @@ describe("the OpenAPI document", () => {
         : []
     );
 
-    expect(described.sort()).toEqual(registered.sort());
+    const webhooks = v1Routes
+      .filter((route) => route.documented === false)
+      .map((route) => `${route.method} ${toExpressPath(route.path)}`);
+
     expect(registered).toHaveLength(v1Routes.length);
+    expect(webhooks.length).toBeGreaterThan(0);
+    expect(described.sort()).toEqual(
+      registered.filter((route) => !webhooks.includes(route)).sort()
+    );
+  });
+
+  it("says nothing about webhooks", async () => {
+    const response = await request(app).get("/api/v1/openapi.json");
+
+    expect(response.text).not.toMatch(/webhook|twilio/i);
   });
 
   it("documents each route's problems, and their types", async () => {

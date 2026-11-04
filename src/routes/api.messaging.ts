@@ -8,7 +8,8 @@ import * as MessagingController from "../controllers/messaging.controller.js";
 import { requireTwilioSignature } from "../middleware/twilioSignature.js";
 
 // Twilio's webhooks at their original URLs, kept until the Twilio console
-// points at the v1 ones (/api/v1/twilio/voice and /api/v1/twilio/messages).
+// points at the v1 ones (/api/v1/webhooks/twilio/voice and
+// /api/v1/webhooks/twilio/messages).
 const messagingApiRouter = express.Router();
 
 messagingApiRouter.post(

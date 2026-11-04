@@ -10,7 +10,8 @@ export const TWILIO_SIGNATURE_HEADER = "x-twilio-signature";
  * request with the account's auth token, over the URL it called and the
  * form fields it sent. That URL is the one configured in the Twilio console,
  * which is rebuilt here from PQ_BASE_URL, so the two must match. Requests are
- * rejected when the auth token or base URL isn't configured.
+ * rejected when the auth token or base URL isn't configured. A rejected
+ * request is answered with a bare 403, which tells its sender nothing.
  * @param req the request
  * @param res the response
  * @param next the next handler
