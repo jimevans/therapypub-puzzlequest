@@ -58,7 +58,6 @@ const { IndexRouter } = await import("../../src/routes/index.js");
 const { V1Router } = await import("../../src/api/v1/index.js");
 const { MessagingApiRouter } =
   await import("../../src/routes/api.messaging.js");
-const { PuzzleApiRouter } = await import("../../src/routes/api.puzzle.js");
 const { QuestApiRouter } = await import("../../src/routes/api.quest.js");
 const { MonitorRouter } = await import("../../src/routes/monitor.js");
 const { PuzzleRouter } = await import("../../src/routes/puzzle.js");
@@ -69,7 +68,6 @@ const { UserRouter } = await import("../../src/routes/user.js");
 const MOUNTS: [string, Router][] = [
   ["", IndexRouter],
   ["/api/v1", V1Router],
-  ["/api/puzzle", PuzzleApiRouter],
   ["/api/quest", QuestApiRouter],
   ["/api/messaging", MessagingApiRouter],
   ["/user", UserRouter],
@@ -140,13 +138,12 @@ const ROUTES: [string, string, Policy][] = [
   ["delete", "/api/v1/teams/:teamName", ADMIN],
   ["put", "/api/v1/teams/:teamName/members/:userName", SELF_OR_ADMIN],
   ["delete", "/api/v1/teams/:teamName/members/:userName", SELF_OR_ADMIN],
-
-  ["get", "/api/puzzle/list", ADMIN],
-  ["get", "/api/puzzle/:name", ADMIN],
-  ["put", "/api/puzzle/:name", ADMIN],
-  ["delete", "/api/puzzle/:name", ADMIN],
-  ["post", "/api/puzzle/create", ADMIN],
-  ["post", "/api/puzzle/upload", ADMIN],
+  ["get", "/api/v1/puzzles", ADMIN],
+  ["post", "/api/v1/puzzles", ADMIN],
+  ["get", "/api/v1/puzzles/:name", ADMIN],
+  ["patch", "/api/v1/puzzles/:name", ADMIN],
+  ["delete", "/api/v1/puzzles/:name", ADMIN],
+  ["post", "/api/v1/puzzle-media", ADMIN],
 
   ["get", "/api/quest/list", ADMIN],
   ["get", "/api/quest/:name", QUEST_VIEWER],
@@ -283,7 +280,7 @@ beforeEach(async () => {
  */
 function send(method: string, routePath: string, role: Role) {
   // Puzzle routes use :name for the puzzle; quest routes, for the quest.
-  const isPuzzleRoute = /^\/(api\/)?puzzle\//.test(routePath);
+  const isPuzzleRoute = /^\/(api\/(v1\/)?)?puzzles?\//.test(routePath);
   const path = routePath.replace(/:(\w+)/g, (_, name) =>
     name === "name" && isPuzzleRoute ? "riddle" : PARAMS[name]
   );

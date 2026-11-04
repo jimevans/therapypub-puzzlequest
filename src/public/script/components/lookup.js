@@ -1,6 +1,5 @@
 import { DataGrid } from "./grid.js";
 import { Modal } from "./modal.js";
-import { callDataApi } from "../fetch.js";
 
 /**
  * A modal dialog that contains a data grid for selecting items.
@@ -31,10 +30,6 @@ class Lookup extends Modal {
     this.#grid = new DataGrid("", columnDefinitions, gridOptions);
   }
 
-  async #getData(apiEndpoint) {
-    return await callDataApi(apiEndpoint, "get");
-  }
-
   /**
    * Renders items in the lookup grid.
    * @param {object[]} items the items
@@ -45,24 +40,6 @@ class Lookup extends Modal {
     wrapper.appendChild(this.#grid.getElement());
     wrapper.appendChild(this.#additionalBody);
     this.setBodyContent(wrapper);
-  }
-
-  /**
-   * Renders the data in the lookup grid, from the older API.
-   * @param {string} dataRetrievalUri the URL to call to retrieve the data for the grid
-   * @param {string} responseDataField the field in the response from the URL containing the grid data
-   */
-  async render(dataRetrievalUri, responseDataField) {
-    const gridDataResponse = await this.#getData(dataRetrievalUri);
-    if (gridDataResponse && gridDataResponse.status === "success") {
-      if (responseDataField in gridDataResponse) {
-        const wrapper = document.createElement("div");
-        this.#grid.render(gridDataResponse[responseDataField]);
-        wrapper.appendChild(this.#grid.getElement());
-        wrapper.appendChild(this.#additionalBody);
-        this.setBodyContent(wrapper);
-      }
-    }
   }
 
   /**

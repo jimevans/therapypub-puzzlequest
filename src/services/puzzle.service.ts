@@ -1,6 +1,8 @@
 import { PuzzleModel, PuzzleType } from "../models/puzzle.model.js";
 import { QuestModel } from "../models/quest.model.js";
 import type { ServiceResult } from "../types.js";
+import { type Page, type PageQuery, findPage } from "../api/paging.js";
+import { isDuplicateKeyError, unexpectedErrorResult } from "../errors.js";
 
 /**
  * The result of a puzzle service operation; data is a Puzzle unless the
@@ -155,6 +157,7 @@ export async function getPuzzleByPuzzleName(
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `No puzzle with puzzle name ${name} found`,
     };
   }
@@ -178,6 +181,7 @@ export async function deletePuzzle(
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `Puzzle with puzzle name ${name} does not exist`,
     };
   }
@@ -191,6 +195,7 @@ export async function deletePuzzle(
     return {
       status: "error",
       statusCode: 409,
+      reason: "in-use",
       message: `Puzzle ${name} is used by ${quests.length === 1 ? "quest" : "quests"} ${quests.map((quest) => quest.name).join(", ")}; remove it from ${quests.length === 1 ? "that quest" : "those quests"} first`,
     };
   }
@@ -212,6 +217,7 @@ export async function createPuzzle(
     return {
       status: "error",
       statusCode: 400,
+      reason: "already-exists",
       message: `Puzzle with puzzle name ${puzzle.name} already exists`,
     };
   }
@@ -228,11 +234,15 @@ export async function createPuzzle(
     });
     await newPuzzle.save();
   } catch (err) {
-    return {
-      status: "error",
-      statusCode: 500,
-      message: `New puzzle not created - ${err}`,
-    };
+    if (isDuplicateKeyError(err, "name")) {
+      return {
+        status: "error",
+        statusCode: 400,
+        reason: "already-exists",
+        message: `Puzzle with puzzle name ${puzzle.name} already exists`,
+      };
+    }
+    return unexpectedErrorResult("createPuzzle", err);
   }
   return { status: "success", statusCode: 200 };
 }
@@ -252,6 +262,7 @@ export async function updatePuzzle(
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `No puzzle with puzzle name ${name} found`,
     };
   }
@@ -268,15 +279,21 @@ export async function updatePuzzle(
 }
 
 /**
- * Gets a list of all of the puzzle definitions.
- * @returns a response object containing a status, status code, and data
+ * Gets a page of the puzzles, in the order they were created.
+ * @param query the page wanted
+ * @returns the page of puzzles
  */
-export async function listPuzzles(): Promise<PuzzleResult<Puzzle[]>> {
-  const foundPuzzles = await PuzzleModel.find({});
-  const puzzles = foundPuzzles.map((foundPuzzle) => {
-    const puzzle = new Puzzle(foundPuzzle);
-    puzzle.hints = foundPuzzle.hints.map((hint) => new PuzzleHint(hint));
-    return puzzle;
-  });
-  return { status: "success", statusCode: 200, data: puzzles };
+export async function listPuzzlesPage(query: PageQuery): Promise<Page<Puzzle>> {
+  const page = await findPage(
+    (conditions) => PuzzleModel.find(conditions),
+    query
+  );
+  return {
+    ...page,
+    items: page.items.map((found) => {
+      const puzzle = new Puzzle(found);
+      puzzle.hints = found.hints.map((hint) => new PuzzleHint(hint));
+      return puzzle;
+    }),
+  };
 }

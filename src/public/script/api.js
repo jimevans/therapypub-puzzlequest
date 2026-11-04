@@ -1,17 +1,19 @@
 /**
  * Calls the v1 API.
  * @param {string} path the path below /api/v1, such as "/sessions"
- * @param {{ method?: string, body?: unknown }} options the HTTP method
- *  (GET by default), and the body to send as JSON, if any
+ * @param {{ method?: string, body?: unknown, formData?: FormData }} options
+ *  the HTTP method (GET by default), and the body: sent as JSON, or form
+ *  data sent as multipart, such as an upload
  * @returns {Promise<{ ok: true, status: number, data: unknown } | { ok: false, status: number, problem: { type: string, title: string, status: number, detail?: string, errors?: { path: string, message: string }[] } }>}
  *  the response's body: data if it succeeded, or the problem it reports
  */
-export async function callApi(path, { method = "GET", body } = {}) {
+export async function callApi(path, { method = "GET", body, formData } = {}) {
   const response = await fetch(`/api/v1${path}`, {
     method,
+    // The browser sets the Content-Type of form data, with its boundary.
     headers:
       body === undefined ? undefined : { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: formData ?? (body === undefined ? undefined : JSON.stringify(body)),
   });
   const isJson = /json/.test(response.headers.get("content-type") ?? "");
   const content = isJson ? await response.json() : undefined;

@@ -49,10 +49,8 @@ document.querySelector("#puzzles").addEventListener("click", async (e) => {
   e.preventDefault();
   const gridElement = document.querySelector("#data-grid");
   gridElement.classList.add("pq-hide");
-  const puzzleData = await callDataApi(
-    e.currentTarget.getAttribute("data-api-endpoint")
-  );
-  if (puzzleData && puzzleData.status === "success") {
+  const puzzles = await listAll("/puzzles");
+  if (puzzles.ok) {
     const fieldDefinitions = [
       {
         fieldName: "name",
@@ -68,7 +66,7 @@ document.querySelector("#puzzles").addEventListener("click", async (e) => {
       },
     ];
     const grid = new DataGrid("Puzzles", fieldDefinitions);
-    grid.render(puzzleData.data);
+    grid.render(puzzles.items);
     grid.onAddDataRequested = (e) => {
       window.location.href = "/puzzle/new";
     };

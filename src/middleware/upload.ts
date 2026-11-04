@@ -3,6 +3,7 @@ import type { RequestHandler } from "express";
 import multer from "multer";
 import { puzzleDataDirectory } from "../paths.js";
 import { getErrorMessage, toError } from "../errors.js";
+import { Problems, type ProblemType } from "../api/problems.js";
 
 /** The largest puzzle media file that can be uploaded, in bytes. */
 export const MAXIMUM_PUZZLE_MEDIA_BYTES = 100 * 1024 * 1024;
@@ -51,13 +52,17 @@ class UploadError extends Error {
   /** Always true: the message is meant for the client (see errorHandler). */
   expose: boolean;
 
+  /** The kind of problem, for the v1 API. */
+  problem: ProblemType;
+
   /**
-   * @param status the HTTP status code
+   * @param problem the kind of problem, whose status is responded with
    * @param message the message for the client
    */
-  constructor(status: number, message: string) {
+  constructor(problem: ProblemType, message: string) {
     super(message);
-    this.status = status;
+    this.problem = problem;
+    this.status = problem.status;
     this.expose = true;
   }
 }
@@ -78,14 +83,14 @@ export function getPuzzleMediaFileName(
 ): string {
   if (typeof puzzleName !== "string" || typeof fileExtension !== "string") {
     throw new UploadError(
-      400,
+      Problems.invalidUpload,
       "puzzleName and fileExtension must be sent before the file"
     );
   }
   const extension = fileExtension.toLowerCase();
   if (!PUZZLE_MEDIA_EXTENSIONS.has(extension)) {
     throw new UploadError(
-      400,
+      Problems.invalidUpload,
       `Files of type .${fileExtension} cannot be uploaded`
     );
   }
@@ -98,7 +103,10 @@ export function getPuzzleMediaFileName(
     path.dirname(path.resolve(puzzleDataDirectory, fileName)) ===
       puzzleDataDirectory;
   if (!isSafeName) {
-    throw new UploadError(400, `Invalid puzzle name for an upload`);
+    throw new UploadError(
+      Problems.invalidUpload,
+      `Invalid puzzle name for an upload`
+    );
   }
   return fileName;
 }
@@ -116,8 +124,11 @@ function reportUploadErrors(middleware: RequestHandler): RequestHandler {
       if (err instanceof multer.MulterError) {
         next(
           err.code === "LIMIT_FILE_SIZE"
-            ? new UploadError(413, "The uploaded file is too large")
-            : new UploadError(400, getErrorMessage(err))
+            ? new UploadError(
+                Problems.uploadTooLarge,
+                "The uploaded file is too large"
+              )
+            : new UploadError(Problems.invalidUpload, getErrorMessage(err))
         );
         return;
       }

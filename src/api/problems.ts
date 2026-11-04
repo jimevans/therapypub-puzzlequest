@@ -105,6 +105,26 @@ export const Problems = {
     description:
       "The token from a password reset or email verification link isn't valid: it is malformed, already used, or expired.",
   },
+  inUse: {
+    type: "/problems/in-use",
+    title: "In use",
+    status: 409,
+    description:
+      "It can't be deleted while something uses it, such as a puzzle a quest includes. The detail says what uses it.",
+  },
+  invalidUpload: {
+    type: "/problems/invalid-upload",
+    title: "Upload not accepted",
+    status: 400,
+    description:
+      "The upload is missing a field, sends its fields in the wrong order, or is a kind of file that isn't accepted.",
+  },
+  uploadTooLarge: {
+    type: "/problems/upload-too-large",
+    title: "Upload too large",
+    status: 413,
+    description: "The uploaded file is larger than allowed.",
+  },
   tooManyRequests: {
     type: "/problems/too-many-requests",
     title: "Too many requests",
@@ -221,6 +241,7 @@ const PROBLEM_FOR_REASON: Record<ServiceErrorReason, ProblemType> = {
   "wrong-join-code": Problems.wrongJoinCode,
   "email-not-verified": Problems.emailNotVerified,
   "invalid-link": Problems.invalidLink,
+  "in-use": Problems.inUse,
 };
 
 /**

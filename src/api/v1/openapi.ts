@@ -87,7 +87,7 @@ function describeResponses(route: AnyRoute): ZodOpenApiResponsesObject {
  * @returns the operation
  */
 function describeOperation(route: AnyRoute): ZodOpenApiOperationObject {
-  const { body, query, params } = route.request ?? {};
+  const { body, query, params, multipart } = route.request ?? {};
   return {
     operationId: route.operationId,
     summary: route.summary,
@@ -103,11 +103,13 @@ function describeOperation(route: AnyRoute): ZodOpenApiOperationObject {
           },
         }
       : {}),
-    ...(body
+    ...(body || multipart
       ? {
           requestBody: {
             required: true,
-            content: { "application/json": { schema: body } },
+            content: body
+              ? { "application/json": { schema: body } }
+              : { "multipart/form-data": { schema: multipart } },
           },
         }
       : {}),

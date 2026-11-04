@@ -440,16 +440,6 @@ export async function updateUser(
 }
 
 /**
- * Gets a list of all of the user definitions.
- * @returns a result containing all users
- */
-export async function listUsers(): Promise<UserResult<User[]>> {
-  const foundUsers = await UserModel.find({});
-  const users = foundUsers.map((foundUser) => new User(foundUser));
-  return { status: "success", statusCode: 200, data: users };
-}
-
-/**
  * Gets a page of the users, in the order they signed up.
  * @param query the page wanted
  * @returns the page of users

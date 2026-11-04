@@ -13,7 +13,6 @@ import { publicDirectory, viewsDirectory } from "./paths.js";
 import { V1Router } from "./api/v1/index.js";
 import { IndexRouter } from "./routes/index.js";
 import { MessagingApiRouter } from "./routes/api.messaging.js";
-import { PuzzleApiRouter } from "./routes/api.puzzle.js";
 import { QuestApiRouter } from "./routes/api.quest.js";
 import { MonitorRouter } from "./routes/monitor.js";
 import { PuzzleRouter } from "./routes/puzzle.js";
@@ -78,7 +77,6 @@ export function createApp(): Express {
   app.use("/api/v1", V1Router);
 
   // API routes for data manipulation
-  app.use("/api/puzzle", PuzzleApiRouter);
   app.use("/api/quest", QuestApiRouter);
   app.use("/api/messaging", MessagingApiRouter);
 
