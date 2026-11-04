@@ -3,17 +3,16 @@ import {
   ipKeyGenerator,
   rateLimit,
 } from "express-rate-limit";
-import { Problems, sendApiError } from "../api/problems.js";
+import { Problems, sendProblem } from "../api/problems.js";
 
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
 
 /**
- * Answers a request over its limit, in the format its API uses. The
- * RateLimit headers say when to try again.
+ * Answers a request over its limit. The RateLimit headers say when to try
+ * again.
  */
 const handler: RateLimitExceededEventHandler = (req, res) => {
-  sendApiError(
-    req,
+  sendProblem(
     res,
     Problems.tooManyRequests,
     "Too many requests; please try again later"

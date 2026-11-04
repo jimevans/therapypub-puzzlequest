@@ -113,9 +113,14 @@ function describeOperation(route: AnyRoute): ZodOpenApiOperationObject {
       ? {
           requestBody: {
             required: true,
-            content: body
-              ? { [bodyMediaType ?? "application/json"]: { schema: body } }
-              : { "multipart/form-data": { schema: multipart } },
+            content: {
+              ...(body
+                ? { [bodyMediaType ?? "application/json"]: { schema: body } }
+                : {}),
+              ...(multipart
+                ? { "multipart/form-data": { schema: multipart } }
+                : {}),
+            },
           },
         }
       : {}),

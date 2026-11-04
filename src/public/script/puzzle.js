@@ -1,34 +1,39 @@
 /* global questName, puzzleName -- defined by an inline script in the page */
 import { FireworksOverlay } from "./components/fireworksOverlay.js";
 import { Modal } from "./components/modal.js";
-import { callDataApi } from "./fetch.js";
+import { callApi } from "./api.js";
 
+/** The puzzle's path in the API. */
+const puzzlePath = `/quests/${encodeURIComponent(questName)}/puzzles/${encodeURIComponent(puzzleName)}`;
+
+/**
+ * Sends a guess at the puzzle's solution.
+ * @param {string} solutionGuess the guess
+ * @returns {Promise<{ solutionText?: string, questComplete?: boolean, error?: string }>}
+ *  the solution, or why the guess wasn't right
+ */
 async function submitGuess(solutionGuess) {
   if (!solutionGuess) {
-    return {
-      status: "error",
-      message: "No guess entered to submit",
-    };
+    return { error: "No guess entered to submit" };
   }
-  return await callDataApi(
-    `/api/quest/${questName}/puzzle/${puzzleName}/solve`,
-    "put",
-    { guess: solutionGuess, connectionId }
-  );
+  const response = await callApi(`${puzzlePath}/solution-attempts`, {
+    method: "POST",
+    body: { guess: solutionGuess, connectionId },
+  });
+  return response.ok
+    ? response.data
+    : { error: response.problem.detail ?? response.problem.title };
 }
 
 async function requestHint(requestHintElement) {
-  const hintResponse = await callDataApi(
-    `/api/quest/${questName}/puzzle/${puzzleName}/hint`,
-    "put",
-    { connectionId }
-  );
-
-  if (hintResponse.status === "error") {
-    return;
-  }
-  if (hintResponse.status === "success") {
+  const hintResponse = await callApi(`${puzzlePath}/hints`, {
+    method: "POST",
+    body: { connectionId },
+  });
+  if (hintResponse.ok) {
     updateHintDisplay(requestHintElement, hintResponse.data);
+  } else if (hintResponse.problem.type === "/problems/no-more-hints") {
+    displayNoMoreHints(requestHintElement);
   }
 }
 
@@ -37,7 +42,7 @@ function updateHintDisplay(requestHintElement, hintDisplayData) {
     requestHintElement.setAttribute("data-solution-warning", "true");
   }
 
-  const hintElement = displayHint(hintDisplayData.hintText);
+  const hintElement = displayHint(hintDisplayData.text);
   if (!hintDisplayData.moreHints) {
     displayNoMoreHints(requestHintElement);
   }
@@ -98,12 +103,12 @@ if (isSolveAvailable) {
       const guessResult = await submitGuess(
         document.querySelector("#solution-guess").value
       );
-      if (guessResult.status === "error") {
-        errorElement.innerText = guessResult.message;
+      if (guessResult.error) {
+        errorElement.innerText = guessResult.error;
         errorElement.classList.remove("pq-hide");
       } else {
-        displaySolution(guessResult.data.solutionText);
-        if (guessResult.data.questComplete) {
+        displaySolution(guessResult.solutionText);
+        if (guessResult.questComplete) {
           const fireworks = new FireworksOverlay();
           fireworks.render("Congratulations! Your quest is complete!", 15000);
         }

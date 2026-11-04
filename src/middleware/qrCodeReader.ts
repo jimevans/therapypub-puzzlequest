@@ -1,29 +1,24 @@
-import type { NextFunction, Request, Response } from "express";
 import jsQR from "jsqr";
 
 /**
- * Reads the activation code from a scanned QR code image, if the request
- * includes one, into req.qrCodeData and req.body.activationCode. The image is
- * the raw RGBA pixels of the camera frame, with its width and height in the
- * body.
- * @param req the request
- * @param res the response
- * @param next the next handler
+ * Reads the activation code from a scanned QR code image: the raw RGBA
+ * pixels of a camera frame.
+ * @param pixels the frame's pixels
+ * @param width the frame's width, in pixels
+ * @param height the frame's height, in pixels
+ * @returns the code the QR code holds, or undefined if none can be read
  */
-export async function readQRCode(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> {
-  if (req.file && req.body && req.body.width && req.body.height) {
-    const imageBuffer = new Uint8ClampedArray(req.file.buffer);
-    // @ts-expect-error -- jsqr's type definitions describe an ES module
-    // default export, but its CommonJS entry point exports the function itself.
-    const code = jsQR(imageBuffer, req.body.width, req.body.height);
-    if (code && code.data) {
-      req.qrCodeData = code.data;
-      req.body.activationCode = code.data;
-    }
+export function readQRCode(
+  pixels: Buffer,
+  width: number,
+  height: number
+): string | undefined {
+  // The size comes from the client, so it must match the pixels sent.
+  if (pixels.length !== width * height * 4) {
+    return undefined;
   }
-  next();
+  // @ts-expect-error -- jsqr's type definitions describe an ES module
+  // default export, but its CommonJS entry point exports the function itself.
+  const code = jsQR(new Uint8ClampedArray(pixels), width, height);
+  return code?.data || undefined;
 }

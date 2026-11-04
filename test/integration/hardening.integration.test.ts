@@ -190,14 +190,14 @@ describe("guessing solutions", () => {
 
   function guess(answer: string) {
     return request(app)
-      .put("/api/quest/quest/puzzle/riddle/solve")
+      .post("/api/v1/quests/quest/puzzles/riddle/solution-attempts")
       .set("Authorization", `Bearer ${signedInToken}`)
       .send({ guess: answer });
   }
 
   it("requires a signed-in user", async () => {
     const response = await request(app)
-      .put("/api/quest/quest/puzzle/riddle/solve")
+      .post("/api/v1/quests/quest/puzzles/riddle/solution-attempts")
       .send({ guess: "piano" });
 
     expect(response.status).toBe(401);
@@ -206,7 +206,7 @@ describe("guessing solutions", () => {
   it("limits wrong guesses per player", async () => {
     await signInAs("guesser");
     for (let attempt = 0; attempt < 60; attempt++) {
-      expect((await guess("organ")).status).toBe(406);
+      expect((await guess("organ")).status).toBe(422);
     }
 
     expect((await guess("organ")).status).toBe(429);

@@ -128,17 +128,11 @@ describe("problems", () => {
     expect(await SessionModel.countDocuments()).toBe(1);
   });
 
-  it("aren't sent by the older API", async () => {
-    const response = await request(app)
-      .put("/api/quest/quest/puzzle/riddle/solve")
-      .send({ guess: "x" });
+  it("aren't used outside the API, where pages answer", async () => {
+    const response = await request(app).get("/user/player");
 
-    expect(response.status).toBe(401);
-    expect(response.type).toBe("application/json");
-    expect(JSON.parse(response.text)).toEqual({
-      status: "error",
-      message: "User must be logged in to perform operation",
-    });
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('src="/script/login.js"');
   });
 });
 

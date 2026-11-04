@@ -179,6 +179,19 @@ export const Problems = {
     description:
       "The text messaging service refused or failed to send a message. The details are logged.",
   },
+  unreadableQrCode: {
+    type: "/problems/unreadable-qr-code",
+    title: "QR code not readable",
+    status: 422,
+    description:
+      "No QR code could be read from the scanned image; try again, closer or with more light, or type the code.",
+  },
+  noMoreHints: {
+    type: "/problems/no-more-hints",
+    title: "No more hints",
+    status: 409,
+    description: "Every one of the puzzle's hints has been revealed.",
+  },
   tooManyRequests: {
     type: "/problems/too-many-requests",
     title: "Too many requests",
@@ -230,8 +243,8 @@ export type Problem = z.infer<typeof problemSchema>;
 export const PROBLEM_MEDIA_TYPE = "application/problem+json";
 
 /**
- * Determines whether a request is for the v1 API, which reports errors as
- * problem details. The older API answers { status, message } instead.
+ * Determines whether a request is for the API, which reports errors as
+ * problem details, rather than for a page.
  * @param req the request
  * @returns true for a v1 request
  */
@@ -263,27 +276,6 @@ export function sendProblem(
     .status(problem.status)
     .type(PROBLEM_MEDIA_TYPE)
     .send(JSON.stringify(body));
-}
-
-/**
- * Sends an error in the format the request's API uses: problem details for
- * v1, or { status: "error", message } for the older API.
- * @param req the request
- * @param res the response
- * @param problem the kind of problem, for v1
- * @param message what went wrong
- */
-export function sendApiError(
-  req: Request,
-  res: Response,
-  problem: ProblemType,
-  message: string
-): void {
-  if (isV1Request(req)) {
-    sendProblem(res, problem, message);
-    return;
-  }
-  res.status(problem.status).json({ status: "error", message });
 }
 
 /** The kind of problem each reason a service operation fails stands for. */
