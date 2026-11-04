@@ -4,6 +4,7 @@
 import {
   ADMIN,
   BASE_URL,
+  LIVE_UPDATES_CONNECTED,
   PASSWORD,
   api,
   callQuestNumber,
@@ -110,6 +111,7 @@ describe("playing a quest", () => {
     await expect(monitor).toHaveUrl(`${BASE_URL}/monitor/quest/${questName}`);
     await expect(monitor.$(`[data-puzzle-name="${riddle}"]`)).toExist();
     await expect(monitor.$(`[data-puzzle-name="${finale}"]`)).not.toExist();
+    await expect(monitor.$(LIVE_UPDATES_CONNECTED)).toExist();
     await expect(
       $(`a[href="/quest/${questName}/puzzle/${finale}"]`)
     ).not.toExist();
@@ -174,9 +176,12 @@ describe("playing a quest", () => {
   it("stops the players while the puzzle master has the quest paused", async () => {
     await browser.url(`/quest/${questName}/puzzle/${finale}`);
     await expect($("#paused-banner")).not.toExist();
+    await expect($(LIVE_UPDATES_CONNECTED)).toExist();
 
     await api("POST", `/quests/${questName}/pause`, admin);
     await expect($("#paused-banner")).toBeDisplayed();
+    // The page reloaded to show that, so it must connect again.
+    await expect($(LIVE_UPDATES_CONNECTED)).toExist();
 
     await api("POST", `/quests/${questName}/resume`, admin);
     await expect($("#paused-banner")).not.toExist();
