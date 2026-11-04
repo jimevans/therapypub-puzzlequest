@@ -32,12 +32,10 @@ describe("createApp", () => {
   });
 
   it("rejects anonymous API requests that require a user", async () => {
-    const response = await request(createApp()).get("/api/user/list");
+    const response = await request(createApp()).get("/api/v1/users");
 
     expect(response.status).toBe(401);
-    // Controllers send JSON.stringify output, which Express labels text/html,
-    // so the body has to be parsed by hand.
-    expect(JSON.parse(response.text).status).toBe("error");
+    expect(JSON.parse(response.text).type).toBe("/problems/sign-in-required");
   });
 
   it("does not trust proxy headers unless configured to", async () => {

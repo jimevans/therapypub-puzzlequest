@@ -70,7 +70,7 @@ beforeEach(async () => {
  * @returns the request
  */
 function send(
-  method: "post" | "put",
+  method: "post" | "put" | "patch",
   path: string,
   userName: "admin" | "player" | null = "admin"
 ) {
@@ -87,7 +87,7 @@ async function storedUser(userName: string) {
 
 describe("invalid input", () => {
   it("gets a 400 naming each invalid field", async () => {
-    const response = await send("post", "/api/user/create", null).send({
+    const response = await send("post", "/api/v1/users", null).send({
       userName: "a/b",
       email: "not an email",
       phone: "555-0142",
@@ -104,7 +104,7 @@ describe("invalid input", () => {
         message: "Enter a valid US or Canadian phone number",
       },
     ]);
-    expect(body.message).toBe(
+    expect(body.detail).toBe(
       'userName: Must not contain "/"; email: Enter a valid email address; phone: Enter a valid US or Canadian phone number'
     );
     expect(await UserModel.countDocuments()).toBe(2);
@@ -144,14 +144,14 @@ describe("invalid input", () => {
 
 describe("phone numbers", () => {
   it("are stored in E.164 format, however they're typed", async () => {
-    const response = await send("post", "/api/user/create", null).send({
+    const response = await send("post", "/api/v1/users", null).send({
       userName: "newcomer",
       email: "newcomer@example.com",
       phone: "(312) 555-0142",
       password: "a long enough password",
     });
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(201);
     expect((await storedUser("newcomer")).phone).toBe("+13125550142");
   });
 
@@ -161,9 +161,11 @@ describe("phone numbers", () => {
       { phone: "+13125550142" }
     );
 
-    const response = await send("put", "/api/user/player", "player").send({
-      phone: "",
-    });
+    const response = await send("patch", "/api/v1/users/player", "player").send(
+      {
+        phone: "",
+      }
+    );
 
     expect(response.status).toBe(200);
     expect((await storedUser("player")).phone).toBe("");
@@ -185,7 +187,9 @@ describe("phone numbers", () => {
 
 describe("values pages send as text", () => {
   it("are converted to numbers", async () => {
-    await send("put", "/api/user/player").send({ authorizationLevel: "10" });
+    await send("patch", "/api/v1/users/player").send({
+      authorizationLevel: "10",
+    });
 
     expect((await storedUser("player")).authorizationLevel).toBe(10);
   });
@@ -210,12 +214,14 @@ describe("values pages send as text", () => {
 
 describe("fields a request adds", () => {
   it("are dropped, so they can't change what they shouldn't", async () => {
-    const response = await send("put", "/api/user/player", "player").send({
-      displayName: "Renamed",
-      userName: "someone-else",
-      passwordChangedAt: "2000-01-01",
-      _id: "000000000000000000000000",
-    });
+    const response = await send("patch", "/api/v1/users/player", "player").send(
+      {
+        displayName: "Renamed",
+        userName: "someone-else",
+        passwordChangedAt: "2000-01-01",
+        _id: "000000000000000000000000",
+      }
+    );
 
     expect(response.status).toBe(200);
     const player = await storedUser("player");

@@ -37,6 +37,7 @@ export async function sendVerificationEmail(
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `No user with user name ${userName} found`,
     };
   }
@@ -100,6 +101,7 @@ export async function verifyEmail(
   const invalid: ServiceResult<undefined> = {
     status: "error",
     statusCode: 400,
+    reason: "invalid-link",
     message:
       "This verification link is invalid or has expired. Sign in to send a new one.",
   };

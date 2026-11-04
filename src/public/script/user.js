@@ -1,7 +1,7 @@
 /* global renderMode, user -- defined by an inline script in the page */
 import { DataGrid } from "./components/grid.js";
 import { Lookup } from "./components/lookup.js";
-import { callDataApi } from "./fetch.js";
+import { callApi, listAll } from "./api.js";
 import "./emailReminder.js";
 
 const MINIMUM_PASSWORD_LENGTH = 8;
@@ -11,6 +11,15 @@ function showError(errorMessage) {
   const errorDisplay = errorNotifier.querySelector("span");
   errorDisplay.innerText = errorMessage;
   errorNotifier.classList.remove("pq-hide");
+}
+
+/**
+ * Gets the API path of the user's membership of a team.
+ * @param {string} teamName the team
+ * @returns {string} the path
+ */
+function membershipPath(teamName) {
+  return `/teams/${encodeURIComponent(teamName)}/members/${encodeURIComponent(user.name)}`;
 }
 
 function createAdditionalLookupBody() {
@@ -85,12 +94,15 @@ async function saveUser() {
     showError(dataErrors.join(", "));
     return false;
   }
-  const uri =
-    renderMode === "create" ? `/api/user/create` : `/api/user/${user.name}`;
-  const method = renderMode === "create" ? "post" : "put";
-  const dataReturn = await callDataApi(uri, method, userData);
-  if (dataReturn.status === "error") {
-    showError(dataReturn.message);
+  const response =
+    renderMode === "create"
+      ? await callApi("/users", { method: "POST", body: userData })
+      : await callApi(`/users/${encodeURIComponent(user.name)}`, {
+          method: "PATCH",
+          body: userData,
+        });
+  if (!response.ok) {
+    showError(response.problem.detail ?? response.problem.title);
     return false;
   }
   return true;
@@ -145,13 +157,11 @@ if (renderMode !== "create") {
     e.preventDefault();
     const itemIndex = e.currentTarget.parentNode.parentNode.rowIndex - 1;
     const teamName = teamsGrid.getData()[itemIndex].teamName;
-    const leaveResponse = await callDataApi(
-      `/api/team/${teamName}/member/${user.name}`,
-      "delete",
-      {}
-    );
-    if (leaveResponse.status === "error") {
-      showError(leaveResponse.message);
+    const leaveResponse = await callApi(membershipPath(teamName), {
+      method: "DELETE",
+    });
+    if (!leaveResponse.ok) {
+      showError(leaveResponse.problem.detail ?? leaveResponse.problem.title);
       return;
     }
     teamsGrid.deleteDataRow(itemIndex);
@@ -170,7 +180,12 @@ if (renderMode !== "create") {
     ];
 
     const teamLookup = new Lookup("Select Team", lookupGridColumnDefs, false);
-    await teamLookup.render(`/api/team/list`, "data");
+    const teams = await listAll("/teams");
+    if (!teams.ok) {
+      showError(teams.problem.detail ?? teams.problem.title);
+      return;
+    }
+    teamLookup.renderItems(teams.items);
     teamLookup.setConfirmButtonText("Join team");
     teamLookup.setAdditionalBodyContent(createAdditionalLookupBody());
     teamLookup.onCancelButtonClick = (e) => {
@@ -191,18 +206,16 @@ if (renderMode !== "create") {
         showError("No join code entered");
         return;
       }
-      const joinResponse = await callDataApi(
-        `/api/team/${teamName}/member/${user.name}`,
-        "put",
-        {
-          joinCode: joinCode,
-        }
-      );
-      if (joinResponse.status === "error") {
-        showError(joinResponse.message);
+      const joinResponse = await callApi(membershipPath(teamName), {
+        method: "PUT",
+        body: { joinCode },
+      });
+      if (!joinResponse.ok) {
+        showError(joinResponse.problem.detail ?? joinResponse.problem.title);
         return;
       }
       teamsGrid.addDataRow({
+        teamName,
         displayName: teamLookup.getSelectedData()[0].displayName,
       });
     };
@@ -246,16 +259,18 @@ if (changePasswordButton) {
       showPasswordError("New password and confirm password do not match");
       return;
     }
-    const response = await callDataApi(
-      `/api/user/${user.name}/password`,
-      "put",
+    const response = await callApi(
+      `/users/${encodeURIComponent(user.name)}/password`,
       {
-        currentPassword: currentPasswordElement.value,
-        newPassword: newPasswordElement.value,
+        method: "PUT",
+        body: {
+          currentPassword: currentPasswordElement.value,
+          newPassword: newPasswordElement.value,
+        },
       }
     );
-    if (response.status === "error") {
-      showPasswordError(response.message);
+    if (!response.ok) {
+      showPasswordError(response.problem.detail ?? response.problem.title);
       return;
     }
     currentPasswordElement.value = "";
@@ -275,14 +290,14 @@ if (sendResetLinkButton) {
     resetLinkError.classList.add("pq-hide");
     resetLinkSuccess.classList.add("pq-hide");
     sendResetLinkButton.disabled = true;
-    const response = await callDataApi(
-      `/api/user/${user.name}/password/reset-link`,
-      "post",
-      {}
+    const response = await callApi(
+      `/users/${encodeURIComponent(user.name)}/password-reset-links`,
+      { method: "POST" }
     );
     sendResetLinkButton.disabled = false;
-    if (response.status === "error") {
-      resetLinkError.querySelector("span").innerText = response.message;
+    if (!response.ok) {
+      resetLinkError.querySelector("span").innerText =
+        response.problem.detail ?? response.problem.title;
       resetLinkError.classList.remove("pq-hide");
       return;
     }

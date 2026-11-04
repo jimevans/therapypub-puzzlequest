@@ -36,7 +36,19 @@ class Lookup extends Modal {
   }
 
   /**
-   * Renders the data in the lookup grid.
+   * Renders items in the lookup grid.
+   * @param {object[]} items the items
+   */
+  renderItems(items) {
+    const wrapper = document.createElement("div");
+    this.#grid.render(items);
+    wrapper.appendChild(this.#grid.getElement());
+    wrapper.appendChild(this.#additionalBody);
+    this.setBodyContent(wrapper);
+  }
+
+  /**
+   * Renders the data in the lookup grid, from the older API.
    * @param {string} dataRetrievalUri the URL to call to retrieve the data for the grid
    * @param {string} responseDataField the field in the response from the URL containing the grid data
    */

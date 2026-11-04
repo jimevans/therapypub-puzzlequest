@@ -14,7 +14,7 @@ const authorizationLevel = wholeNumber.refine(
   "Must be a known authorization level"
 );
 
-/** POST /api/user/login */
+/** POST /api/v1/sessions */
 export const loginBody = z.object({
   userName: z.string().trim().toLowerCase().min(1, "Required"),
   password: requiredText,
@@ -27,7 +27,7 @@ export const loginBody = z.object({
 export type LoginBody = z.infer<typeof loginBody>;
 
 /**
- * POST /api/user/create. The password policy is checked by the service, so
+ * POST /api/v1/users. The password policy is checked by the service, so
  * its rules live in one place.
  */
 export const createUserBody = z.object({
@@ -42,7 +42,7 @@ export const createUserBody = z.object({
 });
 export type CreateUserBody = z.infer<typeof createUserBody>;
 
-/** PUT /api/user/:userName. Fields left out keep their stored values. */
+/** PATCH /api/v1/users/{userName} (without the password). Fields left out keep their stored values. */
 export const updateUserBody = z.object({
   displayName: displayName.optional(),
   email: z.email("Enter a valid email address").optional(),
@@ -55,27 +55,27 @@ export const updateUserBody = z.object({
 });
 export type UpdateUserBody = z.infer<typeof updateUserBody>;
 
-/** PUT /api/user/:userName/password */
+/** PUT /api/v1/users/{userName}/password */
 export const changePasswordBody = z.object({
   currentPassword: requiredText,
   newPassword: requiredText,
 });
 export type ChangePasswordBody = z.infer<typeof changePasswordBody>;
 
-/** POST /api/user/password/forgot: a user name or email address. */
+/** POST /api/v1/password-reset-requests: a user name or email address. */
 export const forgotPasswordBody = z.object({
   identifier: z.string().trim().min(1, "Required"),
 });
 export type ForgotPasswordBody = z.infer<typeof forgotPasswordBody>;
 
-/** POST /api/user/password/reset */
+/** POST /api/v1/password-resets */
 export const resetPasswordBody = z.object({
   resetToken: requiredText,
   newPassword: requiredText,
 });
 export type ResetPasswordBody = z.infer<typeof resetPasswordBody>;
 
-/** POST /api/user/email/verify: the token from a verification link. */
+/** POST /api/v1/email-verifications: the token from a verification link. */
 export const verifyEmailBody = z.object({
   token: requiredText,
 });

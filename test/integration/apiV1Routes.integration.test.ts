@@ -158,7 +158,8 @@ describe("a route's description", () => {
   it("lists the problems its access rule, schemas, and handler can report", () => {
     expect(
       Object.keys(document.paths["/things/{thingName}"].get.responses)
-    ).toEqual(["200", "400", "401", "403", "404", "500"]);
+      // Path parameters are plain names, so there is no 400.
+    ).toEqual(["200", "401", "403", "404", "500"]);
   });
 
   it("describes a page of a list", () => {

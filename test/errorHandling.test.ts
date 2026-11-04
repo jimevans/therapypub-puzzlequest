@@ -63,7 +63,7 @@ describe("error handling in the app", () => {
 
   it("reports malformed JSON to the older API in its own format", async () => {
     const response = await request(createApp())
-      .post("/api/user/create")
+      .post("/api/puzzle/create")
       .set("Content-Type", "application/json")
       .send('{"userName": ');
 

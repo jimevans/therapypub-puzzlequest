@@ -235,6 +235,7 @@ describe("values that must be unique", () => {
     expect(result).toEqual({
       status: "error",
       statusCode: 400,
+      reason: "already-exists",
       message: "That email address is already in use",
     });
   });
@@ -255,6 +256,7 @@ describe("values that must be unique", () => {
     expect(result).toEqual({
       status: "error",
       statusCode: 400,
+      reason: "already-exists",
       message: "That join code is already in use",
     });
   });

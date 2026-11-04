@@ -7,63 +7,20 @@ import * as RateLimiter from "../../middleware/rateLimiter.js";
 import { loginBody } from "../../schemas/user.schemas.js";
 import * as AuthenticationService from "../../services/authentication.service.js";
 import * as SessionService from "../../services/session.service.js";
-import * as UserService from "../../services/user.service.js";
 import { Problems, sendProblem } from "../problems.js";
+import { toUserResource, userSchema } from "./resources.js";
 import { defineRoute } from "./route.js";
-
-/** The signed-in user, as the session shows them. */
-export const sessionUserSchema = z
-  .object({
-    id: z.string().meta({ description: "The user's ID." }),
-    userName: z.string(),
-    displayName: z.string(),
-    email: z.string(),
-    emailVerified: z.boolean().meta({
-      description: "True once the user has verified their email address.",
-    }),
-    phone: z.string().meta({
-      description: "In E.164 format, such as +15551234567, or empty.",
-    }),
-    sms: z
-      .boolean()
-      .meta({ description: "True if the user accepts text messages." }),
-    authorizationLevel: z.number().int().meta({
-      description:
-        "What the user may do: 1 for a player, 10 for an administrator.",
-    }),
-  })
-  .meta({ id: "SessionUser" });
 
 /** A session. */
 const sessionSchema = z
   .object({
-    user: sessionUserSchema,
+    user: userSchema,
     token: z.string().optional().meta({
       description:
         'The session token, only when signing in with client "native", to send as Authorization: Bearer <token>.',
     }),
   })
   .meta({ id: "Session" });
-
-/**
- * Gets what a session shows about its user.
- * @param user the signed-in user
- * @returns the user, as the session shows them
- */
-function describeUser(
-  user: UserService.SessionUser
-): z.infer<typeof sessionUserSchema> {
-  return {
-    id: user.id,
-    userName: user.userName,
-    displayName: user.displayName,
-    email: user.email,
-    emailVerified: user.emailVerified ?? false,
-    phone: user.phone,
-    sms: user.sms,
-    authorizationLevel: user.authorizationLevel,
-  };
-}
 
 /** The path of the session a request presents. */
 const CURRENT_SESSION_PATH = "/api/v1/sessions/current";
@@ -103,10 +60,9 @@ export const sessionRoutes = [
         return;
       }
       const user = result.data;
-      // A user loaded from the database always has an ID.
-      const userId = user.id ?? "";
       const token = await SessionService.createSession(
-        userId,
+        // A user loaded from the database always has an ID.
+        user.id ?? "",
         req.get("user-agent")
       );
       if (req.body.client === "web") {
@@ -116,16 +72,7 @@ export const sessionRoutes = [
         .status(201)
         .location(CURRENT_SESSION_PATH)
         .json({
-          user: describeUser({
-            id: userId,
-            userName: user.userName,
-            displayName: user.displayName,
-            email: user.email,
-            emailVerified: user.emailVerified,
-            phone: user.phone,
-            sms: user.allowSmsMessages,
-            authorizationLevel: user.authorizationLevel,
-          }),
+          user: toUserResource(user),
           ...(req.body.client === "native" ? { token } : {}),
         });
     },
@@ -143,7 +90,7 @@ export const sessionRoutes = [
     },
     handle(req, res) {
       // requireUser has checked there is a signed-in user.
-      res.json({ user: describeUser(req.user!) });
+      res.json({ user: toUserResource(req.user!) });
     },
   }),
   defineRoute({

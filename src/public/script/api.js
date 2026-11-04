@@ -28,3 +28,27 @@ export async function callApi(path, { method = "GET", body } = {}) {
     },
   };
 }
+
+/**
+ * Gets every item of a v1 list, following its pages.
+ * @param {string} path the list's path below /api/v1, such as "/users"
+ * @returns {Promise<{ ok: true, items: unknown[] } | { ok: false, problem: object }>}
+ *  the items, or the problem a page reported
+ */
+export async function listAll(path) {
+  const items = [];
+  let after;
+  do {
+    const query = new URLSearchParams({ limit: "200" });
+    if (after) {
+      query.set("after", after);
+    }
+    const page = await callApi(`${path}?${query}`);
+    if (!page.ok) {
+      return { ok: false, problem: page.problem };
+    }
+    items.push(...page.data.items);
+    after = page.data.next;
+  } while (after);
+  return { ok: true, items };
+}

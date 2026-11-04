@@ -86,7 +86,7 @@ function tokenIn(cookie: string): string {
 async function whoAmI(
   authenticate: (pending: request.Test) => request.Test
 ): Promise<number> {
-  return (await authenticate(request(app).get("/api/user/player"))).status;
+  return (await authenticate(request(app).get("/api/v1/users/player"))).status;
 }
 
 function signIn(body: object = {}) {
@@ -270,9 +270,9 @@ describe("changes to a user", () => {
     );
 
     const response = await request(app)
-      .get("/api/user/player")
+      .get("/api/v1/users/player")
       .set("Authorization", `Bearer ${player}`);
-    expect(JSON.parse(response.text).data.displayName).toBe("Renamed");
+    expect(JSON.parse(response.text).displayName).toBe("Renamed");
 
     // An administrator who loses that level can't act as one any more.
     await UserModel.updateOne(
@@ -280,7 +280,7 @@ describe("changes to a user", () => {
       { authorizationLevel: AuthorizationLevel.USER }
     );
     const listing = await request(app)
-      .get("/api/user/list")
+      .get("/api/v1/users")
       .set("Authorization", `Bearer ${admin}`);
     expect(listing.status).toBe(403);
   });
@@ -289,7 +289,7 @@ describe("changes to a user", () => {
     const { player, admin } = await startSessions("player", "admin");
 
     await request(app)
-      .put("/api/user/player")
+      .patch("/api/v1/users/player")
       .set("Authorization", `Bearer ${admin}`)
       .send({ authorizationLevel: AuthorizationLevel.ADMIN });
 
@@ -301,7 +301,7 @@ describe("changes to a user", () => {
     const { player, admin } = await startSessions("player", "admin");
 
     await request(app)
-      .delete("/api/user/player")
+      .delete("/api/v1/users/player")
       .set("Authorization", `Bearer ${admin}`);
 
     expect(await SessionService.findSession(player)).toBeNull();
@@ -311,7 +311,7 @@ describe("changes to a user", () => {
     const { player } = await startSessions("player");
 
     await request(app)
-      .put("/api/user/player")
+      .patch("/api/v1/users/player")
       .set("Authorization", `Bearer ${player}`)
       .send({ displayName: "New name" });
 

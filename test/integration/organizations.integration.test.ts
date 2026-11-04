@@ -195,6 +195,7 @@ describe("a team's members and a quest's assignee", () => {
     expect(await TeamService.addUserToTeam("team", "nobody", "join")).toEqual({
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: "No user with user name nobody found",
     });
   });

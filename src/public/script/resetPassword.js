@@ -1,5 +1,5 @@
 /* global resetToken -- defined by an inline script in the page */
-import { callDataApi } from "./fetch.js";
+import { callApi } from "./api.js";
 
 const MINIMUM_PASSWORD_LENGTH = 8;
 
@@ -34,12 +34,12 @@ document.querySelector("#reset").addEventListener("click", async (e) => {
     showError("New password and confirm password do not match");
     return;
   }
-  const response = await callDataApi("/api/user/password/reset", "post", {
-    resetToken,
-    newPassword,
+  const response = await callApi("/password-resets", {
+    method: "POST",
+    body: { resetToken, newPassword },
   });
-  if (response.status === "error") {
-    showError(response.message);
+  if (!response.ok) {
+    showError(response.problem.detail ?? response.problem.title);
     return;
   }
   document.querySelector("#reset-form").classList.add("pq-hide");

@@ -6,6 +6,7 @@ import {
   UserModel,
 } from "../models/user.model.js";
 import type { ServiceResult } from "../types.js";
+import { type Page, type PageQuery, findPage } from "../api/paging.js";
 import * as AuthorizationService from "./authentication.service.js";
 import * as TeamService from "./team.service.js";
 import { isDuplicateKeyError, unexpectedErrorResult } from "../errors.js";
@@ -234,6 +235,7 @@ export async function getUserByUserName(
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `No user with user name ${name} found`,
     };
   }
@@ -260,6 +262,7 @@ export async function getUsersByPhoneNumber(
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `No user with phone number ${phoneNumber} found`,
     };
   }
@@ -278,6 +281,7 @@ export async function deleteUser(name: string): Promise<UserResult<undefined>> {
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `User with user name ${name} does not exist`,
     };
   }
@@ -303,6 +307,7 @@ export async function createUser(user: User): Promise<UserResult<undefined>> {
     return {
       status: "error",
       statusCode: 400,
+      reason: "already-exists",
       message: `User with user name ${user.userName} already exists`,
     };
   }
@@ -339,6 +344,7 @@ export async function createUser(user: User): Promise<UserResult<undefined>> {
       return {
         status: "error",
         statusCode: 400,
+        reason: "already-exists",
         message: "That user name is already in use",
       };
     }
@@ -346,6 +352,7 @@ export async function createUser(user: User): Promise<UserResult<undefined>> {
       return {
         status: "error",
         statusCode: 400,
+        reason: "already-exists",
         message: "That email address is already in use",
       };
     }
@@ -370,6 +377,7 @@ export async function updateUser(
     return {
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: `No user with user name ${name} found`,
     };
   }
@@ -416,6 +424,7 @@ export async function updateUser(
       return {
         status: "error",
         statusCode: 400,
+        reason: "already-exists",
         message: "That email address is already in use",
       };
     }
@@ -438,6 +447,19 @@ export async function listUsers(): Promise<UserResult<User[]>> {
   const foundUsers = await UserModel.find({});
   const users = foundUsers.map((foundUser) => new User(foundUser));
   return { status: "success", statusCode: 200, data: users };
+}
+
+/**
+ * Gets a page of the users, in the order they signed up.
+ * @param query the page wanted
+ * @returns the page of users
+ */
+export async function listUsersPage(query: PageQuery): Promise<Page<User>> {
+  const page = await findPage(
+    (conditions) => UserModel.find(conditions),
+    query
+  );
+  return { ...page, items: page.items.map((user) => new User(user)) };
 }
 
 /** The signed-in user, as each request sees them. */

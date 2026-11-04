@@ -71,7 +71,7 @@ afterEach(() => {
  */
 function joinTeamFromBrowser(headers: Record<string, string>) {
   return request(app)
-    .put("/api/team/team-a/member/player")
+    .put("/api/v1/teams/team-a/members/player")
     .set({ Cookie: playerCookie, ...headers })
     .send({ joinCode: "join-a" });
 }
@@ -86,7 +86,7 @@ describe("a request that changes something", () => {
   it("is accepted from this site", async () => {
     const response = await joinTeamFromBrowser({ Origin: SITE });
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(204);
     expect(await playerIsMember()).toBe(true);
   });
 
@@ -105,9 +105,10 @@ describe("a request that changes something", () => {
     const response = await joinTeamFromBrowser(headers);
 
     expect(response.status).toBe(403);
-    expect(JSON.parse(response.text).message).toBe(
-      "Request refused: it didn't come from this site"
-    );
+    expect(JSON.parse(response.text)).toMatchObject({
+      type: "/problems/cross-site-request",
+      detail: "Request refused: it didn't come from this site",
+    });
     expect(await playerIsMember()).toBe(false);
   });
 
@@ -116,25 +117,25 @@ describe("a request that changes something", () => {
       Referer: `${SITE}/user/player`,
     });
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(204);
   });
 
   it("is accepted from a client that isn't a browser, which doesn't say where it came from", async () => {
     const response = await joinTeamFromBrowser({});
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(204);
   });
 
   it("is accepted with its own credentials, which other sites can't add", async () => {
     const response = await request(app)
-      .put("/api/team/team-a/member/player")
+      .put("/api/v1/teams/team-a/members/player")
       .set({
         Authorization: `Bearer ${playerToken}`,
         Origin: "https://app.example",
       })
       .send({ joinCode: "join-a" });
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(204);
   });
 
   it("is checked against the request's own host when the base URL isn't set", async () => {
@@ -149,7 +150,7 @@ describe("a request that changes something", () => {
       Origin: "http://localhost:4000",
     });
 
-    expect(same.status).toBe(200);
+    expect(same.status).toBe(204);
     expect(other.status).toBe(403);
   });
 });

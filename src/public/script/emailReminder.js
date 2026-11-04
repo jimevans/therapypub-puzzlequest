@@ -1,4 +1,4 @@
-import { callDataApi } from "./fetch.js";
+import { callApi } from "./api.js";
 
 // The reminder to verify an email address (views/partials/emailReminder.ejs),
 // when the page shows it.
@@ -8,15 +8,14 @@ if (reminder) {
   const result = reminder.querySelector("#resend-verification-result");
   button.addEventListener("click", async () => {
     button.disabled = true;
-    const response = await callDataApi(
-      `/api/user/${encodeURIComponent(reminder.dataset.userName)}/email/verification`,
-      "post"
+    const response = await callApi(
+      `/users/${encodeURIComponent(reminder.dataset.userName)}/email-verification-requests`,
+      { method: "POST" }
     );
-    result.innerText =
-      response.status === "success"
-        ? "Sent. Check your inbox."
-        : response.message;
-    if (response.status !== "success") {
+    result.innerText = response.ok
+      ? "Sent. Check your inbox."
+      : (response.problem.detail ?? response.problem.title);
+    if (!response.ok) {
       button.disabled = false;
     }
   });
