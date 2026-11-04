@@ -44,9 +44,9 @@ export async function sendVerificationEmail(
     return { status: "success", statusCode: 200 };
   }
   const token = randomBytes(32).toString("base64url");
-  await EmailVerificationModel.deleteMany({ userName });
+  await EmailVerificationModel.deleteMany({ userId: user._id });
   await EmailVerificationModel.create({
-    userName,
+    userId: user._id,
     email: user.email,
     tokenHash: hashVerificationToken(token),
     expiresAt: new Date(
@@ -111,7 +111,7 @@ export async function verifyEmail(
     return invalid;
   }
   const updated = await UserModel.updateOne(
-    { userName: verification.userName, email: verification.email },
+    { _id: verification.userId, email: verification.email },
     { $set: { emailVerifiedAt: new Date() } }
   );
   return updated.matchedCount === 1

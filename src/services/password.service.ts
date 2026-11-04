@@ -40,11 +40,8 @@ async function applyNewPassword(
     await AuthenticationService.encryptPassword(newPassword);
   userDocument.passwordChangedAt = new Date(Date.now());
   await userDocument.save();
-  await PasswordResetModel.deleteMany({ userName: userDocument.userName });
-  await SessionService.deleteUserSessions(
-    userDocument.userName,
-    keepSessionToken
-  );
+  await PasswordResetModel.deleteMany({ userId: userDocument._id });
+  await SessionService.deleteUserSessions(userDocument.id, keepSessionToken);
 }
 
 /**
@@ -193,10 +190,10 @@ async function sendPasswordResetLink(
   requestedByAdmin: boolean
 ): Promise<ServiceResult<undefined>> {
   // Only the most recent reset link is valid.
-  await PasswordResetModel.deleteMany({ userName: userDocument.userName });
+  await PasswordResetModel.deleteMany({ userId: userDocument._id });
   const token = randomBytes(32).toString("base64url");
   await new PasswordResetModel({
-    userName: userDocument.userName,
+    userId: userDocument._id,
     tokenHash: hashResetToken(token),
     expiresAt: new Date(Date.now() + RESET_TOKEN_LIFETIME_MINUTES * 60 * 1000),
   }).save();
@@ -266,9 +263,7 @@ export async function resetPassword(
   if (resetRequest === null) {
     return invalidTokenResult;
   }
-  const userDocument = await UserModel.findOne({
-    userName: resetRequest.userName,
-  });
+  const userDocument = await UserModel.findById(resetRequest.userId);
   if (userDocument === null) {
     return invalidTokenResult;
   }

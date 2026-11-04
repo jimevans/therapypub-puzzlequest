@@ -15,7 +15,7 @@ vi.mock("../../src/models/passwordReset.model.js", () => {
 vi.mock("../../src/models/user.model.js", async (importOriginal) => {
   const original =
     await importOriginal<typeof import("../../src/models/user.model.js")>();
-  return { ...original, UserModel: { findOne: vi.fn() } };
+  return { ...original, UserModel: { findOne: vi.fn(), findById: vi.fn() } };
 });
 vi.mock("../../src/services/email.service.js", () => ({
   sendEmail: vi.fn(async () => ({ status: "success", statusCode: 200 })),
@@ -39,9 +39,14 @@ const SessionService = await import("../../src/services/session.service.js");
 const createdResets = (PasswordResetModel as unknown as { instances: any[] })
   .instances;
 
+/** The fake user's ID, as the database would store and show it. */
+const PLAYER_ID = "000000000000000000000101";
+
 // Stands in for the Mongoose document UserModel.findOne resolves to.
 function createUserDocument(): any {
   return {
+    _id: PLAYER_ID,
+    id: PLAYER_ID,
     userName: "player",
     displayName: "Player",
     email: "player@example.com",
@@ -156,7 +161,7 @@ describe("changePassword", () => {
 
     expect(result.status).toBe("success");
     expect(SessionService.deleteUserSessions).toHaveBeenCalledWith(
-      "player",
+      PLAYER_ID,
       "current-session"
     );
     expect(userDocument.password).toBe("hashed");
@@ -165,7 +170,7 @@ describe("changePassword", () => {
     );
     expect(userDocument.save).toHaveBeenCalled();
     expect(PasswordResetModel.deleteMany).toHaveBeenCalledWith({
-      userName: "player",
+      userId: PLAYER_ID,
     });
     expect(EmailService.sendEmail).toHaveBeenCalledWith(
       expect.objectContaining({ to: "player@example.com" })
@@ -205,7 +210,7 @@ describe("requestPasswordReset", () => {
 
     expect(result.status).toBe("success");
     expect(PasswordResetModel.deleteMany).toHaveBeenCalledWith({
-      userName: "player",
+      userId: PLAYER_ID,
     });
     expect(createdResets).toHaveLength(1);
     const stored = createdResets[0];
@@ -251,7 +256,7 @@ describe("requestPasswordResetForUser", () => {
     expect(result.status).toBe("success");
     expect(UserModel.findOne).toHaveBeenCalledWith({ userName: "player" });
     expect(PasswordResetModel.deleteMany).toHaveBeenCalledWith({
-      userName: "player",
+      userId: PLAYER_ID,
     });
     const email = vi.mocked(EmailService.sendEmail).mock.calls[0][0];
     expect(email.to).toBe("player@example.com");
@@ -331,9 +336,9 @@ describe("resetPassword", () => {
   it("sets the new password and ends all the user's sessions", async () => {
     const userDocument = createUserDocument();
     vi.mocked(PasswordResetModel.findOneAndDelete).mockResolvedValue({
-      userName: "player",
+      userId: PLAYER_ID,
     } as never);
-    vi.mocked(UserModel.findOne).mockResolvedValue(userDocument);
+    vi.mocked(UserModel.findById).mockResolvedValue(userDocument);
 
     const result = await PasswordService.resetPassword("token", "new password");
 
@@ -342,10 +347,10 @@ describe("resetPassword", () => {
     expect(userDocument.passwordChangedAt).toBeInstanceOf(Date);
     expect(userDocument.save).toHaveBeenCalled();
     expect(PasswordResetModel.deleteMany).toHaveBeenCalledWith({
-      userName: "player",
+      userId: PLAYER_ID,
     });
     expect(SessionService.deleteUserSessions).toHaveBeenCalledWith(
-      "player",
+      PLAYER_ID,
       undefined
     );
   });

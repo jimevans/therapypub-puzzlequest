@@ -13,8 +13,9 @@ const sessionSchema = new Schema(
       unique: true,
     },
     /** The user the session is for. */
-    userName: {
-      type: String,
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
       required: true,
       index: true,
     },

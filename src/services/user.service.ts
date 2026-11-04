@@ -18,6 +18,8 @@ export type UserResult<T = User> = ServiceResult<T>;
  * allowSmsMessages, matching the stored data and the token.
  */
 export interface UserDefinition {
+  /** The user's ID; absent for a user not yet stored. */
+  id?: string;
   userName: string;
   displayName: string;
   email: string;
@@ -65,6 +67,9 @@ export class UserTeam {
  * A data class representing a user of the PuzzleQuest application.
  */
 export class User {
+  /** The user's ID; absent for a user not yet stored. */
+  id?: string;
+
   /** The unique user name of the user. */
   userName: string;
 
@@ -103,6 +108,7 @@ export class User {
    * @param userDefinition the user's properties
    */
   constructor(userDefinition: UserDefinition) {
+    this.id = userDefinition.id;
     this.userName = userDefinition.userName;
     this.displayName = userDefinition.displayName;
     this.password = userDefinition.password;
@@ -247,7 +253,7 @@ export async function deleteUser(name: string): Promise<UserResult<undefined>> {
       message: `User with user name ${name} does not exist`,
     };
   }
-  await SessionService.deleteUserSessions(name);
+  await SessionService.deleteUserSessions(result.id);
   return { status: "success", statusCode: 200 };
 }
 
@@ -384,7 +390,7 @@ export async function updateUser(
     return unexpectedErrorResult("updateUser", err);
   }
   if (endSessions) {
-    await SessionService.deleteUserSessions(name);
+    await SessionService.deleteUserSessions(foundUser.id);
   }
   if (emailChanged) {
     await EmailVerificationService.trySendVerificationEmail(name);
@@ -404,6 +410,8 @@ export async function listUsers(): Promise<UserResult<User[]>> {
 
 /** The signed-in user, as each request sees them. */
 export interface SessionUser {
+  /** The user's ID. */
+  id: string;
   userName: string;
   displayName: string;
   email: string;
@@ -421,19 +429,20 @@ export interface SessionUser {
  * Gets what each request needs to know about a signed-in user. It is read
  * on every request, so changes, such as a new authorization level, apply at
  * once.
- * @param userName the user name
+ * @param userId the user's ID
  * @returns the user, or null if there is no such user
  */
 export async function getSessionUser(
-  userName: string
+  userId: string
 ): Promise<SessionUser | null> {
-  const user = await UserModel.findOne({ userName })
+  const user = await UserModel.findById(userId)
     .select(
       "userName displayName email phone sms authorizationLevel emailVerifiedAt"
     )
     .lean();
   return user
     ? {
+        id: user._id.toString(),
         userName: user.userName,
         displayName: user.displayName,
         email: user.email,

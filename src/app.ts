@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 import { config } from "./config.js";
 import { createApp } from "./createApp.js";
 import { subscribeQuestEventHandlers } from "./events/subscribers.js";
+import { ensureDefaultOrganization } from "./models/organization.model.js";
 import * as WebSocketService from "./services/websocket.service.js";
 import { getErrorMessage } from "./errors.js";
 
@@ -24,6 +25,8 @@ try {
   process.exit(1);
 }
 
+// Every record belongs to an organization, so the default one must exist.
+await ensureDefaultOrganization();
 subscribeQuestEventHandlers();
 
 const server = http.createServer(createApp());

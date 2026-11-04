@@ -1,4 +1,5 @@
 import { type InferSchemaType, Schema, model } from "mongoose";
+import { organizationField } from "./organization.model.js";
 
 /** The kind of content a puzzle has. */
 export const PuzzleType = {
@@ -33,12 +34,13 @@ const hintSchema = new Schema({
 
 /** A puzzle definition. */
 const puzzleSchema = new Schema({
+  /** The organization the puzzle belongs to. */
+  organizationId: organizationField,
   /** The unique name of the puzzle. */
   name: {
     type: String,
     default: "",
     required: true,
-    unique: true,
   },
   /** The display name or title of the puzzle. */
   displayName: {
@@ -73,6 +75,9 @@ const puzzleSchema = new Schema({
   /** The hints for the puzzle, in the order they are revealed. */
   hints: [hintSchema],
 });
+
+// Puzzle names are unique within an organization.
+puzzleSchema.index({ organizationId: 1, name: 1 }, { unique: true });
 
 /** A puzzle hint as stored in the database. */
 export type HintData = InferSchemaType<typeof hintSchema>;

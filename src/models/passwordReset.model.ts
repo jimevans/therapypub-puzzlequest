@@ -3,9 +3,10 @@ import { type InferSchemaType, Schema, model } from "mongoose";
 /** A pending password reset request. */
 const passwordResetSchema = new Schema(
   {
-    /** The user name of the user requesting the reset. */
-    userName: {
-      type: String,
+    /** The user requesting the reset. */
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
       required: true,
       index: true,
     },
