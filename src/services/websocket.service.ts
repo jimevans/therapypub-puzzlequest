@@ -1,5 +1,10 @@
 import { randomUUID } from "crypto";
 import { type WebSocket, WebSocketServer } from "ws";
+import {
+  type LiveUpdate,
+  liveUpdateSchema,
+  pageMessageSchema,
+} from "../schemas/liveUpdates.js";
 
 /** A browser connected for live updates. */
 interface WebSocketSession {
@@ -7,12 +12,6 @@ interface WebSocketSession {
   id: string;
   socket: WebSocket;
   /** The path of the page the browser is showing, once it has sent "init". */
-  url?: string;
-}
-
-/** A message a browser sends over the websocket. */
-interface BrowserMessage {
-  message?: string;
   url?: string;
 }
 
@@ -34,24 +33,20 @@ export function initialize(): WebSocketServer {
     socket.on("message", (data) => {
       // Anyone can connect, so ignore anything that isn't a valid message; an
       // exception here would stop the whole server.
-      let messageData: BrowserMessage;
+      let received: unknown;
       try {
-        messageData = JSON.parse(data.toString());
+        received = JSON.parse(data.toString());
       } catch {
         return;
       }
-      if (messageData?.message === "init") {
-        socket.send(JSON.stringify({ message: "connection", connectionId }));
-        if (
-          typeof messageData.url !== "string" ||
-          !URL.canParse(messageData.url)
-        ) {
-          return;
-        }
-        const session = webSocketSessions.get(connectionId);
-        if (session) {
-          session.url = new URL(messageData.url).pathname;
-        }
+      const pageMessage = pageMessageSchema.safeParse(received);
+      if (!pageMessage.success) {
+        return;
+      }
+      send(socket, { message: "connection", connectionId });
+      const session = webSocketSessions.get(connectionId);
+      if (session) {
+        session.url = new URL(pageMessage.data.url).pathname;
       }
     });
     socket.on("close", () => {
@@ -59,6 +54,16 @@ export function initialize(): WebSocketServer {
     });
   });
   return socketServer;
+}
+
+/**
+ * Sends a message to a page, checking that it is one the pages expect (see
+ * schemas/liveUpdates.ts).
+ * @param socket the page's connection
+ * @param update the message
+ */
+function send(socket: WebSocket, update: LiveUpdate): void {
+  socket.send(JSON.stringify(liveUpdateSchema.parse(update)));
 }
 
 /**
@@ -71,7 +76,7 @@ export function initialize(): WebSocketServer {
 export function notifyBrowsers(
   urls: string[],
   excludeConnections: string[],
-  notificationData: object
+  notificationData: LiveUpdate
 ): void {
   const notifyBrowsers: WebSocketSession[] = [];
   webSocketSessions.forEach((value) => {
@@ -84,7 +89,7 @@ export function notifyBrowsers(
     }
   });
   notifyBrowsers.forEach((connection) =>
-    connection.socket.send(JSON.stringify(notificationData))
+    send(connection.socket, notificationData)
   );
 }
 
@@ -96,7 +101,7 @@ export function notifyBrowsers(
  */
 export function notifyQuestPages(
   questName: string,
-  notificationData: object
+  notificationData: LiveUpdate
 ): void {
   const prefixes = [`/quest/${questName}`, `/monitor/quest/${questName}`];
   webSocketSessions.forEach((session) => {
@@ -105,7 +110,7 @@ export function notifyQuestPages(
       url !== undefined &&
       prefixes.some((prefix) => url === prefix || url.startsWith(`${prefix}/`))
     ) {
-      session.socket.send(JSON.stringify(notificationData));
+      send(session.socket, notificationData);
     }
   });
 }

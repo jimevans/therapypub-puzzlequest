@@ -8,6 +8,7 @@ vi.mock("../../src/services/websocket.service.js", () => ({
 const { notifyBrowsers, notifyQuestPages } =
   await import("../../src/services/websocket.service.js");
 const { sendLiveUpdates } = await import("../../src/events/liveUpdates.js");
+const { liveUpdateSchema } = await import("../../src/schemas/liveUpdates.js");
 
 const AT = new Date("2026-11-03T20:00:00Z");
 
@@ -34,7 +35,7 @@ describe("sendLiveUpdates", () => {
       message: "puzzleActivated",
       questName: "q1",
       puzzleName: "p1",
-      activationTime: AT,
+      activationTime: AT.toISOString(),
     });
   });
 
@@ -67,7 +68,7 @@ describe("sendLiveUpdates", () => {
           questName: "q1",
           puzzleName: "p1",
           solutionText: "Red",
-          endTime: AT,
+          endTime: AT.toISOString(),
           questComplete: undefined,
         },
       ],
@@ -79,7 +80,7 @@ describe("sendLiveUpdates", () => {
           questName: "q1",
           puzzleName: "p2",
           displayName: "Puzzle 2",
-          startTime: AT,
+          startTime: AT.toISOString(),
         },
       ],
     ]);
@@ -174,4 +175,47 @@ describe("sendLiveUpdates", () => {
       expect(notifyBrowsers).not.toHaveBeenCalled();
     }
   );
+
+  it("sends only messages the pages expect, as their schemas describe", () => {
+    sendLiveUpdates({
+      questName: "q1",
+      events: [
+        { type: "PuzzleActivated", puzzleName: "p1", at: AT },
+        {
+          type: "HintRevealed",
+          puzzleName: "p1",
+          hintIndex: 0,
+          timePenalty: 60,
+          hintText: "Look up",
+          moreHints: false,
+          isNextHintSolution: false,
+          at: AT,
+        },
+        { type: "PuzzleSolved", puzzleName: "p1", solutionText: "Red", at: AT },
+        {
+          type: "PuzzleStarted",
+          puzzleName: "p2",
+          displayName: "Puzzle 2",
+          at: AT,
+        },
+        { type: "QuestPaused", at: AT },
+      ],
+    });
+
+    const sent = [
+      ...vi.mocked(notifyBrowsers).mock.calls.map((call) => call[2]),
+      ...vi.mocked(notifyQuestPages).mock.calls.map((call) => call[1]),
+    ];
+    expect(sent.map((message) => message.message)).toEqual([
+      "puzzleActivated",
+      "hintRequested",
+      "puzzleSolved",
+      "puzzleStarted",
+      "questUpdated",
+    ]);
+    for (const message of sent) {
+      // Exactly the schema's fields, with nothing left over for it to drop.
+      expect(liveUpdateSchema.parse(message)).toEqual(message);
+    }
+  });
 });

@@ -65,9 +65,52 @@ describe("websocket server", () => {
     );
     await vi.waitFor(() => expect(messages).toHaveLength(1));
 
-    WebSocketService.notifyBrowsers(["/quest/q2"], [], { message: "update" });
+    const update = { message: "questUpdated", questName: "q2" } as const;
+    WebSocketService.notifyBrowsers(["/quest/q2"], [], update);
 
-    await vi.waitFor(() => expect(messages[1]).toEqual({ message: "update" }));
+    await vi.waitFor(() => expect(messages[1]).toEqual(update));
+    socket.close();
+  });
+
+  it("ignores a page's message that isn't a valid init", async () => {
+    const { socket, messages } = await connect();
+    for (const message of [
+      "not JSON",
+      JSON.stringify({ message: "init" }),
+      JSON.stringify({ message: "init", url: "not a URL" }),
+      JSON.stringify({
+        message: "subscribe",
+        url: "http://localhost/quest/q4",
+      }),
+    ]) {
+      socket.send(message);
+    }
+    socket.send(
+      JSON.stringify({ message: "init", url: "http://localhost/quest/q4" })
+    );
+
+    // Only the valid init was answered.
+    await vi.waitFor(() => expect(messages).toHaveLength(1));
+    expect(messages[0].message).toBe("connection");
+    socket.close();
+  });
+
+  it("refuses to send a message the pages don't expect", async () => {
+    const { socket, messages } = await connect();
+    socket.send(
+      JSON.stringify({ message: "init", url: "http://localhost/quest/q5" })
+    );
+    await vi.waitFor(() => expect(messages).toHaveLength(1));
+
+    // Missing the quest's name, which the pages need.
+    expect(() =>
+      WebSocketService.notifyQuestPages("q5", {
+        message: "questUpdated",
+      } as never)
+    ).toThrow(/questName/);
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(messages).toHaveLength(1);
     socket.close();
   });
 
@@ -93,14 +136,18 @@ describe("websocket server", () => {
       browsers.forEach(({ messages }) => expect(messages).toHaveLength(1))
     );
 
-    WebSocketService.notifyQuestPages("q3", { message: "questUpdated" });
+    WebSocketService.notifyQuestPages("q3", {
+      message: "questUpdated",
+      questName: "q3",
+    });
 
     await vi.waitFor(() =>
-      browsers
-        .slice(0, 4)
-        .forEach(({ messages }) =>
-          expect(messages[1]).toEqual({ message: "questUpdated" })
-        )
+      browsers.slice(0, 4).forEach(({ messages }) =>
+        expect(messages[1]).toEqual({
+          message: "questUpdated",
+          questName: "q3",
+        })
+      )
     );
     // The others only ever got their connection message.
     browsers
