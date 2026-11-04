@@ -93,8 +93,8 @@ const teamSchema = new Schema({
     type: String,
     required: true,
   },
-  /** The user names of the team's members. */
-  memberNames: [String],
+  /** The IDs of the team's members. */
+  memberIds: [{ type: Schema.Types.ObjectId, ref: "User" }],
 });
 
 // User names and email addresses are unique within an organization.
@@ -109,7 +109,7 @@ teamSchema.index({ organizationId: 1, joinCode: 1 }, { unique: true });
 userSchema.index({ phone: 1 });
 
 // A player's quests include their teams' quests, found by member.
-teamSchema.index({ memberNames: 1 });
+teamSchema.index({ memberIds: 1 });
 
 /** A user as stored in the database. */
 export type UserData = InferSchemaType<typeof userSchema>;

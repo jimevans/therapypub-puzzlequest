@@ -249,7 +249,7 @@ export async function activateQuestPuzzle(
   res: Response
 ): Promise<void> {
   const loggedInUser = UserService.requireLoggedInUser(req.user);
-  const userContexts = await loggedInUser.getAllUserContexts();
+  const assigneeIds = await loggedInUser.getAssigneeIds();
   const activationCode = req.qrCodeData ?? req.body.activationCode;
   if (!activationCode) {
     res.status(400).json({
@@ -262,7 +262,7 @@ export async function activateQuestPuzzle(
   const activationResult = await QuestService.activatePuzzle(
     req.params.name,
     req.params.puzzleName,
-    userContexts,
+    assigneeIds,
     activationCode,
     { actor: loggedInUser.userName }
   );
@@ -283,13 +283,13 @@ export async function solveQuestPuzzle(
   res: Response
 ): Promise<void> {
   const loggedInUser = UserService.requireLoggedInUser(req.user);
-  const userContexts = await loggedInUser.getAllUserContexts();
+  const assigneeIds = await loggedInUser.getAssigneeIds();
   const solutionGuess = req.body.guess;
   const connectionId = req.body.connectionId;
   const solutionResult = await QuestService.finishPuzzle(
     req.params.name,
     req.params.puzzleName,
-    userContexts,
+    assigneeIds,
     solutionGuess,
     { actor: loggedInUser.userName, connectionId }
   );
@@ -319,12 +319,12 @@ export async function requestQuestPuzzleHint(
   res: Response
 ): Promise<void> {
   const loggedInUser = UserService.requireLoggedInUser(req.user);
-  const userContexts = await loggedInUser.getAllUserContexts();
+  const assigneeIds = await loggedInUser.getAssigneeIds();
   const connectionId = req.body.connectionId;
   const hintResult = await QuestService.getPuzzleHint(
     req.params.name,
     req.params.puzzleName,
-    userContexts,
+    assigneeIds,
     { actor: loggedInUser.userName, connectionId }
   );
   if (hintResult.status === "error") {

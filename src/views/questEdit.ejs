@@ -79,10 +79,11 @@
     </div>
     <div class="pq-form-element">
       <div class="pq-label">
-        <label for="user-name">User name:</label>
+        <label for="user-name">Assigned to:</label>
       </div>
       <div class="pq-input">
-        <input id="user-name" value="<%= renderMode !== "create" ? quest.userName : "" %>" readonly />
+        <input id="user-name" value="<%= renderMode !== "create" ? quest.assignee.name ?? "" : "" %>" data-kind="<%= renderMode !== "create" ? quest.assignee.kind : "" %>" readonly />
+        <span id="assignee-kind"><%= renderMode !== "create" ? `(${quest.assignee.kind})` : "" %></span>
         <button id="set-user-button" class="pq-icon-button">
           <svg class="pq-icon" viewBox="0 0 512 512">
             <use xlink:href="/image/user.svg#user" href="/image/user.svg#user"></use>

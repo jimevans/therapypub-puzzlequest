@@ -15,6 +15,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
 import { startSessions } from "../sessions.js";
+import { assigneeIdsOf } from "../references.js";
 
 const bcrypt = (await import("bcrypt")).default;
 const { createApp } = await import("../../src/createApp.js");
@@ -167,7 +168,7 @@ describe("guessing solutions", () => {
     await QuestService.createQuest({
       name: "quest",
       displayName: "Quest",
-      userName: "guesser",
+      assignee: { kind: "user", name: "guesser" },
       puzzles: [{ puzzleName: "riddle" }],
     });
     await QuestService.startQuest("quest");
@@ -175,7 +176,7 @@ describe("guessing solutions", () => {
     await QuestService.activatePuzzle(
       "quest",
       "riddle",
-      ["guesser"],
+      await assigneeIdsOf("guesser"),
       quest.puzzles[0].activationCode
     );
   });
@@ -242,7 +243,6 @@ describe("values that must be unique", () => {
       teamName: "second",
       displayName: "Second",
       joinCode: "shared",
-      memberNames: [],
     });
 
     expect(result).toEqual({

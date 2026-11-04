@@ -1,5 +1,5 @@
 // Tests that records belong to an organization, ready for the site to host
-// several later, and that references by ID survive renames.
+// several later, and that references by ID survive renames and deletions.
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose, { Types } from "mongoose";
@@ -14,6 +14,9 @@ const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
 const { QuestModel } = await import("../../src/models/quest.model.js");
 const { TeamModel, UserModel } = await import("../../src/models/user.model.js");
 const SessionService = await import("../../src/services/session.service.js");
+const QuestService = await import("../../src/services/quest.service.js");
+const TeamService = await import("../../src/services/team.service.js");
+const UserService = await import("../../src/services/user.service.js");
 
 let mongoServer: MongoMemoryServer | undefined;
 
@@ -74,7 +77,10 @@ describe("the default organization", () => {
       solutionKeyword: "x",
       solutionDisplayText: "X",
     });
-    await QuestModel.create({ name: "quest", userName: "player" });
+    await QuestModel.create({
+      name: "quest",
+      assignee: { kind: "user", id: new Types.ObjectId() },
+    });
 
     for (const model of [UserModel, TeamModel, PuzzleModel, QuestModel]) {
       const [record] = await (model as typeof UserModel).find({}).lean();
@@ -122,5 +128,74 @@ describe("a user's sessions", () => {
     const session = await SessionService.findSession(player);
     const renamed = await UserModel.findOne({ userName: "renamed" }).lean();
     expect(session?.userId).toBe(renamed!._id.toString());
+  });
+});
+
+describe("a team's members and a quest's assignee", () => {
+  beforeEach(async () => {
+    await UserModel.create(user("player"));
+    await TeamModel.create({
+      teamName: "team",
+      displayName: "Team",
+      joinCode: "join",
+    });
+    expect(
+      (await TeamService.addUserToTeam("team", "player", "join")).status
+    ).toBe("success");
+    for (const [name, kind, assigneeName] of [
+      ["solo", "user", "player"],
+      ["group", "team", "team"],
+    ] as const) {
+      expect(
+        (
+          await QuestService.createQuest({
+            name,
+            assignee: { kind, name: assigneeName },
+          })
+        ).status
+      ).toBe("success");
+    }
+  });
+
+  async function playersQuests() {
+    const player = (await UserService.getUserByUserName("renamed")).data!;
+    const result = await QuestService.findQuests({
+      assigneeIds: await player.getAssigneeIds(),
+    });
+    return result.data!.map((quest) => [
+      quest.name,
+      quest.assignee.kind,
+      quest.assignee.name,
+    ]);
+  }
+
+  it("survive renaming the user and the team", async () => {
+    await UserModel.updateOne({ userName: "player" }, { userName: "renamed" });
+    await TeamModel.updateOne({ teamName: "team" }, { teamName: "crew" });
+
+    expect(await playersQuests()).toEqual([
+      ["solo", "user", "renamed"],
+      ["group", "team", "crew"],
+    ]);
+  });
+
+  it("are left without the user once the user is deleted", async () => {
+    expect((await UserService.deleteUser("player")).status).toBe("success");
+
+    const team = await TeamModel.findOne({ teamName: "team" }).lean();
+    expect(team!.memberIds).toEqual([]);
+    const solo = await QuestService.getQuestByQuestName("solo");
+    expect(solo.data!.assignee).toEqual({
+      kind: "user",
+      id: expect.any(String),
+    });
+  });
+
+  it("can't include a user who doesn't exist", async () => {
+    expect(await TeamService.addUserToTeam("team", "nobody", "join")).toEqual({
+      status: "error",
+      statusCode: 404,
+      message: "No user with user name nobody found",
+    });
   });
 });

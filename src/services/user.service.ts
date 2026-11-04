@@ -1,6 +1,10 @@
 import * as EmailVerificationService from "./emailVerification.service.js";
 import * as SessionService from "./session.service.js";
-import { AuthorizationLevel, UserModel } from "../models/user.model.js";
+import {
+  AuthorizationLevel,
+  TeamModel,
+  UserModel,
+} from "../models/user.model.js";
 import type { ServiceResult } from "../types.js";
 import * as AuthorizationService from "./authentication.service.js";
 import * as TeamService from "./team.service.js";
@@ -36,6 +40,9 @@ export interface UserDefinition {
  * A data class representing a team a user belongs to.
  */
 export class UserTeam {
+  /** The team's ID. */
+  id: string;
+
   /** The unique name of the team. */
   teamName: string;
 
@@ -46,7 +53,12 @@ export class UserTeam {
    * Initializes a new instance of the UserTeam class.
    * @param teamDefinition the team's properties
    */
-  constructor(teamDefinition: { teamName: string; displayName: string }) {
+  constructor(teamDefinition: {
+    id: string;
+    teamName: string;
+    displayName: string;
+  }) {
+    this.id = teamDefinition.id;
     this.teamName = teamDefinition.teamName;
     this.displayName = teamDefinition.displayName;
   }
@@ -145,26 +157,42 @@ export class User {
    */
   async getTeams(): Promise<UserTeam[]> {
     if (!this.teams) {
-      const teamResponse = await TeamService.getTeamsForUser(this.userName);
+      const teamResponse = await TeamService.getTeamsForUser(this.requireId());
       if (teamResponse.status === "error") {
         throw new Error(teamResponse.message);
       }
       const teamsContainingUser = teamResponse.data;
-      this.teams = teamsContainingUser.map((team) => new UserTeam(team));
+      this.teams = teamsContainingUser.map(
+        (team) =>
+          new UserTeam({
+            id: team.id ?? "",
+            teamName: team.teamName,
+            displayName: team.displayName,
+          })
+      );
     }
     return this.teams;
   }
 
   /**
-   * Gets the user's user name and the names of all the teams the user is a
-   * member of.
-   * @returns the user's user name followed by their team names
+   * Gets the IDs a quest the user plays can be assigned to: the user's own,
+   * and those of the teams the user is a member of.
+   * @returns the user's ID followed by their teams' IDs
    */
-  async getAllUserContexts(): Promise<string[]> {
-    const userContexts = [this.userName];
+  async getAssigneeIds(): Promise<string[]> {
     const teams = await this.getTeams();
-    userContexts.push(...teams.map((team) => team.teamName));
-    return userContexts;
+    return [this.requireId(), ...teams.map((team) => team.id)];
+  }
+
+  /**
+   * Gets the user's ID, which every user loaded from the data store has.
+   * @returns the ID
+   */
+  private requireId(): string {
+    if (!this.id) {
+      throw new Error(`User ${this.userName} has no ID`);
+    }
+    return this.id;
   }
 
   /**
@@ -254,6 +282,10 @@ export async function deleteUser(name: string): Promise<UserResult<undefined>> {
     };
   }
   await SessionService.deleteUserSessions(result.id);
+  await TeamModel.updateMany(
+    { memberIds: result._id },
+    { $pull: { memberIds: result._id } }
+  );
   return { status: "success", statusCode: 200 };
 }
 

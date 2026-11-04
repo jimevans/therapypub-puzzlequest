@@ -96,7 +96,7 @@
     </div>
     <div class="pq-form-element">
       <div class="pq-label">User or team:</div>
-      <div class="pq-input"><%= quest.userName %></div>
+      <div class="pq-input"><%= quest.assignee.name ?? `(deleted ${quest.assignee.kind})` %> (<%= quest.assignee.kind %>)</div>
     </div>
     <div class="pq-form-element">
       <div class="pq-label">Status:</div>

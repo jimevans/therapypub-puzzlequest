@@ -15,6 +15,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
 import { startSessions } from "../sessions.js";
+import { userIdsOf } from "../references.js";
 
 const { config } = await import("../../src/config.js");
 const { createApp } = await import("../../src/createApp.js");
@@ -53,7 +54,6 @@ beforeEach(async () => {
     teamName: "team-a",
     displayName: "Team A",
     joinCode: "join-a",
-    memberNames: [],
   });
   playerToken = (await startSessions("player")).player;
   playerCookie = `pq-session=${playerToken}`;
@@ -78,7 +78,8 @@ function joinTeamFromBrowser(headers: Record<string, string>) {
 
 async function playerIsMember(): Promise<boolean> {
   const team = await TeamModel.findOne({ teamName: "team-a" }).lean();
-  return team!.memberNames.includes("player");
+  const [playerId] = await userIdsOf("player");
+  return team!.memberIds.some((id) => id.equals(playerId));
 }
 
 describe("a request that changes something", () => {

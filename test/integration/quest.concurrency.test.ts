@@ -14,11 +14,13 @@ import {
 } from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
+import { assigneeIdsOf, userIdsOf } from "../references.js";
 
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
 const { QuestModel, QuestPuzzleStatus, QuestStatus } =
   await import("../../src/models/quest.model.js");
 const QuestService = await import("../../src/services/quest.service.js");
+const { TeamModel, UserModel } = await import("../../src/models/user.model.js");
 
 let mongoServer: MongoMemoryServer | undefined;
 
@@ -32,12 +34,32 @@ afterAll(async () => {
   await mongoServer?.stop();
 });
 
-const PLAYER = ["player"];
-const TEAMMATE = ["teammate", "player"];
+// Two members of the team the quest is assigned to, each acting as
+// themselves and as the team.
+let PLAYER: string[] = [];
+let TEAMMATE: string[] = [];
 
 beforeEach(async () => {
   await QuestModel.deleteMany({});
   await PuzzleModel.deleteMany({});
+  await UserModel.deleteMany({});
+  await TeamModel.deleteMany({});
+  await UserModel.create(
+    ["player", "teammate"].map((userName) => ({
+      userName,
+      displayName: userName,
+      email: `${userName}@example.com`,
+      password: "hash",
+    }))
+  );
+  await TeamModel.create({
+    teamName: "team",
+    displayName: "Team",
+    joinCode: "join",
+    memberIds: await userIdsOf("player", "teammate"),
+  });
+  PLAYER = await assigneeIdsOf("player", "team");
+  TEAMMATE = await assigneeIdsOf("teammate", "team");
   await PuzzleModel.create([
     {
       name: "colors",
@@ -59,7 +81,7 @@ beforeEach(async () => {
   await QuestService.createQuest({
     name: "test-quest",
     displayName: "Test Quest",
-    userName: "player",
+    assignee: { kind: "team", name: "team" },
     puzzles: [{ puzzleName: "colors" }, { puzzleName: "fruit" }],
   });
   await QuestService.startQuest("test-quest");

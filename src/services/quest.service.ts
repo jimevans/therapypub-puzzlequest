@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import path from "path";
 import { marked, type Token } from "marked";
-import mongoose, { type PipelineStage } from "mongoose";
+import mongoose, { type PipelineStage, type Types } from "mongoose";
 import QRCode from "qrcode";
 import {
   type PuzzleRules,
@@ -32,10 +32,12 @@ import {
 } from "../events/questEventBus.js";
 import { PuzzleModel } from "../models/puzzle.model.js";
 import {
+  type AssigneeKind,
   QuestModel,
   QuestStatus,
   QuestPuzzleStatus,
 } from "../models/quest.model.js";
+import { TeamModel, UserModel } from "../models/user.model.js";
 import { publicDirectory } from "../paths.js";
 import type { ServiceResult } from "../types.js";
 import * as PuzzleService from "./puzzle.service.js";
@@ -67,12 +69,25 @@ export type QuestPuzzleProperties = Pick<
     >
   >;
 
+/**
+ * The user or team a quest is assigned to. The name and display name are
+ * looked up when the quest is read; they are missing if the user or team has
+ * been deleted.
+ */
+export interface QuestAssignee {
+  kind: AssigneeKind;
+  /** The ID of the user or team. */
+  id: string;
+  /** The user name or team name. */
+  name?: string;
+  /** The display name of the user or team. */
+  displayName?: string;
+}
+
 /** The properties a Quest is created from: a stored quest, or a request. */
-export type QuestProperties = Pick<
-  Quest,
-  "name" | "displayName" | "userName" | "status"
-> &
-  Partial<Pick<Quest, "textResponse" | "textResponseConfirmation">> & {
+export type QuestProperties = Pick<Quest, "name" | "displayName" | "status"> & {
+  assignee: Omit<QuestAssignee, "id"> & { id: string | Types.ObjectId };
+} & Partial<Pick<Quest, "textResponse" | "textResponseConfirmation">> & {
     puzzles?: QuestPuzzleProperties[];
     pauses?: readonly Pause[];
   };
@@ -232,11 +247,8 @@ export class Quest {
    */
   displayName: string;
 
-  /**
-   * Gets or sets the user or team assigned to this quest.
-   *
-   */
-  userName: string;
+  /** The user or team assigned to this quest. */
+  assignee: QuestAssignee;
 
   /**
    * The status of this quest.
@@ -278,7 +290,10 @@ export class Quest {
   constructor(questDefinition: QuestProperties) {
     this.name = questDefinition.name;
     this.displayName = questDefinition.displayName;
-    this.userName = questDefinition.userName;
+    this.assignee = {
+      ...questDefinition.assignee,
+      id: questDefinition.assignee.id.toString(),
+    };
     this.status = questDefinition.status;
     this.textResponse = questDefinition.textResponse;
     this.textResponseConfirmation = questDefinition.textResponseConfirmation;
@@ -371,7 +386,7 @@ export class Quest {
     return {
       name: this.name,
       displayName: this.displayName,
-      userName: this.userName,
+      assignee: this.assignee,
       status: this.status,
       statusDescription: this.statusDescription,
       textResponse: this.textResponse,
@@ -392,7 +407,7 @@ export class Quest {
     return {
       name: this.name,
       displayName: this.displayName,
-      userName: this.userName,
+      assignee: this.assignee,
       status: this.status,
       statusDescription: this.statusDescription,
       paused: this.paused,
@@ -407,7 +422,7 @@ export type QuestJSON = Pick<
   Quest,
   | "name"
   | "displayName"
-  | "userName"
+  | "assignee"
   | "status"
   | "statusDescription"
   | "textResponse"
@@ -424,7 +439,7 @@ export type QuestPlayerJSON = Pick<
   Quest,
   | "name"
   | "displayName"
-  | "userName"
+  | "assignee"
   | "status"
   | "statusDescription"
   | "paused"
@@ -436,8 +451,8 @@ export type QuestPlayerJSON = Pick<
 export interface QuestQueryOptions {
   /** The name of the quest to retrieve. */
   questName?: string;
-  /** The names of the users and teams for which to retrieve quests. */
-  userNames?: string[];
+  /** The IDs of the users and teams for which to retrieve quests. */
+  assigneeIds?: string[];
   /** The status that the quest must be greater than or equal to be included in the result. */
   questStatus?: number;
   /** The status that quest puzzles must be greater than or equal to be included in the returned quests. */
@@ -454,8 +469,8 @@ export interface QuestDefinition {
   name?: string;
   /** The name of the quest shown to players. */
   displayName?: string;
-  /** The user or team the quest is assigned to. */
-  userName?: string;
+  /** The user or team the quest is assigned to, by name. */
+  assignee?: { kind: AssigneeKind; name: string };
   /**
    * The puzzles in the quest, in order. An activation code may be given to
    * set or change a puzzle's code; otherwise one is generated.
@@ -503,12 +518,8 @@ function createFindErrorMessage(queryOptions?: QuestQueryOptions): string {
   if (queryOptions?.questName) {
     errorMessage.push(`quest name equal to ${queryOptions.questName}`);
   }
-  if (queryOptions?.userNames) {
-    errorMessage.push(
-      `user name or team name that is one of [${queryOptions.userNames.join(
-        ", "
-      )}]`
-    );
+  if (queryOptions?.assigneeIds) {
+    errorMessage.push("assigned to the user or one of their teams");
   }
   if (queryOptions?.questStatus) {
     errorMessage.push(
@@ -530,11 +541,14 @@ function createFindMatchParameter(queryOptions?: QuestQueryOptions): object {
     // NOTE: this should only ever return a single quest.
     matchParam.name = queryOptions.questName;
   }
-  if (queryOptions?.userNames) {
-    // Limit results to only quests with the userName property set to
-    // one of the specified names. Note that user names and team names
-    // are expected in the array.
-    matchParam.userName = { $in: queryOptions.userNames };
+  if (queryOptions?.assigneeIds) {
+    // Limit results to only quests assigned to one of the specified users
+    // or teams.
+    matchParam["assignee.id"] = {
+      $in: queryOptions.assigneeIds.map(
+        (id) => new mongoose.Types.ObjectId(id)
+      ),
+    };
   }
   if (queryOptions?.questStatus) {
     // Limit the results to only quests with a status greater than or equal
@@ -604,7 +618,7 @@ function createFindResultProjectionParameter(
   const projectParams: Record<string, unknown> = {
     name: true,
     displayName: true,
-    userName: true,
+    assignee: true,
     status: true,
     textResponse: true,
     textResponseConfirmation: true,
@@ -674,7 +688,85 @@ export async function findQuests(
     }
     return quest;
   });
+  await describeAssignees(quests);
   return { status: "success", statusCode: 200, data: quests };
+}
+
+/**
+ * Fills in the names and display names of the users and teams the quests
+ * are assigned to, with one query for each kind.
+ * @param quests the quests
+ */
+async function describeAssignees(quests: Quest[]): Promise<void> {
+  const idsOf = (kind: AssigneeKind) => [
+    ...new Set(
+      quests
+        .filter((quest) => quest.assignee.kind === kind)
+        .map((quest) => quest.assignee.id)
+    ),
+  ];
+  const userIds = idsOf("user");
+  const teamIds = idsOf("team");
+  const [users, teams] = await Promise.all([
+    userIds.length
+      ? UserModel.find(
+          { _id: { $in: userIds } },
+          { userName: 1, displayName: 1 }
+        ).lean()
+      : [],
+    teamIds.length
+      ? TeamModel.find(
+          { _id: { $in: teamIds } },
+          { teamName: 1, displayName: 1 }
+        ).lean()
+      : [],
+  ]);
+  const names = new Map<string, { name: string; displayName: string }>([
+    ...users.map(
+      (user) =>
+        [
+          `user:${user._id.toString()}`,
+          { name: user.userName, displayName: user.displayName ?? "" },
+        ] as const
+    ),
+    ...teams.map(
+      (team) =>
+        [
+          `team:${team._id.toString()}`,
+          { name: team.teamName, displayName: team.displayName },
+        ] as const
+    ),
+  ]);
+  for (const quest of quests) {
+    Object.assign(
+      quest.assignee,
+      names.get(`${quest.assignee.kind}:${quest.assignee.id}`)
+    );
+  }
+}
+
+/**
+ * Finds the user or team to assign a quest to, by name.
+ * @param assignee the kind and name of the user or team
+ * @returns the assignee as stored, or an error result if there is no such
+ *  user or team
+ */
+async function findAssignee(assignee: {
+  kind: AssigneeKind;
+  name: string;
+}): Promise<{ kind: AssigneeKind; id: Types.ObjectId } | QuestErrorResult> {
+  const found =
+    assignee.kind === "user"
+      ? await UserModel.findOne({ userName: assignee.name }, { _id: 1 }).lean()
+      : await TeamModel.findOne({ teamName: assignee.name }, { _id: 1 }).lean();
+  if (!found) {
+    return {
+      status: "error",
+      statusCode: 400,
+      message: `No ${assignee.kind} with name ${assignee.name} found`,
+    };
+  }
+  return { kind: assignee.kind, id: found._id };
 }
 
 /**
@@ -694,7 +786,7 @@ export async function getQuestByQuestName(
     // the quest if it is in progress or completed, and only
     // return puzzles that are awaiting activation, in progress,
     // or completed.
-    queryOptions.userNames = await user.getAllUserContexts();
+    queryOptions.assigneeIds = await user.getAssigneeIds();
     queryOptions.questStatus = QuestStatus.IN_PROGRESS;
     queryOptions.puzzleStatus = QuestPuzzleStatus.AWAITING_ACTIVATION;
   }
@@ -827,16 +919,16 @@ export async function createQuest(
       message: "Quest definition must contain a name or display name",
     };
   }
-  if (!("userName" in questDefinition)) {
-    // NOTE: This could lead to attempting to add a user name that does
-    // not exist. This is to avoid a lookup of the user from the Users schema.
-    // Consumers of this service will have to take that into account when
-    // managing the implications of creating a quest.
+  if (!questDefinition.assignee) {
     return {
       status: "error",
       statusCode: 400,
-      message: "Quest definition must contain a user name",
+      message: "Quest definition must contain a user or team to assign it to",
     };
+  }
+  const assignee = await findAssignee(questDefinition.assignee);
+  if ("status" in assignee) {
+    return assignee;
   }
   const questExists = (await QuestModel.find({ name: questName })).length !== 0;
   if (questExists) {
@@ -849,7 +941,7 @@ export async function createQuest(
   const quest = new QuestModel({
     name: questName,
     displayName: questDefinition.displayName || questName,
-    userName: questDefinition.userName,
+    assignee,
     status: QuestStatus.NOT_STARTED,
     puzzles: [],
   });
@@ -914,6 +1006,12 @@ export async function updateQuest(
       return puzzleError;
     }
   }
+  const assignee = questDefinition.assignee
+    ? await findAssignee(questDefinition.assignee)
+    : undefined;
+  if (assignee && "status" in assignee) {
+    return assignee;
+  }
   for (let attempt = 0; attempt < MAX_QUEST_ACTION_ATTEMPTS; attempt++) {
     const foundQuest = await loadQuest(questDefinition.name);
     if (foundQuest === null) {
@@ -925,7 +1023,9 @@ export async function updateQuest(
     }
     foundQuest.displayName =
       questDefinition.displayName || questDefinition.name;
-    foundQuest.userName = questDefinition.userName || foundQuest.userName;
+    if (assignee) {
+      foundQuest.assignee = assignee;
+    }
     if (questDefinition.puzzles && puzzleNames) {
       const check = checkPuzzleListChange(
         toQuestState(foundQuest),
@@ -987,8 +1087,8 @@ const MAX_QUEST_ACTION_ATTEMPTS = 3;
 
 /** A player acting on a quest. */
 interface QuestActor {
-  /** The user name and team names of the player. */
-  userContexts: string[];
+  /** The IDs of the player and the player's teams. */
+  assigneeIds: string[];
   /** What the player is doing, for the error message if they may not. */
   action: string;
 }
@@ -1131,7 +1231,8 @@ async function applyQuestAction<R>(
         message: `No quest with quest name ${questName} found`,
       };
     }
-    if (actor && !actor.userContexts.includes(quest.userName)) {
+    const assigneeId = quest.assignee?.id.toString();
+    if (actor && !(assigneeId && actor.assigneeIds.includes(assigneeId))) {
       return {
         status: "error",
         statusCode: 403,
@@ -1498,7 +1599,7 @@ export async function resetQuestPuzzle(
  * Activates a puzzle in the quest, moving it from "awaiting activation" to "in progress"
  * @param questName the name of the quest for which to activate the puzzle
  * @param puzzleName the name of the puzzle within the quest to activate
- * @param userContexts an array of all of the contexts (user names and team names) for the user requesting activation
+ * @param assigneeIds the IDs of the user and the user's teams, for the user requesting activation
  * @param activationCode the activation code of the puzzle
  * @param origin who activated the puzzle, and from which browser connection
  * @returns a response object containing a status, status code, and data
@@ -1506,13 +1607,13 @@ export async function resetQuestPuzzle(
 export async function activatePuzzle(
   questName: string,
   puzzleName: string,
-  userContexts: string[],
+  assigneeIds: string[],
   activationCode: string,
   origin: QuestActionOrigin = {}
 ): Promise<QuestResult<{ activationTime: Date }>> {
   const outcome = await applyQuestAction(
     questName,
-    { userContexts, action: "activate puzzles" },
+    { assigneeIds, action: "activate puzzles" },
     noRules,
     (state, now) => activate(state, puzzleName, activationCode, now)
   );
@@ -1534,7 +1635,7 @@ export async function activatePuzzle(
  * Finishes the specified puzzle, if the provided solution is correct.
  * @param questName the name of the quest containing the puzzle to finish
  * @param puzzleName the name of the puzzle to finish
- * @param userContexts an array of all of the contexts (user names and team names) for the user attempting to solve
+ * @param assigneeIds the IDs of the user and the user's teams, for the user attempting to solve
  * @param solutionGuess the guess for the solution of the puzzle
  * @param origin who solved the puzzle, and from which browser connection
  * @returns a response object containing a status, status code, and data
@@ -1542,13 +1643,13 @@ export async function activatePuzzle(
 export async function finishPuzzle(
   questName: string,
   puzzleName: string,
-  userContexts: string[],
+  assigneeIds: string[],
   solutionGuess: string,
   origin: QuestActionOrigin = {}
 ): Promise<QuestResult<PuzzleSolution>> {
   const outcome = await applyQuestAction(
     questName,
-    { userContexts, action: "solve puzzles" },
+    { assigneeIds, action: "solve puzzles" },
     () => loadPuzzleRules(puzzleName),
     (state, now, puzzle) =>
       submitSolution(
@@ -1591,7 +1692,7 @@ export async function finishPuzzle(
  * Gets the next hint in the named puzzle for the specified quest.
  * @param questName the name of the quest
  * @param puzzleName the name of the puzzle for which to get the next hint
- * @param userContexts an array of all of the contexts (user names and team names) for the user attempting to solve
+ * @param assigneeIds the IDs of the user and the user's teams, for the user attempting to solve
  * @param origin who requested the hint, and from which browser connection
  * @returns a response object containing a status, status code, and data;
  *  the data is false when every hint has already been revealed
@@ -1599,12 +1700,12 @@ export async function finishPuzzle(
 export async function getPuzzleHint(
   questName: string,
   puzzleName: string,
-  userContexts: string[],
+  assigneeIds: string[],
   origin: QuestActionOrigin = {}
 ): Promise<QuestResult<PuzzleHintResult | false>> {
   const outcome = await applyQuestAction(
     questName,
-    { userContexts, action: "request puzzle hints" },
+    { assigneeIds, action: "request puzzle hints" },
     () => loadPuzzleRules(puzzleName),
     (state, now, puzzle) =>
       revealHint(state, puzzleName, toPuzzleRules(puzzle), now)

@@ -17,6 +17,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
 import { startSessions } from "../sessions.js";
+import { assigneeIdsOf, userIdsOf } from "../references.js";
 
 // Rate limits would turn repeated requests into 429s, hiding the outcome
 // under test; they have their own tests.
@@ -244,7 +245,7 @@ beforeEach(async () => {
     teamName: "team-a",
     displayName: "Team A",
     joinCode: "join-a",
-    memberNames: ["player"],
+    memberIds: await userIdsOf("player"),
   });
   await PuzzleModel.create({
     name: "riddle",
@@ -256,7 +257,7 @@ beforeEach(async () => {
   await QuestService.createQuest({
     name: "quest",
     displayName: "Quest",
-    userName: "team-a",
+    assignee: { kind: "team", name: "team-a" },
     puzzles: [{ puzzleName: "riddle" }],
   });
   await QuestService.startQuest("quest");
@@ -264,7 +265,7 @@ beforeEach(async () => {
   await QuestService.activatePuzzle(
     "quest",
     "riddle",
-    ["team-a"],
+    await assigneeIdsOf("team-a"),
     quest.puzzles[0].activationCode
   );
   sessions = await startSessions("admin", "player", "other");

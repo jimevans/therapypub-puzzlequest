@@ -15,6 +15,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
 import { startSessions } from "../sessions.js";
+import { assigneeIdsOf } from "../references.js";
 
 const { createApp } = await import("../../src/createApp.js");
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
@@ -28,6 +29,7 @@ const { questEventBus } = await import("../../src/events/questEventBus.js");
 let mongoServer: MongoMemoryServer | undefined;
 let app: Express;
 let sessions: Record<string, string> = {};
+let PLAYER: string[] = [];
 
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
@@ -77,9 +79,10 @@ beforeEach(async () => {
   await QuestService.createQuest({
     name: "quest",
     displayName: "Quest",
-    userName: "player",
+    assignee: { kind: "user", name: "player" },
     puzzles: [{ puzzleName: "riddle" }, { puzzleName: "finale" }],
   });
+  PLAYER = await assigneeIdsOf("player");
   await QuestService.startQuest("quest");
   await activate("riddle");
   sessions = await startSessions("admin", "player");
@@ -94,7 +97,7 @@ async function activate(puzzleName: string) {
   const code = quest.puzzles.find(
     (p) => p.puzzleName === puzzleName
   )!.activationCode;
-  await QuestService.activatePuzzle("quest", puzzleName, ["player"], code);
+  await QuestService.activatePuzzle("quest", puzzleName, PLAYER, code);
 }
 
 function rescue(
@@ -200,11 +203,11 @@ describe("resetting a puzzle", () => {
   // The badly written puzzle accepts a wrong answer, after the players
   // revealed its hint.
   async function acceptWrongAnswer() {
-    await QuestService.getPuzzleHint("quest", "riddle", ["player"]);
+    await QuestService.getPuzzleHint("quest", "riddle", PLAYER);
     const result = await QuestService.finishPuzzle(
       "quest",
       "riddle",
-      ["player"],
+      PLAYER,
       "organ"
     );
     expect(result.status).toBe("success");
@@ -243,14 +246,14 @@ describe("resetting a puzzle", () => {
     const wrong = await QuestService.finishPuzzle(
       "quest",
       "riddle",
-      ["player"],
+      PLAYER,
       "organ"
     );
     expect(wrong.statusCode).toBe(406);
     const right = await QuestService.finishPuzzle(
       "quest",
       "riddle",
-      ["player"],
+      PLAYER,
       "piano"
     );
     expect(right.status).toBe("success");
@@ -268,7 +271,7 @@ describe("resetting a puzzle", () => {
   it("reopens a completed quest", async () => {
     await acceptWrongAnswer();
     await activate("finale");
-    await QuestService.finishPuzzle("quest", "finale", ["player"], "done");
+    await QuestService.finishPuzzle("quest", "finale", PLAYER, "done");
     expect((await storedQuest()).status).toBe(QuestStatus.COMPLETED);
 
     await rescue("reset", "finale");

@@ -12,12 +12,14 @@ import {
 } from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
+import { assigneeIdsOf } from "../references.js";
 
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
 const { QuestModel } = await import("../../src/models/quest.model.js");
 const { QuestEventModel } =
   await import("../../src/models/questEvent.model.js");
 const QuestService = await import("../../src/services/quest.service.js");
+const { UserModel } = await import("../../src/models/user.model.js");
 const { questEventBus } = await import("../../src/events/questEventBus.js");
 const { subscribeQuestEventHandlers } =
   await import("../../src/events/subscribers.js");
@@ -35,9 +37,17 @@ afterAll(async () => {
   await mongoServer?.stop();
 });
 
-const PLAYER = ["player"];
+let PLAYER: string[] = [];
 
 beforeEach(async () => {
+  await UserModel.deleteMany({});
+  await UserModel.create({
+    userName: "player",
+    displayName: "Player",
+    email: "player@example.com",
+    password: "hash",
+  });
+  PLAYER = await assigneeIdsOf("player");
   unsubscribe = subscribeQuestEventHandlers();
   await QuestModel.deleteMany({});
   await PuzzleModel.deleteMany({});
@@ -63,7 +73,7 @@ beforeEach(async () => {
   await QuestService.createQuest({
     name: "test-quest",
     displayName: "Test Quest",
-    userName: "player",
+    assignee: { kind: "user", name: "player" },
     puzzles: [{ puzzleName: "colors" }, { puzzleName: "fruit" }],
   });
 });

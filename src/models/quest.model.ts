@@ -6,6 +6,10 @@ import { QuestPuzzleStatus, QuestStatus } from "../domain/quest/state.js";
 // domain; they are re-exported here for code that already imports them.
 export { QuestPuzzleStatus, QuestStatus };
 
+/** What a quest can be assigned to. */
+export const AssigneeKind = ["user", "team"] as const;
+export type AssigneeKind = (typeof AssigneeKind)[number];
+
 /** A puzzle that is part of a quest, with the quest's progress on it. */
 const questPuzzleSchema = new Schema({
   /** The unique name of the puzzle. */
@@ -104,10 +108,19 @@ const questSchema = new Schema(
       type: String,
       default: "",
     },
-    /** The user name or team name the quest is assigned to. */
-    userName: {
-      type: String,
-      required: true,
+    /** The user or team the quest is assigned to. */
+    assignee: {
+      /** Whether the quest is assigned to a user or a team. */
+      kind: {
+        type: String,
+        enum: AssigneeKind,
+        required: true,
+      },
+      /** The ID of the user or team. */
+      id: {
+        type: Schema.Types.ObjectId,
+        required: true,
+      },
     },
     /** The status of the quest (see QuestStatus). */
     status: {
@@ -145,8 +158,10 @@ const questSchema = new Schema(
 // Quest names are unique within an organization.
 questSchema.index({ organizationId: 1, name: 1 }, { unique: true });
 
-// Players' quests are found by the user and team names they are assigned to.
-questSchema.index({ userName: 1 });
+// Players' quests are found by the IDs of the user and teams they are
+// assigned to. IDs are unique across users and teams, so the kind isn't
+// needed to find them.
+questSchema.index({ "assignee.id": 1 });
 
 questSchema.virtual("statusDescription").get(function () {
   switch (this.status) {

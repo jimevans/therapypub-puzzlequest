@@ -29,7 +29,7 @@ const teams = [
     teamName: "red",
     displayName: "Red Team",
     joinCode: "secret",
-    memberNames: ["player"],
+    memberIds: [playerUser.id],
   }),
 ];
 
@@ -119,6 +119,6 @@ describe("listTeams", () => {
     await TeamController.listTeams(req, res);
 
     expect(res.body.data[0].joinCode).toBe("secret");
-    expect(res.body.data[0].memberNames).toEqual(["player"]);
+    expect(res.body.data[0].memberIds).toEqual([playerUser.id]);
   });
 });

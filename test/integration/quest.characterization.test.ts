@@ -14,6 +14,7 @@ import {
 } from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
+import { assigneeIdsOf } from "../references.js";
 
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
 const { QuestModel, QuestPuzzleStatus, QuestStatus } =
@@ -21,7 +22,8 @@ const { QuestModel, QuestPuzzleStatus, QuestStatus } =
 const QuestService = await import("../../src/services/quest.service.js");
 const { Puzzle } = await import("../../src/services/puzzle.service.js");
 const { User, UserTeam } = await import("../../src/services/user.service.js");
-const { AuthorizationLevel } = await import("../../src/models/user.model.js");
+const { AuthorizationLevel, TeamModel, UserModel } =
+  await import("../../src/models/user.model.js");
 
 let mongoServer: MongoMemoryServer | undefined;
 
@@ -35,9 +37,28 @@ afterAll(async () => {
   await mongoServer?.stop();
 });
 
+let PLAYER: string[] = [];
+
 beforeEach(async () => {
   await QuestModel.deleteMany({});
   await PuzzleModel.deleteMany({});
+  await UserModel.deleteMany({});
+  await TeamModel.deleteMany({});
+  const users = await UserModel.create(
+    ["player", "other", "someone", "admin"].map((userName) => ({
+      userName,
+      displayName: userName,
+      email: `${userName}@example.com`,
+      password: "hash",
+    }))
+  );
+  await TeamModel.create({
+    teamName: "team-a",
+    displayName: "Team A",
+    joinCode: "join-a",
+    memberIds: [users[2]._id],
+  });
+  PLAYER = await assigneeIdsOf("player");
   await PuzzleModel.create([
     {
       name: "colors",
@@ -69,8 +90,6 @@ beforeEach(async () => {
   ]);
 });
 
-const PLAYER = ["player"];
-
 /**
  * Creates a quest assigned to "player" containing the named puzzles.
  * @param puzzleNames the puzzles, in order
@@ -84,7 +103,7 @@ async function createQuest(
   const result = await QuestService.createQuest({
     name,
     displayName: "Test Quest",
-    userName: "player",
+    assignee: { kind: "user", name: "player" },
     puzzles: puzzleNames.map((puzzleName) => ({ puzzleName })),
   });
   expect(result).toEqual({ status: "success", statusCode: 200 });
@@ -108,16 +127,27 @@ async function createQuestWithFirstPuzzleInProgress() {
   return (await QuestModel.findOne({ name: quest.name }).lean())!;
 }
 
+/** Assigns the test quest to team-a, whose member is "someone". */
+async function assignToTeamA() {
+  const [teamId] = await assigneeIdsOf("team-a");
+  await QuestModel.updateOne(
+    { name: "test-quest" },
+    { assignee: { kind: "team", id: teamId } }
+  );
+}
+
 async function storedQuest(name = "test-quest") {
   return (await QuestModel.findOne({ name }).lean())!;
 }
 
-function createUser(
+async function createUser(
   userName: string,
   authorizationLevel: number,
   teamNames: string[] = []
 ) {
+  const [id] = await assigneeIdsOf(userName);
   const user = new User({
+    id,
     userName,
     displayName: userName,
     email: `${userName}@example.com`,
@@ -125,8 +155,10 @@ function createUser(
     sms: false,
     authorizationLevel,
   });
+  const teamIds = await assigneeIdsOf(...teamNames);
   user.teams = teamNames.map(
-    (teamName) => new UserTeam({ teamName, displayName: teamName })
+    (teamName, index) =>
+      new UserTeam({ id: teamIds[index], teamName, displayName: teamName })
   );
   return user;
 }
@@ -162,7 +194,10 @@ describe("createQuest", () => {
     expect(quest).toMatchObject({
       name: "test-quest",
       displayName: "Test Quest",
-      userName: "player",
+      assignee: {
+        kind: "user",
+        id: (await UserModel.findOne({ userName: "player" }).lean())!._id,
+      },
       status: QuestStatus.NOT_STARTED,
       textResponse: "",
       textResponseConfirmation: "",
@@ -185,13 +220,19 @@ describe("createQuest", () => {
   });
 
   it("uses the name as the display name when none is given", async () => {
-    await QuestService.createQuest({ name: "plain", userName: "player" });
+    await QuestService.createQuest({
+      name: "plain",
+      assignee: { kind: "user", name: "player" },
+    });
 
     expect((await storedQuest("plain")).displayName).toBe("plain");
   });
 
   it("creates a quest with no puzzles when none are given", async () => {
-    await QuestService.createQuest({ name: "empty", userName: "player" });
+    await QuestService.createQuest({
+      name: "empty",
+      assignee: { kind: "user", name: "player" },
+    });
 
     expect((await storedQuest("empty")).puzzles).toEqual([]);
   });
@@ -203,7 +244,10 @@ describe("createQuest", () => {
   ])(
     "derives the name from display name %j as %j",
     async (displayName, expectedName) => {
-      await QuestService.createQuest({ displayName, userName: "player" });
+      await QuestService.createQuest({
+        displayName,
+        assignee: { kind: "user", name: "player" },
+      });
 
       const quests = await QuestModel.find({}).lean();
       expect(quests.map((quest) => quest.name)).toEqual([expectedName]);
@@ -211,26 +255,54 @@ describe("createQuest", () => {
   );
 
   it("rejects a definition with neither a name nor a display name", async () => {
-    expect(await QuestService.createQuest({ userName: "player" })).toEqual({
+    expect(
+      await QuestService.createQuest({
+        assignee: { kind: "user", name: "player" },
+      })
+    ).toEqual({
       status: "error",
       statusCode: 400,
       message: "Quest definition must contain a name or display name",
     });
   });
 
-  it("rejects a definition without a user name", async () => {
+  it("rejects a definition without a user or team to assign it to", async () => {
     expect(await QuestService.createQuest({ name: "orphan" })).toEqual({
       status: "error",
       statusCode: 400,
-      message: "Quest definition must contain a user name",
+      message: "Quest definition must contain a user or team to assign it to",
     });
   });
+
+  it.each([
+    ["a user", "user", "nobody"],
+    ["a team", "team", "nobody"],
+    ["a team by a user's name", "team", "player"],
+  ] as const)(
+    "rejects assigning it to %s that doesn't exist",
+    async (_, kind, name) => {
+      expect(
+        await QuestService.createQuest({
+          name: "orphan",
+          assignee: { kind, name },
+        })
+      ).toEqual({
+        status: "error",
+        statusCode: 400,
+        message: `No ${kind} with name ${name} found`,
+      });
+      expect(await QuestModel.countDocuments({ name: "orphan" })).toBe(0);
+    }
+  );
 
   it("rejects a duplicate quest name", async () => {
     await createQuest();
 
     expect(
-      await QuestService.createQuest({ name: "test-quest", userName: "other" })
+      await QuestService.createQuest({
+        name: "test-quest",
+        assignee: { kind: "user", name: "other" },
+      })
     ).toEqual({
       status: "error",
       statusCode: 400,
@@ -242,7 +314,7 @@ describe("createQuest", () => {
     expect(
       await QuestService.createQuest({
         name: "bad",
-        userName: "player",
+        assignee: { kind: "user", name: "player" },
         puzzles: [
           { puzzleName: "fruit" },
           { puzzleName: "nope" },
@@ -261,7 +333,7 @@ describe("createQuest", () => {
     expect(
       await QuestService.createQuest({
         name: "bad",
-        userName: "player",
+        assignee: { kind: "user", name: "player" },
         puzzles: [{ puzzleName: "fruit" }, { puzzleName: "fruit" }],
       })
     ).toEqual({
@@ -301,7 +373,10 @@ describe("startQuest", () => {
   });
 
   it("refuses to start a quest with no puzzles", async () => {
-    await QuestService.createQuest({ name: "empty", userName: "player" });
+    await QuestService.createQuest({
+      name: "empty",
+      assignee: { kind: "user", name: "player" },
+    });
 
     expect(await QuestService.startQuest("empty")).toEqual({
       status: "error",
@@ -349,13 +424,13 @@ describe("activatePuzzle", () => {
 
   it("allows a member of the team the quest is assigned to", async () => {
     const created = await createQuest();
-    await QuestModel.updateOne({ name: "test-quest" }, { userName: "team-a" });
+    await assignToTeamA();
     await QuestService.startQuest("test-quest");
 
     const result = await QuestService.activatePuzzle(
       "test-quest",
       "colors",
-      ["someone", "team-a"],
+      await assigneeIdsOf("someone", "team-a"),
       created.puzzles[0].activationCode
     );
 
@@ -386,7 +461,7 @@ describe("activatePuzzle", () => {
       await QuestService.activatePuzzle(
         "test-quest",
         "colors",
-        ["other"],
+        await assigneeIdsOf("other"),
         created.puzzles[0].activationCode
       )
     ).toEqual({
@@ -683,7 +758,12 @@ describe("finishPuzzle", () => {
     await createQuestWithFirstPuzzleInProgress();
 
     expect(
-      await QuestService.finishPuzzle("test-quest", "colors", ["other"], "red")
+      await QuestService.finishPuzzle(
+        "test-quest",
+        "colors",
+        await assigneeIdsOf("other"),
+        "red"
+      )
     ).toEqual({
       status: "error",
       statusCode: 403,
@@ -825,7 +905,11 @@ describe("getPuzzleHint", () => {
     await createQuestWithFirstPuzzleInProgress();
 
     expect(
-      await QuestService.getPuzzleHint("test-quest", "colors", ["other"])
+      await QuestService.getPuzzleHint(
+        "test-quest",
+        "colors",
+        await assigneeIdsOf("other")
+      )
     ).toEqual({
       status: "error",
       statusCode: 403,
@@ -870,7 +954,7 @@ describe("updateQuest", () => {
     const result = await QuestService.updateQuest({
       name: "test-quest",
       displayName: "Renamed",
-      userName: "team-a",
+      assignee: { kind: "team", name: "team-a" },
       puzzles: [
         { puzzleName: "finale", activationCode: "keep-this-code" },
         { puzzleName: "colors" },
@@ -880,7 +964,10 @@ describe("updateQuest", () => {
     expect(result).toEqual({ status: "success", statusCode: 200 });
     const quest = await storedQuest();
     expect(quest.displayName).toBe("Renamed");
-    expect(quest.userName).toBe("team-a");
+    expect(quest.assignee).toEqual({
+      kind: "team",
+      id: (await TeamModel.findOne({ teamName: "team-a" }).lean())!._id,
+    });
     expect(quest.puzzles.map((p) => [p.puzzleName, p.status])).toEqual([
       ["finale", QuestPuzzleStatus.UNAVAILABLE],
       ["colors", QuestPuzzleStatus.UNAVAILABLE],
@@ -899,7 +986,10 @@ describe("updateQuest", () => {
 
     const quest = await storedQuest();
     expect(quest.displayName).toBe("test-quest");
-    expect(quest.userName).toBe("player");
+    expect(quest.assignee).toEqual({
+      kind: "user",
+      id: (await UserModel.findOne({ userName: "player" }).lean())!._id,
+    });
   });
 
   it("keeps the stored progress and times of puzzles that stay in the quest", async () => {
@@ -1142,7 +1232,7 @@ describe("getQuestByQuestName", () => {
 
     const result = await QuestService.getQuestByQuestName(
       "test-quest",
-      createUser("admin", AuthorizationLevel.ADMIN)
+      await createUser("admin", AuthorizationLevel.ADMIN)
     );
 
     expect(result.status).toBe("success");
@@ -1175,13 +1265,13 @@ describe("getQuestByQuestName", () => {
     expect(
       await QuestService.getQuestByQuestName(
         "test-quest",
-        createUser("player", AuthorizationLevel.USER)
+        await createUser("player", AuthorizationLevel.USER)
       )
     ).toEqual({
       status: "error",
       statusCode: 404,
       message:
-        "no quests found matching quest name equal to test-quest and user name or team name that is one of [player] and status greater than or equal to 1",
+        "no quests found matching quest name equal to test-quest and assigned to the user or one of their teams and status greater than or equal to 1",
     });
   });
 
@@ -1191,7 +1281,7 @@ describe("getQuestByQuestName", () => {
 
     const result = await QuestService.getQuestByQuestName(
       "test-quest",
-      createUser("player", AuthorizationLevel.USER)
+      await createUser("player", AuthorizationLevel.USER)
     );
 
     expect(
@@ -1204,12 +1294,12 @@ describe("getQuestByQuestName", () => {
 
   it("shows a quest assigned to a team to its members", async () => {
     await createQuest();
-    await QuestModel.updateOne({ name: "test-quest" }, { userName: "team-a" });
+    await assignToTeamA();
     await QuestService.startQuest("test-quest");
 
     const result = await QuestService.getQuestByQuestName(
       "test-quest",
-      createUser("someone", AuthorizationLevel.USER, ["team-a"])
+      await createUser("someone", AuthorizationLevel.USER, ["team-a"])
     );
 
     expect(result.data!.puzzles.map((p) => p.puzzleName)).toEqual(["colors"]);
@@ -1221,7 +1311,7 @@ describe("getQuestByQuestName", () => {
 
     const result = await QuestService.getQuestByQuestName(
       "test-quest",
-      createUser("other", AuthorizationLevel.USER)
+      await createUser("other", AuthorizationLevel.USER)
     );
 
     expect(result.statusCode).toBe(404);
@@ -1267,7 +1357,7 @@ describe("getQuestPuzzle", () => {
       await QuestService.getQuestPuzzle(
         "test-quest",
         "fruit",
-        createUser("player", AuthorizationLevel.USER)
+        await createUser("player", AuthorizationLevel.USER)
       )
     ).toEqual({
       status: "error",

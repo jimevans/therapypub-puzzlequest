@@ -2,7 +2,7 @@ import { setTimeout } from "timers/promises";
 import Twilio from "twilio";
 import { config } from "../config.js";
 import * as QuestService from "../services/quest.service.js";
-import * as TeamService from "../services/team.service.js";
+import { TeamModel, UserModel } from "../models/user.model.js";
 import * as UserService from "../services/user.service.js";
 import type { ServiceResult } from "../types.js";
 import { unexpectedErrorResult } from "../errors.js";
@@ -57,8 +57,8 @@ export async function respondToVoiceCall(
   const questNames = [];
   for (const user of getUserResponse.data) {
     // Gets all quests for user and any teams the user is a member of.
-    const userContexts = await user.getAllUserContexts();
-    const findOptions = { userNames: userContexts };
+    const assigneeIds = await user.getAssigneeIds();
+    const findOptions = { assigneeIds };
     const getQuestsResponse = await QuestService.findQuests(findOptions);
     if (getQuestsResponse.status === "success") {
       // Filter the quests so only those awaiting activation are selected.
@@ -116,8 +116,8 @@ export async function respondToTextMessage(
   const users = getUserResult.data;
   for (const user of users) {
     // Gets all quests for user and any teams the user is a member of.
-    const userContexts = await user.getAllUserContexts();
-    const findOptions = { userNames: userContexts };
+    const assigneeIds = await user.getAssigneeIds();
+    const findOptions = { assigneeIds };
     const getQuestsResult = await QuestService.findQuests(findOptions);
     if (getQuestsResult.status === "success") {
       // Filter the quests so only those in progress and expecting an incoming
@@ -191,46 +191,40 @@ export async function setupExpectedTextMessage(
 /**
  * Gets the phone numbers to text for a quest: the user's number, or those of
  * the team's members, for whoever accepts text messages.
- * @param questUser the user name or team name the quest is assigned to
+ * @param assignee the user or team the quest is assigned to
  * @returns the phone numbers to text, in international format
  */
 export async function getPhoneNumbersToMessage(
-  questUser: string
+  assignee: Pick<QuestService.QuestAssignee, "kind" | "id">
 ): Promise<ServiceResult<string[]>> {
-  // Quest user could be a user or a team
-  const numbersToMessage: string[] = [];
-  const getUserResponse = await UserService.getUserByUserName(questUser);
-  if (getUserResponse.status === "error") {
-    const getTeamResponse = await TeamService.getTeamByTeamName(questUser);
-    if (getTeamResponse.status === "error") {
+  let userIds: readonly unknown[] = [assignee.id];
+  if (assignee.kind === "team") {
+    const team = await TeamModel.findById(assignee.id, { memberIds: 1 }).lean();
+    if (!team) {
       return {
         status: "error",
         statusCode: 404,
-        message: `Could not find user or team named ${questUser}`,
+        message: "The team this quest is assigned to no longer exists",
       };
-    } else {
-      for (const memberName of getTeamResponse.data.memberNames) {
-        const getTeamMemberResponse =
-          await UserService.getUserByUserName(memberName);
-        if (getTeamMemberResponse.status === "error") {
-          return {
-            status: "error",
-            statusCode: 404,
-            message: `User ${memberName} is not a member of team ${questUser}`,
-          };
-        }
-        const user = getTeamMemberResponse.data;
-        if (user.phone && user.allowSmsMessages) {
-          numbersToMessage.push(user.phone);
-        }
-      }
     }
-  } else {
-    if (getUserResponse.data.phone && getUserResponse.data.allowSmsMessages) {
-      numbersToMessage.push(getUserResponse.data.phone);
-    }
+    userIds = team.memberIds;
   }
-  return { status: "success", statusCode: 200, data: numbersToMessage };
+  const users = await UserModel.find(
+    { _id: { $in: userIds } },
+    { phone: 1, sms: 1 }
+  ).lean();
+  if (assignee.kind === "user" && !users.length) {
+    return {
+      status: "error",
+      statusCode: 404,
+      message: "The user this quest is assigned to no longer exists",
+    };
+  }
+  return {
+    status: "success",
+    statusCode: 200,
+    data: users.flatMap((user) => (user.phone && user.sms ? [user.phone] : [])),
+  };
 }
 
 /**

@@ -117,7 +117,7 @@ document.querySelector("#set-user-button").addEventListener("click", (e) => {
     const selectedUser = userLookup.getSelectedData();
     userLookup.hide();
     if (selectedUser.length > 0) {
-      document.querySelector("#user-name").value = selectedUser[0].userName;
+      setAssignee("user", selectedUser[0].userName);
     }
   };
   userLookup.render("/api/user/list", "data");
@@ -141,12 +141,24 @@ document.querySelector("#set-team-button").addEventListener("click", (e) => {
     const selectedTeam = userLookup.getSelectedData();
     userLookup.hide();
     if (selectedTeam.length > 0) {
-      document.querySelector("#user-name").value = selectedTeam[0].teamName;
+      setAssignee("team", selectedTeam[0].teamName);
     }
   };
   userLookup.render("/api/team/list", "data");
   userLookup.show();
 });
+
+/**
+ * Shows the user or team chosen to assign the quest to.
+ * @param {"user" | "team"} kind whether it is a user or a team
+ * @param {string} name the user name or team name
+ */
+function setAssignee(kind, name) {
+  const input = document.querySelector("#user-name");
+  input.value = name;
+  input.dataset.kind = kind;
+  document.querySelector("#assignee-kind").textContent = `(${kind})`;
+}
 
 document
   .querySelector("#quest-puzzles")
@@ -167,9 +179,15 @@ function getQuestData() {
   const questData = {
     name: questName,
     displayName: document.querySelector("#display-name").value,
-    userName: document.querySelector("#user-name").value,
     puzzles: questPuzzles,
   };
+  const assigneeInput = document.querySelector("#user-name");
+  if (assigneeInput.value !== "") {
+    questData.assignee = {
+      kind: assigneeInput.dataset.kind,
+      name: assigneeInput.value,
+    };
+  }
   return questData;
 }
 
@@ -181,8 +199,8 @@ function validateInput(questData) {
   if (questData.displayName === "") {
     dataErrors.push("quest display name cannot be empty");
   }
-  if (questData.userName === "") {
-    dataErrors.push("solution keyword cannot be empty");
+  if (!questData.assignee) {
+    dataErrors.push("the quest must be assigned to a user or team");
   }
   return dataErrors;
 }

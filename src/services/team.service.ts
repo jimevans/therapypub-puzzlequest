@@ -1,4 +1,5 @@
-import { TeamModel } from "../models/user.model.js";
+import type { Types } from "mongoose";
+import { TeamModel, UserModel } from "../models/user.model.js";
 import type { ServiceResult } from "../types.js";
 import { isDuplicateKeyError, unexpectedErrorResult } from "../errors.js";
 
@@ -9,15 +10,29 @@ import { isDuplicateKeyError, unexpectedErrorResult } from "../errors.js";
 export type TeamResult<T = Team> = ServiceResult<T>;
 
 /** The properties a Team is created from: a stored team, or a request. */
-export type TeamDefinition = Pick<
+export interface TeamDefinition {
+  /** The team's ID, for a stored team. */
+  id?: string;
+  teamName: string;
+  displayName: string;
+  joinCode: string;
+  /** The IDs of the team's members. */
+  memberIds?: readonly (string | Types.ObjectId)[];
+}
+
+/** The JSON representation of a Team. */
+export type TeamJSON = Pick<
   Team,
-  "teamName" | "displayName" | "joinCode" | "memberNames"
+  "teamName" | "displayName" | "joinCode" | "memberIds"
 >;
 
 /**
  * A data class representing a team in the PuzzleQuest application.
  */
 export class Team {
+  /** The team's ID, for a stored team. */
+  id?: string;
+
   /** The unique name of the team. */
   teamName: string;
 
@@ -27,30 +42,31 @@ export class Team {
   /** The code a user must supply to join the team. */
   joinCode: string;
 
-  /** The user names of the team's members. */
-  memberNames: string[] = [];
+  /** The IDs of the team's members. */
+  memberIds: string[];
 
   /**
    * Initializes a new instance of the Team class.
    * @param teamDefinition the team's properties
    */
   constructor(teamDefinition: TeamDefinition) {
+    this.id = teamDefinition.id;
     this.teamName = teamDefinition.teamName;
     this.displayName = teamDefinition.displayName;
     this.joinCode = teamDefinition.joinCode;
-    this.memberNames = teamDefinition.memberNames;
+    this.memberIds = (teamDefinition.memberIds ?? []).map(String);
   }
 
   /**
    * Gets the object serialized as the JSON representation of this Team.
    * @returns the object to be serialized to JSON
    */
-  toJSON(): TeamDefinition {
+  toJSON(): TeamJSON {
     return {
       teamName: this.teamName,
       displayName: this.displayName,
       joinCode: this.joinCode,
-      memberNames: this.memberNames,
+      memberIds: this.memberIds,
     };
   }
 }
@@ -113,7 +129,7 @@ export async function createTeam(
       teamName: team.teamName,
       displayName: team.displayName || team.teamName,
       joinCode: team.joinCode,
-      memberNames: [],
+      memberIds: [],
     });
     await newTeam.save();
   } catch (err) {
@@ -144,7 +160,7 @@ export async function createTeam(
  */
 export async function updateTeam(
   name: string,
-  teamData: Partial<TeamDefinition>
+  teamData: Partial<Pick<TeamDefinition, "displayName" | "joinCode">>
 ): Promise<TeamResult<undefined>> {
   const foundTeam = await TeamModel.findOne({ teamName: name });
   if (foundTeam === null) {
@@ -156,9 +172,6 @@ export async function updateTeam(
   }
   foundTeam.displayName = teamData.displayName || foundTeam.displayName;
   foundTeam.joinCode = teamData.joinCode || foundTeam.joinCode;
-  if (teamData.memberNames) {
-    foundTeam.memberNames = teamData.memberNames;
-  }
   try {
     await foundTeam.save();
   } catch (err) {
@@ -186,17 +199,51 @@ export async function listTeams(): Promise<TeamResult<Team[]>> {
 
 /**
  * Gets a list of all of the teams for a specified user.
- * @param userName the name of the user for which to retrieve teams
+ * @param userId the ID of the user for which to retrieve teams
  * @returns a response object containing a status, status code, and data
  */
 export async function getTeamsForUser(
-  userName: string
+  userId: string
 ): Promise<TeamResult<Team[]>> {
-  const teamsContainingUser = await TeamModel.find({
-    memberNames: { $elemMatch: { $eq: userName } },
-  });
+  const teamsContainingUser = await TeamModel.find({ memberIds: userId });
   const teamNames = teamsContainingUser.map((team) => new Team(team));
   return { status: "success", statusCode: 200, data: teamNames };
+}
+
+/**
+ * Finds a team, and the ID of a user joining or leaving it.
+ * @param teamName the name of the team
+ * @param userName the name of the user
+ * @returns the team and the user's ID, or an error result if either isn't
+ *  found
+ */
+async function findTeamAndUser(
+  teamName: string,
+  userName: string
+): Promise<
+  | {
+      team: NonNullable<Awaited<ReturnType<typeof TeamModel.findOne>>>;
+      userId: Types.ObjectId;
+    }
+  | TeamResult<never>
+> {
+  const team = await TeamModel.findOne({ teamName: teamName });
+  if (!team) {
+    return {
+      status: "error",
+      statusCode: 404,
+      message: `No team with team name ${teamName} found`,
+    };
+  }
+  const user = await UserModel.findOne({ userName }, { _id: 1 }).lean();
+  if (!user) {
+    return {
+      status: "error",
+      statusCode: 404,
+      message: `No user with user name ${userName} found`,
+    };
+  }
+  return { team, userId: user._id };
 }
 
 /**
@@ -211,16 +258,13 @@ export async function addUserToTeam(
   userName: string,
   joinCode: string
 ): Promise<TeamResult<undefined>> {
-  const team = await TeamModel.findOne({ teamName: teamName });
-  if (!team) {
-    return {
-      status: "error",
-      statusCode: 404,
-      message: `No team with team name ${teamName} found`,
-    };
+  const found = await findTeamAndUser(teamName, userName);
+  if ("status" in found) {
+    return found;
   }
+  const { team, userId } = found;
 
-  if (team.memberNames.includes(userName)) {
+  if (team.memberIds.some((memberId) => memberId.equals(userId))) {
     return {
       status: "error",
       statusCode: 400,
@@ -234,7 +278,7 @@ export async function addUserToTeam(
       message: `Invalid join code for team ${teamName}`,
     };
   }
-  team.memberNames.push(userName);
+  team.memberIds.push(userId);
   try {
     await team.save();
   } catch (err) {
@@ -253,24 +297,21 @@ export async function removeUserFromTeam(
   teamName: string,
   userName: string
 ): Promise<TeamResult<undefined>> {
-  const team = await TeamModel.findOne({ teamName: teamName });
-  if (!team) {
-    return {
-      status: "error",
-      statusCode: 404,
-      message: `No team with team name ${teamName} found`,
-    };
+  const found = await findTeamAndUser(teamName, userName);
+  if ("status" in found) {
+    return found;
   }
+  const { team, userId } = found;
 
-  if (!team.memberNames.includes(userName)) {
+  const index = team.memberIds.findIndex((memberId) => memberId.equals(userId));
+  if (index === -1) {
     return {
       status: "error",
       statusCode: 400,
       message: `User ${userName} is not a member of team ${teamName}`,
     };
   }
-  const index = team.memberNames.indexOf(userName);
-  team.memberNames.splice(index, 1);
+  team.memberIds.splice(index, 1);
   try {
     await team.save();
   } catch (err) {
