@@ -146,8 +146,9 @@ describe("password reset against MongoDB", () => {
 
   it("ends the user's other sessions when the password changes", async () => {
     vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
-    const current = await SessionService.createSession("player");
-    const other = await SessionService.createSession("player");
+    const playerId = (await UserModel.findOne({ userName: "player" }))!.id;
+    const current = await SessionService.createSession(playerId);
+    const other = await SessionService.createSession(playerId);
 
     const result = await PasswordService.changePassword(
       "player",
@@ -164,7 +165,8 @@ describe("password reset against MongoDB", () => {
   });
 
   it("ends all the user's sessions when the password is reset", async () => {
-    const session = await SessionService.createSession("player");
+    const playerId = (await UserModel.findOne({ userName: "player" }))!.id;
+    const session = await SessionService.createSession(playerId);
     await PasswordService.requestPasswordReset("player");
 
     await PasswordService.resetPassword(

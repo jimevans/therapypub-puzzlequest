@@ -75,6 +75,7 @@ export function createMockRequest({
 }
 
 export const playerUser: SessionUser = {
+  id: "000000000000000000000101",
   userName: "player",
   displayName: "Player",
   email: "player@example.com",
@@ -84,6 +85,7 @@ export const playerUser: SessionUser = {
 };
 
 export const otherPlayerUser: SessionUser = {
+  id: "000000000000000000000102",
   userName: "other",
   displayName: "Other",
   email: "other@example.com",
@@ -93,6 +95,7 @@ export const otherPlayerUser: SessionUser = {
 };
 
 export const adminUser: SessionUser = {
+  id: "000000000000000000000103",
   userName: "admin",
   displayName: "Admin",
   email: "admin@example.com",

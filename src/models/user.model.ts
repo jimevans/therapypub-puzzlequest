@@ -1,4 +1,5 @@
 import { type InferSchemaType, Schema, model } from "mongoose";
+import { organizationField } from "./organization.model.js";
 
 /** How much a user is allowed to do. */
 export const AuthorizationLevel = {
@@ -11,11 +12,12 @@ export type AuthorizationLevel =
 
 /** A user of the PuzzleQuest system. */
 const userSchema = new Schema({
+  /** The organization the user belongs to. */
+  organizationId: organizationField,
   /** The unique name of the user. */
   userName: {
     type: String,
     required: true,
-    unique: true,
   },
   /** The display name of the user. */
   displayName: {
@@ -25,7 +27,6 @@ const userSchema = new Schema({
   /** The email address of the user. */
   email: {
     type: String,
-    unique: true,
     required: true,
   },
   /** The phone number of the user. */
@@ -75,11 +76,12 @@ userSchema.set("toJSON", { virtuals: true });
 
 /** A team to which users can belong. */
 const teamSchema = new Schema({
+  /** The organization the team belongs to. */
+  organizationId: organizationField,
   /** The unique name of the team. */
   teamName: {
     type: String,
     required: true,
-    unique: true,
   },
   /** The display name of the team. */
   displayName: {
@@ -90,11 +92,18 @@ const teamSchema = new Schema({
   joinCode: {
     type: String,
     required: true,
-    unique: true,
   },
   /** The user names of the team's members. */
   memberNames: [String],
 });
+
+// User names and email addresses are unique within an organization.
+userSchema.index({ organizationId: 1, userName: 1 }, { unique: true });
+userSchema.index({ organizationId: 1, email: 1 }, { unique: true });
+
+// Team names and join codes are unique within an organization.
+teamSchema.index({ organizationId: 1, teamName: 1 }, { unique: true });
+teamSchema.index({ organizationId: 1, joinCode: 1 }, { unique: true });
 
 // Incoming calls and text messages find their sender by phone number.
 userSchema.index({ phone: 1 });

@@ -38,7 +38,8 @@ export async function login(
     return;
   }
   const token = await SessionService.createSession(
-    response.data.userName,
+    // A user loaded from the database always has an ID.
+    response.data.id ?? "",
     req.get("user-agent")
   );
   if (req.body.client === "native") {

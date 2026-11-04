@@ -4,8 +4,9 @@ import { type InferSchemaType, Schema, model } from "mongoose";
 const emailVerificationSchema = new Schema(
   {
     /** The user whose address is being verified. */
-    userName: {
-      type: String,
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
       required: true,
       index: true,
     },

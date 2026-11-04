@@ -81,7 +81,7 @@ export async function authenticateSession(
   }
   const fromCookie = token === req.cookies?.[SESSION_COOKIE_NAME];
   const session = await SessionService.findSession(token);
-  const user = session && (await UserService.getSessionUser(session.userName));
+  const user = session && (await UserService.getSessionUser(session.userId));
   if (!session || !user) {
     if (fromCookie) {
       clearSessionCookie(res);

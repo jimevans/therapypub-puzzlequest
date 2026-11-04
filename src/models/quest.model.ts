@@ -1,4 +1,5 @@
 import { type InferSchemaType, Schema, model } from "mongoose";
+import { organizationField } from "./organization.model.js";
 import { QuestPuzzleStatus, QuestStatus } from "../domain/quest/state.js";
 
 // The status values are part of the rules of the game, so they live in the
@@ -90,12 +91,13 @@ const pauseSchema = new Schema(
 /** A quest: a sequence of puzzles assigned to a user or a team. */
 const questSchema = new Schema(
   {
+    /** The organization the quest belongs to. */
+    organizationId: organizationField,
     /** The unique name of the quest. */
     name: {
       type: String,
       default: "",
       required: true,
-      unique: true,
     },
     /** The display name of the quest. */
     displayName: {
@@ -139,6 +141,9 @@ const questSchema = new Schema(
     optimisticConcurrency: true,
   }
 );
+
+// Quest names are unique within an organization.
+questSchema.index({ organizationId: 1, name: 1 }, { unique: true });
 
 // Players' quests are found by the user and team names they are assigned to.
 questSchema.index({ userName: 1 });

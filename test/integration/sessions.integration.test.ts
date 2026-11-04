@@ -114,7 +114,8 @@ describe("signing in from a browser", () => {
     const [session] = await SessionModel.find({}).lean();
     expect(session.tokenHash).toBe(SessionService.hashSessionToken(token));
     expect(JSON.stringify(session)).not.toContain(token);
-    expect(session.userName).toBe("player");
+    const player = await UserModel.findOne({ userName: "player" }).lean();
+    expect(session.userId).toEqual(player!._id);
   });
 
   it("signs the browser in with the cookie", async () => {
@@ -191,6 +192,21 @@ describe("a session that has ended", () => {
       await whoAmI((pending) =>
         pending.set("Authorization", `Bearer ${player}`)
       )
+    ).toBe(401);
+  });
+
+  it("counts as anonymous if stored before sessions referred to users by ID", async () => {
+    const token = "an-old-session-token";
+    await SessionModel.collection.insertOne({
+      tokenHash: SessionService.hashSessionToken(token),
+      userName: "player",
+      createdAt: new Date(),
+      lastUsedAt: new Date(),
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    });
+
+    expect(
+      await whoAmI((pending) => pending.set("Authorization", `Bearer ${token}`))
     ).toBe(401);
   });
 

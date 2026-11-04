@@ -1,3 +1,4 @@
+import { UserModel } from "../src/models/user.model.js";
 import * as SessionService from "../src/services/session.service.js";
 
 /**
@@ -11,7 +12,11 @@ export async function startSessions(
 ): Promise<Record<string, string>> {
   const tokens: Record<string, string> = {};
   for (const userName of userNames) {
-    tokens[userName] = await SessionService.createSession(userName);
+    const user = await UserModel.findOne({ userName }).lean();
+    if (!user) {
+      throw new Error(`startSessions: no user named ${userName}`);
+    }
+    tokens[userName] = await SessionService.createSession(user._id.toString());
   }
   return tokens;
 }
