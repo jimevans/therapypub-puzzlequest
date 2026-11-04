@@ -11,16 +11,6 @@ import { Problems, isV1Request, sendProblem } from "../api/problems.js";
 type Permission = (user: UserService.User, req: Request) => boolean;
 
 /**
- * Determines whether a request is for the API, which answers in JSON, rather
- * than for a page.
- * @param req the request
- * @returns true for an API request
- */
-function isApiRequest(req: Request): boolean {
-  return req.originalUrl.startsWith("/api/");
-}
-
-/**
  * Asks an anonymous visitor to sign in: a 401 for the API, or the sign-in
  * page, which returns to the requested page afterwards.
  * @param req the request
@@ -33,13 +23,6 @@ function requestSignIn(req: Request, res: Response): void {
       Problems.signInRequired,
       "Sign in to do this, with the session cookie or a Bearer token"
     );
-    return;
-  }
-  if (isApiRequest(req)) {
-    res.status(401).json({
-      status: "error",
-      message: "User must be logged in to perform operation",
-    });
     return;
   }
   res.render("login", { requestingUrl: req.originalUrl });
@@ -58,13 +41,6 @@ function refuse(req: Request, res: Response, user: UserService.User): void {
       Problems.forbidden,
       `User ${user.userName} isn't allowed to do this`
     );
-    return;
-  }
-  if (isApiRequest(req)) {
-    res.status(403).json({
-      status: "error",
-      message: `User ${user.userName} not authorized to perform operation`,
-    });
     return;
   }
   res.status(403).render("error", {

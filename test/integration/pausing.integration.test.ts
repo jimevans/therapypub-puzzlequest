@@ -153,11 +153,11 @@ describe("pausing a quest", () => {
   it.each([
     [
       "solve a puzzle",
-      "put",
-      "/api/quest/quest/puzzle/riddle/solve",
+      "post",
+      "/api/v1/quests/quest/puzzles/riddle/solution-attempts",
       { guess: "piano" },
     ],
-    ["reveal a hint", "put", "/api/quest/quest/puzzle/riddle/hint", {}],
+    ["reveal a hint", "post", "/api/v1/quests/quest/puzzles/riddle/hints", {}],
   ] as const)(
     "stops the players trying to %s",
     async (_, method, path, body) => {
@@ -166,7 +166,7 @@ describe("pausing a quest", () => {
       const response = await asPlayer(method, path).send(body);
 
       expect(response.status).toBe(409);
-      expect(JSON.parse(response.text).message).toBe(
+      expect(JSON.parse(response.text).detail).toBe(
         "Quest quest is paused by the puzzle master; please wait until it resumes"
       );
       const quest = await storedQuest();
@@ -232,9 +232,11 @@ describe("resuming a quest", () => {
     const quest = await storedQuest();
     expect(quest.pauses[0].endTime).toBeInstanceOf(Date);
     const solve = await asPlayer(
-      "put",
-      "/api/quest/quest/puzzle/riddle/solve"
-    ).send({ guess: "piano" });
+      "post",
+      "/api/v1/quests/quest/puzzles/riddle/solution-attempts"
+    ).send({
+      guess: "piano",
+    });
     expect(solve.status).toBe(200);
   });
 

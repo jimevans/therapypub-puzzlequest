@@ -38,28 +38,44 @@ export const updateQuestBody = z.object({
 });
 export type UpdateQuestBody = z.infer<typeof updateQuestBody>;
 
-/** The browser's live-update connection, which the response leaves out. */
-const connectionId = z.string().optional();
+/**
+ * The page's live-update connection, which the live update about the action
+ * then leaves out: the page shows the result itself.
+ */
+const connectionId = z.string().optional().meta({
+  description:
+    "The page's live-update connection, which isn't sent the update about this action.",
+});
 
 /**
- * POST /api/quest/:name/puzzle/:puzzleName/activate: an activation code, or
- * an image of its QR code (multipart, parsed by multer) with its size.
+ * POST /api/v1/quests/{name}/puzzles/{puzzleName}/activation: an activation
+ * code, or (as multipart, parsed by multer) a camera frame of its QR code
+ * with the frame's size.
  */
 export const activatePuzzleBody = z.object({
-  activationCode: z.string().optional(),
-  width: wholeNumber.positive().optional(),
-  height: wholeNumber.positive().optional(),
+  activationCode: z
+    .string()
+    .optional()
+    .meta({ description: "The code, typed; or scan its QR code instead." }),
+  width: wholeNumber
+    .positive()
+    .optional()
+    .meta({ description: "The scanned frame's width, in pixels." }),
+  height: wholeNumber
+    .positive()
+    .optional()
+    .meta({ description: "The scanned frame's height, in pixels." }),
 });
 export type ActivatePuzzleBody = z.infer<typeof activatePuzzleBody>;
 
-/** PUT /api/quest/:name/puzzle/:puzzleName/solve */
+/** POST /api/v1/quests/{name}/puzzles/{puzzleName}/solution-attempts */
 export const solvePuzzleBody = z.object({
   guess: z.string().max(1000, "Must be at most 1000 characters"),
   connectionId,
 });
 export type SolvePuzzleBody = z.infer<typeof solvePuzzleBody>;
 
-/** PUT /api/quest/:name/puzzle/:puzzleName/hint */
+/** POST /api/v1/quests/{name}/puzzles/{puzzleName}/hints */
 export const requestHintBody = z.object({ connectionId });
 export type RequestHintBody = z.infer<typeof requestHintBody>;
 

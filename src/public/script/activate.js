@@ -1,5 +1,5 @@
 /* global questName, puzzleName -- defined by an inline script in the page */
-import { callDataApi } from "./fetch.js";
+import { callApi } from "./api.js";
 const canvas = document.querySelector("canvas");
 const context = canvas.getContext("2d");
 
@@ -64,15 +64,20 @@ function stopCamera() {
   document.querySelector("#scan-code-button").classList.add("pq-hide");
 }
 
-async function sendActivationData(formData) {
-  const responseData = await callDataApi(
-    `/api/quest/${questName}/puzzle/${puzzleName}/activate`,
-    "post",
-    formData,
-    false,
-    {}
+/**
+ * Sends the puzzle's activation code: typed, or a scanned camera frame.
+ * @param {{ body?: object, formData?: FormData }} data the code, as JSON,
+ *  or the frame, as form data
+ * @returns {Promise<string | undefined>} why it wasn't activated, if it wasn't
+ */
+async function sendActivationData(data) {
+  const response = await callApi(
+    `/quests/${encodeURIComponent(questName)}/puzzles/${encodeURIComponent(puzzleName)}/activation`,
+    { method: "POST", ...data }
   );
-  return responseData;
+  return response.ok
+    ? undefined
+    : (response.problem.detail ?? response.problem.title);
 }
 
 function clearError() {
@@ -126,10 +131,10 @@ document
     formData.append("height", imageData.height);
     formData.append("width", imageData.width);
     formData.append("image", new Blob([imageData.data.buffer]));
-    const activationResponse = await sendActivationData(formData);
+    const error = await sendActivationData({ formData });
     e.target.enabled = true;
-    if (activationResponse.status === "error") {
-      showError(activationResponse.message);
+    if (error) {
+      showError(error);
       startCamera();
     } else {
       window.location.reload();
@@ -141,15 +146,12 @@ document
   .addEventListener("click", async (e) => {
     e.preventDefault();
     e.target.enabled = false;
-    const formData = new FormData();
-    formData.append(
-      "activationCode",
-      document.querySelector("#text-auth-code").value
-    );
-    const activationResponse = await sendActivationData(formData);
+    const error = await sendActivationData({
+      body: { activationCode: document.querySelector("#text-auth-code").value },
+    });
     e.target.enabled = true;
-    if (activationResponse.status === "error") {
-      showError(activationResponse.message);
+    if (error) {
+      showError(error);
     } else {
       window.location.reload();
     }

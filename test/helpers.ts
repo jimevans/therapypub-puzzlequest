@@ -37,6 +37,7 @@ export function createMockResponse(): MockResponse {
   });
   res.render = vi.fn(() => res) as unknown as Response["render"];
   res.set = vi.fn(() => res);
+  res.type = vi.fn(() => res);
   res.cookie = vi.fn(() => res);
   res.clearCookie = vi.fn(() => res);
   return res;

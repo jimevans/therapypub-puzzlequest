@@ -60,18 +60,6 @@ describe("error handling in the app", () => {
     });
     expect(body.detail).toMatch(/JSON/);
   });
-
-  it("reports malformed JSON to the older API in its own format", async () => {
-    const response = await request(createApp())
-      .put("/api/quest/quest/puzzle/riddle/solve")
-      .set("Content-Type", "application/json")
-      .send('{"userName": ');
-
-    expect(response.status).toBe(400);
-    const body = JSON.parse(response.text);
-    expect(body.status).toBe("error");
-    expect(body.message).toMatch(/JSON/);
-  });
 });
 
 describe("errorHandler", () => {
@@ -97,10 +85,16 @@ describe("errorHandler", () => {
     const res = createMockResponse();
     const err = Object.assign(new Error("internal detail"), { status: 404 });
 
-    errorHandler(err, createRequest("/api/quest/q1"), res, vi.fn());
+    errorHandler(err, createRequest("/api/v1/quests/q1"), res, vi.fn());
 
     expect(res.statusCode).toBe(404);
-    expect(res.body.message).toBe("An unexpected error occurred");
+    expect(res.type).toHaveBeenCalledWith("application/problem+json");
+    expect(res.body).toEqual({
+      type: "about:blank",
+      title: "Not Found",
+      status: 404,
+      detail: "An unexpected error occurred",
+    });
   });
 
   it("passes the error on when the response has already started", () => {

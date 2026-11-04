@@ -28,7 +28,7 @@ import {
 function run(
   guard: RequestHandler,
   user: SessionUser | null,
-  originalUrl = "/api/quest/quest"
+  originalUrl = "/api/v1/quests/quest"
 ) {
   const req = createMockRequest({ user, params: { userName: "player" } });
   req.originalUrl = originalUrl;
@@ -55,9 +55,12 @@ describe.each([
     expect(passed).toBe(allowed);
     if (!allowed) {
       expect(res.statusCode).toBe(403);
+      expect(res.type).toHaveBeenCalledWith("application/problem+json");
       expect(res.body).toEqual({
-        status: "error",
-        message: `User ${user.userName} not authorized to perform operation`,
+        type: "/problems/forbidden",
+        title: "Not allowed",
+        status: 403,
+        detail: `User ${user.userName} isn't allowed to do this`,
       });
     }
   });
@@ -68,8 +71,10 @@ describe.each([
     expect(passed).toBe(false);
     expect(res.statusCode).toBe(401);
     expect(res.body).toEqual({
-      status: "error",
-      message: "User must be logged in to perform operation",
+      type: "/problems/sign-in-required",
+      title: "Sign in to do this",
+      status: 401,
+      detail: "Sign in to do this, with the session cookie or a Bearer token",
     });
   });
 });

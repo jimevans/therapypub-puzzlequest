@@ -56,9 +56,6 @@ const { SessionModel } = await import("../../src/models/session.model.js");
 const QuestService = await import("../../src/services/quest.service.js");
 const { IndexRouter } = await import("../../src/routes/index.js");
 const { V1Router } = await import("../../src/api/v1/index.js");
-const { MessagingApiRouter } =
-  await import("../../src/routes/api.messaging.js");
-const { QuestApiRouter } = await import("../../src/routes/api.quest.js");
 const { MonitorRouter } = await import("../../src/routes/monitor.js");
 const { PuzzleRouter } = await import("../../src/routes/puzzle.js");
 const { QuestRouter } = await import("../../src/routes/quest.js");
@@ -68,8 +65,6 @@ const { UserRouter } = await import("../../src/routes/user.js");
 const MOUNTS: [string, Router][] = [
   ["", IndexRouter],
   ["/api/v1", V1Router],
-  ["/api/quest", QuestApiRouter],
-  ["/api/messaging", MessagingApiRouter],
   ["/user", UserRouter],
   ["/puzzle", PuzzleRouter],
   ["/quest", QuestRouter],
@@ -157,18 +152,16 @@ const ROUTES: [string, string, Policy][] = [
   ["post", "/api/v1/quests/:name/puzzles/:puzzleName/reset", ADMIN],
   ["get", "/api/v1/quests/:name/puzzles/:puzzleName/qr-code", ADMIN],
   ["get", "/api/v1/quests/:name/events", ADMIN],
+  ["post", "/api/v1/quests/:name/puzzles/:puzzleName/activation", QUEST_PLAYER],
+  [
+    "post",
+    "/api/v1/quests/:name/puzzles/:puzzleName/solution-attempts",
+    QUEST_PLAYER,
+  ],
+  ["post", "/api/v1/quests/:name/puzzles/:puzzleName/hints", QUEST_PLAYER],
   ["post", "/api/v1/quests/:name/text-messages", ADMIN],
   ["post", "/api/v1/webhooks/twilio/voice", TWILIO],
   ["post", "/api/v1/webhooks/twilio/messages", TWILIO],
-  ["post", "/api/v1/twilio/voice", TWILIO],
-  ["post", "/api/v1/twilio/messages", TWILIO],
-
-  ["post", "/api/quest/:name/puzzle/:puzzleName/activate", QUEST_PLAYER],
-  ["put", "/api/quest/:name/puzzle/:puzzleName/solve", QUEST_PLAYER],
-  ["put", "/api/quest/:name/puzzle/:puzzleName/hint", QUEST_PLAYER],
-
-  ["post", "/api/messaging/incoming/voice", TWILIO],
-  ["post", "/api/messaging/incoming/text", TWILIO],
 
   ["get", "/user/register", PUBLIC],
   ["get", "/user/password/forgot", PUBLIC],
@@ -205,9 +198,12 @@ const PARAMS: Record<string, string> = {
  * decision. Most authorization doesn't depend on the body.
  */
 const BODIES: Record<string, object> = {
-  "/api/quest/:name/puzzle/:puzzleName/activate": { activationCode: "wrong" },
-  "/api/quest/:name/puzzle/:puzzleName/solve": { guess: "wrong" },
-  "/api/quest/:name/puzzle/:puzzleName/hint": {},
+  "/api/v1/quests/:name/puzzles/:puzzleName/activation": {
+    activationCode: "wrong",
+  },
+  "/api/v1/quests/:name/puzzles/:puzzleName/solution-attempts": {
+    guess: "wrong",
+  },
 };
 
 let mongoServer: MongoMemoryServer | undefined;

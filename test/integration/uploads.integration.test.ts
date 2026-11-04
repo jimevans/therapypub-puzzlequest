@@ -125,7 +125,7 @@ function renderQrCodePixels(text: string): PixelImage {
   return { data, width: size, height: size };
 }
 
-describe("POST /api/quest/:name/puzzle/:puzzleName/activate", () => {
+describe("POST /api/v1/quests/{name}/puzzles/{puzzleName}/activation", () => {
   let activationCode: string;
 
   beforeEach(async () => {
@@ -151,20 +151,20 @@ describe("POST /api/quest/:name/puzzle/:puzzleName/activate", () => {
 
   function sendCode(code: string): request.Test {
     return request(app)
-      .post("/api/quest/test-quest/puzzle/colors/activate")
+      .post("/api/v1/quests/test-quest/puzzles/colors/activation")
       .set("Authorization", `Bearer ${signedInToken}`)
       .send({ activationCode: code });
   }
 
   it("limits failed attempts by each user", async () => {
     for (let attempt = 0; attempt < 20; attempt++) {
-      expect((await sendCode("wrong")).status).toBe(406);
+      expect((await sendCode("wrong")).status).toBe(422);
     }
 
     // Even the right code is refused once the limit is reached.
     const limited = await sendCode(activationCode);
     expect(limited.status).toBe(429);
-    expect(JSON.parse(limited.text).status).toBe("error");
+    expect(JSON.parse(limited.text).type).toBe("/problems/too-many-requests");
 
     // Other users, who may share the player's network, are not affected.
     await signInAs("admin");
@@ -183,7 +183,7 @@ describe("POST /api/quest/:name/puzzle/:puzzleName/activate", () => {
   function sendImage(image: PixelImage): request.Test {
     // Same field order as activate.js: dimensions first, then the pixels.
     return request(app)
-      .post("/api/quest/test-quest/puzzle/colors/activate")
+      .post("/api/v1/quests/test-quest/puzzles/colors/activation")
       .set("Authorization", `Bearer ${signedInToken}`)
       .field("height", String(image.height))
       .field("width", String(image.width))
@@ -194,7 +194,9 @@ describe("POST /api/quest/:name/puzzle/:puzzleName/activate", () => {
     const response = await sendImage(renderQrCodePixels(activationCode));
 
     expect(response.status).toBe(200);
-    expect(JSON.parse(response.text).status).toBe("success");
+    expect(JSON.parse(response.text)).toEqual({
+      activationTime: expect.any(String),
+    });
     const quest = await QuestModel.findOne({ name: "test-quest" }).lean();
     expect(quest!.puzzles[0].status).toBe(QuestPuzzleStatus.IN_PROGRESS);
   });
@@ -202,12 +204,40 @@ describe("POST /api/quest/:name/puzzle/:puzzleName/activate", () => {
   it("rejects a QR code for a different activation code", async () => {
     const response = await sendImage(renderQrCodePixels("not-the-code"));
 
-    expect(response.status).toBe(406);
+    expect(response.status).toBe(422);
+    expect(JSON.parse(response.text).type).toBe(
+      "/problems/wrong-activation-code"
+    );
+  });
+
+  it("reports an image with no QR code it can read", async () => {
+    const blank = {
+      data: Buffer.alloc(40 * 40 * 4, 255),
+      width: 40,
+      height: 40,
+    };
+
+    const response = await sendImage(blank);
+
+    expect(response.status).toBe(422);
+    expect(JSON.parse(response.text)).toMatchObject({
+      type: "/problems/unreadable-qr-code",
+      detail: "No QR code could be read from the image",
+    });
+  });
+
+  it("can't be fooled by an image whose size doesn't match its pixels", async () => {
+    const image = renderQrCodePixels(activationCode);
+
+    const response = await sendImage({ ...image, width: image.width * 2 });
+
+    expect(response.status).toBe(422);
+    expect(JSON.parse(response.text).type).toBe("/problems/unreadable-qr-code");
   });
 
   it("still accepts an activation code typed as text", async () => {
     const response = await request(app)
-      .post("/api/quest/test-quest/puzzle/colors/activate")
+      .post("/api/v1/quests/test-quest/puzzles/colors/activation")
       .set("Authorization", `Bearer ${signedInToken}`)
       .send({ activationCode });
 
@@ -216,7 +246,7 @@ describe("POST /api/quest/:name/puzzle/:puzzleName/activate", () => {
 
   it("rejects an anonymous request before reading the image", async () => {
     const response = await request(app)
-      .post("/api/quest/test-quest/puzzle/colors/activate")
+      .post("/api/v1/quests/test-quest/puzzles/colors/activation")
       .field("height", "1")
       .field("width", "1")
       .attach("image", Buffer.alloc(4), "blob");

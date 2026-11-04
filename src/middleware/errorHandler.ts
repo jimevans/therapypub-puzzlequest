@@ -64,8 +64,6 @@ export function errorHandler(
           : Problems.unexpected,
       message
     );
-  } else if (req.originalUrl.startsWith("/api/")) {
-    res.status(statusCode).send(JSON.stringify({ status: "error", message }));
   } else {
     res.status(statusCode).type("text").send(message);
   }

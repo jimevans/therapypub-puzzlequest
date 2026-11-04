@@ -1,6 +1,6 @@
 import type { Request, RequestHandler } from "express";
 import type { z } from "zod";
-import { Problems, isV1Request, sendProblem } from "../api/problems.js";
+import { Problems, sendProblem } from "../api/problems.js";
 
 /** The schemas a request's parts must match; each part is optional. */
 export interface RequestSchemas {
@@ -82,15 +82,11 @@ export function validate(schemas: RequestSchemas): RequestHandler {
       next();
       return;
     }
-    // Pages show this to people, so it names fields without "body."; the
-    // errors list has full paths.
-    const message = errors
+    // Pages show the detail to people, so it names fields without "body.";
+    // the errors list has full paths.
+    const detail = errors
       .map((error) => `${error.path.replace(/^body\./, "")}: ${error.message}`)
       .join("; ");
-    if (isV1Request(req)) {
-      sendProblem(res, Problems.invalidRequest, message, { errors });
-      return;
-    }
-    res.status(400).json({ status: "error", message, errors });
+    sendProblem(res, Problems.invalidRequest, detail, { errors });
   };
 }

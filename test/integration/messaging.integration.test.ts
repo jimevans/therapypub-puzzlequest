@@ -158,11 +158,6 @@ describe("Twilio webhook signatures", () => {
       "/api/v1/webhooks/twilio/messages",
       { From: "+15551230001", Body: "Ready" },
     ],
-    // The earlier URLs, until the Twilio console points at the ones above.
-    ["/api/v1/twilio/voice", { From: "+15551230001" }],
-    ["/api/v1/twilio/messages", { From: "+15551230001", Body: "Ready" }],
-    ["/api/messaging/incoming/voice", { From: "+15551230001" }],
-    ["/api/messaging/incoming/text", { From: "+15551230001", Body: "Ready" }],
   ] as const;
 
   beforeEach(async () => {

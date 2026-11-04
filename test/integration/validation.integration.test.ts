@@ -261,13 +261,14 @@ describe("activating a puzzle", () => {
   it("needs an activation code or a readable QR code", async () => {
     const response = await send(
       "post",
-      "/api/quest/quest/puzzle/riddle/activate",
+      "/api/v1/quests/quest/puzzles/riddle/activation",
       "player"
     ).send({});
 
     expect(response.status).toBe(400);
-    expect(JSON.parse(response.text).message).toBe(
-      "Request must include an activation code or a readable QR code"
-    );
+    expect(JSON.parse(response.text)).toMatchObject({
+      type: "/problems/invalid-request",
+      detail: "Send an activation code, or a scanned image of its QR code",
+    });
   });
 });

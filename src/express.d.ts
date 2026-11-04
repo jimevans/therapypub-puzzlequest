@@ -13,8 +13,6 @@ declare module "express-serve-static-core" {
      * by the authenticateSession middleware.
      */
     sessionToken?: string;
-    /** The text of a scanned QR code. Set by the readQRCode middleware. */
-    qrCodeData?: string;
     /** How the page should be rendered. Set by the useRenderMode middleware. */
     renderMode?: import("./middleware/useRenderMode.js").RenderMode;
   }

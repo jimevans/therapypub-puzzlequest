@@ -1,10 +1,5 @@
 import type { Response } from "express";
 import type { RouteRequest } from "../types.js";
-import type {
-  ActivatePuzzleBody,
-  RequestHintBody,
-  SolvePuzzleBody,
-} from "../schemas/quest.schemas.js";
 import { PassThrough } from "stream";
 import { marked } from "marked";
 import PDFDocument from "pdfkit";
@@ -13,102 +8,6 @@ import { PuzzleType } from "../models/puzzle.model.js";
 import { QuestPuzzleStatus } from "../models/quest.model.js";
 import * as QuestService from "../services/quest.service.js";
 import * as UserService from "../services/user.service.js";
-
-export async function activateQuestPuzzle(
-  req: RouteRequest<"name" | "puzzleName", ActivatePuzzleBody>,
-  res: Response
-): Promise<void> {
-  const loggedInUser = UserService.requireLoggedInUser(req.user);
-  const assigneeIds = await loggedInUser.getAssigneeIds();
-  const activationCode = req.qrCodeData ?? req.body.activationCode;
-  if (!activationCode) {
-    res.status(400).json({
-      status: "error",
-      message: "Request must include an activation code or a readable QR code",
-    });
-    return;
-  }
-
-  const activationResult = await QuestService.activatePuzzle(
-    req.params.name,
-    req.params.puzzleName,
-    assigneeIds,
-    activationCode,
-    { actor: loggedInUser.userName }
-  );
-  if (activationResult.status === "error") {
-    res.status(activationResult.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: activationResult.message,
-      })
-    );
-    return;
-  }
-  res.send(JSON.stringify({ status: "success" }));
-}
-
-export async function solveQuestPuzzle(
-  req: RouteRequest<"name" | "puzzleName", SolvePuzzleBody>,
-  res: Response
-): Promise<void> {
-  const loggedInUser = UserService.requireLoggedInUser(req.user);
-  const assigneeIds = await loggedInUser.getAssigneeIds();
-  const solutionGuess = req.body.guess;
-  const connectionId = req.body.connectionId;
-  const solutionResult = await QuestService.finishPuzzle(
-    req.params.name,
-    req.params.puzzleName,
-    assigneeIds,
-    solutionGuess,
-    { actor: loggedInUser.userName, connectionId }
-  );
-
-  if (solutionResult.status === "error") {
-    res.status(solutionResult.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: solutionResult.message,
-      })
-    );
-    return;
-  }
-  res.send(
-    JSON.stringify({
-      status: "success",
-      data: {
-        solutionText: solutionResult.data.solutionText,
-        questComplete: solutionResult.data.questComplete,
-      },
-    })
-  );
-}
-
-export async function requestQuestPuzzleHint(
-  req: RouteRequest<"name" | "puzzleName", RequestHintBody>,
-  res: Response
-): Promise<void> {
-  const loggedInUser = UserService.requireLoggedInUser(req.user);
-  const assigneeIds = await loggedInUser.getAssigneeIds();
-  const connectionId = req.body.connectionId;
-  const hintResult = await QuestService.getPuzzleHint(
-    req.params.name,
-    req.params.puzzleName,
-    assigneeIds,
-    { actor: loggedInUser.userName, connectionId }
-  );
-  if (hintResult.status === "error") {
-    res.status(hintResult.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: hintResult.message,
-      })
-    );
-    return;
-  }
-
-  res.send(JSON.stringify(hintResult));
-}
 
 export async function renderQuest(
   req: RouteRequest<"name">,

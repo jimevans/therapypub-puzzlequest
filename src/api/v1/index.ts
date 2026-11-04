@@ -4,6 +4,7 @@ import { z } from "zod";
 import { Problems, sendProblem } from "../problems.js";
 import { createOpenApiDocument } from "./openapi.js";
 import { type AnyRoute, defineRoute, registerRoutes } from "./route.js";
+import { playingRoutes } from "./playing.js";
 import { puzzleRoutes } from "./puzzles.js";
 import { questRoutes } from "./quests.js";
 import { sessionRoutes } from "./sessions.js";
@@ -40,6 +41,7 @@ export const v1Routes: AnyRoute[] = [
   ...teamRoutes,
   ...puzzleRoutes,
   ...questRoutes,
+  ...playingRoutes,
   ...webhookRoutes,
 ];
 

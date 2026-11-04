@@ -86,7 +86,8 @@ export interface Route<
     multipart?: z.ZodObject;
     /**
      * The body's media type, if it isn't JSON: form fields, as Twilio's
-     * webhooks send them, are validated the same way.
+     * webhooks send them, are validated the same way. A route may take both
+     * a body and a multipart upload, whose fields are validated as the body.
      */
     bodyMediaType?: "application/x-www-form-urlencoded";
   };

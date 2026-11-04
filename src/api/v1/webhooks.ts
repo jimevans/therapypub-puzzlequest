@@ -64,9 +64,4 @@ function twilioWebhooks(base: string): AnyRoute[] {
   ];
 }
 
-export const webhookRoutes = [
-  ...twilioWebhooks("/webhooks/twilio"),
-  // Where Twilio's webhooks were first in v1, until the Twilio console
-  // points at the ones above.
-  ...twilioWebhooks("/twilio"),
-];
+export const webhookRoutes = [...twilioWebhooks("/webhooks/twilio")];
