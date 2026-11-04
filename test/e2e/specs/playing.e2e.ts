@@ -1,0 +1,198 @@
+// A player's whole journey: signing up, joining a team, starting a quest with
+// a phone call, activating puzzles, hints, wrong and right answers, and
+// finishing, with a spectator following along live in another window.
+import {
+  ADMIN,
+  BASE_URL,
+  PASSWORD,
+  api,
+  callQuestNumber,
+  pickInLookup,
+  sessionToken,
+  signIn,
+  unique,
+} from "../support.js";
+
+describe("playing a quest", () => {
+  const suffix = unique("").slice(1);
+  const player = `player-${suffix}`;
+  const teamName = `team-${suffix}`;
+  const joinCode = `join-${suffix}`;
+  const teamDisplayName = `Team ${suffix}`;
+  const questName = `quest-${suffix}`;
+  const riddle = `riddle-${suffix}`;
+  const finale = `finale-${suffix}`;
+  const phoneDigits = String(Date.now() % 100).padStart(2, "0");
+  let admin = "";
+  // The spectator's page, open in its own browsing context all along.
+  let monitor: WebdriverIO.BrowsingContext;
+
+  before(async () => {
+    admin = await sessionToken(ADMIN);
+    await api("POST", "/teams", admin, {
+      teamName,
+      displayName: teamDisplayName,
+      joinCode,
+    });
+    await api("POST", "/puzzles", admin, {
+      name: riddle,
+      displayName: "The Riddle",
+      text: "What has **keys** but opens no locks?",
+      solutionKeyword: "piano",
+      solutionDisplayText: "A piano",
+      hints: [
+        { text: "It makes music", timePenalty: 60 },
+        { text: "It is a piano", solutionWarning: true, timePenalty: 300 },
+      ],
+    });
+    await api("POST", "/puzzles", admin, {
+      name: finale,
+      displayName: "The Finale",
+      text: "Say done",
+      solutionKeyword: "done",
+      solutionDisplayText: "Done",
+    });
+    await api("POST", "/quests", admin, {
+      name: questName,
+      displayName: "The Quest",
+      assignee: { kind: "team", name: teamName },
+      puzzles: [
+        { puzzleName: riddle, activationCode: "riddle-code" },
+        { puzzleName: finale, activationCode: "finale-code" },
+      ],
+    });
+  });
+
+  it("signs up", async () => {
+    await browser.url("/user/register");
+    await $("#user-name").setValue(player);
+    await $("#display-name").setValue("The Player");
+    await $("#password").setValue(PASSWORD);
+    await $("#password-confirm").setValue(PASSWORD);
+    await $("#email").setValue(`${player}@example.com`);
+    await $("#phone").setValue(`(312) 555-01${phoneDigits}`);
+    await $("#allow-sms").click();
+    await $("#save-button").click();
+    await expect($("#login")).toBeDisplayed();
+
+    await signIn(player);
+    await expect($(`a[href="/user/${player}"]`)).toExist();
+  });
+
+  it("joins a team with its join code", async () => {
+    await browser.url(`/user/${player}`);
+    await $("=Join new team").click();
+    await pickInLookup(teamName);
+    await $("#join-code").setValue(joinCode);
+    await $('button[data-action="confirm"]').click();
+
+    await expect($(`//div[@id="teams"]//td[.="${teamDisplayName}"]`)).toExist();
+  });
+
+  it("starts the quest by calling its number", async () => {
+    const heard = await callQuestNumber(`+131255501${phoneDigits}`);
+    expect(heard).toContain("Your quest starts now");
+
+    await browser.waitUntil(async () => {
+      await browser.url("/");
+      return $(`a[href="/quest/${questName}"]`).isExisting();
+    });
+    await $(`a[href="/quest/${questName}"]`).click();
+    await expect($("#quest-progress")).toBeDisplayed();
+  });
+
+  it("shows spectators no more of the quest than a player has reached", async () => {
+    // Over BiDi, this opens a context of its own, and doesn't switch to it.
+    monitor = (await browser.newWindow(
+      `${BASE_URL}/monitor/quest/${questName}`
+    )) as WebdriverIO.BrowsingContext;
+
+    await expect(monitor).toHaveUrl(`${BASE_URL}/monitor/quest/${questName}`);
+    await expect(monitor.$(`[data-puzzle-name="${riddle}"]`)).toExist();
+    await expect(monitor.$(`[data-puzzle-name="${finale}"]`)).not.toExist();
+    await expect(
+      $(`a[href="/quest/${questName}/puzzle/${finale}"]`)
+    ).not.toExist();
+  });
+
+  it("needs the puzzle's activation code", async () => {
+    await $(`a[href="/quest/${questName}/puzzle/${riddle}"]`).click();
+    await $("#text-value").click();
+    await $("#text-auth-code").setValue("wrong");
+    await $("#send-code-text-button").click();
+
+    await expect($("#error-details")).toHaveText(
+      "Incorrect activation code for puzzle"
+    );
+  });
+
+  it("activates the puzzle with the right code", async () => {
+    await $("#text-auth-code").setValue("riddle-code");
+    await $("#send-code-text-button").click();
+
+    await expect($("#solution-guess")).toBeDisplayed();
+    await expect($("#puzzle-content strong")).toHaveText("keys");
+  });
+
+  it("reveals hints, warning before one that gives the solution away", async () => {
+    await $("#request-hint").click();
+    await expect($("#used-hints")).toHaveText("It makes music");
+
+    await $("#request-hint").click();
+    await $('button[data-action="confirm"]').click();
+
+    await expect($("#used-hints")).toHaveText(
+      expect.stringContaining("It is a piano")
+    );
+    await expect($("#request-hint")).toHaveText("No available hints");
+  });
+
+  it("says when an answer is wrong", async () => {
+    await $("#solution-guess").setValue("organ");
+    await $("#submit-button").click();
+
+    await expect($("#solution-errors")).toHaveText(
+      "Incorrect guess for puzzle solution"
+    );
+    await expect($("#solution")).not.toBeDisplayed();
+  });
+
+  it("accepts the right answer, however it's typed", async () => {
+    await $("#solution-guess").setValue("Is it a PIANO?");
+    await $("#submit-button").click();
+
+    await expect($("#solution-text")).toHaveText("A piano");
+  });
+
+  it("updates the spectator's page live", async () => {
+    await expect(monitor.$(`[data-puzzle-name="${riddle}"]`)).toHaveText(
+      expect.stringContaining("A piano")
+    );
+    await expect(monitor.$(`[data-puzzle-name="${finale}"]`)).toExist();
+  });
+
+  it("stops the players while the puzzle master has the quest paused", async () => {
+    await browser.url(`/quest/${questName}/puzzle/${finale}`);
+    await expect($("#paused-banner")).not.toExist();
+
+    await api("POST", `/quests/${questName}/pause`, admin);
+    await expect($("#paused-banner")).toBeDisplayed();
+
+    await api("POST", `/quests/${questName}/resume`, admin);
+    await expect($("#paused-banner")).not.toExist();
+  });
+
+  it("finishes the quest with the last puzzle", async () => {
+    await $("#text-value").click();
+    await $("#text-auth-code").setValue("finale-code");
+    await $("#send-code-text-button").click();
+    await $("#solution-guess").setValue("done");
+    await $("#submit-button").click();
+
+    await expect($("#solution-text")).toHaveText("Done");
+    await expect($("#fireworks")).toExist();
+    const quest = await api("GET", `/quests/${questName}`, admin);
+    expect(quest.statusDescription).toBe("Completed");
+    expect(quest.progress.penaltyMs).toBe(360000);
+  });
+});

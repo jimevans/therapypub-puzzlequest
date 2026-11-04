@@ -112,6 +112,14 @@ The tests use [Vitest](https://vitest.dev). The integration tests run against
 an in-memory MongoDB from `mongodb-memory-server`, so they don't need a local
 database.
 
+### Browser tests
+
+```sh
+npm run test:e2e
+```
+
+These drive the main journeys through the real pages in Chrome and Firefox, with [WebdriverIO](https://webdriver.io/) over WebDriver BiDi: signing up, joining a team, playing a quest from the first call to the last puzzle with a spectator following along, authoring puzzles and quests, and resetting a password. They build the application and run it on an in-memory database, without reading `src/.env`, so they can't send real email or text messages. Both browsers must be installed; WebdriverIO downloads the drivers. `E2E_BROWSER=chrome` or `E2E_BROWSER=firefox` runs just one.
+
 ## Linting and formatting
 
 ```bash
@@ -203,7 +211,7 @@ every pull request and on every push to `main`:
 
 - **Lint and test:** installs with `npm ci --engine-strict` on the Node
   version in `.nvmrc`, then runs `npm run lint`, `npm run typecheck`,
-  `npm run build`, `npm run format:check`, and `npm test`. The strict engine check fails the build if any dependency no
+  `npm run build`, `npm run format:check`, and `npm test`; a separate job runs the browser tests. The strict engine check fails the build if any dependency no
   longer supports that Node version.
 - **Dependency audit:** fails on any advisory of moderate severity or higher
   in the production dependencies (`npm audit --omit=dev`). Advisories that

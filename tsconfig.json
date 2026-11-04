@@ -19,6 +19,7 @@
   // Browser scripts read globals that each EJS page defines, so they are not
   // checked yet. src/loader.cjs, the hosting startup file, is not checked
   // because it imports the build output in dist/, which doesn't exist until
-  // after `npm run build`.
-  "exclude": ["src/public/**"]
+  // after `npm run build`. The browser tests run under WebdriverIO, with its
+  // own globals, and have their own test/e2e/tsconfig.json.
+  "exclude": ["src/public/**", "test/e2e/**"]
 }
