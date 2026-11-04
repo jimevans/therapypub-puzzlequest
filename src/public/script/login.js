@@ -1,5 +1,5 @@
 /* global requestingUrl -- defined by an inline script in the page */
-import { callDataApi } from "./fetch.js";
+import { callApi } from "./api.js";
 
 /**
  * Determines whether a URL is a path on this site, rather than an address
@@ -14,19 +14,26 @@ function isLocalPath(url) {
 
 document.querySelector("#login").addEventListener("click", async (e) => {
   e.preventDefault();
-  document.querySelector(".pq-error").classList.add("pq-hide");
+  const error = document.querySelector(".pq-error");
+  error.classList.add("pq-hide");
   try {
-    const data = {
-      userName: document.querySelector("#user-name").value,
-      password: document.querySelector("#password").value,
-    };
-    const response = await callDataApi("/api/user/login", "post", data);
-    if (response.status === "success") {
+    const response = await callApi("/sessions", {
+      method: "POST",
+      body: {
+        userName: document.querySelector("#user-name").value,
+        password: document.querySelector("#password").value,
+      },
+    });
+    if (response.ok) {
       // The server sets the session cookie. Go back to the page that asked
       // for sign-in, if it's a page on this site.
       window.location.href = isLocalPath(requestingUrl) ? requestingUrl : "/";
     } else {
-      document.querySelector(".pq-error").classList.remove("pq-hide");
+      error.querySelector("span").textContent =
+        response.problem.type === "/problems/invalid-request"
+          ? "Enter your user name and password"
+          : response.problem.title;
+      error.classList.remove("pq-hide");
     }
   } catch (err) {
     console.log("error: " + err);

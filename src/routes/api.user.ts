@@ -4,7 +4,6 @@ import {
   changePasswordBody,
   createUserBody,
   forgotPasswordBody,
-  loginBody,
   resetPasswordBody,
   updateUserBody,
   verifyEmailBody,
@@ -91,13 +90,5 @@ userApiRouter.post(
   validate({ body: createUserBody }),
   UserController.createUser
 );
-userApiRouter.post(
-  "/login",
-  RateLimiter.loginAddressRateLimiter,
-  RateLimiter.loginRateLimiter,
-  validate({ body: loginBody }),
-  UserController.login
-);
-userApiRouter.post("/logout", authenticateSession, UserController.logout);
 
 export { userApiRouter as UserApiRouter };

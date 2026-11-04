@@ -1,10 +1,23 @@
-import { ipKeyGenerator, rateLimit } from "express-rate-limit";
+import {
+  type RateLimitExceededEventHandler,
+  ipKeyGenerator,
+  rateLimit,
+} from "express-rate-limit";
+import { Problems, sendApiError } from "../api/problems.js";
 
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
 
-const rateLimitedResponse = {
-  status: "error",
-  message: "Too many requests; please try again later",
+/**
+ * Answers a request over its limit, in the format its API uses. The
+ * RateLimit headers say when to try again.
+ */
+const handler: RateLimitExceededEventHandler = (req, res) => {
+  sendApiError(
+    req,
+    res,
+    Problems.tooManyRequests,
+    "Too many requests; please try again later"
+  );
 };
 
 /**
@@ -20,7 +33,7 @@ export const loginRateLimiter = rateLimit({
     `${ipKeyGenerator(req.ip ?? "")}:${String(req.body?.userName ?? "").toLowerCase()}`,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  message: rateLimitedResponse,
+  handler,
 });
 
 /**
@@ -34,7 +47,7 @@ export const loginAddressRateLimiter = rateLimit({
   skipSuccessfulRequests: true,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  message: rateLimitedResponse,
+  handler,
 });
 
 /**
@@ -45,7 +58,7 @@ export const passwordRateLimiter = rateLimit({
   limit: 5,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  message: rateLimitedResponse,
+  handler,
 });
 
 /**
@@ -60,7 +73,7 @@ export const activationRateLimiter = rateLimit({
   keyGenerator: (req) => req.user?.userName ?? "",
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  message: rateLimitedResponse,
+  handler,
 });
 
 /**
@@ -75,7 +88,7 @@ export const solutionRateLimiter = rateLimit({
   keyGenerator: (req) => req.user?.userName ?? "",
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  message: rateLimitedResponse,
+  handler,
 });
 
 /**
@@ -89,7 +102,7 @@ export const emailVerificationRateLimiter = rateLimit({
   skipSuccessfulRequests: true,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  message: rateLimitedResponse,
+  handler,
 });
 
 /**
@@ -102,5 +115,5 @@ export const verificationEmailRateLimiter = rateLimit({
   keyGenerator: (req) => String(req.params.userName ?? ""),
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  message: rateLimitedResponse,
+  handler,
 });

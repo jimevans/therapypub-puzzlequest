@@ -4,66 +4,17 @@ import type {
   ChangePasswordBody,
   CreateUserBody,
   ForgotPasswordBody,
-  LoginBody,
   ResetPasswordBody,
   UpdateUserBody,
   VerifyEmailBody,
 } from "../schemas/user.schemas.js";
-import * as AuthenticationService from "../services/authentication.service.js";
 import * as EmailVerificationService from "../services/emailVerification.service.js";
 import * as PasswordService from "../services/password.service.js";
 import * as UserService from "../services/user.service.js";
 import { RenderMode } from "../middleware/useRenderMode.js";
 import { AuthorizationLevel } from "../models/user.model.js";
 import { formatPhoneNumber } from "../schemas/common.js";
-import * as SessionAuthenticator from "../middleware/sessionAuthentication.js";
-import * as SessionService from "../services/session.service.js";
 import { getErrorMessage } from "../errors.js";
-
-export async function login(
-  req: BodyRequest<LoginBody>,
-  res: Response
-): Promise<void> {
-  const response = await AuthenticationService.authenticate(
-    req.body.userName,
-    req.body.password
-  );
-  if (response.status === "error") {
-    res.status(response.statusCode).send(
-      JSON.stringify({
-        status: "error",
-        message: response.message,
-      })
-    );
-    return;
-  }
-  const token = await SessionService.createSession(
-    // A user loaded from the database always has an ID.
-    response.data.id ?? "",
-    req.get("user-agent")
-  );
-  if (req.body.client === "native") {
-    // An app keeps the token itself and sends it as a Bearer token.
-    res.json({ status: "success", data: { token } });
-    return;
-  }
-  SessionAuthenticator.setSessionCookie(res, token);
-  res.json({ status: "success" });
-}
-
-/**
- * Signs out: ends the session the request presents, from its cookie or
- * Bearer token. Signing out when not signed in does nothing.
- * @param req the request
- * @param res the response
- */
-export async function logout(req: Request, res: Response): Promise<void> {
-  if (req.sessionToken) {
-    await SessionService.deleteSession(req.sessionToken);
-  }
-  SessionAuthenticator.clearSessionCookie(res);
-  res.json({ status: "success" });
-}
 
 export async function createUser(
   req: BodyRequest<CreateUserBody>,

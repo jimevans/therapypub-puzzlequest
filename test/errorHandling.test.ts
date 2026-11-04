@@ -30,13 +30,16 @@ describe("error handling in the app", () => {
     );
 
     const response = await request(createApp())
-      .post("/api/user/login")
+      .post("/api/v1/sessions")
       .send({ userName: "player", password: "password" });
 
     expect(response.status).toBe(500);
+    expect(response.type).toBe("application/problem+json");
     expect(JSON.parse(response.text)).toEqual({
-      status: "error",
-      message: "An unexpected error occurred",
+      type: "/problems/unexpected",
+      title: "An unexpected error occurred",
+      status: 500,
+      detail: "An unexpected error occurred",
     });
     expect(response.text).not.toContain("database exploded");
     expect(consoleError).toHaveBeenCalled();
@@ -44,7 +47,23 @@ describe("error handling in the app", () => {
 
   it("reports malformed JSON as a 400 with the parser's message", async () => {
     const response = await request(createApp())
-      .post("/api/user/login")
+      .post("/api/v1/sessions")
+      .set("Content-Type", "application/json")
+      .send('{"userName": ');
+
+    expect(response.status).toBe(400);
+    const body = JSON.parse(response.text);
+    expect(body).toMatchObject({
+      type: "about:blank",
+      title: "Bad Request",
+      status: 400,
+    });
+    expect(body.detail).toMatch(/JSON/);
+  });
+
+  it("reports malformed JSON to the older API in its own format", async () => {
+    const response = await request(createApp())
+      .post("/api/user/create")
       .set("Content-Type", "application/json")
       .send('{"userName": ');
 
@@ -90,7 +109,7 @@ describe("errorHandler", () => {
     const next = vi.fn();
     const err = new Error("late");
 
-    errorHandler(err, createRequest("/api/user/login"), res, next);
+    errorHandler(err, createRequest("/api/v1/sessions"), res, next);
 
     expect(next).toHaveBeenCalledWith(err);
     expect(res.send).not.toHaveBeenCalled();

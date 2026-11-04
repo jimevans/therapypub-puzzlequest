@@ -10,6 +10,7 @@ import {
 import { errorHandler } from "./middleware/errorHandler.js";
 import { requireSameOrigin } from "./middleware/sameOrigin.js";
 import { publicDirectory, viewsDirectory } from "./paths.js";
+import { V1Router } from "./api/v1/index.js";
 import { IndexRouter } from "./routes/index.js";
 import { MessagingApiRouter } from "./routes/api.messaging.js";
 import { PuzzleApiRouter } from "./routes/api.puzzle.js";
@@ -74,6 +75,9 @@ export function createApp(): Express {
   app.use(requireSameOrigin);
 
   app.use("/", IndexRouter);
+
+  // The v1 API, which the older API routes below are moving to.
+  app.use("/api/v1", V1Router);
 
   // API routes for data manipulation
   app.use("/api/user", UserApiRouter);

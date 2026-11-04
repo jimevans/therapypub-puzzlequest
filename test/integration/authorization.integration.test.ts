@@ -55,6 +55,7 @@ const { AuthorizationLevel, TeamModel, UserModel } =
 const { SessionModel } = await import("../../src/models/session.model.js");
 const QuestService = await import("../../src/services/quest.service.js");
 const { IndexRouter } = await import("../../src/routes/index.js");
+const { V1Router } = await import("../../src/api/v1/index.js");
 const { MessagingApiRouter } =
   await import("../../src/routes/api.messaging.js");
 const { PuzzleApiRouter } = await import("../../src/routes/api.puzzle.js");
@@ -69,6 +70,7 @@ const { UserRouter } = await import("../../src/routes/user.js");
 /** Where createApp mounts each router. */
 const MOUNTS: [string, Router][] = [
   ["", IndexRouter],
+  ["/api/v1", V1Router],
   ["/api/user", UserApiRouter],
   ["/api/puzzle", PuzzleApiRouter],
   ["/api/quest", QuestApiRouter],
@@ -116,6 +118,11 @@ const ROUTES: [string, string, Policy][] = [
   ["get", "/login", PUBLIC],
   ["get", "/logout", PUBLIC],
 
+  ["get", "/api/v1/openapi.json", PUBLIC],
+  ["post", "/api/v1/sessions", PUBLIC],
+  ["get", "/api/v1/sessions/current", SIGNED_IN],
+  ["delete", "/api/v1/sessions/current", PUBLIC],
+
   ["get", "/api/user/list", ADMIN],
   ["post", "/api/user/password/forgot", PUBLIC],
   ["post", "/api/user/password/reset", PUBLIC],
@@ -127,8 +134,6 @@ const ROUTES: [string, string, Policy][] = [
   ["put", "/api/user/:userName/password", SELF],
   ["post", "/api/user/:userName/password/reset-link", ADMIN],
   ["post", "/api/user/create", PUBLIC],
-  ["post", "/api/user/login", PUBLIC],
-  ["post", "/api/user/logout", PUBLIC],
 
   ["get", "/api/puzzle/list", ADMIN],
   ["get", "/api/puzzle/:name", ADMIN],

@@ -77,7 +77,7 @@ async function signInAs(userName: string): Promise<void> {
 }
 
 function login(userName: string, password: string) {
-  return request(app).post("/api/user/login").send({ userName, password });
+  return request(app).post("/api/v1/sessions").send({ userName, password });
 }
 
 describe("security headers", () => {
@@ -99,7 +99,7 @@ describe("security headers", () => {
 describe("request bodies", () => {
   it("rejects a JSON body over 100 KB", async () => {
     const response = await request(app)
-      .post("/api/user/login")
+      .post("/api/v1/sessions")
       .send({ userName: "x", password: "y".repeat(101 * 1024) });
 
     expect(response.status).toBe(413);
@@ -116,8 +116,10 @@ describe("signing in", () => {
     for (const response of [unknown, wrong]) {
       expect(response.status).toBe(401);
       expect(JSON.parse(response.text)).toEqual({
-        status: "error",
-        message: "Incorrect user name or password",
+        type: "/problems/sign-in-failed",
+        title: "Incorrect user name or password",
+        status: 401,
+        detail: "Incorrect user name or password",
       });
     }
   });
@@ -140,7 +142,7 @@ describe("signing in", () => {
 
     const response = await login("known", "right password");
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(201);
   });
 
   it("limits failed attempts per user name, without locking out others at the same address", async () => {
@@ -150,7 +152,12 @@ describe("signing in", () => {
       expect((await login("unlucky", "wrong")).status).toBe(401);
     }
 
-    expect((await login("unlucky", "wrong")).status).toBe(429);
+    const limited = await login("unlucky", "wrong");
+    expect(limited.status).toBe(429);
+    expect(JSON.parse(limited.text)).toMatchObject({
+      type: "/problems/too-many-requests",
+      status: 429,
+    });
     expect((await login("neighbor", "wrong")).status).toBe(401);
   });
 });

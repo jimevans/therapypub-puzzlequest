@@ -1,5 +1,6 @@
 import type { Request, RequestHandler, Response } from "express";
 import * as UserService from "../services/user.service.js";
+import { Problems, isV1Request, sendProblem } from "../api/problems.js";
 
 /**
  * Decides whether a signed-in user may make a request.
@@ -26,6 +27,14 @@ function isApiRequest(req: Request): boolean {
  * @param res the response
  */
 function requestSignIn(req: Request, res: Response): void {
+  if (isV1Request(req)) {
+    sendProblem(
+      res,
+      Problems.signInRequired,
+      "Sign in to do this, with the session cookie or a Bearer token"
+    );
+    return;
+  }
   if (isApiRequest(req)) {
     res.status(401).json({
       status: "error",
@@ -43,6 +52,14 @@ function requestSignIn(req: Request, res: Response): void {
  * @param user the signed-in user
  */
 function refuse(req: Request, res: Response, user: UserService.User): void {
+  if (isV1Request(req)) {
+    sendProblem(
+      res,
+      Problems.forbidden,
+      `User ${user.userName} isn't allowed to do this`
+    );
+    return;
+  }
   if (isApiRequest(req)) {
     res.status(403).json({
       status: "error",
