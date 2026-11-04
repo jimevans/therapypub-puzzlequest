@@ -1,3 +1,4 @@
+import type { LiveUpdate } from "../schemas/liveUpdates.js";
 import * as WebSocketService from "../services/websocket.service.js";
 import type { QuestActivity } from "./questEventBus.js";
 
@@ -29,7 +30,7 @@ function puzzlePages(questName: string, puzzleName: string): string[] {
 export function sendLiveUpdates(activity: QuestActivity): void {
   const { questName } = activity;
   const exclude = activity.connectionId ? [activity.connectionId] : [];
-  const notify = (pages: string[], data: object) =>
+  const notify = (pages: string[], data: LiveUpdate) =>
     WebSocketService.notifyBrowsers(pages, exclude, data);
 
   const solved = activity.events.find((event) => event.type === "PuzzleSolved");
@@ -43,7 +44,7 @@ export function sendLiveUpdates(activity: QuestActivity): void {
           message: "puzzleActivated",
           questName,
           puzzleName: event.puzzleName,
-          activationTime: event.at,
+          activationTime: event.at.toISOString(),
         });
         break;
       case "PuzzleSolved":
@@ -52,8 +53,8 @@ export function sendLiveUpdates(activity: QuestActivity): void {
           questName,
           puzzleName: event.puzzleName,
           solutionText: event.solutionText,
-          endTime: event.at,
-          questComplete: questComplete || undefined,
+          endTime: event.at.toISOString(),
+          ...(questComplete ? { questComplete: true as const } : {}),
         });
         break;
       case "PuzzleStarted":
@@ -65,7 +66,7 @@ export function sendLiveUpdates(activity: QuestActivity): void {
             questName,
             puzzleName: event.puzzleName,
             displayName: event.displayName,
-            startTime: event.at,
+            startTime: event.at.toISOString(),
           });
         }
         break;

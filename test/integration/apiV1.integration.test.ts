@@ -237,6 +237,29 @@ describe("the OpenAPI document", () => {
     );
   });
 
+  it("describes the live-update websocket's messages", async () => {
+    const document = await getDocument();
+
+    expect(document.info.description).toContain("`/api/updates`");
+    const update = document.components.schemas.LiveUpdate;
+    expect(
+      update.oneOf.map(
+        (kind: { properties: { message: { const: string } } }) =>
+          kind.properties.message.const
+      )
+    ).toEqual([
+      "connection",
+      "puzzleActivated",
+      "puzzleSolved",
+      "puzzleStarted",
+      "hintRequested",
+      "questUpdated",
+    ]);
+    expect(document.components.schemas.LiveUpdateSubscription).toMatchObject({
+      properties: { message: { const: "init" } },
+    });
+  });
+
   it("says nothing about webhooks", async () => {
     const response = await request(app).get("/api/v1/openapi.json");
 

@@ -13,6 +13,10 @@ import {
   type ProblemType,
   problemSchema,
 } from "../problems.js";
+import {
+  liveUpdateSchema,
+  pageMessageSchema,
+} from "../../schemas/liveUpdates.js";
 import { type AnyRoute, problemsOf } from "./route.js";
 
 /** The version of the v1 API's description, for clients' caches. */
@@ -24,6 +28,8 @@ const DESCRIPTION = `PuzzleQuest's API, for its web pages and for apps.
 Sign in with \`POST /sessions\`. A browser keeps the session in a cookie; an app asks for its token (\`"client": "native"\`) and sends it as \`Authorization: Bearer <token>\`. A request that changes something and is sent with the cookie must come from this site.
 
 Lists come a page at a time: \`?limit=\` (default 50, at most 200) and \`?after=\`, the \`next\` value of the page before.
+
+Pages follow a quest as it happens over the live-update websocket, \`/api/updates\`. A page connects and sends a \`LiveUpdateSubscription\` with its address; the server answers with its connection's ID, then sends a \`LiveUpdate\` for each change to that page's quest. A page sends its connection's ID as \`connectionId\` with its own actions, so their updates aren't sent back to it. Both messages are described under the schemas.
 
 Errors are problem details (RFC 9457), sent as \`${PROBLEM_MEDIA_TYPE}\`. Act on their \`type\`, one of:
 
@@ -153,6 +159,11 @@ export function createOpenApiDocument(
     servers: [{ url: "/api/v1" }],
     paths,
     components: {
+      // The live-update websocket's messages, which no route returns.
+      schemas: {
+        LiveUpdate: liveUpdateSchema,
+        LiveUpdateSubscription: pageMessageSchema,
+      },
       securitySchemes: {
         sessionCookie: {
           type: "apiKey",
