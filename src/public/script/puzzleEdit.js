@@ -1,7 +1,7 @@
 /* global renderMode, puzzle -- defined by an inline script in the page */
 import { DataGrid } from "./components/grid.js";
 import { PuzzleRenderer } from "./components/puzzleRenderer.js";
-import { callDataApi } from "./fetch.js";
+import { callApi } from "./api.js";
 
 function clearError() {
   const errorNotifier = document.querySelector(".pq-error");
@@ -18,9 +18,7 @@ function showError(errorMessage) {
 }
 
 async function uploadBinary(data) {
-  // Sent as multipart form data: not serialized as JSON, and with no
-  // Content-Type header, so the browser adds the multipart boundary.
-  return await callDataApi("/api/puzzle/upload", "post", data, false, {});
+  return await callApi("/puzzle-media", { method: "POST", formData: data });
 }
 
 function validateInput(puzzleData) {
@@ -69,11 +67,6 @@ async function savePuzzle() {
   }
 
   const renderedPuzzleData = renderer.getPuzzleData();
-  const dataApiVerb = renderMode === "edit" ? "put" : "post";
-  const dataApiUrl =
-    renderMode === "edit"
-      ? `/api/puzzle/${puzzleData.name}`
-      : `/api/puzzle/create`;
   if (puzzleData.type !== 0 && renderedPuzzleData !== null) {
     const fileName = renderedPuzzleData.name;
 
@@ -85,20 +78,29 @@ async function savePuzzle() {
     );
     uploadData.append("binary", renderedPuzzleData);
     const uploadResponse = await uploadBinary(uploadData);
-    if (uploadResponse.status === "error") {
+    if (!uploadResponse.ok) {
       showError(
-        `An error occurred uploading the binary data: ${uploadResponse.message}`
+        `The file could not be uploaded: ${uploadResponse.problem.detail ?? uploadResponse.problem.title}`
       );
       return false;
     }
-    puzzleData.text = uploadResponse.data;
-  } else {
+    puzzleData.text = uploadResponse.data.path;
+  } else if (renderedPuzzleData !== null) {
     puzzleData.text = renderedPuzzleData;
+  } else {
+    // A media puzzle whose file wasn't changed keeps its file.
+    delete puzzleData.text;
   }
 
-  const dataReturn = await callDataApi(dataApiUrl, dataApiVerb, puzzleData);
-  if (dataReturn.status === "error") {
-    showError(dataReturn.message);
+  const response =
+    renderMode === "edit"
+      ? await callApi(`/puzzles/${encodeURIComponent(puzzleData.name)}`, {
+          method: "PATCH",
+          body: puzzleData,
+        })
+      : await callApi("/puzzles", { method: "POST", body: puzzleData });
+  if (!response.ok) {
+    showError(response.problem.detail ?? response.problem.title);
     return false;
   }
   return true;

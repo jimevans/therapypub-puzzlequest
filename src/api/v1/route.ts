@@ -67,8 +67,12 @@ export interface Route<
   access: Access;
   /** Middleware that runs before validation, such as rate limits. */
   before?: RequestHandler[];
-  /** The schemas the request must match. */
-  request?: { body?: B; query?: Q; params?: P };
+  /**
+   * The schemas the request must match. A multipart body, for an upload,
+   * is only described: the route's own middleware (multer) reads and checks
+   * it.
+   */
+  request?: { body?: B; query?: Q; params?: P; multipart?: z.ZodObject };
   /** The successful responses, by status code. */
   responses: Record<number, RouteResponse>;
   /**
@@ -149,8 +153,9 @@ export function registerRoutes(router: Router, routes: AnyRoute[]): void {
       ...ACCESS_MIDDLEWARE[route.access],
       ...(route.before ?? []),
     ];
-    if (route.request) {
-      handlers.push(validate(route.request));
+    const { body, query, params } = route.request ?? {};
+    if (body || query || params) {
+      handlers.push(validate({ body, query, params }));
     }
     handlers.push((req, res) => route.handle(req as never, res));
     router[route.method](toExpressPath(route.path), ...handlers);

@@ -28,7 +28,7 @@ const puzzleFields = {
   hints: z.array(hint),
 };
 
-/** POST /api/puzzle/create */
+/** POST /api/v1/puzzles */
 export const createPuzzleBody = z.object({
   name: newName,
   ...puzzleFields,
@@ -39,6 +39,6 @@ export const createPuzzleBody = z.object({
 });
 export type CreatePuzzleBody = z.infer<typeof createPuzzleBody>;
 
-/** PUT /api/puzzle/:name. Fields left out keep their stored values. */
+/** PATCH /api/v1/puzzles/{name}. Fields left out keep their stored values. */
 export const updatePuzzleBody = z.object(puzzleFields).partial();
 export type UpdatePuzzleBody = z.infer<typeof updatePuzzleBody>;

@@ -1,6 +1,11 @@
 import { STATUS_CODES } from "http";
 import type { NextFunction, Request, Response } from "express";
-import { Problems, isV1Request, sendProblem } from "../api/problems.js";
+import {
+  Problems,
+  type ProblemType,
+  isV1Request,
+  sendProblem,
+} from "../api/problems.js";
 
 /**
  * Handles errors thrown by routes and middleware, including rejected promises
@@ -14,7 +19,13 @@ import { Problems, isV1Request, sendProblem } from "../api/problems.js";
  * @param next the next handler
  */
 export function errorHandler(
-  err: Error & { status?: number; statusCode?: number; expose?: boolean },
+  err: Error & {
+    status?: number;
+    statusCode?: number;
+    expose?: boolean;
+    /** The kind of problem, for the v1 API, when the error says. */
+    problem?: ProblemType;
+  },
   req: Request,
   res: Response,
   next: NextFunction
@@ -37,17 +48,20 @@ export function errorHandler(
   const message =
     isClientError && err.expose ? err.message : "An unexpected error occurred";
   if (isV1Request(req)) {
-    // Client errors here come from Express or its parsers, such as malformed
-    // JSON, so they have no problem type of their own.
+    // A client error has a problem type when it comes from this
+    // application, such as a rejected upload; one from Express or its
+    // parsers, such as malformed JSON, doesn't.
     sendProblem(
       res,
-      isClientError
-        ? {
-            type: "about:blank",
-            title: STATUS_CODES[statusCode] ?? "Error",
-            status: statusCode,
-          }
-        : Problems.unexpected,
+      isClientError && err.problem
+        ? err.problem
+        : isClientError
+          ? {
+              type: "about:blank",
+              title: STATUS_CODES[statusCode] ?? "Error",
+              status: statusCode,
+            }
+          : Problems.unexpected,
       message
     );
   } else if (req.originalUrl.startsWith("/api/")) {

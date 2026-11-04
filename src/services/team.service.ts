@@ -196,16 +196,6 @@ export async function updateTeam(
 }
 
 /**
- * Gets a list of all of the team definitions.
- * @returns a response object containing a status, status code, and data
- */
-export async function listTeams(): Promise<TeamResult<Team[]>> {
-  const foundTeams = await TeamModel.find({});
-  const teams = foundTeams.map((team) => new Team(team));
-  return { status: "success", statusCode: 200, data: teams };
-}
-
-/**
  * Gets a page of the teams, in the order they were created.
  * @param query the page wanted
  * @returns the page of teams

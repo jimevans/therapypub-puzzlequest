@@ -42,7 +42,8 @@ export type ServiceErrorReason =
   | "password-not-allowed"
   | "wrong-join-code"
   | "email-not-verified"
-  | "invalid-link";
+  | "invalid-link"
+  | "in-use";
 
 /**
  * An Express request whose route provides the named parameters, each a single

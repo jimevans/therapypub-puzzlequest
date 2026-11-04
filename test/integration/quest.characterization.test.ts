@@ -788,6 +788,7 @@ describe("finishPuzzle", () => {
     ).toEqual({
       status: "error",
       statusCode: 404,
+      reason: "not-found",
       message: "No puzzle with puzzle name colors found",
     });
   });
@@ -1332,6 +1333,7 @@ describe("deleting a puzzle", () => {
     expect(await PuzzleService.deletePuzzle("fruit")).toEqual({
       status: "error",
       statusCode: 409,
+      reason: "in-use",
       message:
         "Puzzle fruit is used by quests test-quest, other-quest; remove it from those quests first",
     });

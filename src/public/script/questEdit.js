@@ -107,7 +107,7 @@ puzzleGrid.onAddDataRequested = () => {
     });
   };
 
-  puzzleLookup.render("/api/puzzle/list", "data");
+  renderLookup(puzzleLookup, "/puzzles");
   puzzleLookup.show();
 };
 

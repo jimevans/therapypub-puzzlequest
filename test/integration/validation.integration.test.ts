@@ -195,14 +195,14 @@ describe("values pages send as text", () => {
   });
 
   it("are converted in nested fields too", async () => {
-    const response = await send("post", "/api/puzzle/create").send({
+    const response = await send("post", "/api/v1/puzzles").send({
       name: "riddle",
       solutionKeyword: "piano",
       solutionDisplayText: "A piano",
       hints: [{ text: "It makes music", timePenalty: "60" }],
     });
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(201);
     const puzzle = (await PuzzleModel.findOne({ name: "riddle" }).lean())!;
     expect(puzzle.hints[0]).toMatchObject({
       text: "It makes music",

@@ -239,7 +239,7 @@ describe("POST /api/quest/:name/puzzle/:puzzleName/activate", () => {
   });
 });
 
-describe("POST /api/puzzle/upload", () => {
+describe("POST /api/v1/puzzle-media", () => {
   let filesBefore: string[];
 
   beforeEach(async () => {
@@ -254,7 +254,7 @@ describe("POST /api/puzzle/upload", () => {
     // Same field order as puzzleEdit.js: the fields that name the file
     // must arrive before the file itself.
     return request(app)
-      .post("/api/puzzle/upload")
+      .post("/api/v1/puzzle-media")
       .set("Authorization", `Bearer ${signedInToken}`)
       .field("puzzleName", puzzleName)
       .field("fileExtension", fileExtension)
@@ -270,10 +270,10 @@ describe("POST /api/puzzle/upload", () => {
 
     const response = await upload();
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(201);
+    expect(response.headers.location).toBe("/puzzleData/upload-test.png");
     expect(JSON.parse(response.text)).toEqual({
-      status: "success",
-      data: "/puzzleData/upload-test.png",
+      path: "/puzzleData/upload-test.png",
     });
     expect(await readFile(uploadedFile, "utf8")).toBe("fake image bytes");
   });
@@ -283,13 +283,13 @@ describe("POST /api/puzzle/upload", () => {
 
     const response = await upload({ fileExtension: "PNG" });
 
-    expect(JSON.parse(response.text).data).toBe("/puzzleData/upload-test.png");
+    expect(JSON.parse(response.text).path).toBe("/puzzleData/upload-test.png");
     expect(existsSync(uploadedFile)).toBe(true);
   });
 
   it("rejects an anonymous upload without writing anything", async () => {
     const response = await request(app)
-      .post("/api/puzzle/upload")
+      .post("/api/v1/puzzle-media")
       .field("puzzleName", "upload-test")
       .field("fileExtension", "png")
       .attach("binary", Buffer.from("fake image bytes"), "puzzle.png");
@@ -327,8 +327,10 @@ describe("POST /api/puzzle/upload", () => {
 
       expect(response.status).toBe(400);
       expect(JSON.parse(response.text)).toEqual({
-        status: "error",
-        message: "Invalid puzzle name for an upload",
+        type: "/problems/invalid-upload",
+        title: "Upload not accepted",
+        status: 400,
+        detail: "Invalid puzzle name for an upload",
       });
       expect(existsSync(target) && target !== puzzleDataDirectory).toBe(false);
       await expectNothingWritten();
@@ -343,7 +345,7 @@ describe("POST /api/puzzle/upload", () => {
       const response = await upload({ fileExtension });
 
       expect(response.status).toBe(400);
-      expect(JSON.parse(response.text).message).toMatch(/cannot be uploaded/);
+      expect(JSON.parse(response.text).detail).toMatch(/cannot be uploaded/);
       await expectNothingWritten();
     }
   );
@@ -352,7 +354,7 @@ describe("POST /api/puzzle/upload", () => {
     await signInAs("admin");
 
     const response = await request(app)
-      .post("/api/puzzle/upload")
+      .post("/api/v1/puzzle-media")
       .set("Authorization", `Bearer ${signedInToken}`)
       .attach("binary", Buffer.from("fake image bytes"), "puzzle.png")
       .field("puzzleName", "upload-test")
@@ -360,6 +362,22 @@ describe("POST /api/puzzle/upload", () => {
 
     expect(response.status).toBe(400);
     await expectNothingWritten();
+  });
+
+  it("rejects an upload without a file", async () => {
+    await signInAs("admin");
+
+    const response = await request(app)
+      .post("/api/v1/puzzle-media")
+      .set("Authorization", `Bearer ${signedInToken}`)
+      .field("puzzleName", "upload-test")
+      .field("fileExtension", "png");
+
+    expect(response.status).toBe(400);
+    expect(JSON.parse(response.text)).toMatchObject({
+      type: "/problems/invalid-upload",
+      detail: "The request must include the file, in the binary field",
+    });
   });
 
   it("rejects a file larger than the limit", async () => {
@@ -370,9 +388,12 @@ describe("POST /api/puzzle/upload", () => {
     });
 
     expect(response.status).toBe(413);
-    expect(JSON.parse(response.text).message).toBe(
-      "The uploaded file is too large"
-    );
+    expect(JSON.parse(response.text)).toMatchObject({
+      type: "/problems/upload-too-large",
+      detail: "The uploaded file is too large",
+    });
     expect(existsSync(uploadedFile)).toBe(false);
-  });
+    // Sending 100 MB can take longer than the default 5 seconds on a busy
+    // machine, such as a CI runner measuring coverage.
+  }, 30000);
 });

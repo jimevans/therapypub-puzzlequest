@@ -4,6 +4,7 @@ import { z } from "zod";
 import { Problems, sendProblem } from "../problems.js";
 import { createOpenApiDocument } from "./openapi.js";
 import { type AnyRoute, defineRoute, registerRoutes } from "./route.js";
+import { puzzleRoutes } from "./puzzles.js";
 import { sessionRoutes } from "./sessions.js";
 import { teamRoutes } from "./teams.js";
 import { userRoutes } from "./users.js";
@@ -35,6 +36,7 @@ export const v1Routes: AnyRoute[] = [
   ...sessionRoutes,
   ...userRoutes,
   ...teamRoutes,
+  ...puzzleRoutes,
 ];
 
 const v1Router = express.Router();

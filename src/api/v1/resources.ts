@@ -1,6 +1,7 @@
 // The resources the v1 API returns, as schemas for its description and
 // functions that make them from the services' objects.
 import { z } from "zod";
+import type * as PuzzleService from "../../services/puzzle.service.js";
 import type * as TeamService from "../../services/team.service.js";
 import type * as UserService from "../../services/user.service.js";
 
@@ -116,6 +117,61 @@ export function toTeamResource(
           }),
         }
       : {}),
+  };
+}
+
+/** A puzzle, with its solution and hints; only administrators see these. */
+export const puzzleSchema = z
+  .object({
+    name: z.string(),
+    displayName: z.string(),
+    type: z.number().int().meta({
+      description: "0 for text, 1 for an image, 2 for audio, 3 for video.",
+    }),
+    text: z.string().meta({
+      description:
+        "Markdown, for a text puzzle; the media file's path, for the others.",
+    }),
+    solutionKeyword: z.string().meta({
+      description:
+        "The keywords a guess must contain, separated by commas; letter case, spacing, and punctuation don't matter.",
+    }),
+    solutionDisplayText: z
+      .string()
+      .meta({ description: "The solution as shown once it is solved." }),
+    hints: z.array(
+      z.object({
+        text: z.string(),
+        solutionWarning: z.boolean().meta({
+          description: "True if the hint gives the solution away.",
+        }),
+        timePenalty: z.number().int().meta({
+          description: "Seconds added to the players' time for revealing it.",
+        }),
+      })
+    ),
+  })
+  .meta({ id: "Puzzle" });
+export type PuzzleResource = z.infer<typeof puzzleSchema>;
+
+/**
+ * Makes the resource for a puzzle.
+ * @param puzzle the puzzle
+ * @returns the resource
+ */
+export function toPuzzleResource(puzzle: PuzzleService.Puzzle): PuzzleResource {
+  return {
+    name: puzzle.name,
+    displayName: puzzle.displayName,
+    type: puzzle.type,
+    text: puzzle.text,
+    solutionKeyword: puzzle.solutionKeyword,
+    solutionDisplayText: puzzle.solutionDisplayText,
+    hints: puzzle.hints.map(({ text, solutionWarning, timePenalty }) => ({
+      text,
+      solutionWarning,
+      timePenalty,
+    })),
   };
 }
 
