@@ -9,12 +9,17 @@
   },
   "scripts": {
     "generate": "openapi-typescript openapi.json --output src/schema.d.ts",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "node ../../node_modules/typescript-native/bin/tsc -p ."
   },
   "dependencies": {
     "openapi-fetch": "^0.17.0"
   },
   "devDependencies": {
-    "openapi-typescript": "^7.13.0"
+    "openapi-typescript": "^7.13.0",
+    "@vitest/coverage-v8": "^5.0.5",
+    "jsdom": "^31.0.0",
+    "vitest": "^5.0.5"
   }
 }

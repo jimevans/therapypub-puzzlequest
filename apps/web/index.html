@@ -4,6 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>PuzzleQuest</title>
+    <!-- React Aria injects a <style> for pressable elements unless an element
+         with this ID exists. The Content Security Policy would block it, so
+         the rule is in styles/base.css instead. -->
+    <meta name="react-aria-pressable-style" id="react-aria-pressable-style" />
   </head>
   <body>
     <div id="root"></div>

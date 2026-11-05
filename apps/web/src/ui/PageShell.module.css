@@ -1,0 +1,30 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.header {
+  padding: var(--space-3) var(--space-5);
+  background: var(--ink);
+  color: var(--on-ink);
+}
+
+.name {
+  color: inherit;
+  font-family: var(--font-display);
+  font-size: 1.625rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: var(--page-width);
+  margin: 0 auto;
+  padding: var(--space-5);
+}

@@ -1,0 +1,14 @@
+[
+  {
+    "name": "What every page downloads first",
+    "path": "dist/assets/index-*.js",
+    "limit": "115 KB",
+    "gzip": true
+  },
+  {
+    "name": "All of the app's scripts",
+    "path": "dist/assets/*.js",
+    "limit": "135 KB",
+    "gzip": true
+  }
+]

@@ -53,6 +53,31 @@ describe("the web app", () => {
     expect(await blockedByPolicy()).toEqual([]);
   });
 
+  it("shows its fonts and styles, and its controls work", async () => {
+    await browser.url("/web-check");
+    await expect($("#session")).toHaveText("Signed in as Web Player");
+
+    const fontLoaded = await browser.execute(async () => {
+      await document.fonts.ready;
+      return document.fonts.check('700 16px "Barlow Condensed"');
+    });
+    expect(fontLoaded).toBe(true);
+    const buttonColor =
+      await $("#check-again").getCSSProperty("background-color");
+    expect(buttonColor.parsed.hex).toBe("#0a4fd6");
+
+    // React Aria's rule, moved to the stylesheet so the policy allows it. Chrome
+    // reports it by its equivalent, "manipulation".
+    const touchAction = await $("#check-again").getCSSProperty("touch-action");
+    expect(["pan-x pan-y pinch-zoom", "manipulation"]).toContain(
+      touchAction.value
+    );
+
+    await $("#check-again").click();
+    await expect($("#session")).toHaveText("Signed in as Web Player");
+    expect(await blockedByPolicy()).toEqual([]);
+  });
+
   // Shows the checks above would notice something being blocked.
   it("has the policy block a script injected into the page", async () => {
     await browser.url("/web-check");

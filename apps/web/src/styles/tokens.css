@@ -1,0 +1,47 @@
+/* The design's values: the Transit Line direction. Components use only the
+   meanings below, never the raw colors, so a theme (for an organization or a
+   quest) can change how things look by overriding meanings alone. */
+
+:root {
+  /* Raw colors. */
+  --color-black: #111418;
+  --color-gray-700: #4a4f57;
+  --color-gray-500: #8a919c;
+  --color-gray-300: #c9ced6;
+  --color-gray-200: #dde1e6;
+  --color-gray-100: #f1f3f5;
+  --color-white: #ffffff;
+  --color-blue-700: #0a4fd6;
+  --color-red-700: #b3261e;
+
+  /* What the colors mean. */
+  --ink: var(--color-black);
+  --ink-soft: var(--color-gray-700);
+  --paper: var(--color-white);
+  --paper-soft: var(--color-gray-100);
+  --rule: var(--color-gray-200);
+  --on-ink: var(--color-white);
+  --on-ink-soft: var(--color-gray-300);
+  --accent: var(--color-blue-700);
+  --on-accent: var(--color-white);
+  --danger: var(--color-red-700);
+  --on-danger: var(--color-white);
+  --line-off: var(--color-gray-500);
+
+  /* Type. */
+  --font-body: Barlow, system-ui, sans-serif;
+  --font-display: "Barlow Condensed", Barlow, system-ui, sans-serif;
+  --text-small: 0.875rem;
+  --text-body: 1.125rem;
+
+  /* Space and shape. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --radius: 6px;
+  --target-size: 48px;
+  --page-width: 40rem;
+}
