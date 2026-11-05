@@ -1,5 +1,5 @@
-// Tests of playing a quest through the v1 API: activating puzzles, guessing
-// solutions, and revealing hints. Scanned QR codes and the activation rate
+// Tests of playing a quest through the v1 API: seeing puzzles, activating them,
+// guessing solutions, and revealing hints. Scanned QR codes and the activation rate
 // limit are tested in uploads.integration.test.ts, pausing in its own file,
 // and who may use each route in the authorization matrix.
 import type { Express } from "express";
@@ -35,6 +35,7 @@ vi.mock("../../src/middleware/rateLimiter.js", () => {
 });
 
 const { createApp } = await import("../../src/createApp.js");
+const { playerPuzzleSchema } = await import("../../src/api/v1/resources.js");
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
 const { QuestModel } = await import("../../src/models/quest.model.js");
 const { AuthorizationLevel, TeamModel, UserModel } =
@@ -129,6 +130,170 @@ function play(role: Role, action: string, puzzle: string, body: object) {
 function bodyOf(response: request.Response) {
   return JSON.parse(response.text);
 }
+
+describe("seeing a puzzle", () => {
+  function see(role: Role, puzzle: string) {
+    return request(app)
+      .get(`/api/v1/quests/quest/puzzles/${puzzle}`)
+      .set("Authorization", `Bearer ${sessions[role]}`);
+  }
+
+  /** Gets the puzzle, checking the answer is exactly what's documented. */
+  async function seen(role: Role, puzzle: string) {
+    const response = await see(role, puzzle);
+    expect(response.status).toBe(200);
+    const body = bodyOf(response);
+    expect(playerPuzzleSchema.parse(body)).toEqual(body);
+    return body;
+  }
+
+  const activate = (puzzle: string) =>
+    play("player", "activation", puzzle, {
+      activationCode: `${puzzle}-code`,
+    });
+
+  beforeEach(async () => {
+    await PuzzleModel.updateOne(
+      { name: "riddle" },
+      { text: "What has **keys**?" }
+    );
+  });
+
+  it("shows no content until the puzzle is activated", async () => {
+    expect(await seen("teammate", "riddle")).toMatchObject({
+      quest: { name: "quest", displayName: "Quest", paused: false },
+      puzzle: {
+        name: "riddle",
+        displayName: "Riddle",
+        status: 1,
+        skipped: false,
+        stopNumber: 1,
+        type: null,
+        text: null,
+        hints: [],
+        nextHint: null,
+        solutionText: null,
+      },
+      next: null,
+    });
+  });
+
+  it("shows the Markdown, and what the next hint costs, once activated", async () => {
+    await activate("riddle");
+
+    expect((await seen("player", "riddle")).puzzle).toMatchObject({
+      status: 2,
+      type: 0,
+      text: "What has **keys**?",
+      hints: [],
+      nextHint: { timePenalty: 60, solutionWarning: false },
+      solutionText: null,
+    });
+  });
+
+  it("gives a media puzzle's path", async () => {
+    await PuzzleModel.updateOne(
+      { name: "riddle" },
+      { type: 1, text: "/puzzleData/riddle.png" }
+    );
+    await activate("riddle");
+
+    expect((await seen("player", "riddle")).puzzle).toMatchObject({
+      type: 1,
+      text: "/puzzleData/riddle.png",
+    });
+  });
+
+  it("shows revealed hints, and warns of one that gives the solution away", async () => {
+    await activate("riddle");
+    await play("player", "hints", "riddle", {});
+
+    expect((await seen("player", "riddle")).puzzle).toMatchObject({
+      hints: [{ text: "It makes music", timePenalty: 60 }],
+      nextHint: { timePenalty: 300, solutionWarning: true },
+    });
+  });
+
+  it("shows no next hint when none are left", async () => {
+    await activate("riddle");
+    await play("player", "hints", "riddle", {});
+    await play("player", "hints", "riddle", {});
+
+    expect((await seen("player", "riddle")).puzzle.nextHint).toBeNull();
+  });
+
+  it("shows the solution and the next stop once solved", async () => {
+    await activate("riddle");
+    await play("player", "solution-attempts", "riddle", { guess: "piano" });
+
+    const solved = await seen("player", "riddle");
+    expect(solved.puzzle).toMatchObject({
+      status: 3,
+      solutionText: "A piano",
+      nextHint: null,
+    });
+    expect(solved.next).toEqual({ name: "finale", displayName: "Finale" });
+    expect((await seen("player", "finale")).puzzle).toMatchObject({
+      stopNumber: 2,
+      status: 1,
+    });
+  });
+
+  it("marks a skipped puzzle, and shows its solution", async () => {
+    await QuestService.skipQuestPuzzle("quest", "riddle");
+
+    expect((await seen("player", "riddle")).puzzle).toMatchObject({
+      skipped: true,
+      status: 3,
+      solutionText: "A piano",
+    });
+  });
+
+  it("says when the quest is paused", async () => {
+    await activate("riddle");
+    await QuestService.pauseQuest("quest");
+
+    expect((await seen("player", "riddle")).quest.paused).toBe(true);
+  });
+
+  it.each(["player", "admin"] as const)(
+    "reveals nothing about puzzles not yet reached, to %s",
+    async (role) => {
+      await activate("riddle");
+
+      const response = await see(role, "riddle");
+
+      // Checks the raw answer, so no field can give the quest's length away.
+      expect(response.text).not.toMatch(/finale/i);
+      expect(response.text).not.toContain("riddle-code");
+      expect(response.text).not.toContain("solutionKeyword");
+      expect(response.text).not.toContain("It's a piano");
+      expect(bodyOf(response).quest.progress.puzzles).toHaveLength(1);
+    }
+  );
+
+  it("answers alike for a puzzle not reached and one that doesn't exist", async () => {
+    for (const role of ["player", "admin"] as const) {
+      const unreached = await see(role, "finale");
+      const unknown = await see(role, "nothing");
+
+      expect(unreached.status).toBe(404);
+      expect(unknown.status).toBe(404);
+      expect(unreached.text.replace("finale", "nothing")).toBe(unknown.text);
+    }
+  });
+
+  it("isn't found by a player the quest isn't assigned to", async () => {
+    expect((await see("other", "riddle")).status).toBe(404);
+  });
+
+  it("isn't found before the quest starts, even by an administrator", async () => {
+    await QuestService.resetQuest("quest");
+
+    expect((await see("player", "riddle")).status).toBe(404);
+    expect((await see("admin", "riddle")).status).toBe(404);
+  });
+});
 
 describe("activating a puzzle", () => {
   it("starts it, for any member of the team", async () => {

@@ -1,5 +1,5 @@
-// Playing a quest: activating its puzzles, guessing their solutions, and
-// revealing hints. Only the quest's players may, as themselves or as a
+// Playing a quest: seeing its puzzles, activating them, guessing their
+// solutions, and revealing hints. Only the quest's players may, as themselves or as a
 // member of the team it is assigned to.
 import { z } from "zod";
 import {
@@ -7,6 +7,7 @@ import {
   solutionRateLimiter,
 } from "../../middleware/rateLimiter.js";
 import { readQRCode } from "../../middleware/qrCodeReader.js";
+import { QuestPuzzleStatus } from "../../models/quest.model.js";
 import {
   MAXIMUM_ACTIVATION_IMAGE_BYTES,
   uploadActivationImage,
@@ -19,6 +20,7 @@ import {
 import * as QuestService from "../../services/quest.service.js";
 import * as UserService from "../../services/user.service.js";
 import { Problems, sendProblem, sendServiceProblem } from "../problems.js";
+import { playerPuzzleSchema, toPlayerPuzzleResource } from "./resources.js";
 import { defineRoute } from "./route.js";
 
 /** The path parameters naming a quest and one of its puzzles. */
@@ -52,6 +54,46 @@ const playingProblems = [
 ];
 
 export const playingRoutes = [
+  defineRoute({
+    method: "get",
+    path: "/quests/{name}/puzzles/{puzzleName}",
+    operationId: "getPlayerPuzzle",
+    summary: "See a puzzle as its players do",
+    description:
+      "For a puzzle the players have reached: what it asks, once activated, the hints revealed, what the next hint would cost, and the solution, once solved. A puzzle not yet reached is not found, even by an administrator, who can see the whole quest with getQuest. Players never learn how many puzzles a quest has.",
+    tags: ["Playing"],
+    access: "signedIn",
+    request: { params: questPuzzleParams },
+    responses: {
+      200: { description: "The puzzle.", body: playerPuzzleSchema },
+    },
+    problems: [Problems.notFound],
+    async handle(req, res) {
+      const { name, puzzleName } = req.params;
+      const found = await QuestService.getQuestAndPuzzle(
+        name,
+        puzzleName,
+        UserService.requireLoggedInUser(req.user)
+      );
+      if (found.status === "error") {
+        sendServiceProblem(res, found);
+        return;
+      }
+      const { quest, puzzle } = found.data;
+      const detail = puzzle.puzzleDetail;
+      // Answers as the service does for a puzzle it can't find, so a name
+      // can't be tried to learn whether it's in the quest.
+      if (!detail || puzzle.status === QuestPuzzleStatus.UNAVAILABLE) {
+        sendProblem(
+          res,
+          Problems.notFound,
+          `No puzzle named ${puzzleName} found for quest ${name}`
+        );
+        return;
+      }
+      res.json(toPlayerPuzzleResource(quest, puzzle, detail));
+    },
+  }),
   defineRoute({
     method: "post",
     path: "/quests/{name}/puzzles/{puzzleName}/activation",
