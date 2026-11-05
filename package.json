@@ -9,15 +9,17 @@
   },
   "workspaces": [
     "apps/*",
+    "packages/*",
     "e2e"
   ],
   "scripts": {
-    "build": "npm run build --workspace=@puzzlequest/api",
+    "build": "npm run build --workspaces --if-present",
     "start": "npm start --workspace=@puzzlequest/api",
     "dev": "npm run dev --workspace=@puzzlequest/api",
-    "test": "npm test --workspace=@puzzlequest/api",
-    "test:coverage": "npm run test:coverage --workspace=@puzzlequest/api",
+    "test": "npm test --workspaces --if-present",
+    "test:coverage": "npm run test:coverage --workspaces --if-present",
     "test:e2e": "npm run build && npm run test:e2e --workspace=@puzzlequest/e2e",
+    "generate:api": "npm run generate:api --workspace=@puzzlequest/api && npm run generate --workspace=@puzzlequest/api-client",
     "lint": "eslint .",
     "typecheck": "node node_modules/typescript-native/bin/tsc -p . && npm run typecheck --workspaces",
     "format": "prettier --write .",
@@ -33,11 +35,17 @@
     "url": "https://github.com/jimevans/therapypub-puzzlequest/issues"
   },
   "homepage": "https://github.com/jimevans/therapypub-puzzlequest#readme",
+  "overrides": {
+    "openapi-typescript": {
+      "typescript": "$typescript"
+    }
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.19.2",
     "eslint": "^10.14.0",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.14.0",
     "prettier": "^3.9.10",
     "typescript": "^6.0.3",

@@ -1,4 +1,5 @@
 import { fileURLToPath } from "url";
+import compression from "compression";
 import cookieParser from "cookie-parser";
 import express, { type Express } from "express";
 import helmet from "helmet";
@@ -20,6 +21,7 @@ import { MonitorRouter } from "./routes/monitor.js";
 import { PuzzleRouter } from "./routes/puzzle.js";
 import { QuestRouter } from "./routes/quest.js";
 import { UserRouter } from "./routes/user.js";
+import { WebRouter } from "./routes/web.js";
 
 // Browser build of marked, served from the installed package so that its
 // version is pinned by the lockfile and matches the version used on the server.
@@ -60,12 +62,15 @@ export function createApp(): Express {
 
   app.use(createScriptNonce, contentSecurityPolicy);
 
+  app.use(compression());
+
   // Bodies are limited to 100 KB; uploads go through multer, which has its
   // own limits.
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(express.static(publicDirectory));
   app.use("/puzzleData", express.static(puzzleDataDirectory));
+  app.use(WebRouter);
 
   app.get("/vendor/marked.esm.js", (req, res) => {
     res.sendFile(markedBrowserModule);

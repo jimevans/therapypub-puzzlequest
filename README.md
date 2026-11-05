@@ -89,7 +89,7 @@ npm run dev    # runs the source; restarts when source files change
 To run the compiled application the way production does:
 
 ```bash
-npm run build  # compiles apps/api/src/ to apps/api/dist/
+npm run build  # compiles the server and builds the web app
 npm start
 ```
 
@@ -125,6 +125,8 @@ These drive the main journeys through the real pages in Chrome and Firefox, with
 This is an [npm workspaces](https://docs.npmjs.com/cli/using-npm/workspaces) monorepo with one lockfile. Run `npm ci` and the `npm run` commands from the repository's root.
 
 - `apps/api`: the server, with the v1 API and the server-rendered pages, and its tests.
+- `apps/web`: the React website, which is replacing the server-rendered pages one screen at a time. It uses only the public API. The server serves its built files, and lists its pages in [apps/api/src/routes/web.ts](apps/api/src/routes/web.ts).
+- `packages/api-client`: a typed client of the API, generated from the API's OpenAPI description. After changing a route, run `npm run generate:api` and commit the result; CI fails if the generated files don't match the routes. The generator asks for TypeScript 5, but runs correctly on the project's TypeScript 6, which an `overrides` entry in the root `package.json` allows.
 - `e2e`: the browser tests, which exercise the whole product.
 - `storage`: uploaded puzzle media, not committed.
 
@@ -148,7 +150,7 @@ at the top of the file.
 
 ```bash
 npm run typecheck  # type-check without emitting anything
-npm run build      # compile apps/api/src/ to apps/api/dist/
+npm run build      # compile apps/api/src/ to apps/api/dist/, and build apps/web/ to apps/web/dist/
 ```
 
 The server code is TypeScript. Production runs the compiled JavaScript in
@@ -195,7 +197,9 @@ tasks in [.cpanel.yml](.cpanel.yml), which:
    media in `storage/` isn't in the repository, so it's left alone.
 2. Install the packages listed in `package-lock.json`, including the
    development dependencies the build needs (`npm ci --include=dev`).
-3. Compile to `apps/api/dist/` (`npm run build`).
+3. Compile the server to `apps/api/dist/` and build the web app to
+   `apps/web/dist/` (`npm run build`). A failed web build leaves the previous
+   built files in place.
 4. Remove the build and test tools (`npm prune --omit=dev`).
 5. Restart the application.
 
@@ -223,7 +227,7 @@ every pull request and on every push to `main`:
 
 - **Lint and test:** installs with `npm ci --engine-strict` on the Node
   version in `.nvmrc`, then runs `npm run lint`, `npm run typecheck`,
-  `npm run build`, `npm run format:check`, and `npm test`; a separate job runs the browser tests. The strict engine check fails the build if any dependency no
+  `npm run build`, `npm run format:check`, and `npm test`, and checks that the API client's generated files match the routes; a separate job runs the browser tests. The strict engine check fails the build if any dependency no
   longer supports that Node version.
 - **Dependency audit:** fails on any advisory of moderate severity or higher
   in the production dependencies (`npm audit --omit=dev`). Advisories that
