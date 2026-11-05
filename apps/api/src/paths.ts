@@ -13,6 +13,9 @@ export const viewsDirectory = path.join(sourceDirectory, "views");
 /** Static files served to browsers. */
 export const publicDirectory = path.join(sourceDirectory, "public");
 
+/** The React app's built files. */
+export const webDirectory = path.resolve(workspaceRoot, "../web/dist");
+
 /**
  * Files people create while using the site, outside the code so a deployment
  * can't touch them. A puzzle's media path, such as /puzzleData/riddle.png, is

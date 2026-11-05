@@ -9,12 +9,14 @@
     "build": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\" && node ../../node_modules/typescript-native/bin/tsc -p tsconfig.build.json",
     "start": "node --enable-source-maps dist/app.js",
     "dev": "tsx watch src/app.ts",
+    "generate:api": "tsx scripts/writeOpenApi.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "typecheck": "node ../../node_modules/typescript-native/bin/tsc -p ."
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "compression": "^1.8.2",
     "cookie-parser": "^1.4.6",
     "dotenv": "^18.0.9",
     "ejs": "^7.0.2",
@@ -37,6 +39,7 @@
   "devDependencies": {
     "@seriousme/openapi-schema-validator": "2.11.0",
     "@types/bcrypt": "^6.0.0",
+    "@types/compression": "^1.8.1",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
     "@types/multer": "^2.3.0",

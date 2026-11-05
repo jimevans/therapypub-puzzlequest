@@ -1,6 +1,7 @@
 import js from "@eslint/js";
 import { defineConfig } from "eslint/config";
 import prettier from "eslint-config-prettier";
+import reactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
@@ -10,6 +11,7 @@ export default defineConfig([
       "**/coverage/",
       "**/dist/",
       "apps/api/src/public/policies/",
+      "packages/api-client/src/schema.d.ts",
       "storage/",
     ],
   },
@@ -45,10 +47,38 @@ export default defineConfig([
   {
     // Server code converted to TypeScript. These rules use the syntax only;
     // type checking is done by `npm run typecheck`.
-    files: ["**/*.ts"],
+    files: ["**/*.ts", "**/*.tsx"],
     extends: [tseslint.configs.recommended],
     languageOptions: {
       globals: globals.node,
+    },
+  },
+  {
+    // The React app, in the browser. It uses only the public API, through the
+    // API client, as any other client must, so it can't use the server's code.
+    files: ["apps/web/src/**/*.ts", "apps/web/src/**/*.tsx"],
+    extends: [reactHooks.configs.flat.recommended],
+    languageOptions: {
+      globals: globals.browser,
+    },
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "@puzzlequest/api",
+                "@puzzlequest/api/*",
+                "**/apps/api/**",
+                "**/api/src/**",
+              ],
+              message:
+                "The web app uses only the public API, through @puzzlequest/api-client.",
+            },
+          ],
+        },
+      ],
     },
   },
   {
@@ -61,7 +91,7 @@ export default defineConfig([
   },
   {
     // The same rule for TypeScript, which replaces the JavaScript one there.
-    files: ["**/*.ts"],
+    files: ["**/*.ts", "**/*.tsx"],
     rules: {
       "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": [

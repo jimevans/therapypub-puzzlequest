@@ -31,6 +31,9 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm run format:check
+      # The API client's generated files must match the API's routes.
+      - run: npm run generate:api
+      - run: git diff --exit-code packages/api-client
       - run: npm run test:coverage
 
   browser-tests:

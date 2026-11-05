@@ -1,0 +1,11 @@
+{
+  // Used as source by whichever app imports it, with no build of its own.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["es2023", "dom"],
+    "types": []
+  },
+  "include": ["src/**/*.ts"]
+}
