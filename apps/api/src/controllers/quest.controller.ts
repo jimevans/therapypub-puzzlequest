@@ -189,7 +189,7 @@ export async function renderMonitoredQuest(
   req: RouteRequest<"name">,
   res: Response
 ): Promise<void> {
-  const questResponse = await QuestService.getQuestByQuestName(req.params.name);
+  const questResponse = await QuestService.getSpectatedQuest(req.params.name);
   if (questResponse.status === "error") {
     res.status(questResponse.statusCode).render("error", {
       errorTitle: "Not found",
@@ -211,7 +211,7 @@ export async function renderMonitoredQuestPuzzle(
   res: Response
 ): Promise<void> {
   const questName = req.params.name;
-  const questPuzzleResponse = await QuestService.getQuestAndPuzzle(
+  const questPuzzleResponse = await QuestService.getSpectatedQuestPuzzle(
     questName,
     req.params.puzzleName
   );
@@ -222,24 +222,7 @@ export async function renderMonitoredQuestPuzzle(
     });
     return;
   }
-  const { quest, puzzle } = questPuzzleResponse.data;
-  // A puzzle deleted after it was added to the quest has no details.
-  const puzzleDetail = puzzle.puzzleDetail;
-  if (!puzzleDetail) {
-    res.status(404).render("error", {
-      errorTitle: "Not found",
-      errorDetails: `Puzzle ${req.params.puzzleName} no longer exists`,
-    });
-    return;
-  }
-
-  if (puzzle.status < QuestPuzzleStatus.IN_PROGRESS) {
-    res.render("error", {
-      errorTitle: "Not found",
-      errorDetails: "Puzzle not found",
-    });
-    return;
-  }
+  const { quest, puzzle, detail: puzzleDetail } = questPuzzleResponse.data;
 
   let renderedPuzzle;
   switch (puzzleDetail.type) {
