@@ -155,6 +155,17 @@ export function start(state: QuestState, now: Date): TransitionResult {
 }
 
 /**
+ * Compares activation codes, ignoring letter case and surrounding spaces: phone
+ * keyboards often capitalize the first letter of what's typed.
+ * @param expected the puzzle's code
+ * @param given the code the players gave
+ * @returns true if they are the same code
+ */
+function isSameActivationCode(expected: string, given: string): boolean {
+  return expected.trim().toLowerCase() === given.trim().toLowerCase();
+}
+
+/**
  * Activates a puzzle that is awaiting activation, using the code the players
  * found (usually in a QR code), so they can start solving it.
  * @param state the quest
@@ -181,7 +192,7 @@ export function activatePuzzle(
   if (puzzle.status !== QuestPuzzleStatus.AWAITING_ACTIVATION) {
     return fail("PUZZLE_NOT_AWAITING_ACTIVATION");
   }
-  if (puzzle.activationCode !== activationCode) {
+  if (!isSameActivationCode(puzzle.activationCode, activationCode)) {
     return fail("WRONG_ACTIVATION_CODE");
   }
   const changes = new Map([
