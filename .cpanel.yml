@@ -43,7 +43,14 @@ deployment:
     - rm -rf $DEPLOYPATH/node_modules && ln -s $PACKAGES/node_modules $DEPLOYPATH/node_modules
     # Compile the server and build the web app, each to its own dist/, then
     # remove the build and test tools.
-    - source $NODE_ENVIRONMENT/bin/activate && cd $DEPLOYPATH && npm run build
+    #
+    # The build runs on two CPUs. The web app's bundler starts thread pools sized
+    # to the CPUs it may use, and on this shared host, starting one for every CPU
+    # exceeds the account's limit on processes and threads, so the bundler
+    # crashes ("Resource temporarily unavailable"). The first line puts the
+    # numbers in the deployment log.
+    - echo "CPUs $(nproc), allowed $(taskset -c 0,1 nproc), process limit $(ulimit -u)"
+    - source $NODE_ENVIRONMENT/bin/activate && cd $DEPLOYPATH && taskset -c 0,1 npm run build
     - source $NODE_ENVIRONMENT/bin/activate && cd $PACKAGES && npm prune --omit=dev
     # Passenger restarts the application on its next request when this file
     # changes.
