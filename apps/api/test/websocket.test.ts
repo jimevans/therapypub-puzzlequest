@@ -27,7 +27,7 @@ afterAll(async () => {
 });
 
 async function connect() {
-  const socket = new WebSocket(`ws://localhost:${port}/api/updates`);
+  const socket = new WebSocket(`ws://localhost:${port}/api/v1/updates`);
   const messages: { message?: string }[] = [];
   socket.on("message", (data) => messages.push(JSON.parse(data.toString())));
   await new Promise((resolve) => socket.on("open", resolve));
@@ -104,7 +104,7 @@ describe("websocket server", () => {
 
     // Missing the quest's name, which the pages need.
     expect(() =>
-      WebSocketService.notifyQuestPages("q5", {
+      WebSocketService.notifyQuestPages({
         message: "questUpdated",
       } as never)
     ).toThrow(/questName/);
@@ -136,7 +136,7 @@ describe("websocket server", () => {
       browsers.forEach(({ messages }) => expect(messages).toHaveLength(1))
     );
 
-    WebSocketService.notifyQuestPages("q3", {
+    WebSocketService.notifyQuestPages({
       message: "questUpdated",
       questName: "q3",
     });
@@ -154,5 +154,124 @@ describe("websocket server", () => {
       .slice(4)
       .forEach(({ messages }) => expect(messages).toHaveLength(1));
     browsers.forEach(({ socket }) => socket.close());
+  });
+
+  describe("following a quest", () => {
+    /** Connects a client following a quest, once the server has answered. */
+    async function follow(questName: string) {
+      const client = await connect();
+      client.socket.send(JSON.stringify({ message: "subscribe", questName }));
+      await vi.waitFor(() =>
+        expect(client.messages[0]?.message).toBe("connection")
+      );
+      client.messages.length = 0;
+      return client;
+    }
+
+    const update = (questName: string) =>
+      ({ message: "questUpdated", questName }) as const;
+
+    it("sends every update of that quest, whichever pages it's meant for", async () => {
+      const { socket, messages } = await follow("follow-a");
+
+      WebSocketService.notifyBrowsers(
+        ["/quest/elsewhere"],
+        [],
+        update("follow-a")
+      );
+      WebSocketService.notifyQuestPages(update("follow-a"));
+
+      await vi.waitFor(() => expect(messages).toHaveLength(2));
+      socket.close();
+    });
+
+    it("sends nothing about another quest", async () => {
+      const { socket, messages } = await follow("follow-b");
+
+      WebSocketService.notifyBrowsers([], [], update("follow-b0"));
+      WebSocketService.notifyQuestPages(update("other"));
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(messages).toHaveLength(0);
+      socket.close();
+    });
+
+    it("leaves out the connection an action came from", async () => {
+      const acting = await connect();
+      acting.socket.send(
+        JSON.stringify({ message: "subscribe", questName: "follow-c" })
+      );
+      await vi.waitFor(() => expect(acting.messages).toHaveLength(1));
+      const { connectionId } = acting.messages[0] as { connectionId: string };
+      const other = await follow("follow-c");
+
+      WebSocketService.notifyBrowsers([], [connectionId], update("follow-c"));
+
+      await vi.waitFor(() => expect(other.messages).toHaveLength(1));
+      expect(acting.messages).toHaveLength(1);
+      acting.socket.close();
+      other.socket.close();
+    });
+
+    it("follows only the quest named last", async () => {
+      const client = await follow("follow-d");
+      client.socket.send(
+        JSON.stringify({ message: "subscribe", questName: "follow-e" })
+      );
+      await vi.waitFor(() => expect(client.messages).toHaveLength(1));
+      client.messages.length = 0;
+
+      WebSocketService.notifyQuestPages(update("follow-d"));
+      WebSocketService.notifyQuestPages(update("follow-e"));
+
+      await vi.waitFor(() =>
+        expect(client.messages).toEqual([update("follow-e")])
+      );
+      client.socket.close();
+    });
+
+    it("sends an update once to a client matched both ways", async () => {
+      const client = await follow("follow-f");
+      client.socket.send(
+        JSON.stringify({
+          message: "init",
+          url: "http://localhost/quest/follow-f",
+        })
+      );
+      await vi.waitFor(() => expect(client.messages).toHaveLength(1));
+      client.messages.length = 0;
+
+      WebSocketService.notifyBrowsers(
+        ["/quest/follow-f"],
+        [],
+        update("follow-f")
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(client.messages).toHaveLength(1);
+      client.socket.close();
+    });
+
+    it("ignores a subscription without a quest's name", async () => {
+      const { socket, messages } = await connect();
+      socket.send(JSON.stringify({ message: "subscribe" }));
+      socket.send(JSON.stringify({ message: "subscribe", questName: "" }));
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(messages).toHaveLength(0);
+      socket.close();
+    });
+  });
+
+  it("no longer answers at the old address", async () => {
+    const socket = new WebSocket(`ws://localhost:${port}/api/updates`);
+
+    const status = await new Promise((resolve) =>
+      socket.on("unexpected-response", (_req, response) =>
+        resolve(response.statusCode)
+      )
+    );
+
+    expect(status).toBe(400);
   });
 });

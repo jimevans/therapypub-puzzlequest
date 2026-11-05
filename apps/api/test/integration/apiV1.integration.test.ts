@@ -240,7 +240,7 @@ describe("the OpenAPI document", () => {
   it("describes the live-update websocket's messages", async () => {
     const document = await getDocument();
 
-    expect(document.info.description).toContain("`/api/updates`");
+    expect(document.info.description).toContain("`/api/v1/updates`");
     const update = document.components.schemas.LiveUpdate;
     expect(
       update.oneOf.map(
@@ -256,7 +256,7 @@ describe("the OpenAPI document", () => {
       "questUpdated",
     ]);
     expect(document.components.schemas.LiveUpdateSubscription).toMatchObject({
-      properties: { message: { const: "init" } },
+      properties: { message: { const: "subscribe" } },
     });
   });
 

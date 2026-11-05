@@ -168,7 +168,7 @@ describe("sendLiveUpdates", () => {
     (event) => {
       sendLiveUpdates({ questName: "q1", events: [event] });
 
-      expect(notifyQuestPages).toHaveBeenCalledExactlyOnceWith("q1", {
+      expect(notifyQuestPages).toHaveBeenCalledExactlyOnceWith({
         message: "questUpdated",
         questName: "q1",
       });
@@ -204,7 +204,7 @@ describe("sendLiveUpdates", () => {
 
     const sent = [
       ...vi.mocked(notifyBrowsers).mock.calls.map((call) => call[2]),
-      ...vi.mocked(notifyQuestPages).mock.calls.map((call) => call[1]),
+      ...vi.mocked(notifyQuestPages).mock.calls.map((call) => call[0]),
     ];
     expect(sent.map((message) => message.message)).toEqual([
       "puzzleActivated",
