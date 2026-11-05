@@ -210,7 +210,7 @@ tasks in [.cpanel.yml](.cpanel.yml), which:
    development dependencies the build needs (`npm ci --include=dev`).
 3. Compile the server to `apps/api/dist/` and build the web app to
    `apps/web/dist/` (`npm run build`), on two CPUs, because the web app's
-   bundler otherwise exceeds the shared host's limit on threads. A failed web
+   bundler otherwise can't start its threads on the shared host. A failed web
    build leaves the previous built files in place.
 4. Remove the build and test tools (`npm prune --omit=dev`).
 5. Restart the application.
