@@ -305,6 +305,14 @@ describe("activating a puzzle", () => {
     expect(bodyOf(response)).toEqual({ activationTime: expect.any(String) });
   });
 
+  it("accepts a typed code in any letter case, with stray spaces", async () => {
+    const response = await play("player", "activation", "riddle", {
+      activationCode: " Riddle-Code ",
+    });
+
+    expect(response.status).toBe(200);
+  });
+
   it("needs the puzzle's code", async () => {
     const response = await play("player", "activation", "riddle", {
       activationCode: "wrong",

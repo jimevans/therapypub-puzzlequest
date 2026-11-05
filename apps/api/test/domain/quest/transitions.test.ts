@@ -176,10 +176,19 @@ describe("activatePuzzle", () => {
     });
   });
 
-  it("compares activation codes exactly", () => {
+  it.each(["SECOND-CODE", "Second-code", "  second-code ", "second-code\n"])(
+    "ignores letter case and surrounding spaces in code %j",
+    (code) => {
+      const state = inProgressWith(QuestPuzzleStatus.AWAITING_ACTIVATION);
+
+      expect(activatePuzzle(state, "second", code, NOW).ok).toBe(true);
+    }
+  );
+
+  it("still refuses a code that differs in more than that", () => {
     const state = inProgressWith(QuestPuzzleStatus.AWAITING_ACTIVATION);
 
-    expect(activatePuzzle(state, "second", "SECOND-CODE", NOW)).toEqual({
+    expect(activatePuzzle(state, "second", "second code", NOW)).toEqual({
       ok: false,
       error: "WRONG_ACTIVATION_CODE",
     });

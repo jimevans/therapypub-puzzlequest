@@ -53,10 +53,10 @@ const connectionId = z.string().optional().meta({
  * with the frame's size.
  */
 export const activatePuzzleBody = z.object({
-  activationCode: z
-    .string()
-    .optional()
-    .meta({ description: "The code, typed; or scan its QR code instead." }),
+  activationCode: z.string().optional().meta({
+    description:
+      "The code, typed, in any letter case; or scan its QR code instead.",
+  }),
   width: wholeNumber
     .positive()
     .optional()
