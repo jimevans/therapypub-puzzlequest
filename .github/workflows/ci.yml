@@ -30,6 +30,8 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
+      # The web app's download must stay within its budget.
+      - run: npm run size --workspace=@puzzlequest/web
       - run: npm run format:check
       # The API client's generated files must match the API's routes.
       - run: npm run generate:api

@@ -86,6 +86,12 @@ with a list of the problems.
 npm run dev    # runs the source; restarts when source files change
 ```
 
+To work on the React app, run this in a second terminal too, and open <http://localhost:5173>. Vite shows changes as you save them, and sends everything else (the API, uploaded media, and the pages not yet moved to React) to the server on port 3000:
+
+```bash
+npm run dev:web
+```
+
 To run the compiled application the way production does:
 
 ```bash
@@ -110,7 +116,7 @@ npm test
 
 The tests use [Vitest](https://vitest.dev). The integration tests run against
 an in-memory MongoDB from `mongodb-memory-server`, so they don't need a local
-database.
+database. The React app's tests use [Testing Library](https://testing-library.com/) with jsdom.
 
 ### Browser tests
 
@@ -126,7 +132,12 @@ This is an [npm workspaces](https://docs.npmjs.com/cli/using-npm/workspaces) mon
 
 - `apps/api`: the server, with the v1 API and the server-rendered pages, and its tests.
 - `apps/web`: the React website, which is replacing the server-rendered pages one screen at a time. It uses only the public API. The server serves its built files, and lists its pages in [apps/api/src/routes/web.ts](apps/api/src/routes/web.ts).
-- `packages/api-client`: a typed client of the API, generated from the API's OpenAPI description. After changing a route, run `npm run generate:api` and commit the result; CI fails if the generated files don't match the routes. The generator asks for TypeScript 5, but runs correctly on the project's TypeScript 6, which an `overrides` entry in the root `package.json` allows.
+  - `src/app`: the router and what wraps every page. Adding a page means adding it here and to the server's list.
+  - `src/ui`: the shared components, built on [React Aria Components](https://react-spectrum.adobe.com/react-aria/) for accessibility.
+  - `src/screens`: the screens, by area.
+  - `src/styles`: the design's tokens in `tokens.css`. Components use the meanings there, such as `--accent`, never raw colors, and style themselves with CSS Modules.
+  - What every page downloads first has a budget in `.size-limit.json`, which CI checks after building (`npm run size --workspace=@puzzlequest/web`). Importing a large library from `src/app` or `src/ui/PageShell.tsx` adds to it for every page.
+- `packages/api-client`: a typed client of the API, and `followQuest`, which follows a quest's live updates and reconnects by itself, generated from the API's OpenAPI description. After changing a route, run `npm run generate:api` and commit the result; CI fails if the generated files don't match the routes. The generator asks for TypeScript 5, but runs correctly on the project's TypeScript 6, which an `overrides` entry in the root `package.json` allows.
 - `e2e`: the browser tests, which exercise the whole product.
 - `storage`: uploaded puzzle media, not committed.
 
@@ -228,7 +239,7 @@ every pull request and on every push to `main`:
 
 - **Lint and test:** installs with `npm ci --engine-strict` on the Node
   version in `.nvmrc`, then runs `npm run lint`, `npm run typecheck`,
-  `npm run build`, `npm run format:check`, and `npm test`, and checks that the API client's generated files match the routes; a separate job runs the browser tests. The strict engine check fails the build if any dependency no
+  `npm run build`, the web app's size budget, `npm run format:check`, and the tests, and checks that the API client's generated files match the routes; a separate job runs the browser tests. The strict engine check fails the build if any dependency no
   longer supports that Node version.
 - **Dependency audit:** fails on any advisory of moderate severity or higher
   in the production dependencies (`npm audit --omit=dev`). Advisories that

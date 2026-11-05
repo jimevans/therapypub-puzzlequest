@@ -1,0 +1,40 @@
+.button {
+  min-height: var(--target-size);
+  padding: 0 var(--space-5);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondary {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.secondary[data-hovered],
+.secondary[data-pressed] {
+  background: var(--paper-soft);
+}
+
+.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+}
+
+.primary[data-hovered],
+.primary[data-pressed] {
+  filter: brightness(0.9);
+}
+
+.button[data-focus-visible] {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.button[data-disabled] {
+  opacity: 0.55;
+  cursor: default;
+}

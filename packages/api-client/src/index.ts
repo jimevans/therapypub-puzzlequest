@@ -4,6 +4,8 @@
 import createClient, { type Client } from "openapi-fetch";
 import type { components, paths } from "./schema.js";
 
+export * from "./live.js";
+
 /** The API's resources and messages, by name, such as Schemas["Session"]. */
 export type Schemas = components["schemas"];
 

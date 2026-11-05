@@ -16,6 +16,7 @@
     "build": "npm run build --workspaces --if-present",
     "start": "npm start --workspace=@puzzlequest/api",
     "dev": "npm run dev --workspace=@puzzlequest/api",
+    "dev:web": "npm run dev --workspace=@puzzlequest/web",
     "test": "npm test --workspaces --if-present",
     "test:coverage": "npm run test:coverage --workspaces --if-present",
     "test:e2e": "npm run build && npm run test:e2e --workspace=@puzzlequest/e2e",

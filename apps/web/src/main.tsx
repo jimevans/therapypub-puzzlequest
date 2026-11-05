@@ -1,15 +1,18 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { WebCheck } from "./WebCheck";
-import "./styles.css";
+import { App } from "./app/App";
+import { reloadWhenChunksAreReplaced } from "./app/reloadOnNewDeployment";
+import "./styles/index.css";
 
 const root = document.getElementById("root");
 if (!root) {
   throw new Error("The page has no element to show the app in");
 }
 
+reloadWhenChunksAreReplaced();
+
 createRoot(root).render(
   <StrictMode>
-    <WebCheck />
+    <App />
   </StrictMode>
 );

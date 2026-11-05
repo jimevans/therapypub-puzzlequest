@@ -82,6 +82,13 @@ export default defineConfig([
     },
   },
   {
+    // The API client runs in the browser too.
+    files: ["packages/api-client/src/**/*.ts"],
+    languageOptions: {
+      globals: globals.browser,
+    },
+  },
+  {
     rules: {
       eqeqeq: ["error", "always", { null: "ignore" }],
       // Unused callback parameters (event handlers, Express middleware
