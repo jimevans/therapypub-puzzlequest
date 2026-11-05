@@ -1217,8 +1217,9 @@ export async function updateQuest(
         message: `No quest with quest name ${questDefinition.name} found`,
       };
     }
-    foundQuest.displayName =
-      questDefinition.displayName || questDefinition.name;
+    if (questDefinition.displayName) {
+      foundQuest.displayName = questDefinition.displayName;
+    }
     if (assignee) {
       foundQuest.assignee = assignee;
     }

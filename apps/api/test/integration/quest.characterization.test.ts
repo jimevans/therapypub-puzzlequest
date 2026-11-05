@@ -1021,7 +1021,7 @@ describe("updateQuest", () => {
     expect(quest.puzzles[1].activationCode).toMatch(/^[0-9a-f]{32}$/);
   });
 
-  it("uses the name as the display name and keeps the user when they are omitted", async () => {
+  it("keeps the display name and the user when they are omitted", async () => {
     await createQuest();
 
     await QuestService.updateQuest({
@@ -1030,7 +1030,7 @@ describe("updateQuest", () => {
     });
 
     const quest = await storedQuest();
-    expect(quest.displayName).toBe("test-quest");
+    expect(quest.displayName).toBe("Test Quest");
     expect(quest.assignee).toEqual({
       kind: "user",
       id: (await UserModel.findOne({ userName: "player" }).lean())!._id,
