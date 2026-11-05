@@ -263,6 +263,18 @@ describe("managing a quest", () => {
     });
   });
 
+  it("keeps the display name when it's left out of a change", async () => {
+    const response = await as("admin", "patch", "/quests/quest").send({
+      assignee: { kind: "user", name: "other" },
+    });
+
+    expect(response.status).toBe(200);
+    expect(bodyOf(response)).toMatchObject({
+      displayName: "Quest",
+      assignee: { kind: "user", name: "other" },
+    });
+  });
+
   it("deletes one", async () => {
     expect((await as("admin", "delete", "/quests/quest")).status).toBe(204);
     expect((await as("admin", "get", "/quests/quest")).status).toBe(404);
