@@ -281,6 +281,20 @@ export const questSchema = z
   })
   .meta({ id: "Quest" });
 
+/** The time spent on a quest, on the puzzles reached so far. */
+const reachedProgressSchema = z.object({
+  ...progressFields,
+  puzzles: z
+    .array(z.object({ puzzleName: z.string(), ...progressFields }))
+    .meta({ description: "The puzzles reached so far, in order." }),
+});
+
+/** A hint that has been revealed. */
+const revealedHintSchema = z.object({
+  text: z.string(),
+  timePenalty: z.number().int().meta({ description: "In seconds." }),
+});
+
 /**
  * A puzzle as its players see it, with what a player's screen needs of the
  * quest. It holds nothing about puzzles not yet reached, because players must
@@ -296,12 +310,7 @@ export const playerPuzzleSchema = z
       }),
       statusDescription: z.string(),
       paused: z.boolean(),
-      progress: z.object({
-        ...progressFields,
-        puzzles: z
-          .array(z.object({ puzzleName: z.string(), ...progressFields }))
-          .meta({ description: "The puzzles reached so far, in order." }),
-      }),
+      progress: reachedProgressSchema,
     }),
     puzzle: z.object({
       name: z.string(),
@@ -324,12 +333,7 @@ export const playerPuzzleSchema = z
           "The puzzle's Markdown, or the path of its media; null until the puzzle is activated.",
       }),
       hints: z
-        .array(
-          z.object({
-            text: z.string(),
-            timePenalty: z.number().int().meta({ description: "In seconds." }),
-          })
-        )
+        .array(revealedHintSchema)
         .meta({ description: "The hints revealed so far." }),
       nextHint: z
         .object({
@@ -426,6 +430,142 @@ export function toPlayerPuzzleResource(
           displayName: next.puzzleDetail?.displayName ?? next.puzzleName,
         }
       : null,
+  };
+}
+
+/**
+ * A quest as the public sees it. Anyone can look, including its players, so it
+ * shows nothing more than they can see, and nothing about puzzles not yet
+ * reached. Every field is listed here on purpose: a new field on a quest stays
+ * private until it's added.
+ */
+export const spectatorQuestSchema = z
+  .object({
+    name: z.string(),
+    displayName: z.string(),
+    status: z.number().int().meta({
+      description: "0 not started, 1 in progress, 2 completed.",
+    }),
+    statusDescription: z.string(),
+    paused: z.boolean(),
+    progress: reachedProgressSchema,
+    puzzles: z
+      .array(
+        z.object({
+          name: z.string(),
+          displayName: z.string(),
+          status: z.number().int().meta({
+            description: "1 awaiting activation, 2 in progress, 3 completed.",
+          }),
+          statusDescription: z.string(),
+          skipped: z.boolean(),
+          activationTime: time.nullable(),
+          solutionText: z.string().nullable().meta({
+            description: "Null until the puzzle is completed.",
+          }),
+        })
+      )
+      .meta({ description: "The puzzles reached so far, in order." }),
+  })
+  .meta({ id: "SpectatorQuest" });
+
+/**
+ * Makes a quest's public resource.
+ * @param quest the quest, from getSpectatedQuest, holding only reached puzzles
+ * @returns the resource
+ */
+export function toSpectatorQuestResource(quest: QuestService.Quest) {
+  return {
+    name: quest.name,
+    displayName: quest.displayName,
+    status: quest.status,
+    statusDescription: quest.statusDescription,
+    paused: quest.paused,
+    progress: quest.getProgress(),
+    puzzles: quest.puzzles.map((puzzle) => ({
+      name: puzzle.puzzleName,
+      displayName: puzzle.puzzleDetail?.displayName ?? puzzle.puzzleName,
+      status: puzzle.status,
+      statusDescription: puzzle.statusDescription,
+      skipped: puzzle.skipped,
+      activationTime: puzzle.activationTime ?? null,
+      solutionText:
+        puzzle.status === QuestPuzzleStatus.COMPLETED
+          ? (puzzle.puzzleDetail?.solutionDisplayText ?? null)
+          : null,
+    })),
+  };
+}
+
+/**
+ * A puzzle as the public sees it, once its players have activated it. As with
+ * the quest, every field is listed on purpose.
+ */
+export const spectatorPuzzleSchema = z
+  .object({
+    quest: z.object({
+      name: z.string(),
+      displayName: z.string(),
+      paused: z.boolean(),
+    }),
+    puzzle: z.object({
+      name: z.string(),
+      displayName: z.string(),
+      status: z.number().int().meta({
+        description: "2 in progress, 3 completed.",
+      }),
+      statusDescription: z.string(),
+      skipped: z.boolean(),
+      type: z.number().int().meta({
+        description: "0 text, 1 image, 2 audio, 3 video.",
+      }),
+      text: z.string().meta({
+        description: "The puzzle's Markdown, or the path of its media.",
+      }),
+      hints: z
+        .array(revealedHintSchema)
+        .meta({ description: "The hints revealed so far." }),
+      solutionText: z.string().nullable().meta({
+        description: "Null until the puzzle is completed.",
+      }),
+    }),
+  })
+  .meta({ id: "SpectatorPuzzle" });
+
+/**
+ * Makes a puzzle's public resource.
+ * @param quest the quest
+ * @param puzzle the quest's puzzle, which its players have activated
+ * @param detail the puzzle's definition
+ * @returns the resource
+ */
+export function toSpectatorPuzzleResource(
+  quest: QuestService.Quest,
+  puzzle: QuestService.QuestPuzzle,
+  detail: PuzzleService.Puzzle
+) {
+  return {
+    quest: {
+      name: quest.name,
+      displayName: quest.displayName,
+      paused: quest.paused,
+    },
+    puzzle: {
+      name: puzzle.puzzleName,
+      displayName: detail.displayName,
+      status: puzzle.status,
+      statusDescription: puzzle.statusDescription,
+      skipped: puzzle.skipped,
+      type: detail.type,
+      text: detail.text,
+      hints: detail.hints
+        .slice(0, puzzle.nextHintToDisplay)
+        .map(({ text, timePenalty }) => ({ text, timePenalty })),
+      solutionText:
+        puzzle.status === QuestPuzzleStatus.COMPLETED
+          ? detail.solutionDisplayText
+          : null,
+    },
   };
 }
 

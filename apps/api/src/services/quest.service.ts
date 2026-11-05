@@ -932,6 +932,66 @@ export async function getQuestAndPuzzle(
 }
 
 /**
+ * Gets a quest as the public may see it: with only the puzzles its players
+ * have reached, because a player can look at anything public, and players
+ * must never learn how long a quest is.
+ * @param questName the name of the quest
+ * @returns a result containing the quest, or an error result if it isn't found
+ */
+export async function getSpectatedQuest(
+  questName: string
+): Promise<QuestResult> {
+  const found = await findQuests(
+    { questName, puzzleStatus: QuestPuzzleStatus.AWAITING_ACTIVATION },
+    true
+  );
+  return found.status === "error"
+    ? found
+    : { status: "success", statusCode: 200, data: found.data[0] };
+}
+
+/**
+ * Gets one of a quest's puzzles as the public may see it, once its players
+ * have activated it. The answer is the same whether a puzzle isn't in the
+ * quest or hasn't been activated, so a name can't be tried to learn which.
+ * @param questName the name of the quest
+ * @param puzzleName the name of the puzzle
+ * @returns a result containing the quest, the puzzle, and its definition, or
+ *  an error result if they aren't found
+ */
+export async function getSpectatedQuestPuzzle(
+  questName: string,
+  puzzleName: string
+): Promise<
+  QuestResult<{
+    quest: Quest;
+    puzzle: QuestPuzzle;
+    detail: PuzzleService.Puzzle;
+  }>
+> {
+  const found = await getSpectatedQuest(questName);
+  if (found.status === "error") {
+    return found;
+  }
+  const quest = found.data;
+  const puzzle = quest.getPuzzle(puzzleName);
+  // A puzzle deleted after it was added to the quest has no details.
+  if (!puzzle?.puzzleDetail || puzzle.status < QuestPuzzleStatus.IN_PROGRESS) {
+    return {
+      status: "error",
+      statusCode: 404,
+      reason: "not-found",
+      message: `No puzzle named ${puzzleName} found for quest ${questName}`,
+    };
+  }
+  return {
+    status: "success",
+    statusCode: 200,
+    data: { quest, puzzle, detail: puzzle.puzzleDetail },
+  };
+}
+
+/**
  * Gets one of a quest's puzzles.
  * @param questName the name of the quest
  * @param puzzleName the name of the puzzle in the quest to retrieve

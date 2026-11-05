@@ -153,6 +153,8 @@ const ROUTES: [string, string, Policy][] = [
   ["get", "/api/v1/quests/:name/puzzles/:puzzleName/qr-code", ADMIN],
   ["get", "/api/v1/quests/:name/events", ADMIN],
   ["get", "/api/v1/quests/:name/puzzles/:puzzleName", QUEST_VIEWER],
+  ["get", "/api/v1/quests/:name/spectator-view", PUBLIC],
+  ["get", "/api/v1/quests/:name/puzzles/:puzzleName/spectator-view", PUBLIC],
   ["post", "/api/v1/quests/:name/puzzles/:puzzleName/activation", QUEST_PLAYER],
   [
     "post",
