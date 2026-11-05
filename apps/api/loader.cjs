@@ -4,7 +4,7 @@
 async function loadApp() {
   // Report errors at their location in src/ rather than in compiled output.
   process.setSourceMapsEnabled(true);
-  await import("../dist/app.js");
+  await import("./dist/app.js");
 }
 
 loadApp();

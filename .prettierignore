@@ -2,6 +2,6 @@ package-lock.json
 coverage/
 dist/
 # Generated legal documents
-src/public/policies/
+apps/api/src/public/policies/
 # Uploaded puzzle media
-src/public/puzzleData/
+storage/

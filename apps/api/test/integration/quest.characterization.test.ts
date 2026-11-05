@@ -1,3 +1,4 @@
+import path from "node:path";
 // Characterization tests for the quest service: they record what the service
 // does today, including behavior that is probably wrong, so that the Phase 1
 // state machine rewrite changes behavior only on purpose. Tests whose names
@@ -1570,6 +1571,25 @@ describe("getQuestRunBook", () => {
       expect.arrayContaining(["Colors", "Name ", "two", " colors", "Fruit"])
     );
     expect(calls.at(-1)).toEqual(["end"]);
+  });
+
+  it("prints an image puzzle's media from storage", async () => {
+    await createQuest(["fruit"]);
+    await PuzzleModel.updateOne(
+      { name: "fruit" },
+      { type: 1, text: "/puzzleData/riddle.png" }
+    );
+    const { pdfDoc, calls } = createPdfRecorder();
+
+    await QuestService.getQuestRunBook("test-quest", pdfDoc);
+
+    const image = calls.find(([method]) => method === "image");
+    expect(image?.[1]).toBe(
+      path.resolve(
+        import.meta.dirname,
+        "../../../../storage/puzzleData/riddle.png"
+      )
+    );
   });
 
   it("returns 500 when a puzzle's details are missing", async () => {

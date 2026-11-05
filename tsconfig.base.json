@@ -1,0 +1,14 @@
+{
+  // The settings every workspace shares. Each workspace's tsconfig.json extends
+  // this and says which files it covers.
+  "compilerOptions": {
+    "noEmit": true,
+    "target": "es2022",
+    "lib": ["es2023"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": ["node"],
+    "skipLibCheck": true,
+    "strict": true
+  }
+}

@@ -14,23 +14,26 @@ deployment:
     - export PACKAGES=$NODE_ENVIRONMENT/lib
     # Copy the checked-out files, leaving out .git (its object files are
     # read-only, so copying it over the previous deployment's copy fails) and
-    # src, which the next task synchronizes. Files that aren't in the
-    # repository, such as node_modules and logs, are left as they are.
-    - cp -R $(ls -A | grep -v -x -F -e .git -e src) $DEPLOYPATH
-    # Make the deployed src match the repository's, deleting files the
+    # the workspaces, which the next task synchronizes. Files that aren't in
+    # the repository, such as node_modules, logs, and storage, are left as they
+    # are.
+    - cp -R $(ls -A | grep -v -x -F -e .git -e apps -e e2e) $DEPLOYPATH
+    # Make the deployed workspaces match the repository's, deleting files the
     # repository no longer has: the build compiles everything in src, so a
-    # deleted source file left behind would still be compiled. The two things
-    # in src that exist only on the server are kept: the settings in .env and
-    # uploaded puzzle media.
-    - rsync -a --delete --exclude=/.env --exclude=/public/puzzleData/ src/ $DEPLOYPATH/src/
+    # deleted source file left behind would still be compiled.
+    - rsync -a --delete apps e2e $DEPLOYPATH/
     # Install exactly what the deployed package-lock.json lists. Both files are
     # linked into the environment on every deployment, so a new host can deploy
     # without first using cPanel's "Run NPM Install" button (cPanel itself
-    # links only package.json). The build needs the development dependencies;
+    # links only package.json). The workspaces are linked beside them, because
+    # npm looks for them next to package.json and, if they aren't there, quietly
+    # installs without them. The build needs the development dependencies;
     # --include=dev is needed because the environment sets NODE_ENV=production,
     # which makes npm skip them.
     - ln -sf $DEPLOYPATH/package.json $PACKAGES/package.json
     - ln -sf $DEPLOYPATH/package-lock.json $PACKAGES/package-lock.json
+    - ln -sfn $DEPLOYPATH/apps $PACKAGES/apps
+    - ln -sfn $DEPLOYPATH/e2e $PACKAGES/e2e
     - source $NODE_ENVIRONMENT/bin/activate && cd $PACKAGES && npm ci --include=dev
     # Make node_modules in the application directory a link to the packages,
     # replacing anything else that's there.
@@ -38,6 +41,12 @@ deployment:
     # Compile to dist/, then remove the build and test tools.
     - source $NODE_ENVIRONMENT/bin/activate && cd $DEPLOYPATH && npm run build
     - source $NODE_ENVIRONMENT/bin/activate && cd $PACKAGES && npm prune --omit=dev
+    # One-time move to the workspace layout; remove these two tasks once it has
+    # been deployed. They come after the build, so a failed deployment leaves
+    # the old layout working. Uploaded media moves out of the code, then what
+    # the old layout left behind goes, but only if no media is still there.
+    - if [ -d $DEPLOYPATH/src/public/puzzleData ] && [ ! -e $DEPLOYPATH/storage/puzzleData ]; then mkdir -p $DEPLOYPATH/storage && mv $DEPLOYPATH/src/public/puzzleData $DEPLOYPATH/storage/puzzleData; fi
+    - if [ ! -e $DEPLOYPATH/src/public/puzzleData ]; then rm -rf $DEPLOYPATH/src $DEPLOYPATH/dist $DEPLOYPATH/test $DEPLOYPATH/tsconfig.build.json $DEPLOYPATH/vitest.config.js; fi
     # Passenger restarts the application on its next request when this file
     # changes.
     - mkdir -p $DEPLOYPATH/tmp && touch $DEPLOYPATH/tmp/restart.txt

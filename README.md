@@ -61,7 +61,7 @@ delete `node_modules` and run `npm ci` again.
 ### 4. Configure
 
 ```bash
-cp src/.env.example src/.env
+cp apps/api/.env.example apps/api/.env
 ```
 
 The example values work for local development:
@@ -74,10 +74,10 @@ The example values work for local development:
   which needs `PQ_TWILIO_AUTH_TOKEN`, and a `PQ_BASE_URL` that matches the
   webhook URLs set in the Twilio console.
 
-`src/.env` is git-ignored. Every variable is documented in
-[src/.env.example](src/.env.example). Environment variables take precedence
-over values in `src/.env`. The app checks its settings at startup
-([src/config.ts](src/config.ts)). If any are missing or invalid, it exits
+`apps/api/.env` is git-ignored. Every variable is documented in
+[apps/api/.env.example](apps/api/.env.example). Environment variables take precedence
+over values in `apps/api/.env`. The app checks its settings at startup
+([apps/api/src/config.ts](apps/api/src/config.ts)). If any are missing or invalid, it exits
 with a list of the problems.
 
 ### 5. Run
@@ -89,7 +89,7 @@ npm run dev    # runs the source; restarts when source files change
 To run the compiled application the way production does:
 
 ```bash
-npm run build  # compiles src/ to dist/
+npm run build  # compiles apps/api/src/ to apps/api/dist/
 npm start
 ```
 
@@ -118,7 +118,15 @@ database.
 npm run test:e2e
 ```
 
-These drive the main journeys through the real pages in Chrome and Firefox, with [WebdriverIO](https://webdriver.io/) over WebDriver BiDi: signing up, joining a team, playing a quest from the first call to the last puzzle with a spectator following along, authoring puzzles and quests, and resetting a password. They build the application and run it on an in-memory database, without reading `src/.env`, so they can't send real email or text messages. Both browsers must be installed; WebdriverIO downloads the drivers. `E2E_BROWSER=chrome` or `E2E_BROWSER=firefox` runs just one.
+These drive the main journeys through the real pages in Chrome and Firefox, with [WebdriverIO](https://webdriver.io/) over WebDriver BiDi: signing up, joining a team, playing a quest from the first call to the last puzzle with a spectator following along, authoring puzzles and quests, and resetting a password. They build the application and run it on an in-memory database, without reading `apps/api/.env`, so they can't send real email or text messages. Both browsers must be installed; WebdriverIO downloads the drivers. `E2E_BROWSER=chrome` or `E2E_BROWSER=firefox` runs just one.
+
+## Repository layout
+
+This is an [npm workspaces](https://docs.npmjs.com/cli/using-npm/workspaces) monorepo with one lockfile. Run `npm ci` and the `npm run` commands from the repository's root.
+
+- `apps/api`: the server, with the v1 API and the server-rendered pages, and its tests.
+- `e2e`: the browser tests, which exercise the whole product.
+- `storage`: uploaded puzzle media, not committed.
 
 ## Linting and formatting
 
@@ -132,7 +140,7 @@ ESLint is configured in [eslint.config.js](eslint.config.js). Prettier takes
 indentation and line endings from [.editorconfig](.editorconfig), and its
 other settings are in [.prettierrc.json](.prettierrc.json).
 
-Browser scripts in `src/public/script` that read variables defined by an
+Browser scripts in `apps/api/src/public/script` that read variables defined by an
 inline `<script>` in their EJS view declare them in a `/* global */` comment
 at the top of the file.
 
@@ -140,18 +148,18 @@ at the top of the file.
 
 ```bash
 npm run typecheck  # type-check without emitting anything
-npm run build      # compile src/ to dist/
+npm run build      # compile apps/api/src/ to apps/api/dist/
 ```
 
 The server code is TypeScript. Production runs the compiled JavaScript in
-`dist/`, built with `tsc` ([tsconfig.build.json](tsconfig.build.json)); `dist/`
+`apps/api/dist/`, built with `tsc` ([tsconfig.build.json](apps/api/tsconfig.build.json)); `dist/`
 is not committed. Imports name the compiled file, so a module imports
 `./config.js` even though the source is `config.ts`. The type-checking settings
-are in [tsconfig.json](tsconfig.json).
+are in [tsconfig.base.json](tsconfig.base.json).
 
-Shared types live in [src/types.ts](src/types.ts), and the properties that
+Shared types live in [apps/api/src/types.ts](apps/api/src/types.ts), and the properties that
 middleware adds to Express requests are declared in
-[src/express.d.ts](src/express.d.ts).
+[apps/api/src/express.d.ts](apps/api/src/express.d.ts).
 
 Two versions of TypeScript are installed:
 
@@ -166,26 +174,28 @@ During development, `npm run dev` and the VS Code launch configuration run the
 source with [tsx](https://tsx.is), which handles the mix of `.ts` and `.js`
 files without a build.
 
-The views, the static files (including uploaded puzzle media in
-`src/public/puzzleData`), and `src/.env` stay in `src/` and are not copied
-into `dist/`. The application finds them through [src/paths.ts](src/paths.ts),
-so it works the same whether it runs from `src/` or `dist/`.
+The views and static files stay in `apps/api/src/` and are not copied into
+`apps/api/dist/`. Uploaded puzzle media lives in `storage/puzzleData`, outside
+the code, and isn't committed. The application finds all of these through
+[apps/api/src/paths.ts](apps/api/src/paths.ts), so it works the same whether it
+runs from `src/` or `dist/`.
 
-The browser scripts in `src/public/script` and the tests aren't type-checked
+The browser scripts in `apps/api/src/public/script` and the tests aren't type-checked
 yet.
 
 ## Deployment
 
 The hosting environment (cPanel) starts the application through
-[src/loader.cjs](src/loader.cjs), which loads the compiled `dist/app.js`.
+[apps/api/loader.cjs](apps/api/loader.cjs), which loads the compiled `apps/api/dist/app.js`.
 
 Deploy with **Deploy HEAD Commit** in cPanel's Git Version Control. It runs the
 tasks in [.cpanel.yml](.cpanel.yml), which:
 
-1. Copy the repository, except `.git`, to the application directory.
+1. Copy the repository, except `.git`, to the application directory. Uploaded
+   media in `storage/` isn't in the repository, so it's left alone.
 2. Install the packages listed in `package-lock.json`, including the
    development dependencies the build needs (`npm ci --include=dev`).
-3. Compile to `dist/` (`npm run build`).
+3. Compile to `apps/api/dist/` (`npm run build`).
 4. Remove the build and test tools (`npm prune --omit=dev`).
 5. Restart the application.
 
@@ -193,7 +203,9 @@ The packages are installed where cPanel's **Run NPM Install** button puts
 them: in the application's Node 24 environment, in
 `/home/thepuzzlequest/nodevenv/puzzlequest/24/lib/node_modules`.
 `node_modules` in the application directory is a link to that folder, and the
-deployment recreates the link each time. If the Node version or application
+deployment recreates the link each time. The workspaces are linked into that
+folder too, because npm looks for them beside `package.json`. Production has no
+`.env` file: its settings are on cPanel's **Setup Node.js App** page. If the Node version or application
 directory changes on cPanel's **Setup Node.js App** page, update the paths at
 the top of `.cpanel.yml` to match.
 
