@@ -9,7 +9,11 @@ import {
 } from "./middleware/contentSecurityPolicy.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { requireSameOrigin } from "./middleware/sameOrigin.js";
-import { publicDirectory, viewsDirectory } from "./paths.js";
+import {
+  publicDirectory,
+  puzzleDataDirectory,
+  viewsDirectory,
+} from "./paths.js";
 import { V1Router } from "./api/v1/index.js";
 import { IndexRouter } from "./routes/index.js";
 import { MonitorRouter } from "./routes/monitor.js";
@@ -61,6 +65,7 @@ export function createApp(): Express {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(express.static(publicDirectory));
+  app.use("/puzzleData", express.static(puzzleDataDirectory));
 
   app.get("/vendor/marked.esm.js", (req, res) => {
     res.sendFile(markedBrowserModule);

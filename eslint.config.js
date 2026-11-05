@@ -7,10 +7,10 @@ import tseslint from "typescript-eslint";
 export default defineConfig([
   {
     ignores: [
-      "coverage/",
-      "dist/",
-      "src/public/policies/",
-      "src/public/puzzleData/",
+      "**/coverage/",
+      "**/dist/",
+      "apps/api/src/public/policies/",
+      "storage/",
     ],
   },
   js.configs.recommended,
@@ -30,14 +30,14 @@ export default defineConfig([
   },
   {
     // Client-side modules served to the browser
-    files: ["src/public/script/**/*.js"],
+    files: ["apps/api/src/public/script/**/*.js"],
     languageOptions: {
       globals: globals.browser,
     },
   },
   {
     // Web Worker that owns the browser's websocket connection
-    files: ["src/public/script/socket.js"],
+    files: ["apps/api/src/public/script/socket.js"],
     languageOptions: {
       globals: globals.worker,
     },
@@ -74,7 +74,7 @@ export default defineConfig([
     // Test doubles stand in for Express and Mongoose objects without
     // implementing their whole types, and response bodies are checked
     // property by property.
-    files: ["test/**/*.ts"],
+    files: ["apps/api/test/**/*.ts", "e2e/**/*.ts"],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
     },

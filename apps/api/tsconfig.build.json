@@ -9,7 +9,6 @@
     "sourceMap": true
   },
   "include": ["src/**/*.ts", "src/**/*.js"],
-  // Browser scripts are served from src/public as-is. loader.cjs is the
-  // hosting startup file and loads the compiled application from dist/.
-  "exclude": ["src/public/**", "src/loader.cjs"]
+  // Browser scripts are served from src/public as-is.
+  "exclude": ["src/public/**"]
 }

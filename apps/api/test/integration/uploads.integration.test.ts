@@ -33,7 +33,7 @@ const { activationRateLimiter } =
 
 const puzzleDataDirectory = path.join(
   import.meta.dirname,
-  "../../src/public/puzzleData"
+  "../../../../storage/puzzleData"
 );
 const uploadedFile = path.join(puzzleDataDirectory, "upload-test.png");
 
@@ -306,6 +306,16 @@ describe("POST /api/v1/puzzle-media", () => {
       path: "/puzzleData/upload-test.png",
     });
     expect(await readFile(uploadedFile, "utf8")).toBe("fake image bytes");
+  });
+
+  it("serves the saved file at the path it answers with", async () => {
+    await signInAs("admin");
+
+    const { headers } = await upload();
+    const response = await request(app).get(headers.location as string);
+
+    expect(response.status).toBe(200);
+    expect(response.body.toString()).toBe("fake image bytes");
   });
 
   it("stores the extension in lowercase", async () => {

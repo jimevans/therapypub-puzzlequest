@@ -108,4 +108,4 @@ dist
 
 .DS_Store
 
-src/public/puzzleData/**
+storage/

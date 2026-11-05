@@ -1,7 +1,7 @@
 // Browser tests of the main journeys, driven by WebdriverIO over WebDriver
 // BiDi, in Chrome and Firefox (`npm run test:e2e`). They run against the built
 // application with an in-memory database. NODE_ENV=test keeps a developer's
-// src/.env out of it, so no real email or text message can be sent.
+// apps/api/.env out of it, so no real email or text message can be sent.
 import { type ChildProcess, spawn } from "node:child_process";
 import { closeSync, openSync } from "node:fs";
 import path from "node:path";
@@ -14,6 +14,8 @@ import {
   TWILIO_AUTH_TOKEN,
   api,
 } from "./support.js";
+
+const APPLICATION = path.join(import.meta.dirname, "../apps/api/dist/app.js");
 
 let mongoServer: MongoMemoryServer | undefined;
 let server: ChildProcess | undefined;
@@ -78,7 +80,7 @@ export const config: WebdriverIO.Config = {
   async onPrepare() {
     mongoServer = await MongoMemoryServer.create();
     const log = openSync(SERVER_LOG, "w");
-    server = spawn(process.execPath, ["dist/app.js"], {
+    server = spawn(process.execPath, [APPLICATION], {
       stdio: ["ignore", log, log],
       env: {
         PATH: process.env.PATH,

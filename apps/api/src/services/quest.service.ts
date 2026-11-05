@@ -39,7 +39,7 @@ import {
   QuestPuzzleStatus,
 } from "../models/quest.model.js";
 import { TeamModel, UserModel } from "../models/user.model.js";
-import { publicDirectory } from "../paths.js";
+import { storageDirectory } from "../paths.js";
 import type { ServiceResult } from "../types.js";
 import { type Page, type PageQuery, findPage } from "../api/paging.js";
 import * as PuzzleService from "./puzzle.service.js";
@@ -1994,7 +1994,7 @@ export async function getQuestRunBook(
           .forEach((token) => processMarkdownToken(token, pdfDoc));
         pdfDoc.text("");
       } else if (puzzleDetail.type === 1) {
-        const image = path.join(publicDirectory, puzzleDetail.text);
+        const image = path.join(storageDirectory, puzzleDetail.text);
         pdfDoc.image(image, {
           fit: [72 * 6.5, 72 * 8.5],
           align: "center",

@@ -1,25 +1,11 @@
 {
-  // Type-checks the server code and tests, which are TypeScript, and the
-  // JavaScript configuration files at the project root, from their JSDoc
-  // annotations (`npm run typecheck`). tsconfig.build.json extends this to compile src/
-  // to dist/.
+  // Type-checks the JavaScript configuration files at the repository's root,
+  // from their JSDoc annotations. `npm run typecheck` runs this and each
+  // workspace's own check.
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "allowJs": true,
-    "checkJs": true,
-    "noEmit": true,
-    "target": "es2022",
-    "lib": ["es2023"],
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
-    "types": ["node"],
-    "skipLibCheck": true,
-    "strict": true
+    "checkJs": true
   },
-  "include": ["src/**/*.ts", "src/**/*.js", "test/**/*.ts", "*.js"],
-  // Browser scripts read globals that each EJS page defines, so they are not
-  // checked yet. src/loader.cjs, the hosting startup file, is not checked
-  // because it imports the build output in dist/, which doesn't exist until
-  // after `npm run build`. The browser tests run under WebdriverIO, with its
-  // own globals, and have their own test/e2e/tsconfig.json.
-  "exclude": ["src/public/**", "test/e2e/**"]
+  "include": ["*.js"]
 }

@@ -22,7 +22,7 @@ describe("authoring", () => {
   const imageFile = path.join(tmpdir(), `${imagePuzzle}.png`);
   const uploadedFile = path.join(
     import.meta.dirname,
-    `../../../src/public/puzzleData/${imagePuzzle}.png`
+    `../../storage/puzzleData/${imagePuzzle}.png`
   );
   let admin = "";
 

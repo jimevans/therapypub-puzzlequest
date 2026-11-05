@@ -102,13 +102,13 @@ export function parseConfig(
     );
     throw new Error(
       `Invalid PuzzleQuest configuration:\n${problems.join("\n")}\n` +
-        "See src/.env.example for the available settings."
+        "See apps/api/.env.example for the available settings."
     );
   }
   return result.data;
 }
 
-// Settings come from environment variables, with src/.env (if present) filling
+// Settings come from environment variables, with apps/api/.env (if present) filling
 // in any that are not set. Tests supply their own settings (see
 // vitest.config.js), so a developer's .env never affects them.
 if (process.env.NODE_ENV !== "test") {
