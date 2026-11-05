@@ -1,4 +1,4 @@
-// The messages of the live-update websocket (/api/updates), which pages
+// The messages of the live-update websocket (/api/v1/updates), which clients
 // showing a quest use to follow it as it happens. The server checks each
 // message it sends against these schemas, so a message can't drift from
 // what the pages expect, and the API's description documents them.
@@ -84,22 +84,37 @@ export const liveUpdateSchema = z
   .meta({
     id: "LiveUpdate",
     description:
-      "A message from the live-update websocket, /api/updates, to a page: which kind is in its message field.",
+      "A message from the live-update websocket, /api/v1/updates, to a client: which kind is in its message field.",
   });
 export type LiveUpdate = z.infer<typeof liveUpdateSchema>;
 
-/**
- * The message a page sends when it connects: the address of the page, whose
- * quest's updates it is sent.
- */
-export const pageMessageSchema = z
+/** A message from the server about a quest, which is every one but the first. */
+export type QuestUpdate = Exclude<LiveUpdate, { message: "connection" }>;
+
+/** The message a client sends to follow a quest: every update of it. */
+export const liveUpdateSubscriptionSchema = z
   .object({
-    message: z.literal("init"),
-    url: z.url(),
+    message: z.literal("subscribe"),
+    questName: z.string().min(1),
   })
   .meta({
     id: "LiveUpdateSubscription",
     description:
-      "The message a page sends to the live-update websocket when it connects, giving the page's address.",
+      "The message a client sends to the live-update websocket to follow a quest. Sending another follows that quest instead.",
   });
-export type PageMessage = z.infer<typeof pageMessageSchema>;
+
+/**
+ * The message the server-rendered pages send when they connect: the address of
+ * the page, whose quest's updates it is sent. It goes when those pages do, so
+ * it isn't in the API's description.
+ */
+const pageSubscription = z.object({
+  message: z.literal("init"),
+  url: z.url(),
+});
+
+/** A message a client sends to the server. */
+export const clientMessageSchema = z.discriminatedUnion("message", [
+  liveUpdateSubscriptionSchema,
+  pageSubscription,
+]);

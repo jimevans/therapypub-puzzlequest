@@ -15,7 +15,7 @@ import {
 } from "../problems.js";
 import {
   liveUpdateSchema,
-  pageMessageSchema,
+  liveUpdateSubscriptionSchema,
 } from "../../schemas/liveUpdates.js";
 import { type AnyRoute, problemsOf } from "./route.js";
 
@@ -29,7 +29,7 @@ Sign in with \`POST /sessions\`. A browser keeps the session in a cookie; an app
 
 Lists come a page at a time: \`?limit=\` (default 50, at most 200) and \`?after=\`, the \`next\` value of the page before.
 
-Pages follow a quest as it happens over the live-update websocket, \`/api/updates\`. A page connects and sends a \`LiveUpdateSubscription\` with its address; the server answers with its connection's ID, then sends a \`LiveUpdate\` for each change to that page's quest. A page sends its connection's ID as \`connectionId\` with its own actions, so their updates aren't sent back to it. Both messages are described under the schemas.
+Clients follow a quest as it happens over the live-update websocket, \`/api/v1/updates\`. Anyone may connect. A client sends a \`LiveUpdateSubscription\` naming the quest; the server answers with its connection's ID, then sends a \`LiveUpdate\` for each change to that quest, naming the puzzle concerned where there is one. A client sends its connection's ID as \`connectionId\` with its own actions, so their updates aren't sent back to it. Both messages are described under the schemas. Updates can be missed, so a client should fetch the quest's state again each time it connects. Starting and resetting a quest send no update.
 
 Errors are problem details (RFC 9457), sent as \`${PROBLEM_MEDIA_TYPE}\`. Act on their \`type\`, one of:
 
@@ -162,7 +162,7 @@ export function createOpenApiDocument(
       // The live-update websocket's messages, which no route returns.
       schemas: {
         LiveUpdate: liveUpdateSchema,
-        LiveUpdateSubscription: pageMessageSchema,
+        LiveUpdateSubscription: liveUpdateSubscriptionSchema,
       },
       securitySchemes: {
         sessionCookie: {

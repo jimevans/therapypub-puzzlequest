@@ -1,4 +1,4 @@
-import type { LiveUpdate } from "../schemas/liveUpdates.js";
+import type { QuestUpdate } from "../schemas/liveUpdates.js";
 import * as WebSocketService from "../services/websocket.service.js";
 import type { QuestActivity } from "./questEventBus.js";
 
@@ -19,8 +19,9 @@ function puzzlePages(questName: string, puzzleName: string): string[] {
 }
 
 /**
- * Sends quest activity to the browsers showing the quest, except the one the
- * action came from, so every player and monitor sees progress as it happens.
+ * Sends quest activity to the clients following the quest and the browsers
+ * showing it, except the one the action came from, so every player and monitor
+ * sees progress as it happens.
  * Starting and resetting quests send nothing; the pages for a quest that
  * hasn't started don't listen for updates. An administrator's rescues
  * (pausing, resuming, skipping, and resetting) tell every page of the quest
@@ -30,7 +31,7 @@ function puzzlePages(questName: string, puzzleName: string): string[] {
 export function sendLiveUpdates(activity: QuestActivity): void {
   const { questName } = activity;
   const exclude = activity.connectionId ? [activity.connectionId] : [];
-  const notify = (pages: string[], data: LiveUpdate) =>
+  const notify = (pages: string[], data: QuestUpdate) =>
     WebSocketService.notifyBrowsers(pages, exclude, data);
 
   const solved = activity.events.find((event) => event.type === "PuzzleSolved");
@@ -75,7 +76,7 @@ export function sendLiveUpdates(activity: QuestActivity): void {
       case "PuzzleSkipped":
       case "PuzzleReset":
         // The pages reload, to show the change everywhere at once.
-        WebSocketService.notifyQuestPages(questName, {
+        WebSocketService.notifyQuestPages({
           message: "questUpdated",
           questName,
         });

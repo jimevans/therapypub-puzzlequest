@@ -25,7 +25,7 @@ function sendMessage(task) {
   }
 
   if (!webSocketChannel) {
-    webSocketChannel = new WebSocket(`${socketBaseUrl}/api/updates`);
+    webSocketChannel = new WebSocket(`${socketBaseUrl}/api/v1/updates`);
 
     webSocketChannel.addEventListener("open", () => {
       while (msgQueue.length > 0) {
