@@ -1,6 +1,8 @@
 // The resources the v1 API returns, as schemas for its description and
 // functions that make them from the services' objects.
 import { z } from "zod";
+import { QuestPuzzleStatus } from "../../models/quest.model.js";
+import type * as QuestService from "../../services/quest.service.js";
 import type * as PuzzleService from "../../services/puzzle.service.js";
 import type * as TeamService from "../../services/team.service.js";
 import type * as UserService from "../../services/user.service.js";
@@ -278,6 +280,154 @@ export const questSchema = z
     }),
   })
   .meta({ id: "Quest" });
+
+/**
+ * A puzzle as its players see it, with what a player's screen needs of the
+ * quest. It holds nothing about puzzles not yet reached, because players must
+ * never learn how long a quest is.
+ */
+export const playerPuzzleSchema = z
+  .object({
+    quest: z.object({
+      name: z.string(),
+      displayName: z.string(),
+      status: z.number().int().meta({
+        description: "0 not started, 1 in progress, 2 completed.",
+      }),
+      statusDescription: z.string(),
+      paused: z.boolean(),
+      progress: z.object({
+        ...progressFields,
+        puzzles: z
+          .array(z.object({ puzzleName: z.string(), ...progressFields }))
+          .meta({ description: "The puzzles reached so far, in order." }),
+      }),
+    }),
+    puzzle: z.object({
+      name: z.string(),
+      displayName: z.string(),
+      status: z.number().int().meta({
+        description: "1 awaiting activation, 2 in progress, 3 completed.",
+      }),
+      statusDescription: z.string(),
+      skipped: z.boolean(),
+      stopNumber: z.number().int().meta({
+        description:
+          "The puzzle's place in the quest, counting from 1. How many stops are left is never shown.",
+      }),
+      type: z.number().int().nullable().meta({
+        description:
+          "0 text, 1 image, 2 audio, 3 video; null until the puzzle is activated.",
+      }),
+      text: z.string().nullable().meta({
+        description:
+          "The puzzle's Markdown, or the path of its media; null until the puzzle is activated.",
+      }),
+      hints: z
+        .array(
+          z.object({
+            text: z.string(),
+            timePenalty: z.number().int().meta({ description: "In seconds." }),
+          })
+        )
+        .meta({ description: "The hints revealed so far." }),
+      nextHint: z
+        .object({
+          timePenalty: z.number().int().meta({ description: "In seconds." }),
+          solutionWarning: z.boolean().meta({
+            description: "True if the hint gives the solution away.",
+          }),
+        })
+        .nullable()
+        .meta({
+          description:
+            "What revealing the next hint would cost; null if the puzzle isn't in progress or has no more hints.",
+        }),
+      solutionText: z.string().nullable().meta({
+        description: "Null until the puzzle is completed.",
+      }),
+    }),
+    next: z
+      .object({ name: z.string(), displayName: z.string() })
+      .nullable()
+      .meta({
+        description:
+          "The puzzle after this one, once the players have reached it; otherwise null.",
+      }),
+  })
+  .meta({ id: "PlayerPuzzle" });
+
+/**
+ * Makes a puzzle's resource as its players see it.
+ * @param quest the quest
+ * @param puzzle the quest's puzzle, which the players have reached
+ * @param detail the puzzle's definition
+ * @returns the resource
+ */
+export function toPlayerPuzzleResource(
+  quest: QuestService.Quest,
+  puzzle: QuestService.QuestPuzzle,
+  detail: PuzzleService.Puzzle
+) {
+  const isReached = ({ status }: QuestService.QuestPuzzle) =>
+    status > QuestPuzzleStatus.UNAVAILABLE;
+  const reached = quest.puzzles.filter(isReached);
+  const reachedNames = new Set(reached.map(({ puzzleName }) => puzzleName));
+  const progress = quest.getProgress();
+  const stopIndex = reached.findIndex(
+    ({ puzzleName }) => puzzleName === puzzle.puzzleName
+  );
+  const next = reached.at(stopIndex + 1);
+  const activated = puzzle.status >= QuestPuzzleStatus.IN_PROGRESS;
+  const nextHint =
+    puzzle.status === QuestPuzzleStatus.IN_PROGRESS
+      ? detail.hints[puzzle.nextHintToDisplay]
+      : undefined;
+  return {
+    quest: {
+      name: quest.name,
+      displayName: quest.displayName,
+      status: quest.status,
+      statusDescription: quest.statusDescription,
+      paused: quest.paused,
+      progress: {
+        ...progress,
+        puzzles: progress.puzzles.filter(({ puzzleName }) =>
+          reachedNames.has(puzzleName)
+        ),
+      },
+    },
+    puzzle: {
+      name: puzzle.puzzleName,
+      displayName: detail.displayName,
+      status: puzzle.status,
+      statusDescription: puzzle.statusDescription,
+      skipped: puzzle.skipped,
+      stopNumber: stopIndex + 1,
+      type: activated ? detail.type : null,
+      text: activated ? detail.text : null,
+      hints: detail.hints
+        .slice(0, puzzle.nextHintToDisplay)
+        .map(({ text, timePenalty }) => ({ text, timePenalty })),
+      nextHint: nextHint
+        ? {
+            timePenalty: nextHint.timePenalty,
+            solutionWarning: nextHint.solutionWarning,
+          }
+        : null,
+      solutionText:
+        puzzle.status === QuestPuzzleStatus.COMPLETED
+          ? detail.solutionDisplayText
+          : null,
+    },
+    next: next
+      ? {
+          name: next.puzzleName,
+          displayName: next.puzzleDetail?.displayName ?? next.puzzleName,
+        }
+      : null,
+  };
+}
 
 /** Something that happened in a quest, from its event log. */
 export const questEventSchema = z

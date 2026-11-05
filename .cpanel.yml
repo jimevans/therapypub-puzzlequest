@@ -41,12 +41,6 @@ deployment:
     # Compile to dist/, then remove the build and test tools.
     - source $NODE_ENVIRONMENT/bin/activate && cd $DEPLOYPATH && npm run build
     - source $NODE_ENVIRONMENT/bin/activate && cd $PACKAGES && npm prune --omit=dev
-    # One-time move to the workspace layout; remove these two tasks once it has
-    # been deployed. They come after the build, so a failed deployment leaves
-    # the old layout working. Uploaded media moves out of the code, then what
-    # the old layout left behind goes, but only if no media is still there.
-    - if [ -d $DEPLOYPATH/src/public/puzzleData ] && [ ! -e $DEPLOYPATH/storage/puzzleData ]; then mkdir -p $DEPLOYPATH/storage && mv $DEPLOYPATH/src/public/puzzleData $DEPLOYPATH/storage/puzzleData; fi
-    - if [ ! -e $DEPLOYPATH/src/public/puzzleData ]; then rm -rf $DEPLOYPATH/src $DEPLOYPATH/dist $DEPLOYPATH/test $DEPLOYPATH/tsconfig.build.json $DEPLOYPATH/vitest.config.js; fi
     # Passenger restarts the application on its next request when this file
     # changes.
     - mkdir -p $DEPLOYPATH/tmp && touch $DEPLOYPATH/tmp/restart.txt
