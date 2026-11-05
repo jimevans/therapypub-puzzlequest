@@ -12,11 +12,18 @@ import {
 } from "../../schemas/user.schemas.js";
 import * as EmailVerificationService from "../../services/emailVerification.service.js";
 import * as PasswordService from "../../services/password.service.js";
+import * as QuestService from "../../services/quest.service.js";
 import * as UserService from "../../services/user.service.js";
 import { getErrorMessage } from "../../errors.js";
 import { pageQuery, pageSchema } from "../paging.js";
 import { Problems, sendProblem, sendServiceProblem } from "../problems.js";
-import { resourcePath, toUserResource, userSchema } from "./resources.js";
+import {
+  questSummarySchema,
+  resourcePath,
+  toQuestSummaryResource,
+  toUserResource,
+  userSchema,
+} from "./resources.js";
 import { defineRoute } from "./route.js";
 
 /** The path parameter naming a user. */
@@ -138,6 +145,39 @@ export const userRoutes = [
         return;
       }
       res.json(user.data);
+    },
+  }),
+  defineRoute({
+    method: "get",
+    path: "/users/{userName}/quests",
+    operationId: "listUserQuests",
+    summary: "List a user's quests",
+    description:
+      "The quests assigned to the user or their teams, once they have started: what a player sees on signing in. It has no puzzles in it, so it says nothing about how long a quest is.",
+    tags: ["Users"],
+    access: "selfOrAdmin",
+    request: { params: userParams, query: pageQuery },
+    responses: {
+      200: {
+        description: "A page of quests.",
+        body: pageSchema(questSummarySchema),
+      },
+    },
+    problems: [Problems.notFound],
+    async handle(req, res) {
+      const found = await UserService.getUserByUserName(req.params.userName);
+      if (found.status === "error") {
+        sendServiceProblem(res, found);
+        return;
+      }
+      const page = await QuestService.listAssignedQuestsPage(
+        await found.data.getAssigneeIds(),
+        req.query
+      );
+      res.json({
+        items: page.items.map(toQuestSummaryResource),
+        next: page.next,
+      });
     },
   }),
   defineRoute({

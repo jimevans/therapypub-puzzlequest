@@ -757,6 +757,140 @@
         }
       }
     },
+    "/users/{userName}/quests": {
+      "get": {
+        "operationId": "listUserQuests",
+        "summary": "List a user's quests",
+        "description": "The quests assigned to the user or their teams, once they have started: what a player sees on signing in. It has no puzzles in it, so it says nothing about how long a quest is.",
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "description": "How many items to return, from 1 to 200.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            },
+            "description": "How many items to return, from 1 to 200."
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "schema": {
+              "description": "Where the page starts: the next value of the page before. Leave it out for the first page.",
+              "type": "string"
+            },
+            "description": "Where the page starts: the next value of the page before. Leave it out for the first page."
+          },
+          {
+            "in": "path",
+            "name": "userName",
+            "schema": {
+              "type": "string",
+              "description": "The user's user name."
+            },
+            "required": true,
+            "description": "The user's user name."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of quests.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/QuestSummary"
+                      },
+                      "description": "The page's items."
+                    },
+                    "next": {
+                      "description": "The cursor for the next page, to send as after; null on the last page.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "next"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "/problems/invalid-request: The request isn't valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "/problems/sign-in-required: Sign in to do this.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "/problems/forbidden: Not allowed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "/problems/not-found: Not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "/problems/unexpected: An unexpected error occurred.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/users/{userName}/password": {
       "put": {
         "operationId": "changePassword",
@@ -5032,6 +5166,84 @@
         "required": [
           "teamName",
           "displayName"
+        ],
+        "additionalProperties": false
+      },
+      "QuestSummary": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "1 in progress, 2 completed."
+          },
+          "statusDescription": {
+            "type": "string"
+          },
+          "paused": {
+            "type": "boolean"
+          },
+          "progress": {
+            "type": "object",
+            "properties": {
+              "startTime": {
+                "description": "When the clock started.",
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "endTime": {
+                "description": "When the clock stopped.",
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "running": {
+                "type": "boolean",
+                "description": "True while the clock runs: started, not stopped or paused."
+              },
+              "clockStart": {
+                "description": "While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.",
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "elapsedMs": {
+                "type": "number",
+                "description": "Milliseconds on the clock, leaving out paused time."
+              },
+              "penaltyMs": {
+                "type": "number",
+                "description": "The revealed hints' time penalties, in milliseconds."
+              },
+              "totalMs": {
+                "type": "number",
+                "description": "The score: elapsed time plus penalties. Lower is better."
+              }
+            },
+            "required": [
+              "running",
+              "elapsedMs",
+              "penaltyMs",
+              "totalMs"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "name",
+          "displayName",
+          "status",
+          "statusDescription",
+          "paused",
+          "progress"
         ],
         "additionalProperties": false
       },

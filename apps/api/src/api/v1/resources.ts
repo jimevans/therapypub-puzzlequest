@@ -289,6 +289,40 @@ const reachedProgressSchema = z.object({
     .meta({ description: "The puzzles reached so far, in order." }),
 });
 
+/**
+ * A quest in a list of a player's quests. It has the whole quest's progress and
+ * nothing puzzle by puzzle, so it can't reveal how long the quest is.
+ */
+export const questSummarySchema = z
+  .object({
+    name: z.string(),
+    displayName: z.string(),
+    status: z.number().int().meta({
+      description: "1 in progress, 2 completed.",
+    }),
+    statusDescription: z.string(),
+    paused: z.boolean(),
+    progress: z.object(progressFields),
+  })
+  .meta({ id: "QuestSummary" });
+
+/**
+ * Makes a quest's resource for a list of a player's quests.
+ * @param quest the quest
+ * @returns the resource, built field by field so that nothing else gets in
+ */
+export function toQuestSummaryResource(quest: QuestService.Quest) {
+  const { puzzles: _puzzles, ...progress } = quest.getProgress();
+  return {
+    name: quest.name,
+    displayName: quest.displayName,
+    status: quest.status,
+    statusDescription: quest.statusDescription,
+    paused: quest.paused,
+    progress,
+  };
+}
+
 /** A hint that has been revealed. */
 const revealedHintSchema = z.object({
   text: z.string(),

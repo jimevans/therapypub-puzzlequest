@@ -114,6 +114,26 @@ export interface paths {
         patch: operations["updateUser"];
         trace?: never;
     };
+    "/users/{userName}/quests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a user's quests
+         * @description The quests assigned to the user or their teams, once they have started: what a player sees on signing in. It has no puzzles in it, so it says nothing about how long a quest is.
+         */
+        get: operations["listUserQuests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/{userName}/password": {
         parameters: {
             query?: never;
@@ -763,6 +783,39 @@ export interface components {
         TeamSummary: {
             teamName: string;
             displayName: string;
+        };
+        QuestSummary: {
+            name: string;
+            displayName: string;
+            /** @description 1 in progress, 2 completed. */
+            status: number;
+            statusDescription: string;
+            paused: boolean;
+            progress: {
+                /**
+                 * Format: date-time
+                 * @description When the clock started.
+                 */
+                startTime?: string;
+                /**
+                 * Format: date-time
+                 * @description When the clock stopped.
+                 */
+                endTime?: string;
+                /** @description True while the clock runs: started, not stopped or paused. */
+                running: boolean;
+                /**
+                 * Format: date-time
+                 * @description While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.
+                 */
+                clockStart?: string;
+                /** @description Milliseconds on the clock, leaving out paused time. */
+                elapsedMs: number;
+                /** @description The revealed hints' time penalties, in milliseconds. */
+                penaltyMs: number;
+                /** @description The score: elapsed time plus penalties. Lower is better. */
+                totalMs: number;
+            };
         };
         Team: {
             teamName: string;
@@ -1686,6 +1739,84 @@ export interface operations {
             };
             /** @description /problems/already-exists: Already exists. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listUserQuests: {
+        parameters: {
+            query?: {
+                /** @description How many items to return, from 1 to 200. */
+                limit?: number;
+                /** @description Where the page starts: the next value of the page before. Leave it out for the first page. */
+                after?: string;
+            };
+            header?: never;
+            path: {
+                /** @description The user's user name. */
+                userName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of quests. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description The page's items. */
+                        items: components["schemas"]["QuestSummary"][];
+                        /** @description The cursor for the next page, to send as after; null on the last page. */
+                        next: string | null;
+                    };
+                };
+            };
+            /** @description /problems/invalid-request: The request isn't valid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/forbidden: Not allowed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

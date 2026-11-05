@@ -821,6 +821,41 @@ export async function listQuestsPage(query: PageQuery): Promise<Page<Quest>> {
 }
 
 /**
+ * Gets a page of the quests assigned to any of the given users and teams, once
+ * they have started, as a player sees them listed.
+ * @param assigneeIds the IDs of the users and teams
+ * @param query the page wanted
+ * @returns the page of quests
+ */
+export async function listAssignedQuestsPage(
+  assigneeIds: string[],
+  query: PageQuery
+): Promise<Page<Quest>> {
+  const page = await findPage(
+    (conditions) =>
+      QuestModel.find(
+        {
+          ...conditions,
+          "assignee.id": {
+            $in: assigneeIds.map((id) => new mongoose.Types.ObjectId(id)),
+          },
+          status: { $gte: QuestStatus.IN_PROGRESS },
+        },
+        { _id: 1 }
+      ).lean(),
+    query
+  );
+  if (!page.items.length) {
+    return { items: [], next: null };
+  }
+  const found = await findQuests(
+    { questIds: page.items.map((quest) => quest._id) },
+    true
+  );
+  return { items: found.data ?? [], next: page.next };
+}
+
+/**
  * Gets a page of what happened in a quest, oldest first, from its event log.
  * The log keeps names as they were, as history.
  * @param questName the quest
