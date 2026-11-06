@@ -1,0 +1,57 @@
+/* Aligned to the right, so that on a long quest the earliest steps are what runs
+   off the edge, and the current one always shows. The last item takes up any
+   spare room, which puts a short line at the left. */
+.trail {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  overflow: hidden;
+}
+
+.passed,
+.done,
+.current {
+  flex: none;
+  border-radius: 50%;
+}
+
+.passed,
+.done {
+  width: 18px;
+  height: 18px;
+  background: var(--accent);
+}
+
+.passed {
+  position: relative;
+  margin-right: 34px;
+}
+
+/* The rail from this step to the next. */
+.passed::after {
+  position: absolute;
+  top: 6px;
+  left: 18px;
+  width: 34px;
+  height: 6px;
+  background: var(--accent);
+  content: "";
+}
+
+.current {
+  width: 26px;
+  height: 26px;
+  border: 6px solid var(--accent);
+  background: var(--paper);
+}
+
+.ahead {
+  flex: 1 0 3rem;
+  height: 0;
+  margin-left: var(--space-2);
+  border-top: 6px dotted var(--line-off);
+}
+
+.end {
+  flex: 1 1 0;
+}

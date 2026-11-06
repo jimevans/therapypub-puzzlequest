@@ -5,7 +5,6 @@ import { marked } from "marked";
 import PDFDocument from "pdfkit";
 import { RenderMode } from "../middleware/useRenderMode.js";
 import { PuzzleType } from "../models/puzzle.model.js";
-import { QuestPuzzleStatus } from "../models/quest.model.js";
 import * as QuestService from "../services/quest.service.js";
 import * as UserService from "../services/user.service.js";
 import { sendWebApp } from "./web.controller.js";
@@ -48,88 +47,6 @@ export async function renderQuest(
     renderMode: req.renderMode,
     quest: quest,
     progress: quest.getProgress(),
-  });
-}
-
-export async function renderQuestPuzzle(
-  req: RouteRequest<"name" | "puzzleName">,
-  res: Response
-): Promise<void> {
-  // The route requires a signed-in user.
-  const loggedInUser = UserService.requireLoggedInUser(req.user);
-  const questName = req.params.name;
-  const questPuzzleResponse = await QuestService.getQuestAndPuzzle(
-    questName,
-    req.params.puzzleName,
-    loggedInUser
-  );
-  if (questPuzzleResponse.status === "error") {
-    res.status(questPuzzleResponse.statusCode).render("error", {
-      errorTitle: "Not found",
-      errorDetails: questPuzzleResponse.message,
-    });
-    return;
-  }
-  const { quest, puzzle } = questPuzzleResponse.data;
-  // A puzzle deleted after it was added to the quest has no details.
-  const puzzleDetail = puzzle.puzzleDetail;
-  if (!puzzleDetail) {
-    res.status(404).render("error", {
-      errorTitle: "Not found",
-      errorDetails: `Puzzle ${req.params.puzzleName} no longer exists`,
-    });
-    return;
-  }
-
-  if (puzzle.status === QuestPuzzleStatus.AWAITING_ACTIVATION) {
-    res.render("activate", {
-      paused: quest.paused,
-      userName: loggedInUser.userName,
-      quest: questName,
-      puzzle: {
-        puzzleName: puzzle.puzzleName,
-        displayName: puzzleDetail.displayName,
-      },
-    });
-    return;
-  }
-
-  let renderedPuzzle;
-  switch (puzzleDetail.type) {
-    case PuzzleType.IMAGE:
-      renderedPuzzle = `<img src="${puzzleDetail.text}" class="pq-puzzle-img" />`;
-      break;
-    case PuzzleType.AUDIO:
-      renderedPuzzle = `<audio src="${puzzleDetail.text}" />`;
-      break;
-    case PuzzleType.VIDEO:
-      renderedPuzzle = `<div class="pq-puzzle-video-content"><video src="${puzzleDetail.text}" type="video/mp4" playsinline controls /></div>`;
-      break;
-    default:
-      renderedPuzzle = await marked.parse(puzzleDetail.text, {
-        gfm: true,
-      });
-  }
-
-  const nextHint =
-    puzzle.nextHintToDisplay < puzzleDetail.hints.length
-      ? puzzleDetail.hints[puzzle.nextHintToDisplay]
-      : undefined;
-
-  res.render("puzzle", {
-    paused: quest.paused,
-    userName: loggedInUser.userName,
-    quest: questName,
-    puzzle: {
-      puzzleName: puzzle.puzzleName,
-      displayName: puzzleDetail.displayName,
-      status: puzzle.status,
-      solutionDisplayText: puzzleDetail.solutionDisplayText,
-      hints: puzzleDetail.hints.slice(0, puzzle.nextHintToDisplay),
-      nextHintTimePenalty: nextHint ? nextHint.timePenalty : 0,
-      nextHintSolutionWarning: nextHint ? nextHint.solutionWarning : undefined,
-    },
-    rendered: renderedPuzzle,
   });
 }
 

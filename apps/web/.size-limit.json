@@ -24,8 +24,31 @@
   },
   {
     "name": "The quest screen, on top of that",
-    "path": ["dist/assets/QuestScreen-*.js", "dist/assets/ClockTime-*.js"],
+    "path": [
+      "dist/assets/QuestScreen-*.js",
+      "dist/assets/ClockTime-*.js",
+      "dist/assets/PausedBanner-*.js"
+    ],
     "limit": "5 KB",
+    "gzip": true
+  },
+  {
+    "name": "The puzzle screen, on top of that",
+    "path": [
+      "dist/assets/PuzzleScreen-*.js",
+      "dist/assets/ClockTime-*.js",
+      "dist/assets/PausedBanner-*.js",
+      "dist/assets/Button-*.js",
+      "dist/assets/TextField-*.js",
+      "dist/assets/aria-*.js"
+    ],
+    "limit": "22 KB",
+    "gzip": true
+  },
+  {
+    "name": "A text puzzle's Markdown, once activated",
+    "path": "dist/assets/PuzzleText-*.js",
+    "limit": "52 KB",
     "gzip": true
   },
   {
@@ -33,6 +56,7 @@
     "path": [
       "dist/assets/SignIn-*.js",
       "dist/assets/Button-*.js",
+      "dist/assets/TextField-*.js",
       "dist/assets/aria-*.js"
     ],
     "limit": "32 KB",

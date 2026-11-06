@@ -102,11 +102,11 @@ describe("a player", () => {
     expect(missing.text).toBe(REACT_PAGE);
   });
 
-  it("still gets the EJS page for a puzzle", async () => {
+  it("gets the React app for a puzzle", async () => {
     const response = await getPage("/quest/trail/puzzle/riddle", "player");
 
     expect(response.status).toBe(200);
-    expect(response.text).toContain('src="/script/activate.js"');
+    expect(response.text).toBe(REACT_PAGE);
   });
 
   it.each(["/quest/new", "/quest/trail/edit"])(
@@ -131,6 +131,14 @@ describe("an administrator", () => {
   });
 });
 
+describe("an administrator, who has no EJS page for it", () => {
+  it("gets the React app for a puzzle", async () => {
+    const response = await getPage("/quest/trail/puzzle/riddle", "admin");
+
+    expect(response.text).toBe(REACT_PAGE);
+  });
+});
+
 describe("an anonymous visitor", () => {
   it("gets the landing page at the site's root", async () => {
     const response = await getPage("/");
@@ -139,12 +147,15 @@ describe("an anonymous visitor", () => {
     expect(response.text).toContain('src="/script/index.js"');
   });
 
-  it("is sent to sign in, and back, from a quest", async () => {
-    const response = await getPage("/quest/trail");
+  it.each(["/quest/trail", "/quest/trail/puzzle/riddle"])(
+    "is sent to sign in, and back, from %s",
+    async (page) => {
+      const response = await getPage(page);
 
-    expect(response.status).toBe(302);
-    expect(response.headers.location).toBe(
-      `/login?next=${encodeURIComponent("/quest/trail")}`
-    );
-  });
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe(
+        `/login?next=${encodeURIComponent(page)}`
+      );
+    }
+  );
 });

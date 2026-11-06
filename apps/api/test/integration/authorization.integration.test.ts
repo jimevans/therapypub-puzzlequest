@@ -180,7 +180,7 @@ const ROUTES: [string, string, Policy][] = [
   ["get", "/quest/new", ADMIN],
   ["get", "/quest/:name", SIGNED_IN],
   ["get", "/quest/:name/edit", ADMIN],
-  ["get", "/quest/:name/puzzle/:puzzleName", QUEST_VIEWER],
+  ["get", "/quest/:name/puzzle/:puzzleName", SIGNED_IN],
   ["get", "/quest/:name/puzzle/:puzzleName/qrcode", ADMIN],
   ["get", "/quest/:name/pdf", ADMIN],
 
