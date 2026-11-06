@@ -19,9 +19,9 @@ export const routes: RouteObject[] = [
     errorElement: <ErrorPage />,
     children: [
       {
-        path: "/web-check",
+        path: "/login",
         lazy: async () => ({
-          Component: (await import("../screens/webCheck/WebCheck")).WebCheck,
+          Component: (await import("../screens/signIn/SignIn")).SignIn,
         }),
       },
     ],

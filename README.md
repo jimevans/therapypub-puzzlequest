@@ -136,7 +136,7 @@ This is an [npm workspaces](https://docs.npmjs.com/cli/using-npm/workspaces) mon
   - `src/ui`: the shared components, built on [React Aria Components](https://react-spectrum.adobe.com/react-aria/) for accessibility.
   - `src/screens`: the screens, by area.
   - `src/styles`: the design's tokens in `tokens.css`. Components use the meanings there, such as `--accent`, never raw colors, and style themselves with CSS Modules.
-  - What every page downloads first has a budget in `.size-limit.json`, which CI checks after building (`npm run size --workspace=@puzzlequest/web`). Importing a large library from `src/app` or `src/ui/PageShell.tsx` adds to it for every page.
+  - What every page downloads first, and each screen on top of that, has a budget in `.size-limit.json`, which CI checks after building (`npm run size --workspace=@puzzlequest/web`). Importing a large library from `src/app` or `src/ui/PageShell.tsx` adds to it for every page.
 - `packages/api-client`: a typed client of the API, and `followQuest`, which follows a quest's live updates and reconnects by itself, generated from the API's OpenAPI description. After changing a route, run `npm run generate:api` and commit the result; CI fails if the generated files don't match the routes. The generator asks for TypeScript 5, but runs correctly on the project's TypeScript 6, which an `overrides` entry in the root `package.json` allows.
 - `e2e`: the browser tests, which exercise the whole product.
 - `storage`: uploaded puzzle media, not committed.

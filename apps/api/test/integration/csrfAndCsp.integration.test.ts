@@ -176,7 +176,7 @@ describe("the Content Security Policy", () => {
   }
 
   it("allows only this site's scripts and the page's own inline scripts", async () => {
-    const policy = policyOf(await request(app).get("/login"));
+    const policy = policyOf(await request(app).get("/"));
 
     expect(policy["script-src"]).toMatch(/^'self' 'nonce-[A-Za-z0-9+/=]+'$/);
     expect(policy["script-src-attr"]).toBe("'none'");
@@ -186,20 +186,20 @@ describe("the Content Security Policy", () => {
   });
 
   it("uses a new nonce for every response", async () => {
-    const first = policyOf(await request(app).get("/login"))["script-src"];
-    const second = policyOf(await request(app).get("/login"))["script-src"];
+    const first = policyOf(await request(app).get("/"))["script-src"];
+    const second = policyOf(await request(app).get("/"))["script-src"];
 
     expect(first).not.toBe(second);
   });
 
   it("allows live updates over this site's websocket", async () => {
-    const policy = policyOf(await request(app).get("/login"));
+    const policy = policyOf(await request(app).get("/"));
 
     expect(policy["connect-src"]).toBe("'self' wss://puzzlequest.example");
   });
 
   it("asks browsers to load everything over HTTPS outside development", async () => {
-    const policy = policyOf(await request(app).get("/login"));
+    const policy = policyOf(await request(app).get("/"));
 
     expect(policy).toHaveProperty("upgrade-insecure-requests");
   });

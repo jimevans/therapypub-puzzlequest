@@ -11,8 +11,8 @@ import { Problems, isV1Request, sendProblem } from "../api/problems.js";
 type Permission = (user: UserService.User, req: Request) => boolean;
 
 /**
- * Asks an anonymous visitor to sign in: a 401 for the API, or the sign-in
- * page, which returns to the requested page afterwards.
+ * Asks an anonymous visitor to sign in: a 401 for the API, or a redirect to the
+ * sign-in page, which returns to the requested page afterwards.
  * @param req the request
  * @param res the response
  */
@@ -25,7 +25,7 @@ function requestSignIn(req: Request, res: Response): void {
     );
     return;
   }
-  res.render("login", { requestingUrl: req.originalUrl });
+  res.redirect(`/login?next=${encodeURIComponent(req.originalUrl)}`);
 }
 
 /**

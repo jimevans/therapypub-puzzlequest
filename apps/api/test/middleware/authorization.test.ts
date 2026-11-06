@@ -80,13 +80,13 @@ describe.each([
 });
 
 describe("for pages", () => {
-  it("shows an anonymous visitor the sign-in page, returning to the page afterwards", () => {
+  it("sends an anonymous visitor to sign in, returning to the page afterwards", () => {
     const { res, passed } = run(requireUser, null, "/quest/q1");
 
     expect(passed).toBe(false);
-    expect(res.render).toHaveBeenCalledWith("login", {
-      requestingUrl: "/quest/q1",
-    });
+    expect(res.redirect).toHaveBeenCalledWith(
+      `/login?next=${encodeURIComponent("/quest/q1")}`
+    );
   });
 
   it("shows a forbidden page with a 403", () => {

@@ -131,7 +131,6 @@ function getPage(path: string, account: string | null): request.Test {
 // [description, path, account, view, text the page must contain]
 const PAGES: [string, string, string | null, string, string[]][] = [
   ["landing page", "/", null, "index", ["Sign up"]],
-  ["sign-in page", "/login", null, "login", []],
   ["sign-up page", "/user/register", null, "user", ['id="user-name"']],
   ["forgot password page", "/user/password/forgot", null, "forgotPassword", []],
   [
@@ -148,7 +147,6 @@ const PAGES: [string, string, string | null, string, string[]][] = [
     "verifyEmail",
     ['"abc_123"'],
   ],
-  ["sign-in for a protected page", "/puzzle/text-puzzle", null, "login", []],
 
   ["administrator home", "/", "admin", "admin", []],
   ["own profile", "/user/admin", "admin", "user", ["Change password"]],
@@ -272,6 +270,15 @@ describe.each(PAGES)("%s (%s)", (_description, path, account, view, texts) => {
 });
 
 describe("a quest puzzle whose puzzle was deleted", () => {
+  it("sends an anonymous visitor to sign in, and back to the page afterwards", async () => {
+    const response = await getPage("/puzzle/text-puzzle?a=1&b=2", null);
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe(
+      `/login?next=${encodeURIComponent("/puzzle/text-puzzle?a=1&b=2")}`
+    );
+  });
+
   it("renders the error page with a 404", async () => {
     await PuzzleModel.create({
       name: "doomed-puzzle",

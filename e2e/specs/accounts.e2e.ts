@@ -44,7 +44,7 @@ describe("an account", () => {
   it("can't sign in with the old password", async () => {
     await signIn(userName, PASSWORD);
 
-    await expect($(".pq-error span")).toHaveText(
+    await expect($('[role="alert"]')).toHaveText(
       "Incorrect user name or password"
     );
   });

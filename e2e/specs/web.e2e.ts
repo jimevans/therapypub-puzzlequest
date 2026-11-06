@@ -1,6 +1,6 @@
 // The React app, built and served as in production: it runs under the site's
-// Content Security Policy, reaches the API through the typed client, and
-// connects to the live-update socket.
+// Content Security Policy, and signing in works from the page that asked for
+// it. Playing a quest, including live updates, is in playing.e2e.ts.
 import { PASSWORD, api, signIn, unique } from "../support.js";
 
 /**
@@ -34,54 +34,60 @@ describe("the web app", () => {
     });
   });
 
-  it("loads, and connects to the API and live updates, signed out", async () => {
-    await browser.url("/web-check");
-
-    await expect($("#bundle")).toHaveText("Loaded");
-    await expect($("#session")).toHaveText("Not signed in");
-    await expect($("#live-updates")).toHaveText("Connected");
-    expect(await blockedByPolicy()).toEqual([]);
-  });
-
-  it("knows who is signed in", async () => {
-    await signIn(userName);
-    await expect($(`a[href="/user/${userName}"]`)).toExist();
-    await browser.url("/web-check");
-
-    await expect($("#session")).toHaveText("Signed in as Web Player");
-    await expect($("#live-updates")).toHaveText("Connected");
-    expect(await blockedByPolicy()).toEqual([]);
-  });
-
-  it("shows its fonts and styles, and its controls work", async () => {
-    await browser.url("/web-check");
-    await expect($("#session")).toHaveText("Signed in as Web Player");
+  it("shows its fonts and styles, with nothing blocked", async () => {
+    await browser.url("/login");
+    await expect($("#login")).toBeDisplayed();
 
     const fontLoaded = await browser.execute(async () => {
       await document.fonts.ready;
       return document.fonts.check('700 16px "Barlow Condensed"');
     });
     expect(fontLoaded).toBe(true);
-    const buttonColor =
-      await $("#check-again").getCSSProperty("background-color");
+    const buttonColor = await $("#login").getCSSProperty("background-color");
     expect(buttonColor.parsed.hex).toBe("#0a4fd6");
-
     // React Aria's rule, moved to the stylesheet so the policy allows it. Chrome
     // reports it by its equivalent, "manipulation".
-    const touchAction = await $("#check-again").getCSSProperty("touch-action");
+    const touchAction = await $("#login").getCSSProperty("touch-action");
     expect(["pan-x pan-y pinch-zoom", "manipulation"]).toContain(
       touchAction.value
     );
+    expect(await blockedByPolicy()).toEqual([]);
+  });
 
-    await $("#check-again").click();
-    await expect($("#session")).toHaveText("Signed in as Web Player");
+  it("sends a visitor to sign in, and back to the page they wanted", async () => {
+    await browser.url(`/user/${userName}`);
+    await expect($("#login")).toBeDisplayed();
+    await expect(browser).toHaveUrl(expect.stringContaining("/login?next="));
+
+    await $("#user-name").setValue(userName);
+    await $("#password").setValue(PASSWORD);
+    await $("#login").click();
+
+    await expect(browser).toHaveUrl(
+      expect.stringContaining(`/user/${userName}`)
+    );
+  });
+
+  it("has account links once signed in, including signing out", async () => {
+    await signIn(userName);
+    await expect($(`a[href="/user/${userName}"]`)).toExist();
+
+    await browser.url("/login");
+    await $("a=Sign out").click();
+
+    await browser.waitUntil(
+      async () => !(await browser.getUrl()).includes("/login")
+    );
+    await browser.url("/login");
+    await expect($("#login")).toBeDisplayed();
+    await expect($("a=Sign out")).not.toExist();
     expect(await blockedByPolicy()).toEqual([]);
   });
 
   // Shows the checks above would notice something being blocked.
   it("has the policy block a script injected into the page", async () => {
-    await browser.url("/web-check");
-    await expect($("#bundle")).toHaveText("Loaded");
+    await browser.url("/login");
+    await expect($("#login")).toBeDisplayed();
 
     await browser.execute(() => {
       const script = document.createElement("script");

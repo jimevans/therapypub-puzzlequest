@@ -54,10 +54,6 @@ export async function index(req: Request, res: Response): Promise<void> {
   });
 }
 
-export function login(req: Request, res: Response): void {
-  res.render("login", { requestingUrl: "/" });
-}
-
 /**
  * Signs out: ends the browser's session and returns to the home page.
  * @param req the request
