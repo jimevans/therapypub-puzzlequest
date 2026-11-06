@@ -70,6 +70,7 @@ export default [
     "src/screens/followAlong/FollowPuzzle.tsx",
     "4 KB"
   ),
+  onTopOfFirstLoad("The board", "src/screens/followAlong/Board.tsx", "5 KB"),
   onTopOfFirstLoad(
     "A text puzzle's Markdown",
     "src/quests/PuzzleText.tsx",

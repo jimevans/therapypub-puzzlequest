@@ -199,7 +199,24 @@ describe("the web app", () => {
       await expect($("#activation-code")).not.toExist();
     });
 
+    it("shows on a big screen, signed out, following along live", async () => {
+      await $("=Show on a big screen").click();
+
+      await expect($(`[data-quest-name="${questName}"]`)).toBeDisplayed();
+      await expect($(LIVE_UPDATES_CONNECTED)).toExist();
+      expect(await $("body").getHTML()).not.toContain(hidden);
+      await expect($("#paused-banner")).not.toExist();
+
+      await api("POST", `/quests/${questName}/pause`, admin);
+      await expect($("#paused-banner")).toBeDisplayed();
+
+      await api("POST", `/quests/${questName}/resume`, admin);
+      await expect($("#paused-banner")).not.toExist();
+      expect(await blockedByPolicy()).toEqual([]);
+    });
+
     it("shows spectators a puzzle, read-only, updating live", async () => {
+      await browser.url(`/monitor/quest/${questName}`);
       await $(`a[href="/monitor/quest/${questName}/puzzle/${second}"]`).click();
 
       await expect($("#puzzle-content strong")).toHaveText("yes");

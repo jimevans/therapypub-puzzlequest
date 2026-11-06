@@ -1,6 +1,6 @@
 import type { Schemas } from "@puzzlequest/api-client";
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { ApiError } from "../../api";
 import { useLiveQuest } from "../../live/useLiveQuest";
 import { FinishPanel } from "../../quests/FinishPanel";
@@ -78,7 +78,15 @@ export function FollowQuest() {
       {gone ? (
         <NotAvailable what="quest" />
       ) : quest.data ? (
-        <QuestDetails quest={quest.data} />
+        <>
+          <QuestDetails quest={quest.data} />
+          <Link
+            className={styles.questLink}
+            to={`/monitor/quest/${encodeURIComponent(name)}/board`}
+          >
+            Show on a big screen
+          </Link>
+        </>
       ) : (
         quest.isError && (
           <Banner tone="danger">
