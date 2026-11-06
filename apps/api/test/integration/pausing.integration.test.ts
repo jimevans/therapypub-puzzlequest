@@ -299,10 +299,13 @@ describe("a paused quest's pages", () => {
     expect(page.text).not.toContain('id="pause-link"');
   });
 
-  it("show the monitor that it is paused", async () => {
-    const page = await request(app).get("/monitor/quest/quest");
+  it("tell spectators it is paused", async () => {
+    const response = await request(app).get(
+      "/api/v1/quests/quest/spectator-view"
+    );
 
-    expect(page.text).toContain('id="paused-banner"');
+    expect(response.body.paused).toBe(true);
+    expect(response.body.progress.running).toBe(false);
   });
 });
 

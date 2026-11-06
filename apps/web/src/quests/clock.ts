@@ -45,6 +45,15 @@ export function formatDuration(ms: number): string {
     : `${minutes}:${pad(seconds % 60)}`;
 }
 
+/**
+ * Formats a hint's time penalty.
+ * @param seconds the penalty, in seconds
+ * @returns the text, such as +1:00
+ */
+export function formatPenalty(seconds: number): string {
+  return `+${formatDuration(seconds * 1000)}`;
+}
+
 const momentFormat = new Intl.DateTimeFormat(undefined, {
   dateStyle: "medium",
   timeStyle: "short",

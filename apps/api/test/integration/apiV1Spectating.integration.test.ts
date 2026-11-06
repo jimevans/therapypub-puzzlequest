@@ -1,5 +1,5 @@
-// Tests of following a quest from outside it, through the v1 API and the
-// monitor pages. Anyone can do this, players included, so these check the raw
+// Tests of following a quest from outside it, through the v1 API. Anyone can do
+// this, players included, so these check the raw
 // answers: nothing may show what a player couldn't see, or how long a quest is.
 import type { Express } from "express";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -267,49 +267,5 @@ describe("following a puzzle", () => {
       expect(response.status).toBe(404);
       expect(response.text.replaceAll(puzzle, "nothing")).toBe(unknown.text);
     }
-  });
-});
-
-describe("the monitor pages", () => {
-  it("don't put puzzles not yet reached anywhere in the page", async () => {
-    await startAndActivateFirst();
-
-    const page = await request(app).get("/monitor/quest/quest");
-
-    expect(page.status).toBe(200);
-    expect(page.text).toContain("Riddle");
-    expectNoneOf(page.text, UNREACHED);
-  });
-
-  it("still show a quest that hasn't started", async () => {
-    const page = await request(app).get("/monitor/quest/quest");
-
-    expect(page.status).toBe(200);
-    expect(page.text).toContain("No active puzzles yet");
-  });
-
-  it("answer alike for a puzzle waiting, unreached, and nonexistent", async () => {
-    await QuestService.startQuest("quest");
-    const path = (puzzle: string) => `/monitor/quest/quest/puzzle/${puzzle}`;
-    const unknown = await request(app).get(path("nothing"));
-    expect(unknown.status).toBe(404);
-
-    for (const puzzle of ["riddle", "lantern"]) {
-      const page = await request(app).get(path(puzzle));
-
-      expect(page.status).toBe(404);
-      expect(page.text.replaceAll(puzzle, "nothing")).toBe(unknown.text);
-    }
-  });
-
-  it("show a puzzle once activated", async () => {
-    await startAndActivateFirst();
-
-    const page = await request(app).get("/monitor/quest/quest/puzzle/riddle");
-
-    expect(page.status).toBe(200);
-    expect(page.text).toContain("<strong>keys</strong>");
-    expect(page.text).toContain("It makes music");
-    expect(page.text).not.toContain("Unrevealed hint");
   });
 });

@@ -1,5 +1,5 @@
 import { Suspense, lazy } from "react";
-import styles from "./PuzzleScreen.module.css";
+import styles from "./PuzzleContent.module.css";
 
 const loadPuzzleText = () => import("./PuzzleText");
 const PuzzleText = lazy(loadPuzzleText);

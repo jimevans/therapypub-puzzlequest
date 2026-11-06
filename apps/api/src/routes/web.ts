@@ -11,7 +11,11 @@ import { webDirectory } from "../paths.js";
  * calling sendWebApp for players (see index.controller.ts and
  * quest.controller.ts).
  */
-const WEB_PAGES = ["/login"];
+const WEB_PAGES = [
+  "/login",
+  "/monitor/quest/:name",
+  "/monitor/quest/:name/puzzle/:puzzleName",
+];
 
 const webRouter = express.Router();
 

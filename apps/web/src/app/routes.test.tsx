@@ -22,6 +22,14 @@ vi.mock("../screens/puzzle/PuzzleScreen", () => ({
   PuzzleScreen: () => <h1>The puzzle screen</h1>,
 }));
 
+vi.mock("../screens/followAlong/FollowQuest", () => ({
+  FollowQuest: () => <h1>Following a quest</h1>,
+}));
+
+vi.mock("../screens/followAlong/FollowPuzzle", () => ({
+  FollowPuzzle: () => <h1>Following a puzzle</h1>,
+}));
+
 function renderAt(path: string) {
   const client = new QueryClient();
   const router = createMemoryRouter(createRoutes(client), {
@@ -58,6 +66,8 @@ describe("the routes", () => {
     ["/", "The home screen"],
     ["/quest/trail", "The quest screen"],
     ["/quest/trail/puzzle/riddle", "The puzzle screen"],
+    ["/monitor/quest/trail", "Following a quest"],
+    ["/monitor/quest/trail/puzzle/riddle", "Following a puzzle"],
   ])("show the screen for %s", async (path, name) => {
     renderAt(path);
 
@@ -69,6 +79,16 @@ describe("the routes", () => {
     [
       "/quest/trail/puzzle/riddle",
       "/quests/{name}/puzzles/{puzzleName}",
+      { name: "trail", puzzleName: "riddle" },
+    ],
+    [
+      "/monitor/quest/trail",
+      "/quests/{name}/spectator-view",
+      { name: "trail" },
+    ],
+    [
+      "/monitor/quest/trail/puzzle/riddle",
+      "/quests/{name}/puzzles/{puzzleName}/spectator-view",
       { name: "trail", puzzleName: "riddle" },
     ],
   ])("start fetching %s's data at once", async (path, apiPath, params) => {

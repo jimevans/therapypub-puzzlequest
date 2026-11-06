@@ -8,7 +8,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
 import { startSessions } from "../sessions.js";
-import { assigneeIdsOf, puzzleIdsOf, userIdsOf } from "../references.js";
+import { assigneeIdsOf, userIdsOf } from "../references.js";
 
 const { createApp } = await import("../../src/createApp.js");
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
@@ -195,20 +195,6 @@ const PAGES: [string, string, string | null, string, string[]][] = [
     "questEdit",
     ["Running Quest", 'value="team-a" data-kind="team"'],
   ],
-  [
-    "quest monitor",
-    "/monitor/quest/running-quest",
-    "admin",
-    "monitorQuest",
-    ["Running Quest", "Text Puzzle"],
-  ],
-  [
-    "puzzle monitor",
-    "/monitor/quest/running-quest/puzzle/text-puzzle",
-    "admin",
-    "monitorPuzzle",
-    ["It makes music"],
-  ],
 
   [
     "player's own profile",
@@ -320,81 +306,5 @@ describe("error page", () => {
     expect(response.status).toBe(status);
     expect(response.type).toBe("text/html");
     expect(response.text).toContain(`<h1>${title}</h1>`);
-  });
-});
-
-describe("quest progress", () => {
-  beforeAll(async () => {
-    // A finished quest: 45 minutes, plus one revealed 60-second hint.
-    const [textPuzzleId, imagePuzzleId] = await puzzleIdsOf(
-      "text-puzzle",
-      "image-puzzle"
-    );
-    await QuestModel.create({
-      name: "finished-quest",
-      displayName: "Finished Quest",
-      assignee: {
-        kind: "user",
-        id: (await userIdsOf("player"))[0],
-      },
-      status: 2,
-      puzzles: [
-        {
-          puzzleId: textPuzzleId,
-          status: 3,
-          nextHintToDisplay: 1,
-          activationCode: "code1",
-          startTime: new Date("2026-11-03T19:00:00Z"),
-          activationTime: new Date("2026-11-03T19:05:00Z"),
-          endTime: new Date("2026-11-03T19:30:00Z"),
-        },
-        {
-          puzzleId: imagePuzzleId,
-          status: 3,
-          nextHintToDisplay: 0,
-          activationCode: "code2",
-          startTime: new Date("2026-11-03T19:30:00Z"),
-          activationTime: new Date("2026-11-03T19:35:00Z"),
-          endTime: new Date("2026-11-03T19:45:00Z"),
-        },
-      ],
-    });
-  });
-
-  /**
-   * Gets the HTML of the card whose opening tag contains the given text.
-   * @param html the page
-   * @param marker text in the card's opening tag
-   * @returns the card's HTML, up to the next card
-   */
-  function card(html: string, marker: string): string {
-    const start = html.indexOf(marker);
-    expect(start).toBeGreaterThan(-1);
-    // Search for the next card after the end of this card's opening tag.
-    const bodyStart = html.indexOf(">", start) + 1;
-    const next = html.slice(bodyStart).search(/class="pq-quest(-puzzle)?"/);
-    return html.slice(start, next < 0 ? undefined : bodyStart + next);
-  }
-
-  it("shows the penalties on the quest monitor, for the quest and the puzzle", async () => {
-    const response = await getPage("/monitor/quest/running-quest", "admin");
-
-    const penalty =
-      '<span data-progress="penalty" data-duration="60000">00:01:00</span>';
-    expect(card(response.text, 'id="quest-progress"')).toContain(penalty);
-    expect(card(response.text, 'data-puzzle-name="text-puzzle"')).toContain(
-      penalty
-    );
-  });
-
-  it("includes progress in the quest's JSON", async () => {
-    const response = await getPage("/api/v1/quests/finished-quest", "player");
-
-    expect(JSON.parse(response.text).progress).toMatchObject({
-      running: false,
-      elapsedMs: 45 * 60 * 1000,
-      penaltyMs: 60 * 1000,
-      totalMs: 46 * 60 * 1000,
-    });
   });
 });

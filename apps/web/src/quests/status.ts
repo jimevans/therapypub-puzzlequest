@@ -1,5 +1,6 @@
 // What the numbers in the API's quest and puzzle statuses mean.
 
+export const QUEST_NOT_STARTED = 0;
 export const QUEST_COMPLETED = 2;
 
 export const STEP_AWAITING_ACTIVATION = 1;

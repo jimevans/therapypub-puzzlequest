@@ -26,6 +26,43 @@ export function questQuery(name: string) {
 }
 
 /**
+ * Says how to fetch what the public may see of a quest.
+ * @param name the quest's name
+ * @returns the options for TanStack Query
+ */
+export function spectatorQuestQuery(name: string) {
+  return queryOptions({
+    queryKey: [...questQueryKey(name), "spectator"],
+    staleTime: JUST_FETCHED_MS,
+    queryFn: async () =>
+      dataOrThrow(
+        await api.GET("/quests/{name}/spectator-view", {
+          params: { path: { name } },
+        })
+      ),
+  });
+}
+
+/**
+ * Says how to fetch what the public may see of a puzzle.
+ * @param name the quest's name
+ * @param puzzleName the puzzle's name
+ * @returns the options for TanStack Query
+ */
+export function spectatorPuzzleQuery(name: string, puzzleName: string) {
+  return queryOptions({
+    queryKey: [...questQueryKey(name), "spectator", puzzleName],
+    staleTime: JUST_FETCHED_MS,
+    queryFn: async () =>
+      dataOrThrow(
+        await api.GET("/quests/{name}/puzzles/{puzzleName}/spectator-view", {
+          params: { path: { name, puzzleName } },
+        })
+      ),
+  });
+}
+
+/**
  * Says how to fetch a puzzle as its players see it.
  * @param name the quest's name
  * @param puzzleName the puzzle's name

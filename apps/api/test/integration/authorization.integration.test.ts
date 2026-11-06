@@ -56,7 +56,6 @@ const { SessionModel } = await import("../../src/models/session.model.js");
 const QuestService = await import("../../src/services/quest.service.js");
 const { IndexRouter } = await import("../../src/routes/index.js");
 const { V1Router } = await import("../../src/api/v1/index.js");
-const { MonitorRouter } = await import("../../src/routes/monitor.js");
 const { PuzzleRouter } = await import("../../src/routes/puzzle.js");
 const { QuestRouter } = await import("../../src/routes/quest.js");
 const { UserRouter } = await import("../../src/routes/user.js");
@@ -68,7 +67,6 @@ const MOUNTS: [string, Router][] = [
   ["/user", UserRouter],
   ["/puzzle", PuzzleRouter],
   ["/quest", QuestRouter],
-  ["/monitor", MonitorRouter],
 ];
 
 type Role = "anonymous" | "player" | "other" | "admin";
@@ -183,9 +181,6 @@ const ROUTES: [string, string, Policy][] = [
   ["get", "/quest/:name/puzzle/:puzzleName", SIGNED_IN],
   ["get", "/quest/:name/puzzle/:puzzleName/qrcode", ADMIN],
   ["get", "/quest/:name/pdf", ADMIN],
-
-  ["get", "/monitor/quest/:name", PUBLIC],
-  ["get", "/monitor/quest/:name/puzzle/:puzzleName", PUBLIC],
 ];
 
 /** Values for the route parameters: the fixture's quest, puzzle, and team. */

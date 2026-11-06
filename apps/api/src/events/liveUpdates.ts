@@ -3,36 +3,18 @@ import * as WebSocketService from "../services/websocket.service.js";
 import type { QuestActivity } from "./questEventBus.js";
 
 /**
- * Gets the paths of the pages that show a puzzle's progress: the quest page,
- * the puzzle page, and their monitor views.
- * @param questName the name of the quest
- * @param puzzleName the name of the puzzle
- * @returns the page paths
- */
-function puzzlePages(questName: string, puzzleName: string): string[] {
-  return [
-    `/quest/${questName}`,
-    `/quest/${questName}/puzzle/${puzzleName}`,
-    `/monitor/quest/${questName}`,
-    `/monitor/quest/${questName}/puzzle/${puzzleName}`,
-  ];
-}
-
-/**
- * Sends quest activity to the clients following the quest and the browsers
- * showing it, except the one the action came from, so every player and monitor
- * sees progress as it happens.
- * Starting and resetting quests send nothing; the pages for a quest that
- * hasn't started don't listen for updates. An administrator's rescues
- * (pausing, resuming, skipping, and resetting) tell every page of the quest
- * to reload, since they can change much of it.
+ * Sends quest activity to the clients following the quest, except the one the
+ * action came from, so every player and spectator sees progress as it happens.
+ * Starting and resetting quests send nothing: clients see those when they next
+ * refresh. An administrator's rescues (pausing, resuming, skipping, and
+ * resetting) go to everyone, since they can change much of the quest.
  * @param activity the activity
  */
 export function sendLiveUpdates(activity: QuestActivity): void {
   const { questName } = activity;
   const exclude = activity.connectionId ? [activity.connectionId] : [];
-  const notify = (pages: string[], data: QuestUpdate) =>
-    WebSocketService.notifyBrowsers(pages, exclude, data);
+  const notify = (update: QuestUpdate) =>
+    WebSocketService.notifyQuestFollowers(update, exclude);
 
   const solved = activity.events.find((event) => event.type === "PuzzleSolved");
   const questComplete = activity.events.some(
@@ -41,7 +23,7 @@ export function sendLiveUpdates(activity: QuestActivity): void {
   for (const event of activity.events) {
     switch (event.type) {
       case "PuzzleActivated":
-        notify(puzzlePages(questName, event.puzzleName), {
+        notify({
           message: "puzzleActivated",
           questName,
           puzzleName: event.puzzleName,
@@ -49,7 +31,7 @@ export function sendLiveUpdates(activity: QuestActivity): void {
         });
         break;
       case "PuzzleSolved":
-        notify(puzzlePages(questName, event.puzzleName), {
+        notify({
           message: "puzzleSolved",
           questName,
           puzzleName: event.puzzleName,
@@ -59,10 +41,10 @@ export function sendLiveUpdates(activity: QuestActivity): void {
         });
         break;
       case "PuzzleStarted":
-        // Sent to the pages of the puzzle just solved, which are the ones
-        // players have open; no page shows a puzzle before it starts.
+        // Only when a solve leads to it: a quest's first puzzle starts with the
+        // quest, which sends nothing.
         if (solved) {
-          notify(puzzlePages(questName, solved.puzzleName), {
+          notify({
             message: "puzzleStarted",
             questName,
             puzzleName: event.puzzleName,
@@ -75,15 +57,13 @@ export function sendLiveUpdates(activity: QuestActivity): void {
       case "QuestResumed":
       case "PuzzleSkipped":
       case "PuzzleReset":
-        // The pages reload, to show the change everywhere at once.
-        WebSocketService.notifyQuestPages({
+        WebSocketService.notifyQuestFollowers({
           message: "questUpdated",
           questName,
         });
         break;
       case "HintRevealed":
-        // The quest pages add the hint's penalty to their times.
-        notify(puzzlePages(questName, event.puzzleName), {
+        notify({
           message: "hintRequested",
           questName,
           puzzleName: event.puzzleName,

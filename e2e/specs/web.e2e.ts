@@ -188,12 +188,45 @@ describe("the web app", () => {
       expect(await blockedByPolicy()).toEqual([]);
     });
 
+    it("can be followed by anyone, signed in or not", async () => {
+      await browser.url("/logout");
+      await browser.url(`/monitor/quest/${questName}`);
+
+      await expect($("#quest-progress")).toBeDisplayed();
+      await expect($(LIVE_UPDATES_CONNECTED)).toExist();
+      await expect($(`[data-puzzle-name="${second}"]`)).toExist();
+      expect(await $("body").getHTML()).not.toContain(hidden);
+      await expect($("#activation-code")).not.toExist();
+    });
+
+    it("shows spectators a puzzle, read-only, updating live", async () => {
+      await $(`a[href="/monitor/quest/${questName}/puzzle/${second}"]`).click();
+
+      await expect($("#puzzle-content strong")).toHaveText("yes");
+      await expect($("#guess")).not.toExist();
+      await expect($("#solution")).not.toExist();
+
+      await api(
+        "POST",
+        `/quests/${questName}/puzzles/${second}/solution-attempts`,
+        player,
+        { guess: "yes" }
+      );
+
+      await expect($("#solution-text")).toHaveText("Yes");
+      expect(await blockedByPolicy()).toEqual([]);
+    });
+
     it("isn't available once the puzzle master resets it", async () => {
       await api("POST", `/quests/${questName}/reset`, admin);
       // A reset sends no live update; an open screen sees it on its next refresh.
       await browser.refresh();
 
       await expect($("h1=Puzzle not available")).toBeDisplayed();
+
+      await browser.url(`/monitor/quest/${questName}`);
+      await expect($("#quest-not-started")).toBeDisplayed();
+      await expect($("[data-puzzle-name]")).not.toExist();
     });
   });
 
