@@ -8,8 +8,8 @@ afterEach(() => {
 });
 
 describe("createApp", () => {
-  it("renders the landing page", async () => {
-    const response = await request(createApp()).get("/");
+  it("renders the views", async () => {
+    const response = await request(createApp()).get("/user/register");
 
     expect(response.status).toBe(200);
     expect(response.type).toBe("text/html");

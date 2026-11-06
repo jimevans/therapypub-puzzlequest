@@ -19,28 +19,32 @@ const toApiServer = {
  * For the pages where the server chooses by session. Whoever qualifies gets
  * Vite's copy of the React app, since the server's would be the last build, and
  * everyone else gets the server's page, as in production.
- * @param qualifies decides by the signed-in user's authorization level
+ * @param qualifies decides by the signed-in user's authorization level, which is
+ *  null for someone signed out
  * @returns the proxy's settings
  */
-function toReactFor(qualifies: (authorizationLevel: number) => boolean) {
+function toReactFor(qualifies: (authorizationLevel: number | null) => boolean) {
   return {
     ...toApiServer,
     bypass: async (req: IncomingMessage) => {
       const response = await fetch(`${API_SERVER}/api/v1/sessions/current`, {
         headers: { cookie: req.headers.cookie ?? "" },
       });
-      if (!response.ok) {
-        return undefined;
-      }
-      const { user } = (await response.json()) as {
-        user: { authorizationLevel: number };
-      };
-      return qualifies(user.authorizationLevel) ? "/index.html" : undefined;
+      const user = response.ok
+        ? ((await response.json()) as { user: { authorizationLevel: number } })
+            .user
+        : null;
+      return qualifies(user?.authorizationLevel ?? null)
+        ? "/index.html"
+        : undefined;
     },
   };
 }
 
-const toReactForPlayers = toReactFor((level) => level < ADMINISTRATOR);
+const isNotAdministrator = (level: number | null) =>
+  level === null || level < ADMINISTRATOR;
+const isPlayer = (level: number | null) =>
+  level !== null && level < ADMINISTRATOR;
 
 export default defineConfig({
   plugins: [react()],
@@ -75,9 +79,12 @@ export default defineConfig({
     // the API, uploaded media, and the pages not yet moved to React.
     proxy: {
       "/api": { ...toApiServer, ws: true },
-      "^/$": toReactForPlayers,
-      "^/quest/(?!new$)[^/]+$": toReactForPlayers,
-      "^/quest/[^/]+/puzzle/[^/]+$": toReactFor(() => true),
+      "^/$": toReactFor(isNotAdministrator),
+      "^/quest/(?!new$)[^/]+$": toReactFor(isPlayer),
+      "^/quest/[^/]+/puzzle/[^/]+$": toReactFor((level) => level !== null),
+      "^/user/(password/(forgot|reset)|email/verify)(\\?|$)": toReactFor(
+        () => true
+      ),
       "^/(login|logout)$": toApiServer,
       "^/(user|puzzle|quest)/": toApiServer,
       "^/(puzzleData|script|style|image|policies|vendor)/": toApiServer,

@@ -1,10 +1,10 @@
 import { useMutation } from "@tanstack/react-query";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { useSearchParams } from "react-router";
-import { ApiError, api, dataOrThrow } from "../../api";
+import { api, dataOrThrow, messageOf } from "../../api";
 import { Banner } from "../../ui/Banner";
 import { Button } from "../../ui/Button";
-import { TextField } from "../../ui/TextField";
+import { FormTextField } from "../../ui/FormTextField";
 import styles from "./SignIn.module.css";
 
 interface Credentials {
@@ -43,13 +43,7 @@ export function SignIn() {
     <>
       <title>Sign in · PuzzleQuest</title>
       <h1>Sign in</h1>
-      {signIn.error && (
-        <Banner tone="danger">
-          {signIn.error instanceof ApiError
-            ? signIn.error.message
-            : "Couldn't reach the server. Check your connection and try again."}
-        </Banner>
-      )}
+      {signIn.error && <Banner tone="danger">{messageOf(signIn.error)}</Banner>}
       <form
         className={styles.form}
         noValidate
@@ -57,41 +51,27 @@ export function SignIn() {
           void handleSubmit((credentials) => signIn.mutate(credentials))(event);
         }}
       >
-        <Controller
+        <FormTextField
           control={control}
           name="userName"
           rules={{ required: "Enter your user name" }}
-          render={({ field: { ref, ...field }, fieldState: { error } }) => (
-            <TextField
-              {...field}
-              id="user-name"
-              inputRef={ref}
-              label="User name"
-              autoComplete="username"
-              inputProps={{
-                autoCapitalize: "none",
-                autoCorrect: "off",
-                spellCheck: false,
-              }}
-              errorMessage={error?.message}
-            />
-          )}
+          id="user-name"
+          label="User name"
+          autoComplete="username"
+          inputProps={{
+            autoCapitalize: "none",
+            autoCorrect: "off",
+            spellCheck: false,
+          }}
         />
-        <Controller
+        <FormTextField
           control={control}
           name="password"
           rules={{ required: "Enter your password" }}
-          render={({ field: { ref, ...field }, fieldState: { error } }) => (
-            <TextField
-              {...field}
-              id="password"
-              inputRef={ref}
-              label="Password"
-              type="password"
-              autoComplete="current-password"
-              errorMessage={error?.message}
-            />
-          )}
+          id="password"
+          label="Password"
+          type="password"
+          autoComplete="current-password"
         />
         <Button
           id="login"

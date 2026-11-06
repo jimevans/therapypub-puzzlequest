@@ -48,7 +48,7 @@ const onTopOfFirstLoad = (name, source, limit) =>
   );
 
 export default [
-  budget("What every page downloads first", firstLoad, "116 KB"),
+  budget("What every page downloads first", firstLoad, "118 KB"),
   onTopOfFirstLoad("The home screen", "src/screens/home/Home.tsx", "18 KB"),
   onTopOfFirstLoad(
     "The quest screen",
@@ -72,6 +72,21 @@ export default [
   ),
   onTopOfFirstLoad("The board", "src/screens/followAlong/Board.tsx", "5 KB"),
   onTopOfFirstLoad(
+    "Forgot password",
+    "src/screens/account/ForgotPassword.tsx",
+    "31 KB"
+  ),
+  onTopOfFirstLoad(
+    "Reset password",
+    "src/screens/account/ResetPassword.tsx",
+    "31 KB"
+  ),
+  onTopOfFirstLoad(
+    "Verify email",
+    "src/screens/account/VerifyEmail.tsx",
+    "18 KB"
+  ),
+  onTopOfFirstLoad(
     "A text puzzle's Markdown",
     "src/quests/PuzzleText.tsx",
     "50 KB"
@@ -84,7 +99,7 @@ export default [
   onTopOfFirstLoad(
     "The sign-in screen",
     "src/screens/signIn/SignIn.tsx",
-    "30 KB"
+    "31 KB"
   ),
   // Already compressed, and only the Latin files download, by unicode-range.
   {

@@ -1,0 +1,29 @@
+.link {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: var(--target-size);
+  padding: var(--space-2) var(--space-5);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+
+.link:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.secondary {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+}

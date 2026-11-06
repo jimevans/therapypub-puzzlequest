@@ -17,6 +17,17 @@ export class ApiError extends Error {
 }
 
 /**
+ * Says why a request failed, for showing to whoever made it.
+ * @param error what went wrong
+ * @returns the API's explanation, or that it couldn't be reached
+ */
+export function messageOf(error: Error): string {
+  return error instanceof ApiError
+    ? error.message
+    : "Couldn't reach the server. Check your connection and try again.";
+}
+
+/**
  * Gets the data from a response, for code that treats a refusal as an error,
  * as TanStack Query does.
  * @param result what the API client returned

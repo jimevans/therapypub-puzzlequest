@@ -156,11 +156,30 @@ describe("following a quest", () => {
 });
 
 describe("an anonymous visitor", () => {
-  it("gets the landing page at the site's root", async () => {
+  it("gets the React app at the site's root, which shows the landing page", async () => {
     const response = await getPage("/");
 
     expect(response.status).toBe(200);
-    expect(response.text).toContain('src="/script/index.js"');
+    expect(response.text).toBe(REACT_PAGE);
+  });
+
+  it("gets the React app for a forgotten password", async () => {
+    const response = await getPage("/user/password/forgot");
+
+    expect(response.status).toBe(200);
+    expect(response.text).toBe(REACT_PAGE);
+  });
+
+  it.each([
+    "/user/password/reset?token=abc_123",
+    "/user/email/verify?token=abc_123",
+    "/user/email/verify?token=%3C/script%3E",
+  ])("gets %s, keeping the token from other sites", async (page) => {
+    const response = await getPage(page);
+
+    expect(response.status).toBe(200);
+    expect(response.text).toBe(REACT_PAGE);
+    expect(response.headers["referrer-policy"]).toBe("no-referrer");
   });
 
   it.each(["/quest/trail", "/quest/trail/puzzle/riddle"])(

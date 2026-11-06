@@ -130,23 +130,7 @@ function getPage(path: string, account: string | null): request.Test {
 
 // [description, path, account, view, text the page must contain]
 const PAGES: [string, string, string | null, string, string[]][] = [
-  ["landing page", "/", null, "index", ["Sign up"]],
   ["sign-up page", "/user/register", null, "user", ['id="user-name"']],
-  ["forgot password page", "/user/password/forgot", null, "forgotPassword", []],
-  [
-    "reset password page",
-    "/user/password/reset?token=abc_123",
-    null,
-    "resetPassword",
-    ['"abc_123"'],
-  ],
-  [
-    "email verification page",
-    "/user/email/verify?token=abc_123",
-    null,
-    "verifyEmail",
-    ['"abc_123"'],
-  ],
 
   ["administrator home", "/", "admin", "admin", []],
   ["own profile", "/user/admin", "admin", "user", ["Change password"]],

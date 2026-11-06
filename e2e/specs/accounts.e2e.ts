@@ -21,6 +21,7 @@ describe("an account", () => {
     await $("#verify").click();
 
     await expect($("#verify-complete")).toBeDisplayed();
+    await expect(browser).toHaveUrl(expect.not.stringContaining("token"));
   });
 
   it("asks for a reset link from the sign-in page", async () => {
@@ -36,7 +37,7 @@ describe("an account", () => {
     await browser.url(await emailedLink(email, "/user/password/reset"));
     await $("#new-password").setValue(newPassword);
     await $("#new-password-confirm").setValue(newPassword);
-    await $("#reset").click();
+    await $("#reset-password").click();
 
     await expect($("#reset-complete")).toBeDisplayed();
   });

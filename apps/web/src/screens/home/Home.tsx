@@ -1,13 +1,13 @@
 import type { Schemas } from "@puzzlequest/api-client";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
 import { Link } from "react-router";
 import { api, dataOrThrow } from "../../api";
 import { ClockTime } from "../../quests/ClockTime";
-import { goToSignIn, useSession } from "../../session";
+import { useSession } from "../../session";
 import { Banner } from "../../ui/Banner";
 import { EmailReminder } from "./EmailReminder";
 import styles from "./Home.module.css";
+import { Landing } from "./Landing";
 
 /** Starting or resetting a quest sends no live update, so this is how it shows. */
 const REFRESH_MS = 30_000;
@@ -42,7 +42,7 @@ function QuestCard({ quest }: { quest: Schemas["QuestSummary"] }) {
   );
 }
 
-/** The player's home: their quests, once started. */
+/** The site's home: a player's quests, once started, or the landing page. */
 export function Home() {
   const session = useSession();
   const user = session.data?.user;
@@ -52,13 +52,10 @@ export function Home() {
     enabled: Boolean(user),
     refetchInterval: REFRESH_MS,
   });
-  const signedOut = session.data === null;
 
-  useEffect(() => {
-    if (signedOut) {
-      goToSignIn();
-    }
-  }, [signedOut]);
+  if (session.data === null) {
+    return <Landing />;
+  }
 
   return (
     <>
