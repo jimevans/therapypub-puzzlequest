@@ -1,17 +1,17 @@
 import type { Schemas } from "@puzzlequest/api-client";
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { ApiError, api, dataOrThrow } from "../../api";
 import { copy } from "../../copy";
 import { questQueryKey, useLiveQuest } from "../../live/useLiveQuest";
 import { ClockTime } from "../../quests/ClockTime";
+import { NotAvailable } from "../../quests/NotAvailable";
+import { PausedBanner } from "../../quests/PausedBanner";
 import { type Clock, formatDuration, formatMoment } from "../../quests/clock";
+import { QUEST_COMPLETED, STEP_COMPLETED } from "../../quests/status";
 import { Banner } from "../../ui/Banner";
 import { ProgressLine, ProgressStep } from "../../ui/ProgressLine";
 import styles from "./QuestScreen.module.css";
-
-const QUEST_COMPLETED = 2;
-const STEP_COMPLETED = 3;
 
 type Quest = Schemas["Quest"];
 type Step = Quest["puzzles"][number];
@@ -68,8 +68,7 @@ function StepCard({
     >
       <p className={styles.stepNumber}>{copy.stepLabel(stepNumber)}</p>
       <h2 className={styles.stepName}>
-        {/* An ordinary link, because the puzzle's page isn't in this app yet. */}
-        <a href={path}>{step.displayName ?? step.puzzleName}</a>
+        <Link to={path}>{step.displayName ?? step.puzzleName}</Link>
       </h2>
       <p className={styles.status}>{step.statusDescription}</p>
       <dl className={styles.facts}>
@@ -95,12 +94,7 @@ function QuestDetails({ quest }: { quest: Quest }) {
     <>
       <title>{`${quest.displayName} · PuzzleQuest`}</title>
       <h1>{quest.displayName}</h1>
-      {quest.paused && (
-        <Banner id="paused-banner">
-          Paused by the puzzle master. The clock is stopped, and you can carry
-          on as soon as the quest resumes.
-        </Banner>
-      )}
+      {quest.paused && <PausedBanner />}
       <section id="quest-progress" className={styles.summary}>
         <ClockTime className={styles.clock} clock={progress} show="total" />
         <p className={styles.status}>
@@ -154,15 +148,7 @@ export function QuestScreen() {
       data-live-updates={connected ? "connected" : "connecting"}
     >
       {gone ? (
-        <>
-          <title>Quest not found · PuzzleQuest</title>
-          <h1>Quest not available</h1>
-          <p>
-            This quest isn't available. It may have been reset, or the link may
-            be wrong.
-          </p>
-          <a href="/">See your quests</a>
-        </>
+        <NotAvailable what="quest" />
       ) : quest.data ? (
         <QuestDetails quest={quest.data} />
       ) : (

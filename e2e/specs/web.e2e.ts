@@ -109,7 +109,7 @@ describe("the web app", () => {
         await api("POST", "/puzzles", admin, {
           name,
           displayName: `Puzzle ${name}`,
-          text: "Say yes",
+          text: "Say **yes**",
           solutionKeyword: "yes",
           solutionDisplayText: "Yes",
         });
@@ -179,12 +179,21 @@ describe("the web app", () => {
       expect(await blockedByPolicy()).toEqual([]);
     });
 
+    it("opens a puzzle, and shows its Markdown, with nothing blocked", async () => {
+      await $(`a[href="/quest/${questName}/puzzle/${second}"]`).click();
+      await $("#activation-code").setValue("second-code");
+      await $("#activate").click();
+
+      await expect($("#puzzle-content strong")).toHaveText("yes");
+      expect(await blockedByPolicy()).toEqual([]);
+    });
+
     it("isn't available once the puzzle master resets it", async () => {
       await api("POST", `/quests/${questName}/reset`, admin);
       // A reset sends no live update; an open screen sees it on its next refresh.
       await browser.refresh();
 
-      await expect($("h1=Quest not available")).toBeDisplayed();
+      await expect($("h1=Puzzle not available")).toBeDisplayed();
     });
   });
 

@@ -116,49 +116,50 @@ describe("playing a quest", () => {
 
   it("needs the puzzle's activation code", async () => {
     await $(`a[href="/quest/${questName}/puzzle/${riddle}"]`).click();
-    await $("#text-value").click();
-    await $("#text-auth-code").setValue("wrong");
-    await $("#send-code-text-button").click();
+    await $("#activation-code").setValue("wrong");
+    await $("#activate").click();
 
-    await expect($("#error-details")).toHaveText(
+    await expect($('[role="alert"]')).toHaveText(
       "Incorrect activation code for puzzle"
     );
   });
 
   it("activates the puzzle with the right code", async () => {
-    await $("#text-auth-code").setValue("riddle-code");
-    await $("#send-code-text-button").click();
+    await $("#activation-code").setValue("riddle-code");
+    await $("#activate").click();
 
-    await expect($("#solution-guess")).toBeDisplayed();
+    await expect($("#guess")).toBeDisplayed();
     await expect($("#puzzle-content strong")).toHaveText("keys");
   });
 
   it("reveals hints, warning before one that gives the solution away", async () => {
-    await $("#request-hint").click();
-    await expect($("#used-hints")).toHaveText("It makes music");
+    await $("#reveal-hint").click();
+    await expect($("#hints")).toHaveText(
+      expect.stringContaining("It makes music")
+    );
 
-    await $("#request-hint").click();
-    await $('button[data-action="confirm"]').click();
+    await $("#reveal-hint").click();
+    await $("button=Show it").click();
 
-    await expect($("#used-hints")).toHaveText(
+    await expect($("#hints")).toHaveText(
       expect.stringContaining("It is a piano")
     );
-    await expect($("#request-hint")).toHaveText("No available hints");
+    await expect($("#reveal-hint")).not.toExist();
   });
 
   it("says when an answer is wrong", async () => {
-    await $("#solution-guess").setValue("organ");
-    await $("#submit-button").click();
+    await $("#guess").setValue("organ");
+    await $("#check-answer").click();
 
-    await expect($("#solution-errors")).toHaveText(
+    await expect($('[role="alert"]')).toHaveText(
       "Incorrect guess for puzzle solution"
     );
-    await expect($("#solution")).not.toBeDisplayed();
+    await expect($("#solution")).not.toExist();
   });
 
   it("accepts the right answer, however it's typed", async () => {
-    await $("#solution-guess").setValue("Is it a PIANO?");
-    await $("#submit-button").click();
+    await $("#guess").setValue("Is it a PIANO?");
+    await $("#check-answer").click();
 
     await expect($("#solution-text")).toHaveText("A piano");
   });
@@ -170,29 +171,34 @@ describe("playing a quest", () => {
     await expect(monitor.$(`[data-puzzle-name="${finale}"]`)).toExist();
   });
 
+  it("leads on to the next puzzle", async () => {
+    await $("=On to The Finale").click();
+
+    await expect($("h1=The Finale")).toBeDisplayed();
+    await expect($("#activation-code")).toHaveValue("");
+  });
+
   it("stops the players while the puzzle master has the quest paused", async () => {
-    await browser.url(`/quest/${questName}/puzzle/${finale}`);
     await expect($("#paused-banner")).not.toExist();
     await expect($(LIVE_UPDATES_CONNECTED)).toExist();
 
     await api("POST", `/quests/${questName}/pause`, admin);
     await expect($("#paused-banner")).toBeDisplayed();
-    // The page reloaded to show that, so it must connect again.
-    await expect($(LIVE_UPDATES_CONNECTED)).toExist();
+    await expect($("#activation-code")).toBeDisabled();
 
     await api("POST", `/quests/${questName}/resume`, admin);
     await expect($("#paused-banner")).not.toExist();
+    await expect($("#activation-code")).toBeEnabled();
   });
 
   it("finishes the quest with the last puzzle", async () => {
-    await $("#text-value").click();
-    await $("#text-auth-code").setValue("finale-code");
-    await $("#send-code-text-button").click();
-    await $("#solution-guess").setValue("done");
-    await $("#submit-button").click();
+    await $("#activation-code").setValue("finale-code");
+    await $("#activate").click();
+    await $("#guess").setValue("done");
+    await $("#check-answer").click();
 
     await expect($("#solution-text")).toHaveText("Done");
-    await expect($("#fireworks")).toExist();
+    await expect($("#quest-finished")).toBeDisplayed();
     const quest = await api("GET", `/quests/${questName}`, admin);
     expect(quest.statusDescription).toBe("Completed");
     expect(quest.progress.penaltyMs).toBe(360000);

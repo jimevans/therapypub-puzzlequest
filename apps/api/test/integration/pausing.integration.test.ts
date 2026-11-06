@@ -290,29 +290,6 @@ describe("a paused quest's pages", () => {
     expect(response.body.progress.clockStart).toBeUndefined();
   });
 
-  it("disable guessing and hints on the puzzle page", async () => {
-    const page = await asPlayer("get", "/quest/quest/puzzle/riddle");
-
-    expect(page.text).toContain('id="paused-banner"');
-    expect(page.text).toMatch(/<fieldset class="pq-fieldset" disabled>/);
-    expect(page.text).toContain(
-      "Hints are unavailable while the quest is paused"
-    );
-  });
-
-  it("disable activation", async () => {
-    await QuestModel.updateOne(
-      { name: "quest" },
-      { $set: { "puzzles.0.status": 1 } }
-    );
-
-    const page = await asPlayer("get", "/quest/quest/puzzle/riddle");
-
-    expect(page.text).toMatch(
-      /<fieldset id="activation-mode" class="pq-fieldset" disabled>/
-    );
-  });
-
   it("show the admin a Resume button", async () => {
     const page = await request(app)
       .get("/quest/quest")
@@ -329,15 +306,12 @@ describe("a paused quest's pages", () => {
   });
 });
 
-describe("a running quest's pages", () => {
-  it("don't show the paused banner, and offer the admin a Pause button", async () => {
-    const page = await asPlayer("get", "/quest/quest/puzzle/riddle");
+describe("a running quest's details page", () => {
+  it("offers the admin a Pause button", async () => {
     const details = await request(app)
       .get("/quest/quest")
       .set("Authorization", `Bearer ${sessions.admin}`);
 
-    expect(page.text).not.toContain('id="paused-banner"');
-    expect(page.text).toMatch(/<fieldset class="pq-fieldset" >/);
     expect(details.text).toContain('id="pause-link"');
   });
 });

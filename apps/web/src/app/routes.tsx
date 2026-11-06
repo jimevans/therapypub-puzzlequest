@@ -1,4 +1,4 @@
-import { Outlet, type RouteObject } from "react-router";
+import { Outlet, type RouteObject, ScrollRestoration } from "react-router";
 import { PageShell } from "../ui/PageShell";
 import { ErrorPage } from "./ErrorPage";
 
@@ -12,6 +12,8 @@ export const routes: RouteObject[] = [
     element: (
       <PageShell>
         <Outlet />
+        {/* Otherwise a link keeps the old page's scroll position. */}
+        <ScrollRestoration />
       </PageShell>
     ),
     // Paints the page's frame at once, while its screen downloads.
@@ -28,6 +30,13 @@ export const routes: RouteObject[] = [
         path: "/quest/:name",
         lazy: async () => ({
           Component: (await import("../screens/quest/QuestScreen")).QuestScreen,
+        }),
+      },
+      {
+        path: "/quest/:name/puzzle/:puzzleName",
+        lazy: async () => ({
+          Component: (await import("../screens/puzzle/PuzzleScreen"))
+            .PuzzleScreen,
         }),
       },
       {

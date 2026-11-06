@@ -218,20 +218,6 @@ const PAGES: [string, string, string | null, string, string[]][] = [
     ["Change password", "Team A"],
   ],
   ["player's profile editor", "/user/player/edit", "player", "user", []],
-  [
-    "puzzle awaiting activation",
-    "/quest/waiting-quest/puzzle/text-puzzle",
-    "player",
-    "activate",
-    ["Text Puzzle"],
-  ],
-  [
-    "puzzle in progress",
-    "/quest/running-quest/puzzle/text-puzzle",
-    "player",
-    "puzzle",
-    ["Text Puzzle", "It makes music"],
-  ],
 ];
 
 describe.each(PAGES)("%s (%s)", (_description, path, account, view, texts) => {
@@ -271,7 +257,7 @@ describe("a quest puzzle whose puzzle was deleted", () => {
     );
   });
 
-  it("renders the error page with a 404", async () => {
+  it("is not found", async () => {
     await PuzzleModel.create({
       name: "doomed-puzzle",
       displayName: "Doomed Puzzle",
@@ -287,13 +273,12 @@ describe("a quest puzzle whose puzzle was deleted", () => {
     await PuzzleModel.deleteOne({ name: "doomed-puzzle" });
 
     const response = await getPage(
-      "/quest/doomed-quest/puzzle/doomed-puzzle",
+      "/api/v1/quests/doomed-quest/puzzles/doomed-puzzle",
       "player"
     );
 
     expect(response.status).toBe(404);
-    expect(response.text).toContain("<h1>Not found</h1>");
-    expect(response.text).toContain(
+    expect(response.body.detail).toBe(
       "No puzzle named doomed-puzzle found for quest doomed-quest"
     );
   });

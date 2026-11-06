@@ -10,4 +10,6 @@ export const copy = {
   stepsReached: "Stops reached",
   /** Says that the quest is over. */
   questFinished: "End of the line",
+  /** Goes on to the step just reached. */
+  goToNextStep: (displayName: string) => `On to ${displayName}`,
 };

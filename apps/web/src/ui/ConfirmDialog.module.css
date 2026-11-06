@@ -1,0 +1,23 @@
+.dialog {
+  width: min(22rem, calc(100vw - 2 * var(--space-5)));
+  padding: var(--space-5);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.dialog::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}
+
+.dialog p {
+  margin: var(--space-3) 0 var(--space-4);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}

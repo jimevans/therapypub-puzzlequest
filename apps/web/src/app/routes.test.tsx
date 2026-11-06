@@ -18,6 +18,10 @@ vi.mock("../screens/quest/QuestScreen", () => ({
   QuestScreen: () => <h1>The quest screen</h1>,
 }));
 
+vi.mock("../screens/puzzle/PuzzleScreen", () => ({
+  PuzzleScreen: () => <h1>The puzzle screen</h1>,
+}));
+
 function renderAt(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
   render(
@@ -50,6 +54,7 @@ describe("the routes", () => {
   it.each([
     ["/", "The home screen"],
     ["/quest/trail", "The quest screen"],
+    ["/quest/trail/puzzle/riddle", "The puzzle screen"],
   ])("show the screen for %s", async (path, name) => {
     renderAt(path);
 

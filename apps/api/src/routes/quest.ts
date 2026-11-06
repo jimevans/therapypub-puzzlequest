@@ -3,6 +3,7 @@ import { requireAdmin, requireUser } from "../middleware/authorization.js";
 import { authenticateSession } from "../middleware/sessionAuthentication.js";
 import * as UseRenderMode from "../middleware/useRenderMode.js";
 import * as QuestController from "../controllers/quest.controller.js";
+import { sendWebApp } from "../controllers/web.controller.js";
 
 const questRouter = express.Router();
 
@@ -34,8 +35,7 @@ questRouter.get(
   "/:name/puzzle/:puzzleName",
   authenticateSession,
   requireUser,
-  UseRenderMode.useRenderMode(UseRenderMode.RenderMode.DISPLAY),
-  QuestController.renderQuestPuzzle
+  sendWebApp
 );
 
 questRouter.get(
