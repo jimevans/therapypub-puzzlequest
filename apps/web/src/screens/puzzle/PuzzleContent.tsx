@@ -1,7 +1,18 @@
 import { Suspense, lazy } from "react";
 import styles from "./PuzzleScreen.module.css";
 
-const PuzzleText = lazy(() => import("./PuzzleText"));
+const loadPuzzleText = () => import("./PuzzleText");
+const PuzzleText = lazy(loadPuzzleText);
+
+/**
+ * Starts downloading what shows a text puzzle, without waiting to hear that the
+ * puzzle has text. The download is needed soon anyway, on this puzzle or the
+ * next, and waiting for the API first delays the puzzle by a whole round trip.
+ */
+export function preloadPuzzleText(): void {
+  // If this fails, showing the puzzle tries again, and reports it if need be.
+  void loadPuzzleText().catch(() => {});
+}
 
 const TYPE_IMAGE = 1;
 const TYPE_AUDIO = 2;

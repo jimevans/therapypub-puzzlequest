@@ -16,7 +16,13 @@
     <meta name="react-aria-pressable-style" id="react-aria-pressable-style" />
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Shows as soon as the stylesheet arrives, before any JavaScript has
+         downloaded. React replaces it with the same thing: PageShell's frame. -->
+    <div id="root">
+      <header class="loading-header">
+        <a href="/">PuzzleQuest</a>
+      </header>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

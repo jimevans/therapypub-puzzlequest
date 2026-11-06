@@ -4,11 +4,12 @@ import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { ApiError, api, dataOrThrow } from "../../api";
 import { copy } from "../../copy";
-import { questQueryKey, useLiveQuest } from "../../live/useLiveQuest";
+import { useLiveQuest } from "../../live/useLiveQuest";
 import { ClockTime } from "../../quests/ClockTime";
 import { NotAvailable } from "../../quests/NotAvailable";
 import { PausedBanner } from "../../quests/PausedBanner";
 import { formatDuration } from "../../quests/clock";
+import { puzzleQuery } from "../../quests/queries";
 import {
   QUEST_COMPLETED,
   STEP_AWAITING_ACTIVATION,
@@ -21,7 +22,7 @@ import { ConfirmDialog } from "../../ui/ConfirmDialog";
 import { ProgressTrail } from "../../ui/ProgressTrail";
 import { Activation } from "./Activation";
 import { AnswerForm } from "./AnswerForm";
-import { PuzzleContent } from "./PuzzleContent";
+import { PuzzleContent, preloadPuzzleText } from "./PuzzleContent";
 import styles from "./PuzzleScreen.module.css";
 import { type PuzzlePath, refusalOf, usePuzzleAction } from "./puzzleActions";
 
@@ -223,15 +224,7 @@ function PuzzleDetails({
 
 function PuzzleLoader({ path }: { path: PuzzlePath }) {
   const { connected, connectionId } = useLiveQuest(path.name);
-  const view = useQuery({
-    queryKey: [...questQueryKey(path.name), "puzzles", path.puzzleName],
-    queryFn: async () =>
-      dataOrThrow(
-        await api.GET("/quests/{name}/puzzles/{puzzleName}", {
-          params: { path },
-        })
-      ),
-  });
+  const view = useQuery(puzzleQuery(path.name, path.puzzleName));
 
   // Resetting a quest makes its puzzles disappear, so this overrides what's on
   // screen. Any other failure leaves the last known state showing, since a phone
@@ -261,6 +254,8 @@ function PuzzleLoader({ path }: { path: PuzzlePath }) {
     </div>
   );
 }
+
+preloadPuzzleText();
 
 /** One puzzle, by its state: waiting to be activated, being solved, or solved. */
 export function PuzzleScreen() {

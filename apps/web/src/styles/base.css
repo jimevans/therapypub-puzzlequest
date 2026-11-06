@@ -38,6 +38,20 @@ input {
   font: inherit;
 }
 
+/* The frame in index.html, matching PageShell's header. */
+.loading-header {
+  padding: var(--space-3) var(--space-5);
+  background: var(--ink);
+}
+
+.loading-header a {
+  color: var(--on-ink);
+  font-family: var(--font-display);
+  font-size: 1.625rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
 /* React Aria would inject this rule, which the Content Security Policy blocks
    (see index.html). It stops browsers delaying a tap to see if it's a double
    tap. It's in a layer so that a component's own rules win, as React Aria's is. */
