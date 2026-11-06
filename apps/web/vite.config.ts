@@ -1,8 +1,12 @@
+import type { IncomingMessage } from "node:http";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 /** The API server, which `npm run dev` starts, for `npm run dev:web`. */
 const API_SERVER = "http://localhost:3000";
+
+/** The authorization level of an administrator, who gets EJS pages for now. */
+const ADMINISTRATOR = 10;
 
 const toApiServer = {
   target: API_SERVER,
@@ -11,19 +15,61 @@ const toApiServer = {
   headers: { origin: API_SERVER },
 };
 
+/**
+ * For the pages where the server chooses by session. A signed-in player gets
+ * Vite's copy of the React app, since the server's would be the last build, and
+ * everyone else gets the server's page, as in production.
+ */
+const toReactForPlayers = {
+  ...toApiServer,
+  bypass: async (req: IncomingMessage) => {
+    const response = await fetch(`${API_SERVER}/api/v1/sessions/current`, {
+      headers: { cookie: req.headers.cookie ?? "" },
+    });
+    if (!response.ok) {
+      return undefined;
+    }
+    const { user } = (await response.json()) as {
+      user: { authorizationLevel: number };
+    };
+    return user.authorizationLevel < ADMINISTRATOR ? "/index.html" : undefined;
+  },
+};
+
 export default defineConfig({
   plugins: [react()],
   build: {
     // Inlined files would be data: URLs, which the Content Security Policy
     // doesn't allow for fonts.
     assetsInlineLimit: 0,
+    rolldownOptions: {
+      output: {
+        // Stable names for the shared libraries, so that .size-limit.json can
+        // count them. Left alone, each chunk is named after whichever module
+        // happens to be in it.
+        advancedChunks: {
+          groups: [
+            {
+              name: "react",
+              test: /node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/,
+            },
+            { name: "query", test: /node_modules[\\/]@tanstack[\\/]/ },
+            {
+              name: "aria",
+              test: /node_modules[\\/](@react-aria|@react-stately|@react-types|@internationalized|react-aria|react-aria-components|react-stately)[\\/]/,
+            },
+          ],
+        },
+      },
+    },
   },
   server: {
     // Vite serves the React app. Everything else comes from the API server:
     // the API, uploaded media, and the pages not yet moved to React.
     proxy: {
       "/api": { ...toApiServer, ws: true },
-      "^/$": toApiServer,
+      "^/$": toReactForPlayers,
+      "^/quest/(?!new$)[^/]+$": toReactForPlayers,
       "^/(login|logout)$": toApiServer,
       "^/(user|puzzle|quest|monitor)/": toApiServer,
       "^/(puzzleData|script|style|image|policies|vendor)/": toApiServer,

@@ -1,11 +1,15 @@
 // Serves the React app's built files (apps/web/dist) from the same origin as
 // the API, so it shares the session cookie and the site's security rules.
 import express from "express";
+import { sendWebApp } from "../controllers/web.controller.js";
 import { webDirectory } from "../paths.js";
 
 /**
- * The pages the React app shows. Moving a screen to React adds its URL here
- * and deletes its EJS route, so every link keeps working.
+ * The pages the React app shows to everyone. Moving a screen to React adds its
+ * URL here and deletes its EJS route, so every link keeps working. Where admin
+ * screens are still EJS, the page's own controller chooses by session instead,
+ * calling sendWebApp for players (see index.controller.ts and
+ * quest.controller.ts).
  */
 const WEB_PAGES = ["/login"];
 
@@ -25,14 +29,6 @@ webRouter.use(
   }
 );
 
-webRouter.get(WEB_PAGES, (req, res) => {
-  // Browsers must ask each time, so a deployment reaches them at once.
-  res.set("Cache-Control", "no-cache");
-  res.sendFile("index.html", { root: webDirectory }, (error) => {
-    if (error && !res.headersSent) {
-      res.status(503).type("text").send("The web app hasn't been built.");
-    }
-  });
-});
+webRouter.get(WEB_PAGES, sendWebApp);
 
 export { webRouter as WebRouter };

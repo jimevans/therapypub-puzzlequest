@@ -341,15 +341,17 @@ describe("the quest details page", () => {
   });
 });
 
-describe("a skipped puzzle on the players' quest page", () => {
+describe("a skipped puzzle, as the players see the quest", () => {
   it("shows as Skipped, with its solution", async () => {
     await rescue("skip", "riddle");
 
-    const page = await request(app)
-      .get("/quest/quest")
+    const response = await request(app)
+      .get("/api/v1/quests/quest")
       .set("Authorization", `Bearer ${sessions.player}`);
 
-    expect(page.text).toContain("Skipped");
-    expect(page.text).toContain("A piano");
+    expect(response.body.puzzles[0]).toMatchObject({
+      statusDescription: "Skipped",
+      solutionDisplayText: "A piano",
+    });
   });
 });

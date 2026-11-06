@@ -1,0 +1,59 @@
+.line {
+  --dot: 18px;
+  --ring: 26px;
+  --rail: 6px;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  position: relative;
+  padding: 0 0 var(--space-6) calc(var(--ring) + var(--space-3));
+}
+
+/* The stop's marker, centered on the rail. */
+.step::before {
+  position: absolute;
+  z-index: 1;
+  top: 2px;
+  left: calc((var(--ring) - var(--dot)) / 2);
+  width: var(--dot);
+  height: var(--dot);
+  border-radius: 50%;
+  background: var(--accent);
+  content: "";
+}
+
+.current::before {
+  left: 0;
+  width: var(--ring);
+  height: var(--ring);
+  border: var(--rail) solid var(--accent);
+  background: var(--paper);
+}
+
+/* The rail, joining this step to the next. */
+.step::after {
+  position: absolute;
+  top: 2px;
+  bottom: -2px;
+  left: calc((var(--ring) - var(--rail)) / 2);
+  width: var(--rail);
+  background: var(--accent);
+  content: "";
+}
+
+.step:last-child::after {
+  display: none;
+}
+
+/* What lies ahead is unknown: dots trailing off, however far the quest goes. */
+.open .step:last-child::after {
+  display: block;
+  width: 0;
+  border-left: var(--rail) dotted var(--line-off);
+  background: none;
+}

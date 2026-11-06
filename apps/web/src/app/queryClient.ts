@@ -1,5 +1,6 @@
-import { QueryClient } from "@tanstack/react-query";
+import { QueryCache, QueryClient } from "@tanstack/react-query";
 import { ApiError } from "../api";
+import { goToSignIn } from "../session";
 
 /** Failed requests that could succeed if sent again are retried this often. */
 const MAX_RETRIES = 2;
@@ -20,11 +21,24 @@ export function shouldRetry(failures: number, error: unknown): boolean {
 }
 
 /**
+ * Sends the visitor to sign in if their session has ended while a screen was
+ * open. Only for fetching data: a form that gets a 401, such as signing in with
+ * the wrong password, says so itself.
+ * @param error why a query failed
+ */
+export function signInIfSessionEnded(error: unknown): void {
+  if (error instanceof ApiError && error.status === 401) {
+    goToSignIn();
+  }
+}
+
+/**
  * Creates the store of data fetched from the API.
  * @returns the client
  */
 export function createQueryClient(): QueryClient {
   return new QueryClient({
+    queryCache: new QueryCache({ onError: signInIfSessionEnded }),
     defaultOptions: { queries: { retry: shouldRetry } },
   });
 }

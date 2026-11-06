@@ -282,12 +282,12 @@ describe("a paused quest's pages", () => {
     await asAdmin("pause");
   });
 
-  it("say it is paused", async () => {
-    const page = await asPlayer("get", "/quest/quest");
+  it("tell the players it is paused, with the clock stopped", async () => {
+    const response = await asPlayer("get", "/api/v1/quests/quest");
 
-    expect(page.text).toContain('id="paused-banner"');
-    expect(page.text).toContain("Paused");
-    expect(page.text).not.toContain("data-clock-start");
+    expect(response.body.paused).toBe(true);
+    expect(response.body.progress.running).toBe(false);
+    expect(response.body.progress.clockStart).toBeUndefined();
   });
 
   it("disable guessing and hints on the puzzle page", async () => {

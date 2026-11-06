@@ -4,8 +4,8 @@ import { ErrorPage } from "./ErrorPage";
 
 /**
  * The React app's pages. Each loads separately, so nobody downloads a screen
- * they don't use. A page must also be listed in apps/api/src/routes/web.ts,
- * so that the server sends the app for its address.
+ * they don't use. The server must also send the app for a page's address: see
+ * apps/api/src/routes/web.ts.
  */
 export const routes: RouteObject[] = [
   {
@@ -18,6 +18,18 @@ export const routes: RouteObject[] = [
     hydrateFallbackElement: <PageShell />,
     errorElement: <ErrorPage />,
     children: [
+      {
+        path: "/",
+        lazy: async () => ({
+          Component: (await import("../screens/home/Home")).Home,
+        }),
+      },
+      {
+        path: "/quest/:name",
+        lazy: async () => ({
+          Component: (await import("../screens/quest/QuestScreen")).QuestScreen,
+        }),
+      },
       {
         path: "/login",
         lazy: async () => ({

@@ -1,13 +1,40 @@
 [
   {
     "name": "What every page downloads first",
-    "path": "dist/assets/index-*.js",
+    "path": [
+      "dist/assets/index-*.js",
+      "dist/assets/rolldown-runtime-*.js",
+      "dist/assets/react-*.js",
+      "dist/assets/query-*.js",
+      "dist/assets/Banner-*.js"
+    ],
     "limit": "115 KB",
     "gzip": true
   },
   {
+    "name": "The home screen, on top of that",
+    "path": [
+      "dist/assets/Home-*.js",
+      "dist/assets/ClockTime-*.js",
+      "dist/assets/Button-*.js",
+      "dist/assets/aria-*.js"
+    ],
+    "limit": "20 KB",
+    "gzip": true
+  },
+  {
+    "name": "The quest screen, on top of that",
+    "path": ["dist/assets/QuestScreen-*.js", "dist/assets/ClockTime-*.js"],
+    "limit": "5 KB",
+    "gzip": true
+  },
+  {
     "name": "The sign-in screen, on top of that",
-    "path": "dist/assets/SignIn-*.js",
+    "path": [
+      "dist/assets/SignIn-*.js",
+      "dist/assets/Button-*.js",
+      "dist/assets/aria-*.js"
+    ],
     "limit": "32 KB",
     "gzip": true
   }

@@ -15,3 +15,9 @@ export function useSession() {
     },
   });
 }
+
+/** Sends the visitor to sign in, and back to this page afterwards. */
+export function goToSignIn(): void {
+  const here = `${location.pathname}${location.search}`;
+  location.assign(`/login?next=${encodeURIComponent(here)}`);
+}
