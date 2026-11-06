@@ -95,5 +95,18 @@ export function createRoutes(queryClient: QueryClient): RouteObject[] {
         },
       ],
     },
+    // Fills the screen, so it's outside the frame of the other pages.
+    {
+      path: "/monitor/quest/:name/board",
+      loader: ({ params }) => {
+        void queryClient.prefetchQuery(spectatorQuestQuery(params.name ?? ""));
+        return null;
+      },
+      hydrateFallbackElement: <PageShell />,
+      errorElement: <ErrorPage />,
+      lazy: async () => ({
+        Component: (await import("../screens/followAlong/Board")).Board,
+      }),
+    },
   ];
 }

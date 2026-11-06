@@ -14,6 +14,7 @@ import { webDirectory } from "../paths.js";
 const WEB_PAGES = [
   "/login",
   "/monitor/quest/:name",
+  "/monitor/quest/:name/board",
   "/monitor/quest/:name/puzzle/:puzzleName",
 ];
 

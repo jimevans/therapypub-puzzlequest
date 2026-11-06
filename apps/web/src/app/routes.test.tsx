@@ -30,6 +30,10 @@ vi.mock("../screens/followAlong/FollowPuzzle", () => ({
   FollowPuzzle: () => <h1>Following a puzzle</h1>,
 }));
 
+vi.mock("../screens/followAlong/Board", () => ({
+  Board: () => <h1>The board</h1>,
+}));
+
 function renderAt(path: string) {
   const client = new QueryClient();
   const router = createMemoryRouter(createRoutes(client), {
@@ -68,6 +72,7 @@ describe("the routes", () => {
     ["/quest/trail/puzzle/riddle", "The puzzle screen"],
     ["/monitor/quest/trail", "Following a quest"],
     ["/monitor/quest/trail/puzzle/riddle", "Following a puzzle"],
+    ["/monitor/quest/trail/board", "The board"],
   ])("show the screen for %s", async (path, name) => {
     renderAt(path);
 
@@ -99,6 +104,15 @@ describe("the routes", () => {
         params: { path: params },
       })
     );
+  });
+
+  it("show the board without the frame of the other pages", async () => {
+    renderAt("/monitor/quest/trail/board");
+
+    await screen.findByRole("heading", { name: "The board" });
+    expect(
+      screen.queryByRole("link", { name: "PuzzleQuest" })
+    ).not.toBeInTheDocument();
   });
 
   it("say so at an address with no page", async () => {

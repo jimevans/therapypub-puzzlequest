@@ -142,6 +142,7 @@ describe("an administrator, who has no EJS page for it", () => {
 describe("following a quest", () => {
   it.each([
     "/monitor/quest/trail",
+    "/monitor/quest/trail/board",
     "/monitor/quest/trail/puzzle/riddle",
     "/monitor/quest/no-such-quest",
   ])("is open to anyone at %s, with no data in the page", async (page) => {
