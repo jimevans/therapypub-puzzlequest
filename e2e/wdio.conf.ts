@@ -3,13 +3,16 @@
 // application with an in-memory database. NODE_ENV=test keeps a developer's
 // apps/api/.env out of it, so no real email or text message can be sent.
 import { type ChildProcess, spawn } from "node:child_process";
-import { closeSync, openSync } from "node:fs";
+import { closeSync, openSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { MongoMemoryServer } from "mongodb-memory-server";
+import QRCode from "qrcode";
 import {
   ADMIN,
   BASE_URL,
   PASSWORD,
+  SCANNED_CODE,
   SERVER_LOG,
   TWILIO_AUTH_TOKEN,
   api,
@@ -38,16 +41,60 @@ async function waitForServer(): Promise<void> {
   throw new Error(`The application didn't start; see ${SERVER_LOG}`);
 }
 
+/** The video the fake camera plays: one frame, a QR code, over and over. */
+const FAKE_CAMERA_VIDEO = path.join(tmpdir(), "puzzlequest-e2e-camera.y4m");
+
+/**
+ * Writes the fake camera's video, in the uncompressed format Chrome reads.
+ * @param text what the QR code in it says
+ */
+function writeFakeCameraVideo(text: string): void {
+  const WIDTH = 640;
+  const HEIGHT = 480;
+  const SCALE = 8;
+  const { modules } = QRCode.create(text, { errorCorrectionLevel: "M" });
+  const size = modules.size * SCALE;
+  const left = Math.floor((WIDTH - size) / 2);
+  const top = Math.floor((HEIGHT - size) / 2);
+  const WHITE = 235;
+  const BLACK = 16;
+  const brightness = Buffer.alloc(WIDTH * HEIGHT, WHITE);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (modules.get(Math.floor(y / SCALE), Math.floor(x / SCALE))) {
+        brightness[(top + y) * WIDTH + left + x] = BLACK;
+      }
+    }
+  }
+  const NO_COLOR = 128;
+  writeFileSync(
+    FAKE_CAMERA_VIDEO,
+    Buffer.concat([
+      Buffer.from(`YUV4MPEG2 W${WIDTH} H${HEIGHT} F30:1 Ip A1:1 C420\nFRAME\n`),
+      brightness,
+      Buffer.alloc((WIDTH * HEIGHT) / 2, NO_COLOR),
+    ])
+  );
+}
+
+const SPECS = path.join(import.meta.dirname, "specs/**/*.e2e.ts");
+const CAMERA_SPECS = path.join(import.meta.dirname, "camera-specs/**/*.e2e.ts");
+
+const chromeArguments = [
+  "--headless=new",
+  "--window-size=1280,900",
+  // GitHub's runners don't allow Chrome's sandbox.
+  ...(process.env.CI ? ["--no-sandbox"] : []),
+];
+
+// The camera is refused, so that no test waits on a permission prompt or on a
+// developer's own camera, and the fall-back to typing is what every test uses.
 const chrome = {
   browserName: "chrome",
   webSocketUrl: true,
   "goog:chromeOptions": {
-    args: [
-      "--headless=new",
-      "--window-size=1280,900",
-      // GitHub's runners don't allow Chrome's sandbox.
-      ...(process.env.CI ? ["--no-sandbox"] : []),
-    ],
+    args: chromeArguments,
+    prefs: { "profile.default_content_setting_values.media_stream_camera": 2 },
   },
 };
 
@@ -56,17 +103,36 @@ const firefox = {
   webSocketUrl: true,
   "moz:firefoxOptions": {
     args: ["-headless", "-width=1280", "-height=900"],
+    prefs: { "permissions.default.camera": 2 },
+  },
+};
+
+// Scanning, with a camera that shows a QR code. Firefox can't be given a chosen
+// picture, so it's only in Chrome, in a session of its own, because this camera
+// would try its code on every puzzle the other tests open.
+const chromeWithCamera = {
+  browserName: "chrome",
+  webSocketUrl: true,
+  "wdio:specs": [CAMERA_SPECS],
+  "wdio:exclude": [SPECS],
+  "goog:chromeOptions": {
+    args: [
+      ...chromeArguments,
+      "--use-fake-ui-for-media-stream",
+      "--use-fake-device-for-media-stream",
+      `--use-file-for-fake-video-capture=${FAKE_CAMERA_VIDEO}`,
+    ],
   },
 };
 
 export const config: WebdriverIO.Config = {
   runner: "local",
   tsConfigPath: path.join(import.meta.dirname, "tsconfig.json"),
-  specs: [path.join(import.meta.dirname, "specs/**/*.e2e.ts")],
+  specs: [SPECS],
   // One browser at a time: they share the server and its rate limits.
   maxInstances: 1,
   // E2E_BROWSER=chrome or firefox runs just that one.
-  capabilities: [chrome, firefox].filter(
+  capabilities: [chrome, chromeWithCamera, firefox].filter(
     ({ browserName }) =>
       !process.env.E2E_BROWSER || browserName === process.env.E2E_BROWSER
   ),
@@ -78,6 +144,7 @@ export const config: WebdriverIO.Config = {
   mochaOpts: { ui: "bdd", timeout: 120000 },
 
   async onPrepare() {
+    writeFakeCameraVideo(SCANNED_CODE);
     mongoServer = await MongoMemoryServer.create();
     const log = openSync(SERVER_LOG, "w");
     server = spawn(process.execPath, [APPLICATION], {

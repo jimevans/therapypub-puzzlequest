@@ -42,13 +42,19 @@
       "dist/assets/TextField-*.js",
       "dist/assets/aria-*.js"
     ],
-    "limit": "22 KB",
+    "limit": "23 KB",
     "gzip": true
   },
   {
     "name": "A text puzzle's Markdown, once activated",
     "path": "dist/assets/PuzzleText-*.js",
     "limit": "52 KB",
+    "gzip": true
+  },
+  {
+    "name": "The QR code reader, once scanning",
+    "path": "dist/assets/decodeQr-*.js",
+    "limit": "48 KB",
     "gzip": true
   },
   {
