@@ -1,10 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../api";
 import { ErrorPage } from "./ErrorPage";
-import { routes } from "./routes";
+import { createRoutes } from "./routes";
 
 vi.mock("../screens/signIn/SignIn", () => ({
   SignIn: () => <h1>The screen</h1>,
@@ -23,9 +23,12 @@ vi.mock("../screens/puzzle/PuzzleScreen", () => ({
 }));
 
 function renderAt(path: string) {
-  const router = createMemoryRouter(routes, { initialEntries: [path] });
+  const client = new QueryClient();
+  const router = createMemoryRouter(createRoutes(client), {
+    initialEntries: [path],
+  });
   render(
-    <QueryClientProvider client={new QueryClient()}>
+    <QueryClientProvider client={client}>
       <RouterProvider router={router} />
     </QueryClientProvider>
   );
@@ -59,6 +62,23 @@ describe("the routes", () => {
     renderAt(path);
 
     expect(await screen.findByRole("heading", { name })).toBeVisible();
+  });
+
+  it.each([
+    ["/quest/trail", "/quests/{name}", { name: "trail" }],
+    [
+      "/quest/trail/puzzle/riddle",
+      "/quests/{name}/puzzles/{puzzleName}",
+      { name: "trail", puzzleName: "riddle" },
+    ],
+  ])("start fetching %s's data at once", async (path, apiPath, params) => {
+    renderAt(path);
+
+    await waitFor(() =>
+      expect(api.GET).toHaveBeenCalledWith(apiPath, {
+        params: { path: params },
+      })
+    );
   });
 
   it("say so at an address with no page", async () => {

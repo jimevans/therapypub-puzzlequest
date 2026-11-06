@@ -1,13 +1,14 @@
 import type { Schemas } from "@puzzlequest/api-client";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
-import { ApiError, api, dataOrThrow } from "../../api";
+import { ApiError } from "../../api";
 import { copy } from "../../copy";
-import { questQueryKey, useLiveQuest } from "../../live/useLiveQuest";
+import { useLiveQuest } from "../../live/useLiveQuest";
 import { ClockTime } from "../../quests/ClockTime";
 import { NotAvailable } from "../../quests/NotAvailable";
 import { PausedBanner } from "../../quests/PausedBanner";
 import { type Clock, formatDuration, formatMoment } from "../../quests/clock";
+import { questQuery } from "../../quests/queries";
 import { QUEST_COMPLETED, STEP_COMPLETED } from "../../quests/status";
 import { Banner } from "../../ui/Banner";
 import { ProgressLine, ProgressStep } from "../../ui/ProgressLine";
@@ -129,13 +130,7 @@ function QuestDetails({ quest }: { quest: Quest }) {
 export function QuestScreen() {
   const name = useParams().name ?? "";
   const { connected } = useLiveQuest(name);
-  const quest = useQuery({
-    queryKey: questQueryKey(name),
-    queryFn: async () =>
-      dataOrThrow(
-        await api.GET("/quests/{name}", { params: { path: { name } } })
-      ),
-  });
+  const quest = useQuery(questQuery(name));
 
   // Resetting a quest makes it disappear, so this overrides what's on screen.
   // Any other failure leaves the last known state showing, since a phone in a

@@ -48,11 +48,12 @@ export default defineConfig({
     // Inlined files would be data: URLs, which the Content Security Policy
     // doesn't allow for fonts.
     assetsInlineLimit: 0,
+    // Lists what each source file loads, for the size budgets (.size-limit.mjs).
+    manifest: true,
     rolldownOptions: {
       output: {
-        // Stable names for the shared libraries, so that .size-limit.json can
-        // count them. Left alone, each chunk is named after whichever module
-        // happens to be in it.
+        // The libraries, apart from the app's code, so that a change to the app
+        // leaves them in the browser's cache.
         advancedChunks: {
           groups: [
             {
