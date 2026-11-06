@@ -46,15 +46,5 @@ export const phoneNumber = z
     return parsed.number;
   });
 
-/**
- * Formats a stored phone number for people to read, such as
- * "(312) 555-0142".
- * @param phone the number, in E.164 format
- * @returns the formatted number, or the value as it is if it isn't one
- */
-export function formatPhoneNumber(phone: string): string {
-  return parsePhoneNumberFromString(phone)?.formatNational() ?? phone;
-}
-
 /** A whole number that pages may send as text, such as from a select box. */
 export const wholeNumber = z.coerce.number().int("Must be a whole number");

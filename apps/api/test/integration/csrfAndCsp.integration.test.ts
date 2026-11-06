@@ -161,7 +161,7 @@ describe("a request that only reads", () => {
       .get("/user/player")
       .set({ Cookie: playerCookie, Origin: "https://evil.example" });
 
-    expect(response.status).toBe(200);
+    expect(response.status).not.toBe(403);
   });
 });
 

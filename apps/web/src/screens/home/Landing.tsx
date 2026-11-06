@@ -15,8 +15,7 @@ export function Landing() {
         <LinkButton id="login" to="/login" variant="primary">
           Sign in
         </LinkButton>
-        {/* Reloads, because sign-up isn't in this app yet. */}
-        <LinkButton id="register" to="/user/register" reloadDocument>
+        <LinkButton id="register" to="/user/register">
           Sign up
         </LinkButton>
       </div>

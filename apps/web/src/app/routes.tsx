@@ -118,6 +118,25 @@ export function createRoutes(queryClient: QueryClient): RouteObject[] {
           }),
         },
         {
+          path: "/user/register",
+          lazy: async () => ({
+            Component: (await import("../screens/account/SignUp")).SignUp,
+          }),
+        },
+        {
+          path: "/user/:userName",
+          lazy: async () => ({
+            Component: (await import("../screens/account/Profile")).Profile,
+          }),
+        },
+        {
+          path: "/user/:userName/edit",
+          lazy: async () => ({
+            Component: (await import("../screens/account/EditProfile"))
+              .EditProfile,
+          }),
+        },
+        {
           path: "/login",
           lazy: async () => ({
             Component: (await import("../screens/signIn/SignIn")).SignIn,

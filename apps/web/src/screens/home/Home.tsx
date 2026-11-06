@@ -5,7 +5,7 @@ import { api, dataOrThrow } from "../../api";
 import { ClockTime } from "../../quests/ClockTime";
 import { useSession } from "../../session";
 import { Banner } from "../../ui/Banner";
-import { EmailReminder } from "./EmailReminder";
+import { EmailReminder } from "../account/EmailReminder";
 import styles from "./Home.module.css";
 import { Landing } from "./Landing";
 

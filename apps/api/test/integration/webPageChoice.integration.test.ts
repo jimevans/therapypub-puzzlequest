@@ -139,6 +139,27 @@ describe("an administrator, who has no EJS page for it", () => {
   });
 });
 
+describe("account pages", () => {
+  it("offer signing up to anyone", async () => {
+    for (const account of [undefined, "player", "admin"]) {
+      const response = await getPage("/user/register", account);
+
+      expect(response.status).toBe(200);
+      expect(response.text).toBe(REACT_PAGE);
+    }
+  });
+
+  it.each(["/user/player", "/user/player/edit"])(
+    "show %s to its user and administrators only",
+    async (page) => {
+      expect((await getPage(page, "player")).text).toBe(REACT_PAGE);
+      expect((await getPage(page, "admin")).text).toBe(REACT_PAGE);
+      expect((await getPage(page, "other")).status).toBe(403);
+      expect((await getPage(page)).status).toBe(302);
+    }
+  );
+});
+
 describe("following a quest", () => {
   it.each([
     "/monitor/quest/trail",

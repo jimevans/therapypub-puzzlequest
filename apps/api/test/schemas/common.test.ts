@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  formatPhoneNumber,
-  newName,
-  phoneNumber,
-} from "../../src/schemas/common.js";
+import { newName, phoneNumber } from "../../src/schemas/common.js";
 
 describe("phoneNumber", () => {
   it.each([
@@ -33,17 +29,6 @@ describe("phoneNumber", () => {
     expect(result.error?.issues[0].message).toBe(
       "Enter a valid US or Canadian phone number"
     );
-  });
-});
-
-describe("formatPhoneNumber", () => {
-  it("formats a stored number for reading", () => {
-    expect(formatPhoneNumber("+13125550142")).toBe("(312) 555-0142");
-  });
-
-  it("leaves a value that isn't a number as it is", () => {
-    expect(formatPhoneNumber("")).toBe("");
-    expect(formatPhoneNumber("unknown")).toBe("unknown");
   });
 });
 

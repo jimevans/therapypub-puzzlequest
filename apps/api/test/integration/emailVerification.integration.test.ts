@@ -310,23 +310,23 @@ describe("password reset", () => {
   });
 });
 
-describe("the reminder", () => {
-  it("shows on the player's own profile until the address is verified", async () => {
+describe("what a profile needs for its reminder", () => {
+  it("says whether the address is verified", async () => {
     const { player } = await startSessions("player");
-    const page = (path: string) =>
-      request(app).get(path).set("Authorization", `Bearer ${player}`);
+    const emailVerified = async () =>
+      (
+        await request(app)
+          .get("/api/v1/users/player")
+          .set("Authorization", `Bearer ${player}`)
+      ).body.emailVerified;
 
-    const profile = (await page("/user/player")).text;
-    expect(profile).toContain('id="email-reminder"');
-    expect(profile).toContain("player@example.com (not verified)");
+    expect(await emailVerified()).toBe(false);
 
     await UserModel.updateOne(
       { userName: "player" },
       { emailVerifiedAt: new Date() }
     );
 
-    const verified = (await page("/user/player")).text;
-    expect(verified).not.toContain('id="email-reminder"');
-    expect(verified).not.toContain("not verified");
+    expect(await emailVerified()).toBe(true);
   });
 });

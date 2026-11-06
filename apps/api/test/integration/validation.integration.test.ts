@@ -170,19 +170,6 @@ describe("phone numbers", () => {
     expect(response.status).toBe(200);
     expect((await storedUser("player")).phone).toBe("");
   });
-
-  it("are shown formatted on the profile page", async () => {
-    await UserModel.updateOne(
-      { userName: "player" },
-      { phone: "+13125550142" }
-    );
-
-    const response = await request(app)
-      .get("/user/player")
-      .set("Authorization", `Bearer ${sessions.player}`);
-
-    expect(response.text).toContain("(312) 555-0142");
-  });
 });
 
 describe("values pages send as text", () => {

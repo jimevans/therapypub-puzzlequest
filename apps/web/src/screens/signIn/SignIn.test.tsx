@@ -4,7 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
-import { SignIn, pathAfterSignIn } from "./SignIn";
+import { SignIn } from "./SignIn";
+import { pathAfterSignIn } from "./pathAfterSignIn";
 
 const assign = vi.fn();
 

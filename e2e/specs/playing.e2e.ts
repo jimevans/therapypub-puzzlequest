@@ -8,9 +8,7 @@ import {
   PASSWORD,
   api,
   callQuestNumber,
-  pickInLookup,
   sessionToken,
-  signIn,
   unique,
 } from "../support.js";
 
@@ -73,21 +71,23 @@ describe("playing a quest", () => {
     await $("#email").setValue(`${player}@example.com`);
     await $("#phone").setValue(`(312) 555-01${phoneDigits}`);
     await $("#allow-sms").click();
-    await $("#save-button").click();
-    await expect($("#login")).toBeDisplayed();
+    await $("#sign-up").click();
 
-    await signIn(player);
+    // Signing up signs the player in, and goes home.
     await expect($(`a[href="/user/${player}"]`)).toExist();
+    await expect($("h1=Your quests")).toBeDisplayed();
   });
 
   it("joins a team with its join code", async () => {
     await browser.url(`/user/${player}`);
-    await $("=Join new team").click();
-    await pickInLookup(teamName);
+    await $("#join-team").click();
+    await $("#team-choice").selectByAttribute("value", teamName);
     await $("#join-code").setValue(joinCode);
-    await $('button[data-action="confirm"]').click();
+    await $("#join-team-confirm").click();
 
-    await expect($(`//div[@id="teams"]//td[.="${teamDisplayName}"]`)).toExist();
+    await expect($(`[data-team-name="${teamName}"]`)).toHaveText(
+      expect.stringContaining(teamDisplayName)
+    );
   });
 
   it("starts the quest by calling its number", async () => {
