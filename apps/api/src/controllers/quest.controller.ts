@@ -8,6 +8,7 @@ import { PuzzleType } from "../models/puzzle.model.js";
 import { QuestPuzzleStatus } from "../models/quest.model.js";
 import * as QuestService from "../services/quest.service.js";
 import * as UserService from "../services/user.service.js";
+import { sendWebApp } from "./web.controller.js";
 
 export async function renderQuest(
   req: RouteRequest<"name">,
@@ -15,11 +16,13 @@ export async function renderQuest(
 ): Promise<void> {
   // The route requires a signed-in user.
   const loggedInUser = UserService.requireLoggedInUser(req.user);
-  const viewName = loggedInUser.isAdmin()
-    ? req.renderMode === RenderMode.DISPLAY
-      ? "questDetails"
-      : "questEdit"
-    : "quest";
+  // Only administrators can reach the routes that create and edit a quest.
+  if (!loggedInUser.isAdmin()) {
+    sendWebApp(req, res);
+    return;
+  }
+  const viewName =
+    req.renderMode === RenderMode.DISPLAY ? "questDetails" : "questEdit";
 
   if (req.renderMode === RenderMode.CREATE) {
     res.render(viewName, { renderMode: req.renderMode, quest: null });

@@ -94,10 +94,7 @@ describe("playing a quest", () => {
     const heard = await callQuestNumber(`+131255501${phoneDigits}`);
     expect(heard).toContain("Your quest starts now");
 
-    await browser.waitUntil(async () => {
-      await browser.url("/");
-      return $(`a[href="/quest/${questName}"]`).isExisting();
-    });
+    await browser.url("/");
     await $(`a[href="/quest/${questName}"]`).click();
     await expect($("#quest-progress")).toBeDisplayed();
   });

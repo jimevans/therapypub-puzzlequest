@@ -210,7 +210,6 @@ const PAGES: [string, string, string | null, string, string[]][] = [
     ["It makes music"],
   ],
 
-  ["player home", "/", "player", "home", ["Waiting Quest", "Running Quest"]],
   [
     "player's own profile",
     "/user/player",
@@ -219,13 +218,6 @@ const PAGES: [string, string, string | null, string, string[]][] = [
     ["Change password", "Team A"],
   ],
   ["player's profile editor", "/user/player/edit", "player", "user", []],
-  [
-    "quest",
-    "/quest/waiting-quest",
-    "player",
-    "quest",
-    ["Waiting Quest", "Text Puzzle"],
-  ],
   [
     "puzzle awaiting activation",
     "/quest/waiting-quest/puzzle/text-puzzle",
@@ -333,7 +325,7 @@ describe("error page", () => {
     [
       "a quest that does not exist",
       "/quest/missing",
-      "player",
+      "admin",
       404,
       "Not found",
     ],
@@ -399,53 +391,16 @@ describe("quest progress", () => {
     return html.slice(start, next < 0 ? undefined : bodyStart + next);
   }
 
-  it("shows a finished quest's elapsed time, penalties, and total on the player's home page", async () => {
-    const response = await getPage("/", "player");
+  it("shows the penalties on the quest monitor, for the quest and the puzzle", async () => {
+    const response = await getPage("/monitor/quest/running-quest", "admin");
 
-    const finished = card(response.text, 'data-quest-name="finished-quest"');
-    expect(finished).toContain(
-      '<span data-progress="elapsed" data-duration="2700000">00:45:00</span>'
-    );
-    expect(finished).toContain(
-      '<span data-progress="penalty" data-duration="60000">00:01:00</span>'
-    );
-    expect(finished).toContain(
-      '<span data-progress="total" data-duration="2760000">00:46:00</span>'
-    );
-    expect(finished).not.toContain("data-clock-start");
-  });
-
-  it("runs the clocks of a quest in progress, adding its penalties to the total", async () => {
-    const response = await getPage("/", "player");
-
-    const running = card(response.text, 'data-quest-name="running-quest"');
-    expect(running).toMatch(
-      /data-progress="elapsed" data-duration="0" data-clock-start="[^"]+"/
-    );
-    expect(running).toContain(
-      '<span data-progress="penalty" data-duration="60000">00:01:00</span>'
-    );
-    expect(running).toMatch(
-      /data-progress="total" data-duration="60000" data-clock-start="[^"]+"/
+    const penalty =
+      '<span data-progress="penalty" data-duration="60000">00:01:00</span>';
+    expect(card(response.text, 'id="quest-progress"')).toContain(penalty);
+    expect(card(response.text, 'data-puzzle-name="text-puzzle"')).toContain(
+      penalty
     );
   });
-
-  it.each([
-    ["quest page", "/quest/running-quest", "player"],
-    ["quest monitor", "/monitor/quest/running-quest", "admin"],
-  ])(
-    "shows the penalties on the %s, for the quest and the puzzle",
-    async (_page, path, account) => {
-      const response = await getPage(path, account);
-
-      const penalty =
-        '<span data-progress="penalty" data-duration="60000">00:01:00</span>';
-      expect(card(response.text, 'id="quest-progress"')).toContain(penalty);
-      expect(card(response.text, 'data-puzzle-name="text-puzzle"')).toContain(
-        penalty
-      );
-    }
-  );
 
   it("includes progress in the quest's JSON", async () => {
     const response = await getPage("/api/v1/quests/finished-quest", "player");

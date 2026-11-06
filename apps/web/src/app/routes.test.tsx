@@ -10,6 +10,14 @@ vi.mock("../screens/signIn/SignIn", () => ({
   SignIn: () => <h1>The screen</h1>,
 }));
 
+vi.mock("../screens/home/Home", () => ({
+  Home: () => <h1>The home screen</h1>,
+}));
+
+vi.mock("../screens/quest/QuestScreen", () => ({
+  QuestScreen: () => <h1>The quest screen</h1>,
+}));
+
 function renderAt(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
   render(
@@ -37,6 +45,15 @@ describe("the routes", () => {
       await screen.findByRole("heading", { name: "The screen" })
     ).toBeVisible();
     expect(screen.getByRole("link", { name: "PuzzleQuest" })).toBeVisible();
+  });
+
+  it.each([
+    ["/", "The home screen"],
+    ["/quest/trail", "The quest screen"],
+  ])("show the screen for %s", async (path, name) => {
+    renderAt(path);
+
+    expect(await screen.findByRole("heading", { name })).toBeVisible();
   });
 
   it("say so at an address with no page", async () => {

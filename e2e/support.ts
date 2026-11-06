@@ -162,7 +162,7 @@ export async function signIn(
  * An update sent before then never reaches the page, so a test that expects
  * one must wait for this first.
  */
-export const LIVE_UPDATES_CONNECTED = 'body[data-live-updates="connected"]';
+export const LIVE_UPDATES_CONNECTED = '[data-live-updates="connected"]';
 
 /**
  * Picks an item in the open lookup dialog, by what one of its cells shows.

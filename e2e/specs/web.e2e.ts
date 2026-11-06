@@ -1,7 +1,16 @@
 // The React app, built and served as in production: it runs under the site's
 // Content Security Policy, and signing in works from the page that asked for
-// it. Playing a quest, including live updates, is in playing.e2e.ts.
-import { PASSWORD, api, signIn, unique } from "../support.js";
+// it. A player's own quests follow along live. Playing a whole quest is in
+// playing.e2e.ts.
+import {
+  ADMIN,
+  LIVE_UPDATES_CONNECTED,
+  PASSWORD,
+  api,
+  sessionToken,
+  signIn,
+  unique,
+} from "../support.js";
 
 /**
  * Selects what the Content Security Policy has blocked on the page, which
@@ -82,6 +91,101 @@ describe("the web app", () => {
     await expect($("#login")).toBeDisplayed();
     await expect($("a=Sign out")).not.toExist();
     expect(await blockedByPolicy()).toEqual([]);
+  });
+
+  describe("a player's quest", () => {
+    const suffix = unique("").slice(1);
+    const questName = `web-quest-${suffix}`;
+    const first = `web-first-${suffix}`;
+    const second = `web-second-${suffix}`;
+    const hidden = `web-hidden-${suffix}`;
+    let admin = "";
+    let player = "";
+
+    before(async () => {
+      admin = await sessionToken(ADMIN);
+      player = await sessionToken(userName);
+      for (const name of [first, second, hidden]) {
+        await api("POST", "/puzzles", admin, {
+          name,
+          displayName: `Puzzle ${name}`,
+          text: "Say yes",
+          solutionKeyword: "yes",
+          solutionDisplayText: "Yes",
+        });
+      }
+      await api("POST", "/quests", admin, {
+        name: questName,
+        displayName: "The Web Quest",
+        assignee: { kind: "user", name: userName },
+        puzzles: [
+          { puzzleName: first, activationCode: "first-code" },
+          { puzzleName: second, activationCode: "second-code" },
+          { puzzleName: hidden, activationCode: "hidden-code" },
+        ],
+      });
+      await api("POST", `/quests/${questName}/start`, admin);
+      await signIn(userName);
+    });
+
+    it("is listed on the player's home page", async () => {
+      const link = $(`a[href="/quest/${questName}"]`);
+
+      await expect(link).toHaveText("The Web Quest");
+      await link.click();
+
+      await expect($("#quest-progress")).toBeDisplayed();
+      await expect($(LIVE_UPDATES_CONNECTED)).toExist();
+      await expect($(`[data-puzzle-name="${first}"]`)).toExist();
+      expect(await blockedByPolicy()).toEqual([]);
+    });
+
+    it("shows what the players do, as they do it", async () => {
+      await api(
+        "POST",
+        `/quests/${questName}/puzzles/${first}/activation`,
+        player,
+        { activationCode: "first-code" }
+      );
+      await expect($(`[data-puzzle-name="${first}"]`)).toHaveText(
+        expect.stringContaining("In progress")
+      );
+
+      await api(
+        "POST",
+        `/quests/${questName}/puzzles/${first}/solution-attempts`,
+        player,
+        { guess: "yes" }
+      );
+
+      await expect($(`[data-puzzle-name="${first}"]`)).toHaveText(
+        expect.stringContaining("Yes")
+      );
+      await expect($(`[data-puzzle-name="${second}"]`)).toExist();
+    });
+
+    it("shows when the puzzle master pauses and resumes it", async () => {
+      await api("POST", `/quests/${questName}/pause`, admin);
+      await expect($("#paused-banner")).toBeDisplayed();
+
+      await api("POST", `/quests/${questName}/resume`, admin);
+      await expect($("#paused-banner")).not.toExist();
+    });
+
+    it("doesn't reveal what the players haven't reached", async () => {
+      await expect($(`[data-puzzle-name="${second}"]`)).toExist();
+
+      expect(await $("body").getHTML()).not.toContain(hidden);
+      expect(await blockedByPolicy()).toEqual([]);
+    });
+
+    it("isn't available once the puzzle master resets it", async () => {
+      await api("POST", `/quests/${questName}/reset`, admin);
+      // A reset sends no live update; an open screen sees it on its next refresh.
+      await browser.refresh();
+
+      await expect($("h1=Quest not available")).toBeDisplayed();
+    });
   });
 
   // Shows the checks above would notice something being blocked.

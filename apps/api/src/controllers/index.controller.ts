@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import * as SessionAuthenticator from "../middleware/sessionAuthentication.js";
 import * as SessionService from "../services/session.service.js";
 import * as UserService from "../services/user.service.js";
-import * as QuestService from "../services/quest.service.js";
+import { sendWebApp } from "./web.controller.js";
 
 export async function index(req: Request, res: Response): Promise<void> {
   const loggedInUser = UserService.getLoggedInUser(req.user);
@@ -20,38 +20,7 @@ export async function index(req: Request, res: Response): Promise<void> {
   }
 
   // Case 3: Logged in user is a valid end user.
-  const assigneeIds = await loggedInUser.getAssigneeIds();
-  const findOptions = { assigneeIds, questStatus: 1 };
-  // Puzzle details are needed for hint penalties.
-  const foundQuestsResult = await QuestService.findQuests(findOptions, true);
-  if (foundQuestsResult.status === "error") {
-    if (foundQuestsResult.statusCode !== 404) {
-      res.render("error", {
-        errorTitle: "Unexpected error",
-        errorDetails: foundQuestsResult.message,
-      });
-      return;
-    } else {
-      res.render("home", {
-        userName: loggedInUser.userName,
-        emailVerified: req.user?.emailVerified ?? false,
-        quests: [],
-      });
-      return;
-    }
-  }
-  const quests = foundQuestsResult.data.map((quest) => ({
-    name: quest.name,
-    displayName: quest.displayName,
-    status: quest.status,
-    statusDescription: quest.statusDescription,
-    progress: quest.getProgress(),
-  }));
-  res.render("home", {
-    userName: loggedInUser.userName,
-    emailVerified: req.user?.emailVerified ?? false,
-    quests: quests,
-  });
+  sendWebApp(req, res);
 }
 
 /**

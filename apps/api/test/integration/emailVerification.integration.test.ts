@@ -321,12 +321,11 @@ describe("password reset", () => {
 });
 
 describe("the reminder", () => {
-  it("shows on the home page and own profile until the address is verified", async () => {
+  it("shows on the player's own profile until the address is verified", async () => {
     const { player } = await startSessions("player");
     const page = (path: string) =>
       request(app).get(path).set("Authorization", `Bearer ${player}`);
 
-    expect((await page("/")).text).toContain('id="email-reminder"');
     const profile = (await page("/user/player")).text;
     expect(profile).toContain('id="email-reminder"');
     expect(profile).toContain("player@example.com (not verified)");
@@ -336,7 +335,8 @@ describe("the reminder", () => {
       { emailVerifiedAt: new Date() }
     );
 
-    expect((await page("/")).text).not.toContain('id="email-reminder"');
-    expect((await page("/user/player")).text).not.toContain("not verified");
+    const verified = (await page("/user/player")).text;
+    expect(verified).not.toContain('id="email-reminder"');
+    expect(verified).not.toContain("not verified");
   });
 });
