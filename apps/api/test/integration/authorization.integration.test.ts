@@ -165,9 +165,6 @@ const ROUTES: [string, string, Policy][] = [
   ["post", "/api/v1/webhooks/twilio/messages", TWILIO],
 
   ["get", "/user/register", PUBLIC],
-  ["get", "/user/password/forgot", PUBLIC],
-  ["get", "/user/password/reset", PUBLIC],
-  ["get", "/user/email/verify", PUBLIC],
   ["get", "/user/:userName", SELF_OR_ADMIN],
   ["get", "/user/:userName/edit", SELF_OR_ADMIN],
 

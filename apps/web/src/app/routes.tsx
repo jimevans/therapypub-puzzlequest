@@ -1,5 +1,14 @@
-import type { QueryClient } from "@tanstack/react-query";
-import { Outlet, type RouteObject, ScrollRestoration } from "react-router";
+import type {
+  FetchQueryOptions,
+  QueryClient,
+  QueryKey,
+} from "@tanstack/react-query";
+import {
+  Outlet,
+  type Params,
+  type RouteObject,
+  ScrollRestoration,
+} from "react-router";
 import {
   puzzleQuery,
   questQuery,
@@ -15,6 +24,20 @@ import { ErrorPage } from "./ErrorPage";
  * apps/api/src/routes/web.ts.
  */
 export function createRoutes(queryClient: QueryClient): RouteObject[] {
+  /**
+   * Makes a loader that starts fetching a screen's data as its code starts to
+   * download, rather than after, which on a phone saves a whole round trip. It
+   * waits for nothing: the screen shows the outcome, as for any fetch.
+   */
+  const prefetch =
+    <Data, Key extends QueryKey>(
+      query: (params: Params) => FetchQueryOptions<Data, Error, Data, Key>
+    ) =>
+    ({ params }: { params: Params }) => {
+      void queryClient.prefetchQuery(query(params));
+      return null;
+    };
+
   return [
     {
       element: (
@@ -39,10 +62,7 @@ export function createRoutes(queryClient: QueryClient): RouteObject[] {
           // A loader starts as the screen's code does, rather than after it has
           // downloaded, which on a phone saves a whole round trip. It waits for
           // nothing: the screen shows the outcome, as it does for any fetch.
-          loader: ({ params }) => {
-            void queryClient.prefetchQuery(questQuery(params.name ?? ""));
-            return null;
-          },
+          loader: prefetch(({ name = "" }) => questQuery(name)),
           lazy: async () => ({
             Component: (await import("../screens/quest/QuestScreen"))
               .QuestScreen,
@@ -50,12 +70,9 @@ export function createRoutes(queryClient: QueryClient): RouteObject[] {
         },
         {
           path: "/quest/:name/puzzle/:puzzleName",
-          loader: ({ params }) => {
-            void queryClient.prefetchQuery(
-              puzzleQuery(params.name ?? "", params.puzzleName ?? "")
-            );
-            return null;
-          },
+          loader: prefetch(({ name = "", puzzleName = "" }) =>
+            puzzleQuery(name, puzzleName)
+          ),
           lazy: async () => ({
             Component: (await import("../screens/puzzle/PuzzleScreen"))
               .PuzzleScreen,
@@ -63,12 +80,7 @@ export function createRoutes(queryClient: QueryClient): RouteObject[] {
         },
         {
           path: "/monitor/quest/:name",
-          loader: ({ params }) => {
-            void queryClient.prefetchQuery(
-              spectatorQuestQuery(params.name ?? "")
-            );
-            return null;
-          },
+          loader: prefetch(({ name = "" }) => spectatorQuestQuery(name)),
           lazy: async () => ({
             Component: (await import("../screens/followAlong/FollowQuest"))
               .FollowQuest,
@@ -76,15 +88,33 @@ export function createRoutes(queryClient: QueryClient): RouteObject[] {
         },
         {
           path: "/monitor/quest/:name/puzzle/:puzzleName",
-          loader: ({ params }) => {
-            void queryClient.prefetchQuery(
-              spectatorPuzzleQuery(params.name ?? "", params.puzzleName ?? "")
-            );
-            return null;
-          },
+          loader: prefetch(({ name = "", puzzleName = "" }) =>
+            spectatorPuzzleQuery(name, puzzleName)
+          ),
           lazy: async () => ({
             Component: (await import("../screens/followAlong/FollowPuzzle"))
               .FollowPuzzle,
+          }),
+        },
+        {
+          path: "/user/password/forgot",
+          lazy: async () => ({
+            Component: (await import("../screens/account/ForgotPassword"))
+              .ForgotPassword,
+          }),
+        },
+        {
+          path: "/user/password/reset",
+          lazy: async () => ({
+            Component: (await import("../screens/account/ResetPassword"))
+              .ResetPassword,
+          }),
+        },
+        {
+          path: "/user/email/verify",
+          lazy: async () => ({
+            Component: (await import("../screens/account/VerifyEmail"))
+              .VerifyEmail,
           }),
         },
         {
@@ -98,10 +128,7 @@ export function createRoutes(queryClient: QueryClient): RouteObject[] {
     // Fills the screen, so it's outside the frame of the other pages.
     {
       path: "/monitor/quest/:name/board",
-      loader: ({ params }) => {
-        void queryClient.prefetchQuery(spectatorQuestQuery(params.name ?? ""));
-        return null;
-      },
+      loader: prefetch(({ name = "" }) => spectatorQuestQuery(name)),
       hydrateFallbackElement: <PageShell />,
       errorElement: <ErrorPage />,
       lazy: async () => ({

@@ -7,19 +7,12 @@ import { sendWebApp } from "./web.controller.js";
 export async function index(req: Request, res: Response): Promise<void> {
   const loggedInUser = UserService.getLoggedInUser(req.user);
 
-  // Case 1: No user logged in.
-  if (loggedInUser === null) {
-    res.render("index");
-    return;
-  }
-
-  // Case 2: Logged in user is an admin.
-  if (loggedInUser.isAdmin()) {
+  // Administrators' screens aren't in the React app yet. Everyone else's home is
+  // there, which shows the landing page to anyone signed out.
+  if (loggedInUser?.isAdmin()) {
     res.render("adminHome", { user: loggedInUser });
     return;
   }
-
-  // Case 3: Logged in user is a valid end user.
   sendWebApp(req, res);
 }
 

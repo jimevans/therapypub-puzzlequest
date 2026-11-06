@@ -2,7 +2,7 @@ import type { Schemas } from "@puzzlequest/api-client";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
-import { ApiError, api, dataOrThrow } from "../../api";
+import { ApiError, api, dataOrThrow, messageOf } from "../../api";
 import { copy } from "../../copy";
 import { useLiveQuest } from "../../live/useLiveQuest";
 import { ClockTime } from "../../quests/ClockTime";
@@ -23,11 +23,12 @@ import {
 import { Banner } from "../../ui/Banner";
 import { Button } from "../../ui/Button";
 import { ConfirmDialog } from "../../ui/ConfirmDialog";
+import { LinkButton } from "../../ui/LinkButton";
 import { ProgressTrail } from "../../ui/ProgressTrail";
 import { Activation } from "./Activation";
 import { AnswerForm } from "./AnswerForm";
 import styles from "./PuzzleScreen.module.css";
-import { type PuzzlePath, refusalOf, usePuzzleAction } from "./puzzleActions";
+import { type PuzzlePath, usePuzzleAction } from "./puzzleActions";
 
 type View = Schemas["PlayerPuzzle"];
 
@@ -63,7 +64,7 @@ function Solving({
 
   return (
     <>
-      {error && <Banner tone="danger">{refusalOf(error)}</Banner>}
+      {error && <Banner tone="danger">{messageOf(error)}</Banner>}
       <AnswerForm
         fieldId="guess"
         buttonId="check-answer"
@@ -120,12 +121,12 @@ function Solved({ path, view }: { path: PuzzlePath; view: View }) {
     <>
       <PuzzleSolution skipped={puzzle.skipped} text={puzzle.solutionText} />
       {next ? (
-        <Link
-          className={styles.onward}
+        <LinkButton
+          variant="primary"
           to={`/quest/${encodeURIComponent(path.name)}/puzzle/${encodeURIComponent(next.name)}`}
         >
           {copy.goToNextStep(next.displayName)}
-        </Link>
+        </LinkButton>
       ) : (
         quest.status === QUEST_COMPLETED && (
           <FinishPanel>

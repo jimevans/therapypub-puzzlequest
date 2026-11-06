@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -132,21 +132,24 @@ describe("Home", () => {
     );
   });
 
-  it("sends someone whose session has ended to sign in", async () => {
-    vi.stubGlobal("location", {
-      ...location,
-      assign,
-      pathname: "/",
-      search: "",
-    });
+  it("shows the landing page to anyone signed out", async () => {
     apiAnswers(null);
     show();
 
-    await waitFor(() =>
-      expect(assign).toHaveBeenCalledWith(
-        `/login?next=${encodeURIComponent("/")}`
-      )
+    expect(
+      await screen.findByRole("heading", {
+        name: "Welcome to the PuzzleMaster's domain",
+      })
+    ).toBeVisible();
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      "/login"
     );
+    expect(screen.getByRole("link", { name: "Sign up" })).toHaveAttribute(
+      "href",
+      "/user/register"
+    );
+    expect(assign).not.toHaveBeenCalled();
   });
 
   describe("the email reminder", () => {

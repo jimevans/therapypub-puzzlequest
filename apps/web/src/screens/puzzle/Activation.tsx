@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
-import { ApiError, api, dataOrThrow } from "../../api";
+import { ApiError, api, dataOrThrow, messageOf } from "../../api";
 import { Banner } from "../../ui/Banner";
 import { Button } from "../../ui/Button";
 import { AnswerForm } from "./AnswerForm";
 import { QrScanner } from "./QrScanner";
-import { type PuzzlePath, refusalOf, usePuzzleAction } from "./puzzleActions";
+import { type PuzzlePath, usePuzzleAction } from "./puzzleActions";
 import { canScan } from "./useQrScanner";
 
 /** How long to wait before sending a code again after getting no answer. */
@@ -66,7 +66,7 @@ export function Activation({
             You've found this puzzle's place. Point your camera at its QR code.
           </p>
           {activate.error && (
-            <Banner tone="danger">{refusalOf(activate.error)}</Banner>
+            <Banner tone="danger">{messageOf(activate.error)}</Banner>
           )}
           <QrScanner
             onCode={codeScanned}
@@ -87,7 +87,7 @@ export function Activation({
               : "You've found this puzzle's place. Enter its code to begin."}
           </p>
           {activate.error && (
-            <Banner tone="danger">{refusalOf(activate.error)}</Banner>
+            <Banner tone="danger">{messageOf(activate.error)}</Banner>
           )}
           <AnswerForm
             fieldId="activation-code"

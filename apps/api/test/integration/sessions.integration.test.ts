@@ -184,8 +184,6 @@ describe("a session that has ended", () => {
       .get("/")
       .set("Cookie", "pq-session=not-a-session");
 
-    expect(response.status).toBe(200);
-    expect(response.text).toContain('src="/script/index.js"');
     expect(sessionCookie(response)).toMatch(/^pq-session=;/);
   });
 

@@ -57,22 +57,3 @@
   border-radius: var(--radius);
   box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.25);
 }
-
-.onward {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: var(--target-size);
-  padding: var(--space-2) var(--space-5);
-  border-radius: var(--radius);
-  background: var(--accent);
-  color: var(--on-accent);
-  font-weight: 700;
-  text-align: center;
-  text-decoration: none;
-}
-
-.onward:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 2px;
-}

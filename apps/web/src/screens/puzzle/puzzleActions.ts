@@ -1,22 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ApiError } from "../../api";
 import { questQueryKey } from "../../live/useLiveQuest";
 
 /** What identifies the puzzle in the API's paths. */
 export interface PuzzlePath {
   name: string;
   puzzleName: string;
-}
-
-/**
- * Says why one of the player's actions failed.
- * @param error what went wrong
- * @returns the text to show
- */
-export function refusalOf(error: Error): string {
-  return error instanceof ApiError
-    ? error.message
-    : "Couldn't reach the server. Check your connection and try again.";
 }
 
 /**
