@@ -8,14 +8,6 @@ afterEach(() => {
 });
 
 describe("createApp", () => {
-  it("renders the views", async () => {
-    const response = await request(createApp()).get("/user/register");
-
-    expect(response.status).toBe(200);
-    expect(response.type).toBe("text/html");
-    expect(response.text).toContain("Sign up");
-  });
-
   it("serves static files", async () => {
     const response = await request(createApp()).get("/style/pq.css");
 

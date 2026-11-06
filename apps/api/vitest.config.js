@@ -21,10 +21,10 @@ export default defineConfig({
       exclude: ["src/app.ts"],
       thresholds: {
         autoUpdate: (threshold) => Math.floor(threshold),
-        branches: 87,
+        branches: 88,
         functions: 98,
-        lines: 93,
-        statements: 93,
+        lines: 94,
+        statements: 94,
         "src/domain/**": {
           branches: 100,
           functions: 100,

@@ -49,7 +49,7 @@ const onTopOfFirstLoad = (name, source, limit) =>
 
 export default [
   budget("What every page downloads first", firstLoad, "118 KB"),
-  onTopOfFirstLoad("The home screen", "src/screens/home/Home.tsx", "18 KB"),
+  onTopOfFirstLoad("The home screen", "src/screens/home/Home.tsx", "19 KB"),
   onTopOfFirstLoad(
     "The quest screen",
     "src/screens/quest/QuestScreen.tsx",
@@ -85,6 +85,13 @@ export default [
     "Verify email",
     "src/screens/account/VerifyEmail.tsx",
     "18 KB"
+  ),
+  onTopOfFirstLoad("Signing up", "src/screens/account/SignUp.tsx", "34 KB"),
+  onTopOfFirstLoad("A profile", "src/screens/account/Profile.tsx", "34 KB"),
+  onTopOfFirstLoad(
+    "Editing a profile",
+    "src/screens/account/EditProfile.tsx",
+    "34 KB"
   ),
   onTopOfFirstLoad(
     "A text puzzle's Markdown",

@@ -46,6 +46,18 @@ vi.mock("../screens/account/VerifyEmail", () => ({
   VerifyEmail: () => <h1>Verify</h1>,
 }));
 
+vi.mock("../screens/account/SignUp", () => ({
+  SignUp: () => <h1>Sign-up</h1>,
+}));
+
+vi.mock("../screens/account/Profile", () => ({
+  Profile: () => <h1>Profile</h1>,
+}));
+
+vi.mock("../screens/account/EditProfile", () => ({
+  EditProfile: () => <h1>Edit</h1>,
+}));
+
 function renderAt(path: string) {
   const client = new QueryClient();
   const router = createMemoryRouter(createRoutes(client), {
@@ -86,6 +98,9 @@ describe("the routes", () => {
     ["/monitor/quest/trail/puzzle/riddle", "Following a puzzle"],
     ["/monitor/quest/trail/board", "The board"],
     ["/user/password/forgot", "Forgot"],
+    ["/user/register", "Sign-up"],
+    ["/user/player", "Profile"],
+    ["/user/player/edit", "Edit"],
     ["/user/password/reset?token=abc", "Reset"],
     ["/user/email/verify?token=abc", "Verify"],
   ])("show the screen for %s", async (path, name) => {

@@ -17,6 +17,7 @@ const WEB_PAGES = [
   "/monitor/quest/:name/board",
   "/monitor/quest/:name/puzzle/:puzzleName",
   "/user/password/forgot",
+  "/user/register",
 ];
 
 /** The pages opened from emailed links with a one-time token in the address. */

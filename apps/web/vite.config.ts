@@ -82,9 +82,9 @@ export default defineConfig({
       "^/$": toReactFor(isNotAdministrator),
       "^/quest/(?!new$)[^/]+$": toReactFor(isPlayer),
       "^/quest/[^/]+/puzzle/[^/]+$": toReactFor((level) => level !== null),
-      "^/user/(password/(forgot|reset)|email/verify)(\\?|$)": toReactFor(
-        () => true
-      ),
+      "^/user/(register|password/(forgot|reset)|email/verify)(\\?|$)":
+        toReactFor(() => true),
+      "^/user/[^/]+(/edit)?$": toReactFor((level) => level !== null),
       "^/(login|logout)$": toApiServer,
       "^/(user|puzzle|quest)/": toApiServer,
       "^/(puzzleData|script|style|image|policies|vendor)/": toApiServer,

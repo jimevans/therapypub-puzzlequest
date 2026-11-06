@@ -6,10 +6,8 @@ import { Banner } from "../../ui/Banner";
 import { Button } from "../../ui/Button";
 import { FormTextField } from "../../ui/FormTextField";
 import styles from "./Account.module.css";
+import { PASSWORDS_DIFFER, newPasswordRules } from "./passwords";
 import { useTokenFromLink } from "./tokens";
-
-/** The server's rule is the one that counts; this just answers sooner. */
-const MINIMUM_PASSWORD_LENGTH = 8;
 
 /** Chooses a new password, from the link in a password reset email. */
 export function ResetPassword() {
@@ -62,13 +60,7 @@ export function ResetPassword() {
             <FormTextField
               control={control}
               name="newPassword"
-              rules={{
-                minLength: {
-                  value: MINIMUM_PASSWORD_LENGTH,
-                  message: `Must be at least ${MINIMUM_PASSWORD_LENGTH} characters long`,
-                },
-                required: `Must be at least ${MINIMUM_PASSWORD_LENGTH} characters long`,
-              }}
+              rules={newPasswordRules}
               id="new-password"
               label="New password"
               type="password"
@@ -79,8 +71,7 @@ export function ResetPassword() {
               name="confirmPassword"
               rules={{
                 validate: (value) =>
-                  value === getValues("newPassword") ||
-                  "The passwords don't match",
+                  value === getValues("newPassword") || PASSWORDS_DIFFER,
               }}
               id="new-password-confirm"
               label="Confirm new password"

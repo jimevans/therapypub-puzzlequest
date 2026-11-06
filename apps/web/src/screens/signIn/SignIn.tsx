@@ -1,31 +1,21 @@
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { api, dataOrThrow, messageOf } from "../../api";
 import { Banner } from "../../ui/Banner";
 import { Button } from "../../ui/Button";
 import { FormTextField } from "../../ui/FormTextField";
 import styles from "./SignIn.module.css";
+import { pathAfterSignIn } from "./pathAfterSignIn";
 
 interface Credentials {
   userName: string;
   password: string;
 }
 
-/**
- * Decides where to go after signing in. The address comes from the URL, which
- * anyone can write a link with, so it must be a path on this site, rather than
- * an address elsewhere such as "//example.com" (or "/\example.com", which
- * browsers read the same way).
- * @param next the page that asked for sign-in, if any
- * @returns the path to go to
- */
-export function pathAfterSignIn(next: string | null): string {
-  return next && /^\/(?![/\\])/.test(next) ? next : "/";
-}
-
 export function SignIn() {
   const [searchParams] = useSearchParams();
+  const next = searchParams.get("next");
   const { control, handleSubmit } = useForm<Credentials>({
     defaultValues: { userName: "", password: "" },
   });
@@ -35,7 +25,7 @@ export function SignIn() {
     onSuccess: () => {
       // The server has set the session cookie. A full load, because the next
       // page may not be part of this app yet.
-      location.assign(pathAfterSignIn(searchParams.get("next")));
+      location.assign(pathAfterSignIn(next));
     },
   });
 
@@ -83,8 +73,16 @@ export function SignIn() {
         </Button>
       </form>
       <p className={styles.links}>
-        <a href="/user/password/forgot">Forgot password?</a>
-        <a href="/user/register">Create an account</a>
+        <Link to="/user/password/forgot">Forgot password?</Link>
+        <Link
+          to={
+            next
+              ? `/user/register?next=${encodeURIComponent(next)}`
+              : "/user/register"
+          }
+        >
+          Create an account
+        </Link>
       </p>
     </>
   );

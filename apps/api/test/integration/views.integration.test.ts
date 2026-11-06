@@ -130,18 +130,7 @@ function getPage(path: string, account: string | null): request.Test {
 
 // [description, path, account, view, text the page must contain]
 const PAGES: [string, string, string | null, string, string[]][] = [
-  ["sign-up page", "/user/register", null, "user", ['id="user-name"']],
-
   ["administrator home", "/", "admin", "admin", []],
-  ["own profile", "/user/admin", "admin", "user", ["Change password"]],
-  [
-    "another user's profile",
-    "/user/player",
-    "admin",
-    "user",
-    ["Send password reset email", "player display name"],
-  ],
-  ["profile editor", "/user/player/edit", "admin", "user", ['id="auth-level"']],
   ["new puzzle", "/puzzle/new", "admin", "puzzleEdit", []],
   [
     "text puzzle details",
@@ -179,15 +168,6 @@ const PAGES: [string, string, string | null, string, string[]][] = [
     "questEdit",
     ["Running Quest", 'value="team-a" data-kind="team"'],
   ],
-
-  [
-    "player's own profile",
-    "/user/player",
-    "player",
-    "user",
-    ["Change password", "Team A"],
-  ],
-  ["player's profile editor", "/user/player/edit", "player", "user", []],
 ];
 
 describe.each(PAGES)("%s (%s)", (_description, path, account, view, texts) => {
