@@ -1,10 +1,8 @@
 import type { Response } from "express";
 import type { RouteRequest } from "../types.js";
 import { PassThrough } from "stream";
-import { marked } from "marked";
 import PDFDocument from "pdfkit";
 import { RenderMode } from "../middleware/useRenderMode.js";
-import { PuzzleType } from "../models/puzzle.model.js";
 import * as QuestService from "../services/quest.service.js";
 import * as UserService from "../services/user.service.js";
 import { sendWebApp } from "./web.controller.js";
@@ -103,74 +101,4 @@ export async function renderQuestRunBook(
       errorDetails: pdfResult.message,
     });
   }
-}
-
-export async function renderMonitoredQuest(
-  req: RouteRequest<"name">,
-  res: Response
-): Promise<void> {
-  const questResponse = await QuestService.getSpectatedQuest(req.params.name);
-  if (questResponse.status === "error") {
-    res.status(questResponse.statusCode).render("error", {
-      errorTitle: "Not found",
-      errorDetails: questResponse.message,
-    });
-    return;
-  }
-
-  const quest = questResponse.data;
-
-  res.render("monitorQuest", {
-    quest: quest,
-    progress: quest.getProgress(),
-  });
-}
-
-export async function renderMonitoredQuestPuzzle(
-  req: RouteRequest<"name" | "puzzleName">,
-  res: Response
-): Promise<void> {
-  const questName = req.params.name;
-  const questPuzzleResponse = await QuestService.getSpectatedQuestPuzzle(
-    questName,
-    req.params.puzzleName
-  );
-  if (questPuzzleResponse.status === "error") {
-    res.status(questPuzzleResponse.statusCode).render("error", {
-      errorTitle: "Not found",
-      errorDetails: questPuzzleResponse.message,
-    });
-    return;
-  }
-  const { quest, puzzle, detail: puzzleDetail } = questPuzzleResponse.data;
-
-  let renderedPuzzle;
-  switch (puzzleDetail.type) {
-    case PuzzleType.IMAGE:
-      renderedPuzzle = `<img src="${puzzleDetail.text}" class="pq-puzzle-img" />`;
-      break;
-    case PuzzleType.AUDIO:
-      renderedPuzzle = `<audio src="${puzzleDetail.text}" />`;
-      break;
-    case PuzzleType.VIDEO:
-      renderedPuzzle = `<div class="pq-puzzle-video-content"><video src="${puzzleDetail.text}" type="video/mp4" playsinline controls /></div>`;
-      break;
-    default:
-      renderedPuzzle = await marked.parse(puzzleDetail.text, {
-        gfm: true,
-      });
-  }
-
-  res.render("monitorPuzzle", {
-    paused: quest.paused,
-    quest: questName,
-    puzzle: {
-      puzzleName: puzzle.puzzleName,
-      displayName: puzzleDetail.displayName,
-      status: puzzle.status,
-      solutionDisplayText: puzzleDetail.solutionDisplayText,
-      hints: puzzleDetail.hints.slice(0, puzzle.nextHintToDisplay),
-    },
-    rendered: renderedPuzzle,
-  });
 }

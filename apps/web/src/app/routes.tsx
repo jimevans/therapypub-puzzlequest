@@ -1,6 +1,11 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { Outlet, type RouteObject, ScrollRestoration } from "react-router";
-import { puzzleQuery, questQuery } from "../quests/queries";
+import {
+  puzzleQuery,
+  questQuery,
+  spectatorPuzzleQuery,
+  spectatorQuestQuery,
+} from "../quests/queries";
 import { PageShell } from "../ui/PageShell";
 import { ErrorPage } from "./ErrorPage";
 
@@ -54,6 +59,32 @@ export function createRoutes(queryClient: QueryClient): RouteObject[] {
           lazy: async () => ({
             Component: (await import("../screens/puzzle/PuzzleScreen"))
               .PuzzleScreen,
+          }),
+        },
+        {
+          path: "/monitor/quest/:name",
+          loader: ({ params }) => {
+            void queryClient.prefetchQuery(
+              spectatorQuestQuery(params.name ?? "")
+            );
+            return null;
+          },
+          lazy: async () => ({
+            Component: (await import("../screens/followAlong/FollowQuest"))
+              .FollowQuest,
+          }),
+        },
+        {
+          path: "/monitor/quest/:name/puzzle/:puzzleName",
+          loader: ({ params }) => {
+            void queryClient.prefetchQuery(
+              spectatorPuzzleQuery(params.name ?? "", params.puzzleName ?? "")
+            );
+            return null;
+          },
+          lazy: async () => ({
+            Component: (await import("../screens/followAlong/FollowPuzzle"))
+              .FollowPuzzle,
           }),
         },
         {

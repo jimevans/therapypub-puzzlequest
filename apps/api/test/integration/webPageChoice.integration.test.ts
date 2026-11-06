@@ -139,6 +139,21 @@ describe("an administrator, who has no EJS page for it", () => {
   });
 });
 
+describe("following a quest", () => {
+  it.each([
+    "/monitor/quest/trail",
+    "/monitor/quest/trail/puzzle/riddle",
+    "/monitor/quest/no-such-quest",
+  ])("is open to anyone at %s, with no data in the page", async (page) => {
+    for (const account of [undefined, "player", "admin"]) {
+      const response = await getPage(page, account);
+
+      expect(response.status).toBe(200);
+      expect(response.text).toBe(REACT_PAGE);
+    }
+  });
+});
+
 describe("an anonymous visitor", () => {
   it("gets the landing page at the site's root", async () => {
     const response = await getPage("/");

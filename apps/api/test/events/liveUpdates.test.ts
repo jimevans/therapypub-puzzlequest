@@ -1,24 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/services/websocket.service.js", () => ({
-  notifyBrowsers: vi.fn(),
-  notifyQuestPages: vi.fn(),
+  notifyQuestFollowers: vi.fn(),
 }));
 
-const { notifyBrowsers, notifyQuestPages } =
+const { notifyQuestFollowers } =
   await import("../../src/services/websocket.service.js");
 const { sendLiveUpdates } = await import("../../src/events/liveUpdates.js");
 const { liveUpdateSchema } = await import("../../src/schemas/liveUpdates.js");
 
 const AT = new Date("2026-11-03T20:00:00Z");
-
-/** The pages that show the progress of puzzle p1 in quest q1. */
-const P1_PAGES = [
-  "/quest/q1",
-  "/quest/q1/puzzle/p1",
-  "/monitor/quest/q1",
-  "/monitor/quest/q1/puzzle/p1",
-];
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -31,12 +22,15 @@ describe("sendLiveUpdates", () => {
       events: [{ type: "PuzzleActivated", puzzleName: "p1", at: AT }],
     });
 
-    expect(notifyBrowsers).toHaveBeenCalledExactlyOnceWith(P1_PAGES, [], {
-      message: "puzzleActivated",
-      questName: "q1",
-      puzzleName: "p1",
-      activationTime: AT.toISOString(),
-    });
+    expect(notifyQuestFollowers).toHaveBeenCalledExactlyOnceWith(
+      {
+        message: "puzzleActivated",
+        questName: "q1",
+        puzzleName: "p1",
+        activationTime: AT.toISOString(),
+      },
+      []
+    );
   });
 
   it("announces a solved puzzle and the next one, except to the solver", () => {
@@ -59,10 +53,8 @@ describe("sendLiveUpdates", () => {
       ],
     });
 
-    expect(vi.mocked(notifyBrowsers).mock.calls).toEqual([
+    expect(vi.mocked(notifyQuestFollowers).mock.calls).toEqual([
       [
-        P1_PAGES,
-        ["solver"],
         {
           message: "puzzleSolved",
           questName: "q1",
@@ -71,10 +63,9 @@ describe("sendLiveUpdates", () => {
           endTime: AT.toISOString(),
           questComplete: undefined,
         },
+        ["solver"],
       ],
       [
-        P1_PAGES,
-        ["solver"],
         {
           message: "puzzleStarted",
           questName: "q1",
@@ -82,6 +73,7 @@ describe("sendLiveUpdates", () => {
           displayName: "Puzzle 2",
           startTime: AT.toISOString(),
         },
+        ["solver"],
       ],
     ]);
   });
@@ -100,14 +92,13 @@ describe("sendLiveUpdates", () => {
       ],
     });
 
-    expect(notifyBrowsers).toHaveBeenCalledExactlyOnceWith(
-      P1_PAGES,
-      [],
-      expect.objectContaining({ message: "puzzleSolved", questComplete: true })
+    expect(notifyQuestFollowers).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ message: "puzzleSolved", questComplete: true }),
+      []
     );
   });
 
-  it("shares a revealed hint on the quest's and puzzle's pages, except with the asker", () => {
+  it("shares a revealed hint, except with the asker", () => {
     sendLiveUpdates({
       questName: "q1",
       connectionId: "asker",
@@ -125,9 +116,7 @@ describe("sendLiveUpdates", () => {
       ],
     });
 
-    expect(notifyBrowsers).toHaveBeenCalledExactlyOnceWith(
-      P1_PAGES,
-      ["asker"],
+    expect(notifyQuestFollowers).toHaveBeenCalledExactlyOnceWith(
       {
         message: "hintRequested",
         questName: "q1",
@@ -136,7 +125,8 @@ describe("sendLiveUpdates", () => {
         moreHints: true,
         timePenalty: 60,
         isNextHintSolution: false,
-      }
+      },
+      ["asker"]
     );
   });
 
@@ -155,7 +145,7 @@ describe("sendLiveUpdates", () => {
       ],
     });
 
-    expect(notifyBrowsers).not.toHaveBeenCalled();
+    expect(notifyQuestFollowers).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -163,20 +153,16 @@ describe("sendLiveUpdates", () => {
     { type: "QuestResumed", at: AT },
     { type: "PuzzleSkipped", puzzleName: "p1", at: AT },
     { type: "PuzzleReset", puzzleName: "p1", refundedHints: 0, at: AT },
-  ] as const)(
-    "tells every page of the quest to reload after $type",
-    (event) => {
-      sendLiveUpdates({ questName: "q1", events: [event] });
+  ] as const)("tells everyone following the quest after $type", (event) => {
+    sendLiveUpdates({ questName: "q1", events: [event] });
 
-      expect(notifyQuestPages).toHaveBeenCalledExactlyOnceWith({
-        message: "questUpdated",
-        questName: "q1",
-      });
-      expect(notifyBrowsers).not.toHaveBeenCalled();
-    }
-  );
+    expect(notifyQuestFollowers).toHaveBeenCalledExactlyOnceWith({
+      message: "questUpdated",
+      questName: "q1",
+    });
+  });
 
-  it("sends only messages the pages expect, as their schemas describe", () => {
+  it("sends only messages clients expect, as their schemas describe", () => {
     sendLiveUpdates({
       questName: "q1",
       events: [
@@ -202,10 +188,9 @@ describe("sendLiveUpdates", () => {
       ],
     });
 
-    const sent = [
-      ...vi.mocked(notifyBrowsers).mock.calls.map((call) => call[2]),
-      ...vi.mocked(notifyQuestPages).mock.calls.map((call) => call[0]),
-    ];
+    const sent = vi
+      .mocked(notifyQuestFollowers)
+      .mock.calls.map((call) => call[0]);
     expect(sent.map((message) => message.message)).toEqual([
       "puzzleActivated",
       "hintRequested",

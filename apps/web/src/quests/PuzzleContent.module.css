@@ -1,0 +1,74 @@
+.content {
+  overflow-wrap: anywhere;
+}
+
+.content > :first-child {
+  margin-top: 0;
+}
+
+.content > :last-child {
+  margin-bottom: 0;
+}
+
+/* An author's headings stay below the puzzle's own title. */
+.content h1 {
+  font-size: 1.625rem;
+}
+
+.content h2 {
+  font-size: 1.375rem;
+}
+
+.content img,
+.content video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.content audio {
+  width: 100%;
+}
+
+.content table {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.content th,
+.content td {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--rule);
+}
+
+.hints {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hint {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--paper-soft);
+}
+
+.hintHeading {
+  display: block;
+  color: var(--ink-soft);
+  font-size: var(--text-small);
+  font-weight: 700;
+}
+
+.solution {
+  padding-top: var(--space-3);
+  border-top: 6px solid var(--accent);
+}
+
+.solution p {
+  margin: var(--space-2) 0 0;
+}

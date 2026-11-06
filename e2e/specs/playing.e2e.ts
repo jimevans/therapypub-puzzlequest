@@ -109,6 +109,7 @@ describe("playing a quest", () => {
     await expect(monitor.$(`[data-puzzle-name="${riddle}"]`)).toExist();
     await expect(monitor.$(`[data-puzzle-name="${finale}"]`)).not.toExist();
     await expect(monitor.$(LIVE_UPDATES_CONNECTED)).toExist();
+    expect(await monitor.$("body").getHTML()).not.toContain(finale);
     await expect(
       $(`a[href="/quest/${questName}/puzzle/${finale}"]`)
     ).not.toExist();

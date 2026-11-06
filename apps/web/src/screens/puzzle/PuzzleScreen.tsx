@@ -8,7 +8,11 @@ import { useLiveQuest } from "../../live/useLiveQuest";
 import { ClockTime } from "../../quests/ClockTime";
 import { NotAvailable } from "../../quests/NotAvailable";
 import { PausedBanner } from "../../quests/PausedBanner";
-import { formatDuration } from "../../quests/clock";
+import { FinishPanel } from "../../quests/FinishPanel";
+import { PuzzleContent, preloadPuzzleText } from "../../quests/PuzzleContent";
+import { PuzzleHints } from "../../quests/PuzzleHints";
+import { PuzzleSolution } from "../../quests/PuzzleSolution";
+import { formatDuration, formatPenalty } from "../../quests/clock";
 import { puzzleQuery } from "../../quests/queries";
 import {
   QUEST_COMPLETED,
@@ -22,34 +26,10 @@ import { ConfirmDialog } from "../../ui/ConfirmDialog";
 import { ProgressTrail } from "../../ui/ProgressTrail";
 import { Activation } from "./Activation";
 import { AnswerForm } from "./AnswerForm";
-import { PuzzleContent, preloadPuzzleText } from "./PuzzleContent";
 import styles from "./PuzzleScreen.module.css";
 import { type PuzzlePath, refusalOf, usePuzzleAction } from "./puzzleActions";
 
 type View = Schemas["PlayerPuzzle"];
-
-function penaltyText(seconds: number): string {
-  return `+${formatDuration(seconds * 1000)}`;
-}
-
-function Hints({ hints }: { hints: View["puzzle"]["hints"] }) {
-  if (hints.length === 0) {
-    return null;
-  }
-  return (
-    <ol id="hints" className={styles.hints}>
-      {hints.map((hint, index) => (
-        <li key={index} className={styles.hint}>
-          <span className={styles.hintHeading}>
-            Hint {index + 1}
-            {hint.timePenalty > 0 && `, ${penaltyText(hint.timePenalty)}`}
-          </span>
-          {hint.text}
-        </li>
-      ))}
-    </ol>
-  );
-}
 
 function Solving({
   path,
@@ -112,7 +92,7 @@ function Solving({
           >
             Reveal next hint
             {nextHint.timePenalty > 0 &&
-              ` (${penaltyText(nextHint.timePenalty)})`}
+              ` (${formatPenalty(nextHint.timePenalty)})`}
           </Button>
         )}
       </AnswerForm>
@@ -134,31 +114,11 @@ function Solving({
   );
 }
 
-/** The moment the quest ends: the line reaches its last stop. */
-function Finish({ view }: { view: View }) {
-  return (
-    <section id="quest-finished" className={styles.finish}>
-      <div className={styles.finishLine} aria-hidden="true">
-        <span className={styles.finishRail} />
-        <span className={styles.finishStop} />
-      </div>
-      <h2>{copy.questFinished}</h2>
-      <p>
-        Congratulations! You finished {view.quest.displayName} in{" "}
-        <strong>{formatDuration(view.quest.progress.totalMs)}</strong>.
-      </p>
-    </section>
-  );
-}
-
 function Solved({ path, view }: { path: PuzzlePath; view: View }) {
   const { puzzle, next, quest } = view;
   return (
     <>
-      <section id="solution" className={styles.solution}>
-        <h2>{puzzle.skipped ? "Skipped" : "Solved"}</h2>
-        <p id="solution-text">{puzzle.solutionText}</p>
-      </section>
+      <PuzzleSolution skipped={puzzle.skipped} text={puzzle.solutionText} />
       {next ? (
         <Link
           className={styles.onward}
@@ -167,7 +127,12 @@ function Solved({ path, view }: { path: PuzzlePath; view: View }) {
           {copy.goToNextStep(next.displayName)}
         </Link>
       ) : (
-        quest.status === QUEST_COMPLETED && <Finish view={view} />
+        quest.status === QUEST_COMPLETED && (
+          <FinishPanel>
+            Congratulations! You finished {quest.displayName} in{" "}
+            <strong>{formatDuration(quest.progress.totalMs)}</strong>.
+          </FinishPanel>
+        )
       )}
     </>
   );
@@ -213,7 +178,7 @@ function PuzzleDetails({
           text={puzzle.text}
         />
       )}
-      <Hints hints={puzzle.hints} />
+      <PuzzleHints hints={puzzle.hints} />
       {puzzle.status === STEP_IN_PROGRESS && (
         <Solving path={path} view={view} connectionId={connectionId} />
       )}

@@ -17,7 +17,6 @@ import {
 } from "./paths.js";
 import { V1Router } from "./api/v1/index.js";
 import { IndexRouter } from "./routes/index.js";
-import { MonitorRouter } from "./routes/monitor.js";
 import { PuzzleRouter } from "./routes/puzzle.js";
 import { QuestRouter } from "./routes/quest.js";
 import { UserRouter } from "./routes/user.js";
@@ -88,7 +87,6 @@ export function createApp(): Express {
   app.use("/user", UserRouter);
   app.use("/puzzle", PuzzleRouter);
   app.use("/quest", QuestRouter);
-  app.use("/monitor", MonitorRouter);
 
   app.set("views", viewsDirectory);
   app.set("view engine", "ejs");

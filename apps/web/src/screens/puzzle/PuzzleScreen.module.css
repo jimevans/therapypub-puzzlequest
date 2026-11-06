@@ -27,72 +27,6 @@
   font-weight: 600;
 }
 
-.content {
-  overflow-wrap: anywhere;
-}
-
-.content > :first-child {
-  margin-top: 0;
-}
-
-.content > :last-child {
-  margin-bottom: 0;
-}
-
-/* An author's headings stay below the puzzle's own title. */
-.content h1 {
-  font-size: 1.625rem;
-}
-
-.content h2 {
-  font-size: 1.375rem;
-}
-
-.content img,
-.content video {
-  display: block;
-  max-width: 100%;
-  height: auto;
-}
-
-.content audio {
-  width: 100%;
-}
-
-.content table {
-  display: block;
-  overflow-x: auto;
-  border-collapse: collapse;
-}
-
-.content th,
-.content td {
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--rule);
-}
-
-.hints {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.hint {
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius);
-  background: var(--paper-soft);
-}
-
-.hintHeading {
-  display: block;
-  color: var(--ink-soft);
-  font-size: var(--text-small);
-  font-weight: 700;
-}
-
 .form {
   display: flex;
   flex-direction: column;
@@ -124,15 +58,6 @@
   box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.25);
 }
 
-.solution {
-  padding-top: var(--space-3);
-  border-top: 6px solid var(--accent);
-}
-
-.solution p {
-  margin: var(--space-2) 0 0;
-}
-
 .onward {
   display: flex;
   justify-content: center;
@@ -150,63 +75,4 @@
 .onward:focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
-}
-
-.finish {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-5);
-  border-radius: var(--radius);
-  background: var(--ink);
-  color: var(--on-ink);
-}
-
-.finish p {
-  margin: 0;
-}
-
-.finishLine {
-  display: flex;
-  align-items: center;
-}
-
-.finishRail {
-  flex: 1;
-  height: 6px;
-  background: var(--on-ink);
-  transform-origin: left;
-}
-
-.finishStop {
-  flex: none;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--on-ink);
-}
-
-/* The line runs out to its last stop. Anyone who has asked for less motion just
-   sees it there. */
-@media (prefers-reduced-motion: no-preference) {
-  .finishRail {
-    animation: run-out 1.2s ease-out both;
-  }
-
-  .finishStop {
-    animation: arrive 0.4s 1.1s ease-out both;
-  }
-}
-
-@keyframes run-out {
-  from {
-    transform: scaleX(0);
-  }
-}
-
-@keyframes arrive {
-  from {
-    opacity: 0;
-    transform: scale(0.4);
-  }
 }

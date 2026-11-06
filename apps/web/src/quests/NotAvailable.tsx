@@ -13,7 +13,7 @@ export function NotAvailable({ what }: { what: "quest" | "puzzle" }) {
         This {what} isn't available. The quest may have been reset, or the link
         may be wrong.
       </p>
-      <a href="/">See your quests</a>
+      <a href="/">Go to the home page</a>
     </>
   );
 }

@@ -14,8 +14,8 @@ const aboutPuzzle = {
 };
 
 /**
- * Sent first, in answer to "init": the connection's ID, which the page sends
- * with its own actions so their updates aren't sent back to it.
+ * Sent first, in answer to "subscribe": the connection's ID, which the client
+ * sends with its own actions so their updates aren't sent back to it.
  */
 const connection = z.object({
   message: z.literal("connection"),
@@ -102,19 +102,3 @@ export const liveUpdateSubscriptionSchema = z
     description:
       "The message a client sends to the live-update websocket to follow a quest. Sending another follows that quest instead.",
   });
-
-/**
- * The message the server-rendered pages send when they connect: the address of
- * the page, whose quest's updates it is sent. It goes when those pages do, so
- * it isn't in the API's description.
- */
-const pageSubscription = z.object({
-  message: z.literal("init"),
-  url: z.url(),
-});
-
-/** A message a client sends to the server. */
-export const clientMessageSchema = z.discriminatedUnion("message", [
-  liveUpdateSubscriptionSchema,
-  pageSubscription,
-]);

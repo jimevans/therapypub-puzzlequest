@@ -79,7 +79,7 @@ export default defineConfig({
       "^/quest/(?!new$)[^/]+$": toReactForPlayers,
       "^/quest/[^/]+/puzzle/[^/]+$": toReactFor(() => true),
       "^/(login|logout)$": toApiServer,
-      "^/(user|puzzle|quest|monitor)/": toApiServer,
+      "^/(user|puzzle|quest)/": toApiServer,
       "^/(puzzleData|script|style|image|policies|vendor)/": toApiServer,
     },
   },

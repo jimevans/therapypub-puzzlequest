@@ -3,8 +3,8 @@ import { type WebSocket, WebSocketServer } from "ws";
 import {
   type LiveUpdate,
   type QuestUpdate,
-  clientMessageSchema,
   liveUpdateSchema,
+  liveUpdateSubscriptionSchema,
 } from "../schemas/liveUpdates.js";
 
 /** A client connected for live updates. */
@@ -14,8 +14,6 @@ interface WebSocketSession {
   socket: WebSocket;
   /** The quest the client follows, once it has sent "subscribe". */
   questName?: string;
-  /** The path of the page a browser is showing, once it has sent "init". */
-  url?: string;
 }
 
 const webSocketSessions = new Map<string, WebSocketSession>();
@@ -42,18 +40,14 @@ export function initialize(): WebSocketServer {
       } catch {
         return;
       }
-      const clientMessage = clientMessageSchema.safeParse(received);
+      const clientMessage = liveUpdateSubscriptionSchema.safeParse(received);
       if (!clientMessage.success) {
         return;
       }
       send(socket, { message: "connection", connectionId });
       const session = webSocketSessions.get(connectionId);
       if (session) {
-        if (clientMessage.data.message === "subscribe") {
-          session.questName = clientMessage.data.questName;
-        } else {
-          session.url = new URL(clientMessage.data.url).pathname;
-        }
+        session.questName = clientMessage.data.questName;
       }
     });
     socket.on("close", () => {
@@ -64,9 +58,9 @@ export function initialize(): WebSocketServer {
 }
 
 /**
- * Sends a message to a page, checking that it is one the pages expect (see
+ * Sends a message to a client, checking that it is one clients expect (see
  * schemas/liveUpdates.ts).
- * @param socket the page's connection
+ * @param socket the client's connection
  * @param update the message
  */
 function send(socket: WebSocket, update: LiveUpdate): void {
@@ -74,48 +68,19 @@ function send(socket: WebSocket, update: LiveUpdate): void {
 }
 
 /**
- * Notifies the clients following a quest, and the browsers showing any of the
- * given pages.
- * @param urls the paths of the pages for which to notify browsers
- * @param excludeConnections the connections to leave out of this notification
+ * Notifies the clients following a quest.
  * @param update the update to send, about the quest it names
+ * @param excludeConnections the connections to leave out, such as the one an
+ *  action came from
  */
-export function notifyBrowsers(
-  urls: string[],
-  excludeConnections: string[],
-  update: QuestUpdate
+export function notifyQuestFollowers(
+  update: QuestUpdate,
+  excludeConnections: string[] = []
 ): void {
-  const recipients: WebSocketSession[] = [];
   webSocketSessions.forEach((session) => {
     if (
-      (session.questName === update.questName ||
-        (session.url !== undefined && urls.includes(session.url))) &&
+      session.questName === update.questName &&
       !excludeConnections.includes(session.id)
-    ) {
-      recipients.push(session);
-    }
-  });
-  recipients.forEach(({ socket }) => send(socket, update));
-}
-
-/**
- * Notifies every client of a quest: those following it, and the browsers
- * showing the quest page, its puzzle pages, or their monitor views.
- * @param update the update to send, about the quest it names
- */
-export function notifyQuestPages(update: QuestUpdate): void {
-  const prefixes = [
-    `/quest/${update.questName}`,
-    `/monitor/quest/${update.questName}`,
-  ];
-  webSocketSessions.forEach((session) => {
-    const url = session.url;
-    if (
-      session.questName === update.questName ||
-      (url !== undefined &&
-        prefixes.some(
-          (prefix) => url === prefix || url.startsWith(`${prefix}/`)
-        ))
     ) {
       send(session.socket, update);
     }
