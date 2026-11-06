@@ -8,12 +8,12 @@ afterEach(() => {
 });
 
 describe("createApp", () => {
-  it("renders the login page", async () => {
-    const response = await request(createApp()).get("/login");
+  it("renders the landing page", async () => {
+    const response = await request(createApp()).get("/");
 
     expect(response.status).toBe(200);
     expect(response.type).toBe("text/html");
-    expect(response.text).toContain("<form");
+    expect(response.text).toContain("Sign up");
   });
 
   it("serves static files", async () => {

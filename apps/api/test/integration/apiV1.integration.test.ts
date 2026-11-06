@@ -131,8 +131,10 @@ describe("problems", () => {
   it("aren't used outside the API, where pages answer", async () => {
     const response = await request(app).get("/user/player");
 
-    expect(response.status).toBe(200);
-    expect(response.text).toContain('src="/script/login.js"');
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe(
+      `/login?next=${encodeURIComponent("/user/player")}`
+    );
   });
 });
 

@@ -77,7 +77,7 @@ type Role = "anonymous" | "player" | "other" | "admin";
  * What happens to a request:
  * - allow: it gets past authorization (it may still fail for other reasons,
  *   such as a missing body, but not with 401, 403, or 404);
- * - signIn: the visitor must sign in (401, or the sign-in page);
+ * - signIn: the visitor must sign in (401, or a redirect to the sign-in page);
  * - deny: forbidden (403);
  * - hidden: the thing exists, but this user can't see it, so it's
  *   reported as not found (404).
@@ -104,7 +104,6 @@ const TWILIO: Policy = ["deny", "deny", "deny", "deny"];
 /** [method, path as registered, policy] for every route. */
 const ROUTES: [string, string, Policy][] = [
   ["get", "/", PUBLIC],
-  ["get", "/login", PUBLIC],
   ["get", "/logout", PUBLIC],
 
   ["get", "/api/v1/openapi.json", PUBLIC],
@@ -301,13 +300,10 @@ function send(method: string, routePath: string, role: Role) {
  * @param response the response
  * @returns the outcome
  */
-function outcomeOf(
-  response: request.Response,
-  routePath: string
-): Outcome | string {
-  const isSignInPage =
-    routePath !== "/login" && response.text?.includes('src="/script/login.js"');
-  if (response.status === 401 || isSignInPage) {
+function outcomeOf(response: request.Response): Outcome | string {
+  const isSentToSignIn =
+    response.status === 302 && response.headers.location?.startsWith("/login?");
+  if (response.status === 401 || isSentToSignIn) {
     return "signIn";
   }
   if (response.status === 403) {
@@ -349,7 +345,7 @@ describe.each(ROUTES)("%s %s", (method, routePath, policy) => {
       const response = await send(method, routePath, role);
 
       expect(
-        outcomeOf(response, routePath),
+        outcomeOf(response),
         `${response.status} ${response.text?.slice(0, 200)}`
       ).toBe(expected);
     }

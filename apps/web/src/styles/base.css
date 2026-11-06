@@ -29,6 +29,10 @@ h2 {
   font-size: 1.625rem;
 }
 
+a {
+  color: var(--accent);
+}
+
 button,
 input {
   font: inherit;

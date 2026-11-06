@@ -6,9 +6,9 @@
     "gzip": true
   },
   {
-    "name": "All of the app's scripts",
-    "path": "dist/assets/*.js",
-    "limit": "135 KB",
+    "name": "The sign-in screen, on top of that",
+    "path": "dist/assets/SignIn-*.js",
+    "limit": "32 KB",
     "gzip": true
   }
 ]

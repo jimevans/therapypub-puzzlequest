@@ -37,7 +37,7 @@ describe("the web app", () => {
   });
 
   it("serves its page, which browsers must check for changes", async () => {
-    const response = await request(app).get("/web-check");
+    const response = await request(app).get("/login");
 
     expect(response.status).toBe(200);
     expect(response.type).toBe("text/html");
@@ -46,7 +46,7 @@ describe("the web app", () => {
   });
 
   it("serves its page under the site's Content Security Policy", async () => {
-    const response = await request(app).get("/web-check");
+    const response = await request(app).get("/login");
 
     const policy = response.headers["content-security-policy"];
     expect(policy).toContain("script-src 'self'");
@@ -99,7 +99,7 @@ describe("the web app", () => {
     });
 
     it("says so", async () => {
-      const response = await request(createApp()).get("/web-check");
+      const response = await request(createApp()).get("/login");
 
       expect(response.status).toBe(503);
       expect(response.text).toBe("The web app hasn't been built.");

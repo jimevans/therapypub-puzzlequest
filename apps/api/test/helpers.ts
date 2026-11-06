@@ -25,6 +25,7 @@ export function createMockResponse(): MockResponse {
     res.statusCode = code;
     return res;
   });
+  res.redirect = vi.fn(() => res);
   res.send = vi.fn((body?: unknown) => {
     res.sendCount++;
     res.body = typeof body === "string" ? JSON.parse(body) : body;

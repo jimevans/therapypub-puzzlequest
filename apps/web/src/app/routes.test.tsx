@@ -1,12 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { api } from "../api";
 import { ErrorPage } from "./ErrorPage";
 import { routes } from "./routes";
 
-vi.mock("../screens/webCheck/WebCheck", () => ({
-  WebCheck: () => <h1>The screen</h1>,
+vi.mock("../screens/signIn/SignIn", () => ({
+  SignIn: () => <h1>The screen</h1>,
 }));
 
 function renderAt(path: string) {
@@ -19,8 +20,18 @@ function renderAt(path: string) {
 }
 
 describe("the routes", () => {
+  beforeEach(() => {
+    vi.spyOn(api, "GET").mockResolvedValue({
+      response: new Response("{}", { status: 401 }),
+    } as never);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("load a page's screen, in the page's frame", async () => {
-    renderAt("/web-check");
+    renderAt("/login");
 
     expect(
       await screen.findByRole("heading", { name: "The screen" })
@@ -51,7 +62,11 @@ describe("the routes", () => {
       { initialEntries: ["/"] }
     );
 
-    render(<RouterProvider router={router} />);
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    );
 
     expect(
       await screen.findByRole("heading", { name: "Something went wrong" })
@@ -60,6 +75,5 @@ describe("the routes", () => {
       "This page couldn't be shown."
     );
     expect(screen.getByRole("button", { name: "Try again" })).toBeVisible();
-    vi.restoreAllMocks();
   });
 });

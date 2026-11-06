@@ -7,7 +7,7 @@ import { webDirectory } from "../paths.js";
  * The pages the React app shows. Moving a screen to React adds its URL here
  * and deletes its EJS route, so every link keeps working.
  */
-const WEB_PAGES = ["/web-check"];
+const WEB_PAGES = ["/login"];
 
 const webRouter = express.Router();
 
