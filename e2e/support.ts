@@ -14,6 +14,9 @@ export const TWILIO_AUTH_TOKEN = "e2e-twilio-auth-token";
 /** Where the test server's output goes, including the emails it would send. */
 export const SERVER_LOG = path.join(tmpdir(), "puzzlequest-e2e-server.log");
 
+/** What the QR code says that the fake camera shows (see wdio.conf.ts). */
+export const SCANNED_CODE = "e2e-scanned-code";
+
 /** The password of every account the tests create, unless they change it. */
 export const PASSWORD = "a long enough password";
 

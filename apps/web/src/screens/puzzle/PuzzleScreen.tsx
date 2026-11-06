@@ -1,5 +1,5 @@
 import type { Schemas } from "@puzzlequest/api-client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { ApiError, api, dataOrThrow } from "../../api";
@@ -19,73 +19,16 @@ import { Banner } from "../../ui/Banner";
 import { Button } from "../../ui/Button";
 import { ConfirmDialog } from "../../ui/ConfirmDialog";
 import { ProgressTrail } from "../../ui/ProgressTrail";
+import { Activation } from "./Activation";
 import { AnswerForm } from "./AnswerForm";
 import { PuzzleContent } from "./PuzzleContent";
 import styles from "./PuzzleScreen.module.css";
+import { type PuzzlePath, refusalOf, usePuzzleAction } from "./puzzleActions";
 
 type View = Schemas["PlayerPuzzle"];
 
-/** What identifies the puzzle in the API's paths. */
-interface PuzzlePath {
-  name: string;
-  puzzleName: string;
-}
-
-function refusalOf(error: Error): string {
-  return error instanceof ApiError
-    ? error.message
-    : "Couldn't reach the server. Check your connection and try again.";
-}
-
 function penaltyText(seconds: number): string {
   return `+${formatDuration(seconds * 1000)}`;
-}
-
-/**
- * Sends one of the player's actions. However it turns out, the puzzle is fetched
- * again, since a refusal often means it has changed: a teammate solved it, say,
- * or the quest was paused. The action counts as pending until that's back, so
- * the old state can't be acted on in the meantime.
- */
-function usePuzzleAction<Input>(
-  { name }: PuzzlePath,
-  send: (input: Input) => Promise<unknown>
-) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: send,
-    onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: questQueryKey(name) }),
-  });
-}
-
-function Activation({ path, paused }: { path: PuzzlePath; paused: boolean }) {
-  const activate = usePuzzleAction(path, async (activationCode: string) =>
-    dataOrThrow(
-      await api.POST("/quests/{name}/puzzles/{puzzleName}/activation", {
-        params: { path },
-        body: { activationCode },
-      })
-    )
-  );
-  return (
-    <>
-      <p>You've found this puzzle's place. Enter its code to begin.</p>
-      {activate.error && (
-        <Banner tone="danger">{refusalOf(activate.error)}</Banner>
-      )}
-      <AnswerForm
-        fieldId="activation-code"
-        buttonId="activate"
-        label="Activation code"
-        buttonLabel="Start this puzzle"
-        emptyMessage="Enter the code"
-        isDisabled={paused}
-        isPending={activate.isPending}
-        onSubmit={(code) => activate.mutate(code)}
-      />
-    </>
-  );
 }
 
 function Hints({ hints }: { hints: View["puzzle"]["hints"] }) {
