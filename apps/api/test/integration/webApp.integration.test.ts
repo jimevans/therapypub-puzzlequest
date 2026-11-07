@@ -80,8 +80,15 @@ describe("the web app", () => {
     expect(response.text).not.toContain("<script");
   });
 
-  it("doesn't serve the page at addresses that aren't its own", async () => {
+  it("serves the page with a 404 at an address it has no page for", async () => {
     const response = await request(app).get("/not-a-page");
+
+    expect(response.status).toBe(404);
+    expect(response.text).toBe(PAGE);
+  });
+
+  it("doesn't serve the page for a file that isn't there", async () => {
+    const response = await request(app).get("/not-a-file.png");
 
     expect(response.status).toBe(404);
     expect(response.text).not.toBe(PAGE);

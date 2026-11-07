@@ -1,12 +1,8 @@
-import type { IncomingMessage } from "node:http";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 /** The API server, which `npm run dev` starts, for `npm run dev:web`. */
 const API_SERVER = "http://localhost:3000";
-
-/** The authorization level of an administrator, who gets EJS pages for now. */
-const ADMINISTRATOR = 10;
 
 const toApiServer = {
   target: API_SERVER,
@@ -14,35 +10,6 @@ const toApiServer = {
   // comes from Vite's address. In production they're one site.
   headers: { origin: API_SERVER },
 };
-
-/**
- * For the pages where the server chooses by session. Whoever qualifies gets
- * Vite's copy of the React app, since the server's would be the last build, and
- * everyone else gets the server's page, as in production.
- * @param qualifies decides by the signed-in user's authorization level, which is
- *  null for someone signed out
- * @returns the proxy's settings
- */
-function toReactFor(qualifies: (authorizationLevel: number | null) => boolean) {
-  return {
-    ...toApiServer,
-    bypass: async (req: IncomingMessage) => {
-      const response = await fetch(`${API_SERVER}/api/v1/sessions/current`, {
-        headers: { cookie: req.headers.cookie ?? "" },
-      });
-      const user = response.ok
-        ? ((await response.json()) as { user: { authorizationLevel: number } })
-            .user
-        : null;
-      return qualifies(user?.authorizationLevel ?? null)
-        ? "/index.html"
-        : undefined;
-    },
-  };
-}
-
-const isPlayer = (level: number | null) =>
-  level !== null && level < ADMINISTRATOR;
 
 export default defineConfig({
   plugins: [react()],
@@ -78,18 +45,15 @@ export default defineConfig({
     },
   },
   server: {
-    // Vite serves the React app. Everything else comes from the API server:
-    // the API, uploaded media, and the pages not yet moved to React.
+    // Vite serves the React app for every page. The rest comes from the API
+    // server: the API, signing out, uploaded media, and its own static files.
+    // The server's checks before a page (such as sending someone signed out to
+    // sign in) don't happen here; the app's own handling of the API's answers
+    // does the same job.
     proxy: {
       "/api": { ...toApiServer, ws: true },
-      "^/quest/(?!new$)[^/]+$": toReactFor(isPlayer),
-      "^/quest/[^/]+/puzzle/[^/]+$": toReactFor((level) => level !== null),
-      "^/user/(register|password/(forgot|reset)|email/verify)(\\?|$)":
-        toReactFor(() => true),
-      "^/user/[^/]+(/edit)?$": toReactFor((level) => level !== null),
-      "^/(login|logout)$": toApiServer,
-      "^/(user|puzzle|quest)/": toApiServer,
-      "^/(puzzleData|script|style|image|policies|vendor)/": toApiServer,
+      "^/logout$": toApiServer,
+      "^/(puzzleData|style|image|policies)/": toApiServer,
     },
   },
 });

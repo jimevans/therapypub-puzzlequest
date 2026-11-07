@@ -3,17 +3,12 @@ import cookieParser from "cookie-parser";
 import express, { type Express } from "express";
 import helmet from "helmet";
 import { config } from "./config.js";
-import {
-  contentSecurityPolicy,
-  createScriptNonce,
-} from "./middleware/contentSecurityPolicy.js";
+import { sendWebAppNotFound } from "./controllers/web.controller.js";
+import { sendErrorPage } from "./errorPage.js";
+import { contentSecurityPolicy } from "./middleware/contentSecurityPolicy.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { requireSameOrigin } from "./middleware/sameOrigin.js";
-import {
-  publicDirectory,
-  puzzleDataDirectory,
-  viewsDirectory,
-} from "./paths.js";
+import { publicDirectory, puzzleDataDirectory } from "./paths.js";
 import { V1Router } from "./api/v1/index.js";
 import { AdminRouter } from "./routes/admin.js";
 import { IndexRouter } from "./routes/index.js";
@@ -53,7 +48,7 @@ export function createApp(): Express {
     })
   );
 
-  app.use(createScriptNonce, contentSecurityPolicy);
+  app.use(contentSecurityPolicy);
 
   app.use(compression());
 
@@ -78,8 +73,21 @@ export function createApp(): Express {
   app.use("/user", UserRouter);
   app.use("/quest", QuestRouter);
 
-  app.set("views", viewsDirectory);
-  app.set("view engine", "ejs");
+  // Any other address. A page the React app doesn't have gets the app, which
+  // says so in its own words, with a 404 status; a missing file, or an address
+  // in the API, gets the server's own error page.
+  app.use((req, res) => {
+    const isPage =
+      (req.method === "GET" || req.method === "HEAD") &&
+      !/\.[^/]*$/.test(req.path) &&
+      !req.path.startsWith("/api/") &&
+      !req.path.startsWith("/puzzleData/");
+    if (isPage) {
+      sendWebAppNotFound(req, res);
+      return;
+    }
+    sendErrorPage(res, 404, "Not found", "There's nothing at this address.");
+  });
 
   // Must be registered after every route.
   app.use(errorHandler);

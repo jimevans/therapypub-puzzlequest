@@ -1,0 +1,49 @@
+/* The server's own error page (src/errorPage.ts), which works without the
+   React app. Its colours match the app's tokens (apps/web/src/styles/tokens.css);
+   it uses the system's fonts, since the app's are part of the app's build. */
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: #ffffff;
+  color: #111418;
+  font-family: system-ui, sans-serif;
+  font-size: 1.125rem;
+  line-height: 1.5;
+}
+
+header {
+  padding: 0.75rem 1.25rem;
+  background: #111418;
+}
+
+header a {
+  color: #ffffff;
+  font-size: 1.625rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+main {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem;
+}
+
+h1 {
+  margin: 0 0 0.75rem;
+  font-size: 2.125rem;
+  line-height: 1.1;
+}
+
+p {
+  margin: 0 0 1rem;
+  color: #4a4f57;
+}
+
+a {
+  color: #0a4fd6;
+}

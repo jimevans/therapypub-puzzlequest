@@ -9,7 +9,7 @@ afterEach(() => {
 
 describe("createApp", () => {
   it("serves static files", async () => {
-    const response = await request(createApp()).get("/style/pq.css");
+    const response = await request(createApp()).get("/style/error.css");
 
     expect(response.status).toBe(200);
     expect(response.type).toBe("text/css");

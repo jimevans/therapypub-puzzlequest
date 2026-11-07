@@ -13,8 +13,5 @@
     "test/**/*.ts",
     "scripts/**/*.ts",
     "*.js"
-  ],
-  // Browser scripts read globals that each EJS page defines, so they are not
-  // checked yet.
-  "exclude": ["src/public/**"]
+  ]
 }

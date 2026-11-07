@@ -1,25 +1,6 @@
-import { randomBytes } from "crypto";
-import type { IncomingMessage, ServerResponse } from "http";
-import type { NextFunction, Request, Response } from "express";
+import type { IncomingMessage } from "http";
 import helmet from "helmet";
 import { config } from "../config.js";
-
-/**
- * Gives each response a new random nonce, for the pages' inline scripts to
- * carry (as nonce="<%= cspNonce %>"), so the Content Security Policy can
- * allow exactly those scripts and no others, such as injected ones.
- * @param req the request
- * @param res the response
- * @param next the next handler
- */
-export function createScriptNonce(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void {
-  res.locals.cspNonce = randomBytes(16).toString("base64");
-  next();
-}
 
 /**
  * Gets the address of this site's websocket, for live updates. Browsers
@@ -48,11 +29,8 @@ export const contentSecurityPolicy = helmet.contentSecurityPolicy({
   useDefaults: false,
   directives: {
     defaultSrc: ["'self'"],
-    scriptSrc: [
-      "'self'",
-      (_req: IncomingMessage, res: ServerResponse) =>
-        `'nonce-${(res as Response).locals.cspNonce}'`,
-    ],
+    // Only files from this site: the React app has no inline scripts.
+    scriptSrc: ["'self'"],
     scriptSrcAttr: ["'none'"],
     styleSrc: ["'self'"],
     // Puzzle text is Markdown, which may show images from other sites; the

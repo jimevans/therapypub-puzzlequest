@@ -1,4 +1,5 @@
 import type { Request, RequestHandler, Response } from "express";
+import { sendErrorPage } from "../errorPage.js";
 import * as UserService from "../services/user.service.js";
 import { Problems, isV1Request, sendProblem } from "../api/problems.js";
 
@@ -43,10 +44,12 @@ function refuse(req: Request, res: Response, user: UserService.User): void {
     );
     return;
   }
-  res.status(403).render("error", {
-    errorTitle: "Forbidden",
-    errorDetails: `User ${user.userName} is not authorized to view this page`,
-  });
+  sendErrorPage(
+    res,
+    403,
+    "Forbidden",
+    `User ${user.userName} is not authorized to view this page`
+  );
 }
 
 /**

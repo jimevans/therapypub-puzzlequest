@@ -1,14 +1,11 @@
 import path from "path";
 
-// Locations of files the application reads and writes at run time. Views and
-// static files stay in src/ even when the application runs from compiled output
+// Locations of files the application reads and writes at run time. Static
+// files stay in src/ even when the application runs from compiled output
 // in dist/, so paths are resolved from the workspace rather than from this
 // module. Both src/ and dist/ sit directly under the workspace's root.
 const workspaceRoot = path.resolve(import.meta.dirname, "..");
 const sourceDirectory = path.join(workspaceRoot, "src");
-
-/** The EJS templates. */
-export const viewsDirectory = path.join(sourceDirectory, "views");
 
 /** Static files served to browsers. */
 export const publicDirectory = path.join(sourceDirectory, "public");

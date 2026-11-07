@@ -1,7 +1,7 @@
 # PuzzleQuest
 
-The Therapy Pub and Co. PuzzleQuest website: an Express + MongoDB app with
-server-rendered EJS pages, a JSON API under `/api`, and Twilio voice/SMS
+The Therapy Pub and Co. PuzzleQuest website: a React web app (`apps/web`) on
+an Express + MongoDB API (`apps/api`, under `/api/v1`), with Twilio voice/SMS
 integration.
 
 ## Requirements
@@ -86,7 +86,7 @@ with a list of the problems.
 npm run dev    # runs the source; restarts when source files change
 ```
 
-To work on the React app, run this in a second terminal too, and open <http://localhost:5173>. Vite shows changes as you save them, and sends everything else (the API, uploaded media, and the pages not yet moved to React) to the server on port 3000:
+To work on the React app, run this in a second terminal too, and open <http://localhost:5173>. Vite shows changes as you save them, and sends the rest (the API, signing out, uploaded media, and the server's own static files) to the server on port 3000:
 
 ```bash
 npm run dev:web
@@ -152,10 +152,6 @@ npm run format:check   # report files that Prettier would change
 ESLint is configured in [eslint.config.js](eslint.config.js). Prettier takes
 indentation and line endings from [.editorconfig](.editorconfig), and its
 other settings are in [.prettierrc.json](.prettierrc.json).
-
-Browser scripts in `apps/api/src/public/script` that read variables defined by an
-inline `<script>` in their EJS view declare them in a `/* global */` comment
-at the top of the file.
 
 ## TypeScript and the build
 

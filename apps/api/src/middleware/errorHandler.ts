@@ -6,6 +6,7 @@ import {
   isV1Request,
   sendProblem,
 } from "../api/problems.js";
+import { sendErrorPage } from "../errorPage.js";
 
 /**
  * Handles errors thrown by routes and middleware, including rejected promises
@@ -65,6 +66,11 @@ export function errorHandler(
       message
     );
   } else {
-    res.status(statusCode).type("text").send(message);
+    sendErrorPage(
+      res,
+      statusCode,
+      STATUS_CODES[statusCode] ?? "Error",
+      message
+    );
   }
 }
