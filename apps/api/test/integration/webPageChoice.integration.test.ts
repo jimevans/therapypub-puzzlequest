@@ -138,8 +138,18 @@ describe("an administrator, who has no EJS page for it", () => {
   });
 });
 
-describe("administrators' lists", () => {
-  it.each(["/", "/quests", "/puzzles", "/users", "/teams"])(
+const ADMIN_SCREENS = [
+  "/quests",
+  "/puzzles",
+  "/users",
+  "/teams",
+  "/puzzle/new",
+  "/puzzle/riddle",
+  "/puzzle/riddle/edit",
+];
+
+describe("administrators' screens", () => {
+  it.each(["/", ...ADMIN_SCREENS])(
     "are in the React app at %s",
     async (page) => {
       const response = await getPage(page, "admin");
@@ -149,13 +159,17 @@ describe("administrators' lists", () => {
     }
   );
 
-  it.each(["/quests", "/puzzles", "/users", "/teams"])(
-    "%s are only for administrators",
-    async (page) => {
-      expect((await getPage(page, "player")).status).toBe(403);
-      expect((await getPage(page)).status).toBe(302);
-    }
-  );
+  it("are the React app for a puzzle that doesn't exist, which says so", async () => {
+    const response = await getPage("/puzzle/no-such-puzzle", "admin");
+
+    expect(response.status).toBe(200);
+    expect(response.text).toBe(REACT_PAGE);
+  });
+
+  it.each(ADMIN_SCREENS)("%s are only for administrators", async (page) => {
+    expect((await getPage(page, "player")).status).toBe(403);
+    expect((await getPage(page)).status).toBe(302);
+  });
 });
 
 describe("account pages", () => {

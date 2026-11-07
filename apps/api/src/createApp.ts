@@ -1,4 +1,3 @@
-import { fileURLToPath } from "url";
 import compression from "compression";
 import cookieParser from "cookie-parser";
 import express, { type Express } from "express";
@@ -18,15 +17,9 @@ import {
 import { V1Router } from "./api/v1/index.js";
 import { AdminRouter } from "./routes/admin.js";
 import { IndexRouter } from "./routes/index.js";
-import { PuzzleRouter } from "./routes/puzzle.js";
 import { QuestRouter } from "./routes/quest.js";
 import { UserRouter } from "./routes/user.js";
 import { WebRouter } from "./routes/web.js";
-
-// Browser build of marked, served from the installed package so that its
-// version is pinned by the lockfile and matches the version used on the server.
-// The package's entry point is a self-contained ES module.
-const markedBrowserModule = fileURLToPath(import.meta.resolve("marked"));
 
 /**
  * Creates the Express application. This has no side effects: it does not
@@ -72,10 +65,6 @@ export function createApp(): Express {
   app.use("/puzzleData", express.static(puzzleDataDirectory));
   app.use(WebRouter);
 
-  app.get("/vendor/marked.esm.js", (req, res) => {
-    res.sendFile(markedBrowserModule);
-  });
-
   app.use(cookieParser());
   app.use(requireSameOrigin);
 
@@ -87,7 +76,6 @@ export function createApp(): Express {
 
   // The pages.
   app.use("/user", UserRouter);
-  app.use("/puzzle", PuzzleRouter);
   app.use("/quest", QuestRouter);
 
   app.set("views", viewsDirectory);

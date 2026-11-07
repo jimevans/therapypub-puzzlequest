@@ -18,6 +18,12 @@
   color: var(--ink);
 }
 
+.multiline {
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  resize: vertical;
+}
+
 .input[data-focused] {
   outline: 3px solid var(--accent);
   outline-offset: 2px;

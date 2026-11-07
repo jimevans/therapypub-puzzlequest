@@ -74,12 +74,12 @@ export default [
   onTopOfFirstLoad(
     "Forgot password",
     "src/screens/account/ForgotPassword.tsx",
-    "31 KB"
+    "32 KB"
   ),
   onTopOfFirstLoad(
     "Reset password",
     "src/screens/account/ResetPassword.tsx",
-    "31 KB"
+    "33 KB"
   ),
   onTopOfFirstLoad(
     "Verify email",
@@ -87,13 +87,23 @@ export default [
     "18 KB"
   ),
   onTopOfFirstLoad("Signing up", "src/screens/account/SignUp.tsx", "34 KB"),
-  onTopOfFirstLoad("A profile", "src/screens/account/Profile.tsx", "34 KB"),
+  onTopOfFirstLoad("A profile", "src/screens/account/Profile.tsx", "36 KB"),
   onTopOfFirstLoad(
     "Editing a profile",
     "src/screens/account/EditProfile.tsx",
     "34 KB"
   ),
   onTopOfFirstLoad("A list", "src/screens/admin/TeamsList.tsx", "36 KB"),
+  onTopOfFirstLoad(
+    "A puzzle's details",
+    "src/screens/admin/puzzle/PuzzleDetails.tsx",
+    "4 KB"
+  ),
+  onTopOfFirstLoad(
+    "The puzzle editor",
+    "src/screens/admin/puzzle/PuzzleEditor.tsx",
+    "38 KB"
+  ),
   onTopOfFirstLoad(
     "A text puzzle's Markdown",
     "src/quests/PuzzleText.tsx",
@@ -107,7 +117,7 @@ export default [
   onTopOfFirstLoad(
     "The sign-in screen",
     "src/screens/signIn/SignIn.tsx",
-    "31 KB"
+    "32 KB"
   ),
   // Already compressed, and only the Latin files download, by unicode-range.
   {

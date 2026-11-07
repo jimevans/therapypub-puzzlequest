@@ -154,8 +154,8 @@ export function createRoutes(queryClient: QueryClient): RouteObject[] {
         Component: (await import("../screens/followAlong/Board")).Board,
       }),
     },
-    // Administrators' lists. Its frame is a download of its own, so that players
-    // never fetch it.
+    // Administrators' screens. Their frame is a download of its own, so that
+    // players never fetch it.
     {
       lazy: async () => ({
         Component: (await import("../screens/admin/AdminLayout")).AdminLayout,
@@ -186,6 +186,27 @@ export function createRoutes(queryClient: QueryClient): RouteObject[] {
           path: "/teams",
           lazy: async () => ({
             Component: (await import("../screens/admin/TeamsList")).TeamsList,
+          }),
+        },
+        {
+          path: "/puzzle/new",
+          lazy: async () => ({
+            Component: (await import("../screens/admin/puzzle/PuzzleEditor"))
+              .PuzzleEditor,
+          }),
+        },
+        {
+          path: "/puzzle/:name",
+          lazy: async () => ({
+            Component: (await import("../screens/admin/puzzle/PuzzleDetails"))
+              .PuzzleDetails,
+          }),
+        },
+        {
+          path: "/puzzle/:name/edit",
+          lazy: async () => ({
+            Component: (await import("../screens/admin/puzzle/PuzzleEditor"))
+              .PuzzleEditor,
           }),
         },
       ],

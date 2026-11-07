@@ -281,7 +281,7 @@ describe("POST /api/v1/puzzle-media", () => {
     fileExtension = "png",
     contents = Buffer.from("fake image bytes"),
   } = {}) {
-    // Same field order as puzzleEdit.js: the fields that name the file
+    // Same field order as the puzzle editor: the fields that name the file
     // must arrive before the file itself.
     return request(app)
       .post("/api/v1/puzzle-media")

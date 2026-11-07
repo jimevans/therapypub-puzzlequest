@@ -7,6 +7,7 @@ import {
   type InputProps,
   Label,
   Text,
+  TextArea,
 } from "react-aria-components";
 import styles from "./TextField.module.css";
 
@@ -19,7 +20,9 @@ interface TextFieldProps extends Omit<
   /** What's wrong with the value; the field shows as invalid while it's set. */
   errorMessage?: string;
   /** Reaches the input itself, so a form can move focus to it. */
-  inputRef?: Ref<HTMLInputElement>;
+  inputRef?: Ref<HTMLInputElement | HTMLTextAreaElement>;
+  /** Several lines of text, in a box this many lines tall. */
+  rows?: number;
   /** Hints to the phone's keyboard, such as not capitalizing a user name. */
   inputProps?: Pick<
     InputProps,
@@ -34,6 +37,7 @@ export function TextField({
   errorMessage,
   inputRef,
   inputProps,
+  rows,
   ...props
 }: TextFieldProps) {
   return (
@@ -43,7 +47,20 @@ export function TextField({
       isInvalid={errorMessage !== undefined || props.isInvalid}
     >
       <Label className={styles.label}>{label}</Label>
-      <Input {...inputProps} ref={inputRef} className={styles.input} />
+      {rows === undefined ? (
+        <Input
+          {...inputProps}
+          ref={inputRef as Ref<HTMLInputElement>}
+          className={styles.input}
+        />
+      ) : (
+        <TextArea
+          {...inputProps}
+          ref={inputRef as Ref<HTMLTextAreaElement>}
+          rows={rows}
+          className={`${styles.input} ${styles.multiline}`}
+        />
+      )}
       {description && (
         <Text slot="description" className={styles.description}>
           {description}
