@@ -47,6 +47,29 @@ describe("the web app", () => {
     expect(await blockedByPolicy()).toEqual([]);
   });
 
+  it("opens a page from the service worker on a repeat visit", async () => {
+    await browser.url("/login");
+    await expect($("#login")).toBeDisplayed();
+    await browser.waitUntil(() =>
+      browser.execute(async () =>
+        Boolean((await navigator.serviceWorker.ready).active)
+      )
+    );
+
+    await browser.url("/user/password/forgot");
+    await expect($("h1")).toBeDisplayed();
+    // The worker controls the page, and holds its copy of the app's page to
+    // answer with. (Chrome also reports starting the worker for the page, in
+    // workerStart; Firefox reports 0 there.)
+    expect(
+      await browser.execute(() => navigator.serviceWorker.controller !== null)
+    ).toBe(true);
+    expect(
+      await browser.execute(async () => Boolean(await caches.match("/")))
+    ).toBe(true);
+    expect(await blockedByPolicy()).toEqual([]);
+  });
+
   it("says so at an address with no page, with nothing blocked", async () => {
     await browser.url("/no-such-page");
 

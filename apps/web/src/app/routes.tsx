@@ -17,6 +17,7 @@ import {
   spectatorQuestQuery,
 } from "../quests/queries";
 import { PageShell } from "../ui/PageShell";
+import { isAdminPath } from "./adminPaths";
 import { ErrorPage } from "./ErrorPage";
 
 /**
@@ -157,29 +158,6 @@ export function createRoutes(queryClient: QueryClient): RouteObject[] {
       }),
     },
   ];
-}
-
-/** The first part of the addresses of administrators' screens. */
-const ADMIN_SECTIONS = new Set([
-  "quests",
-  "puzzles",
-  "users",
-  "teams",
-  "puzzle",
-]);
-
-/**
- * Says whether an address is one of the administrators' screens. The quest
- * editor's addresses share their start with a quest's page, which everyone
- * has.
- * @param path the address's path
- * @returns true if so
- */
-function isAdminPath(path: string): boolean {
-  return (
-    ADMIN_SECTIONS.has(path.split("/")[1] ?? "") ||
-    /^\/quest\/(new|[^/]+\/edit)\/?$/.test(path)
-  );
 }
 
 /**

@@ -228,6 +228,41 @@ make npm skip the development dependencies; that's why the install needs
 that's expected, because bcrypt ships prebuilt binaries and the other scripts
 only matter for tests.
 
+### The service worker
+
+Built copies of the web app register a service worker (`/sw.js`, from
+[apps/web/src/serviceWorker/sw.ts](apps/web/src/serviceWorker/sw.ts)), which
+answers repeat visits from a copy of the app's page and built files kept in the
+browser, so pages open at once. Each visit refreshes the copy, so a deployment
+reaches a browser on its next page load after the one that fetched it. The API,
+signing out, uploaded media, the server's own files, the emailed-link pages and
+the administrators' screens always come from the server. Which requests it
+answers is decided in
+[apps/web/src/serviceWorker/routing.ts](apps/web/src/serviceWorker/routing.ts).
+
+To turn it off for everyone, make `sw.ts` unregister itself and delete what it
+kept, deploy, and leave that in place for a while, since browsers keep using an
+installed worker until they fetch the new `sw.js`:
+
+```ts
+/// <reference lib="webworker" />
+declare const self: ServiceWorkerGlobalScope;
+self.addEventListener("install", () => void self.skipWaiting());
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      for (const name of await caches.keys()) {
+        await caches.delete(name);
+      }
+      await self.registration.unregister();
+    })()
+  );
+});
+```
+
+Also remove `registerServiceWorker()` from
+[apps/web/src/main.tsx](apps/web/src/main.tsx), so browsers don't install it again.
+
 ## Continuous integration
 
 GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs on
