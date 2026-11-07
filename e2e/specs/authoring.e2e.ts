@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import {
   ADMIN,
+  LIVE_UPDATES_CONNECTED,
   PASSWORD,
   api,
   pickInLookup,
@@ -163,6 +164,95 @@ describe("authoring", () => {
     await expect($(`a[href="/quest/${questName}"]`)).toExist();
     await expect($(`[data-quest-name="${questName}"]`)).toHaveText(
       expect.stringContaining(`${player} (user)`)
+    );
+  });
+
+  it("opens the quest's console from the list, showing every stop", async () => {
+    await $(`a[href="/quest/${questName}"]`).click();
+    await expect($("#stops")).toBeDisplayed();
+    await expect($(`#stops [data-puzzle-name="${textPuzzle}"]`)).toHaveText(
+      expect.stringContaining("Unavailable")
+    );
+    await expect($(`#stops [data-puzzle-name="${imagePuzzle}"]`)).toExist();
+    await expect($(LIVE_UPDATES_CONNECTED)).toExist();
+  });
+
+  it("starts the quest after asking, and logs it", async () => {
+    await $("#start-quest").click();
+    await $("#action-dialog").$("button=Start").click();
+
+    await expect($("#quest-status")).toHaveText("In progress");
+    await expect($(`#stops [data-puzzle-name="${textPuzzle}"]`)).toHaveText(
+      expect.stringContaining("Awaiting activation")
+    );
+    await expect($("#activity")).toHaveText(
+      expect.stringContaining(`Quest started by ${ADMIN}`)
+    );
+  });
+
+  it("pauses and resumes the quest", async () => {
+    await $("#pause-quest").click();
+    await $("#action-dialog").$("button=Pause").click();
+    await expect($("#paused-banner")).toBeDisplayed();
+
+    await $("#resume-quest").click();
+    await expect($("#paused-banner")).not.toExist();
+    await expect($("#activity")).toHaveText(
+      expect.stringContaining("Quest resumed")
+    );
+  });
+
+  it("skips a puzzle the players are stuck on, then resets it", async () => {
+    await $(`button[aria-label="Skip A Text Puzzle"]`).click();
+    await $("#action-dialog").$("button=Skip").click();
+    await expect($(`#stops [data-puzzle-name="${textPuzzle}"]`)).toHaveText(
+      expect.stringContaining("Skipped")
+    );
+
+    await $(`button[aria-label="Reset A Text Puzzle"]`).click();
+    await $("#reset-puzzle-dialog").$("button=Reset").click();
+    await expect($(`#stops [data-puzzle-name="${textPuzzle}"]`)).toHaveText(
+      expect.stringContaining("In progress")
+    );
+  });
+
+  it("says when no player can be texted", async () => {
+    await $("#text-players").click();
+    await $("#text-message").setValue("Look up");
+    await $("#text-dialog").$("button=Send").click();
+
+    await expect($("#text-dialog").$('[role="alert"]')).toBeDisplayed();
+    await $("#text-dialog").$("button=Cancel").click();
+  });
+
+  it("downloads the run book and the QR codes", async () => {
+    const links = [
+      (await $("#run-book").getAttribute("href")) ?? "",
+      (await $(`a[aria-label="QR code for A Text Puzzle"]`).getAttribute(
+        "href"
+      )) ?? "",
+    ];
+    const types = await browser.execute(
+      async (hrefs: string[]) =>
+        Promise.all(
+          hrefs.map(
+            async (href) =>
+              (await fetch(href)).headers.get("content-type") ?? ""
+          )
+        ),
+      links
+    );
+
+    expect(types).toEqual(["application/pdf", "image/png"]);
+  });
+
+  it("resets the quest after asking", async () => {
+    await $("#reset-quest").click();
+    await $("#action-dialog").$("button=Reset").click();
+
+    await expect($("#quest-status")).toHaveText("Not yet started");
+    await expect($("#activity")).toHaveText(
+      expect.stringContaining("Quest reset")
     );
   });
 

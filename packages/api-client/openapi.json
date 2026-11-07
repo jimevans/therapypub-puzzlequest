@@ -4083,6 +4083,89 @@
         }
       }
     },
+    "/quests/{name}/run-book": {
+      "get": {
+        "operationId": "getQuestRunBook",
+        "summary": "Get a quest's run book",
+        "description": "A PDF with a page for each of the quest's puzzles, in order: its content and solution, for whoever runs the quest.",
+        "tags": [
+          "Quests"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "schema": {
+              "type": "string",
+              "description": "The quest's name."
+            },
+            "required": true,
+            "description": "The quest's name."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The run book.",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "/problems/sign-in-required: Sign in to do this.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "/problems/forbidden: Not allowed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "/problems/not-found: Not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "/problems/unexpected: An unexpected error occurred.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/quests/{name}/events": {
       "get": {
         "operationId": "listQuestEvents",

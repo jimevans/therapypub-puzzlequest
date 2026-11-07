@@ -4,7 +4,7 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../api";
 import { ErrorPage } from "./ErrorPage";
-import { createRoutes } from "./routes";
+import { createRoutes, patchAdminRoutes } from "./routes";
 
 vi.mock("../screens/signIn/SignIn", () => ({
   SignIn: () => <h1>The screen</h1>,
@@ -16,6 +16,18 @@ vi.mock("../screens/home/Home", () => ({
 
 vi.mock("../screens/quest/QuestScreen", () => ({
   QuestScreen: () => <h1>The quest screen</h1>,
+}));
+
+vi.mock("../screens/questConsole/QuestConsole", () => ({
+  default: () => <h1>The quest console</h1>,
+}));
+
+vi.mock("../screens/admin/puzzle/PuzzleDetails", () => ({
+  PuzzleDetails: () => <h1>Puzzle details</h1>,
+}));
+
+vi.mock("../screens/admin/puzzle/PuzzleEditor", () => ({
+  PuzzleEditor: () => <h1>Puzzle editor</h1>,
 }));
 
 vi.mock("../screens/puzzle/PuzzleScreen", () => ({
@@ -78,6 +90,7 @@ function renderAt(path: string) {
   const client = new QueryClient();
   const router = createMemoryRouter(createRoutes(client), {
     initialEntries: [path],
+    patchRoutesOnNavigation: patchAdminRoutes,
   });
   render(
     <QueryClientProvider client={client}>
@@ -119,6 +132,9 @@ describe("the routes", () => {
     ["/puzzles", "Puzzles list"],
     ["/users", "Users list"],
     ["/teams", "Teams list"],
+    ["/puzzle/new", "Puzzle editor"],
+    ["/puzzle/riddle", "Puzzle details"],
+    ["/puzzle/riddle/edit", "Puzzle editor"],
     ["/user/player", "Profile"],
     ["/user/player/edit", "Edit"],
     ["/user/password/reset?token=abc", "Reset"],
@@ -154,6 +170,24 @@ describe("the routes", () => {
         params: { path: params },
       })
     );
+  });
+
+  it("show an administrator the console at a quest's address", async () => {
+    vi.mocked(api.GET).mockImplementation((async (path: string) =>
+      path === "/sessions/current"
+        ? {
+            data: { user: { userName: "boss", authorizationLevel: 10 } },
+            response: new Response(null, { status: 200 }),
+          }
+        : { response: new Response("{}", { status: 404 }) }) as never);
+    renderAt("/quest/trail");
+
+    expect(
+      await screen.findByRole("heading", { name: "The quest console" })
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("heading", { name: "The quest screen" })
+    ).not.toBeInTheDocument();
   });
 
   it("show the board without the frame of the other pages", async () => {

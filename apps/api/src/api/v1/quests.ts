@@ -2,6 +2,7 @@
 // administrator's rescue actions on their puzzles, texting their players,
 // and their event logs. Playing them (activating, solving, hints) is still
 // on the older API.
+import PDFDocument from "pdfkit";
 import { z } from "zod";
 import { sendTextBody } from "../../schemas/messaging.schemas.js";
 import {
@@ -316,6 +317,41 @@ export const questRoutes = [
         return;
       }
       res.type("image/png").send(qrCode.data);
+    },
+  }),
+  defineRoute({
+    method: "get",
+    path: "/quests/{name}/run-book",
+    operationId: "getQuestRunBook",
+    summary: "Get a quest's run book",
+    description:
+      "A PDF with a page for each of the quest's puzzles, in order: its content and solution, for whoever runs the quest.",
+    tags: ["Quests"],
+    access: "admin",
+    request: { params: questParams },
+    responses: {
+      200: {
+        description: "The run book.",
+        body: z.string().meta({ format: "binary" }),
+        mediaType: "application/pdf",
+      },
+    },
+    problems: [Problems.notFound],
+    async handle(req, res) {
+      const pdf = new PDFDocument({ autoFirstPage: false, bufferPages: true });
+      const chunks: Buffer[] = [];
+      pdf.on("data", (chunk: Buffer) => chunks.push(chunk));
+      const ended = new Promise((resolve) => pdf.on("end", resolve));
+      const written = await QuestService.getQuestRunBook(req.params.name, pdf);
+      if (written.status === "error") {
+        sendServiceProblem(res, written);
+        return;
+      }
+      await ended;
+      res
+        .type("application/pdf")
+        .attachment(`${req.params.name}.pdf`)
+        .send(Buffer.concat(chunks));
     },
   }),
   defineRoute({

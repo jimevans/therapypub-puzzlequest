@@ -132,13 +132,6 @@ function getPage(path: string, account: string | null): request.Test {
 const PAGES: [string, string, string | null, string, string[]][] = [
   ["new quest", "/quest/new", "admin", "questEdit", []],
   [
-    "quest details",
-    "/quest/running-quest",
-    "admin",
-    "questDetails",
-    ["Running Quest", "team-a (team)"],
-  ],
-  [
     "quest editor",
     "/quest/running-quest/edit",
     "admin",
@@ -228,8 +221,8 @@ describe("error page", () => {
       "Forbidden",
     ],
     [
-      "a quest that does not exist",
-      "/quest/missing",
+      "the editor of a quest that does not exist",
+      "/quest/missing/edit",
       "admin",
       404,
       "Not found",

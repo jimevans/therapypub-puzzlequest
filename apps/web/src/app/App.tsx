@@ -2,10 +2,12 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { createQueryClient } from "./queryClient";
-import { createRoutes } from "./routes";
+import { createRoutes, patchAdminRoutes } from "./routes";
 
 const queryClient = createQueryClient();
-const router = createBrowserRouter(createRoutes(queryClient));
+const router = createBrowserRouter(createRoutes(queryClient), {
+  patchRoutesOnNavigation: patchAdminRoutes,
+});
 
 export function App() {
   return (
