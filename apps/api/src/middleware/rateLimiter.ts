@@ -93,6 +93,21 @@ export const activationRateLimiter = rateLimit({
 });
 
 /**
+ * Limits wrong join codes by a single user. A player joins a team by its code
+ * alone, so any team's code works, and this stops trying codes until one does.
+ * Keyed by user, like activationRateLimiter. Must run after requireUser.
+ */
+export const joinCodeRateLimiter = rateLimit({
+  windowMs: FIFTEEN_MINUTES,
+  limit: 10,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => req.user?.userName ?? "",
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  handler,
+});
+
+/**
  * Limits wrong guesses at puzzle solutions by a single user. Wrong answers
  * are part of play, so the limit is generous; it stops guessing by script.
  * Keyed by user, like activationRateLimiter. Must run after requireUser.

@@ -10,9 +10,11 @@ import {
   updateUserBody,
   verifyEmailBody,
 } from "../../schemas/user.schemas.js";
+import { joinTeamBody } from "../../schemas/team.schemas.js";
 import * as EmailVerificationService from "../../services/emailVerification.service.js";
 import * as PasswordService from "../../services/password.service.js";
 import * as QuestService from "../../services/quest.service.js";
+import * as TeamService from "../../services/team.service.js";
 import * as UserService from "../../services/user.service.js";
 import { getErrorMessage } from "../../errors.js";
 import { pageQuery, pageSchema } from "../paging.js";
@@ -20,6 +22,7 @@ import { Problems, sendProblem, sendServiceProblem } from "../problems.js";
 import {
   questSummarySchema,
   resourcePath,
+  teamSummarySchema,
   toQuestSummaryResource,
   toUserResource,
   userSchema,
@@ -239,6 +242,45 @@ export const userRoutes = [
         return;
       }
       res.status(204).end();
+    },
+  }),
+  defineRoute({
+    method: "post",
+    path: "/users/{userName}/teams",
+    operationId: "joinTeamByCode",
+    summary: "Join a team by its code",
+    description:
+      "Adds the user to the team whose join code is given, in any letter case. The user needn't know the team's name, and players can't list the teams. Wrong codes are limited, since any team's code works.",
+    tags: ["Teams"],
+    access: "selfOrAdmin",
+    before: [RateLimiter.joinCodeRateLimiter],
+    request: { params: userParams, body: joinTeamBody },
+    responses: {
+      201: {
+        description: "Joined: the team.",
+        body: teamSummarySchema,
+        headers: { Location: { description: "The team." } },
+      },
+    },
+    problems: [
+      Problems.notFound,
+      Problems.alreadyExists,
+      Problems.wrongJoinCode,
+      Problems.tooManyRequests,
+    ],
+    async handle(req, res) {
+      const joined = await TeamService.joinTeamByCode(
+        req.params.userName,
+        req.body.joinCode
+      );
+      if (joined.status === "error") {
+        sendServiceProblem(res, joined);
+        return;
+      }
+      res
+        .status(201)
+        .location(resourcePath("teams", joined.data.teamName))
+        .json(joined.data);
     },
   }),
   defineRoute({

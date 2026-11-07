@@ -6,7 +6,6 @@ import {
   updateTeamBody,
 } from "../../schemas/team.schemas.js";
 import * as TeamService from "../../services/team.service.js";
-import * as UserService from "../../services/user.service.js";
 import { pageQuery, pageSchema } from "../paging.js";
 import { Problems, sendServiceProblem } from "../problems.js";
 import { resourcePath, teamSchema, toTeamResource } from "./resources.js";
@@ -46,19 +45,16 @@ export const teamRoutes = [
     operationId: "listTeams",
     summary: "List teams",
     description:
-      "Any signed-in user may list teams, to choose one to join; only administrators see their join codes and members.",
+      "Only for administrators. Players join a team by its code alone (POST /users/{userName}/teams), so they never see one client's groups from another's.",
     tags: ["Teams"],
-    access: "signedIn",
+    access: "admin",
     request: { query: pageQuery },
     responses: {
       200: { description: "A page of teams.", body: pageSchema(teamSchema) },
     },
     async handle(req, res) {
       const page = await TeamService.listTeamsPage(req.query);
-      const isAdmin = UserService.requireLoggedInUser(req.user).isAdmin();
-      const members = isAdmin
-        ? await TeamService.describeMembers(page.items)
-        : undefined;
+      const members = await TeamService.describeMembers(page.items);
       res.json({
         items: page.items.map((team) => toTeamResource(team, members)),
         next: page.next,
@@ -172,9 +168,9 @@ export const teamRoutes = [
     operationId: "joinTeam",
     summary: "Join a team",
     description:
-      "Adds the user to the team, with the team's join code. A user may join for themselves; an administrator may add anyone.",
+      "Adds the user to the team, with the team's join code. Only for administrators: players join by the code alone (POST /users/{userName}/teams), since naming a team here would tell them whether it exists.",
     tags: ["Teams"],
-    access: "selfOrAdmin",
+    access: "admin",
     request: { params: memberParams, body: joinTeamBody },
     responses: { 204: { description: "Joined." } },
     problems: [

@@ -1,9 +1,8 @@
 import type { Schemas } from "@puzzlequest/api-client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { api, dataOrThrow, messageOf } from "../../api";
-import { fetchAllPages } from "../../fetchAllPages";
 import { Banner } from "../../ui/Banner";
 import { Button } from "../../ui/Button";
 import { ConfirmDialog } from "../../ui/ConfirmDialog";
@@ -15,92 +14,49 @@ type TeamSummary = Schemas["TeamSummary"];
 
 function JoinTeam({
   userName,
-  memberOf,
-  onDone,
+  onJoined,
+  onCancel,
 }: {
   userName: string;
-  memberOf: TeamSummary[];
-  onDone: () => void;
+  onJoined: (team: TeamSummary) => void;
+  onCancel: () => void;
 }) {
   const queryClient = useQueryClient();
-  const teams = useQuery({
-    queryKey: ["teams"],
-    queryFn: () =>
-      fetchAllPages(async (after) =>
-        dataOrThrow(await api.GET("/teams", { params: { query: { after } } }))
-      ),
+  const { control, handleSubmit } = useForm({
+    defaultValues: { joinCode: "" },
   });
-  const { control, register, handleSubmit, setError } = useForm({
-    defaultValues: { teamName: "", joinCode: "" },
-  });
+  // Just the code: players don't see the other teams, which would show one
+  // client's groups to another.
   const join = useMutation({
-    mutationFn: async ({
-      teamName,
-      joinCode,
-    }: {
-      teamName: string;
-      joinCode: string;
-    }) =>
+    mutationFn: async ({ joinCode }: { joinCode: string }) =>
       dataOrThrow(
-        await api.PUT("/teams/{teamName}/members/{userName}", {
-          params: { path: { teamName, userName } },
+        await api.POST("/users/{userName}/teams", {
+          params: { path: { userName } },
           body: { joinCode },
         })
       ),
-    onSuccess: async () => {
+    onSuccess: async (team) => {
       await queryClient.invalidateQueries(userQuery(userName));
-      onDone();
+      onJoined(team);
     },
   });
-  const joinable = (teams.data ?? []).filter(
-    ({ teamName }) => !memberOf.some((team) => team.teamName === teamName)
-  );
 
-  if (teams.isError) {
-    return <Banner tone="danger">{messageOf(teams.error)}</Banner>;
-  }
-  if (!teams.data) {
-    return null;
-  }
-  if (joinable.length === 0) {
-    return <p>There are no other teams to join.</p>;
-  }
   return (
     <form
       className={styles.form}
       noValidate
       onSubmit={(event) => {
-        void handleSubmit((values) => {
-          if (values.teamName) {
-            join.mutate(values);
-          } else {
-            setError("teamName", { message: "Choose a team" });
-          }
-        })(event);
+        void handleSubmit((values) => join.mutate(values))(event);
       }}
     >
       {join.error && <Banner tone="danger">{messageOf(join.error)}</Banner>}
-      <div className={styles.field}>
-        <label htmlFor="team-choice">Team</label>
-        <select
-          id="team-choice"
-          className={styles.select}
-          {...register("teamName")}
-        >
-          <option value="">Choose a team</option>
-          {joinable.map(({ teamName, displayName }) => (
-            <option key={teamName} value={teamName}>
-              {displayName}
-            </option>
-          ))}
-        </select>
-      </div>
       <FormTextField
         control={control}
         name="joinCode"
         rules={{ required: "Enter the team's join code" }}
         id="join-code"
         label="Join code"
+        description="Your team's organizer can tell you it."
         autoComplete="off"
         inputProps={{ autoCapitalize: "none", autoCorrect: "off" }}
       />
@@ -113,7 +69,7 @@ function JoinTeam({
         >
           Join team
         </Button>
-        <Button onPress={onDone}>Cancel</Button>
+        <Button onPress={onCancel}>Cancel</Button>
       </div>
     </form>
   );
@@ -129,6 +85,7 @@ export function Teams({
 }) {
   const queryClient = useQueryClient();
   const [isJoining, setIsJoining] = useState(false);
+  const [joined, setJoined] = useState<TeamSummary | null>(null);
   const [leaving, setLeaving] = useState<TeamSummary | null>(null);
   const leave = useMutation({
     mutationFn: async (teamName: string) =>
@@ -144,6 +101,7 @@ export function Teams({
     <section id="teams" className={styles.section}>
       <h2>Teams</h2>
       {leave.error && <Banner tone="danger">{messageOf(leave.error)}</Banner>}
+      {joined && <Banner>You joined {joined.displayName}.</Banner>}
       {teams.length === 0 ? (
         <p>Not on a team yet.</p>
       ) : (
@@ -159,11 +117,20 @@ export function Teams({
       {isJoining ? (
         <JoinTeam
           userName={userName}
-          memberOf={teams}
-          onDone={() => setIsJoining(false)}
+          onJoined={(team) => {
+            setJoined(team);
+            setIsJoining(false);
+          }}
+          onCancel={() => setIsJoining(false)}
         />
       ) : (
-        <Button id="join-team" onPress={() => setIsJoining(true)}>
+        <Button
+          id="join-team"
+          onPress={() => {
+            setJoined(null);
+            setIsJoining(true);
+          }}
+        >
           Join a team
         </Button>
       )}
