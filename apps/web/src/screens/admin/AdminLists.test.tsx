@@ -419,6 +419,145 @@ describe("the teams list", () => {
     expect(await screen.findByText("Too short")).toBeVisible();
   });
 
+  it("adds and removes members on saving, with the team's join code", async () => {
+    apiLists({ "/teams": [TEAM], "/users": [BOSS, PLAYER] });
+    vi.spyOn(api, "PATCH").mockResolvedValue(ok(TEAM) as never);
+    const put = vi
+      .spyOn(api, "PUT")
+      .mockResolvedValue(ok(undefined, 204) as never);
+    const del = vi
+      .spyOn(api, "DELETE")
+      .mockResolvedValue(ok(undefined, 204) as never);
+    show(<TeamsList />);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Edit The Reds" })
+    );
+    const members = within(screen.getByRole("group", { name: "Members" }));
+    // The player already on the team isn't offered.
+    await waitFor(() =>
+      expect(
+        members.getByRole("option", { name: "The Boss (boss)" })
+      ).toBeInTheDocument()
+    );
+    expect(
+      members.queryByRole("option", { name: /The Player/ })
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      members.getByRole("button", { name: "Remove The Player" })
+    );
+    await userEvent.selectOptions(
+      members.getByLabelText("Add a player"),
+      "boss"
+    );
+    await userEvent.click(members.getByRole("button", { name: "Add" }));
+    expect(put).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(screen.queryByLabelText("Join code")).not.toBeInTheDocument()
+    );
+    expect(put).toHaveBeenCalledWith("/teams/{teamName}/members/{userName}", {
+      params: { path: { teamName: "red", userName: "boss" } },
+      body: { joinCode: "secret" },
+    });
+    expect(del).toHaveBeenCalledWith("/teams/{teamName}/members/{userName}", {
+      params: { path: { teamName: "red", userName: "player" } },
+    });
+  });
+
+  it("adds members to a new team once it exists", async () => {
+    apiLists({ "/users": [PLAYER] });
+    const post = vi
+      .spyOn(api, "POST")
+      .mockResolvedValue(ok(TEAM, 201) as never);
+    const put = vi
+      .spyOn(api, "PUT")
+      .mockResolvedValue(ok(undefined, 204) as never);
+    show(<TeamsList />);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "New team" })
+    );
+    await userEvent.type(screen.getByLabelText("Team name"), "red");
+    await userEvent.type(screen.getByLabelText("Display name"), "The Reds");
+    await userEvent.type(screen.getByLabelText("Join code"), "secret");
+    await screen.findByRole("option", { name: "The Player (player)" });
+    await userEvent.selectOptions(
+      screen.getByLabelText("Add a player"),
+      "player"
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(put).toHaveBeenCalled());
+    expect(post.mock.invocationCallOrder[0]).toBeLessThan(
+      put.mock.invocationCallOrder[0]!
+    );
+    expect(put).toHaveBeenCalledWith("/teams/{teamName}/members/{userName}", {
+      params: { path: { teamName: "red", userName: "player" } },
+      body: { joinCode: "secret" },
+    });
+  });
+
+  it("stays open, saying which member changes didn't happen", async () => {
+    apiLists({ "/teams": [TEAM], "/users": [BOSS, PLAYER] });
+    vi.spyOn(api, "PATCH").mockResolvedValue(ok(TEAM) as never);
+    vi.spyOn(api, "PUT").mockResolvedValue(
+      refusal(404, "No user named boss") as never
+    );
+    vi.spyOn(api, "DELETE").mockResolvedValue(
+      // Already gone, which is what removing them was for.
+      refusal(404, "Not a member") as never
+    );
+    show(<TeamsList />);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Edit The Reds" })
+    );
+    await screen.findByRole("option", { name: "The Boss (boss)" });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove The Player" })
+    );
+    await userEvent.selectOptions(
+      screen.getByLabelText("Add a player"),
+      "boss"
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(
+      "The team was saved, but not every change to its members: Adding The Boss: No user named boss."
+    );
+    expect(alert).not.toHaveTextContent("Removing");
+    expect(screen.getByLabelText("Join code")).toBeVisible();
+  });
+
+  it("takes a member already added as done", async () => {
+    apiLists({ "/teams": [TEAM], "/users": [BOSS, PLAYER] });
+    vi.spyOn(api, "PATCH").mockResolvedValue(ok(TEAM) as never);
+    vi.spyOn(api, "PUT").mockResolvedValue(
+      refusal(409, "Already a member") as never
+    );
+    show(<TeamsList />);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Edit The Reds" })
+    );
+    await screen.findByRole("option", { name: "The Boss (boss)" });
+    await userEvent.selectOptions(
+      screen.getByLabelText("Add a player"),
+      "boss"
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(screen.queryByLabelText("Join code")).not.toBeInTheDocument()
+    );
+  });
+
   it("closes on cancelling", async () => {
     apiLists({ "/teams": [TEAM] });
     show(<TeamsList />);

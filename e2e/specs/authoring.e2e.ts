@@ -333,6 +333,29 @@ describe("authoring", () => {
     );
   });
 
+  it("adds a player to the team, and removes them", async () => {
+    await $('button[aria-label="Edit A Renamed Team"]').click();
+    await $("#team-add-member").selectByAttribute("value", player);
+    await $("#team-add-member-button").click();
+    await $("#save-team").click();
+    await expect($(`[data-team-name="${teamName}"]`)).toHaveText(
+      expect.stringContaining("Author's Player")
+    );
+    const team = await api("GET", `/teams/${teamName}`, admin);
+    expect(
+      team.members.map((member: { userName: string }) => member.userName)
+    ).toEqual([player]);
+
+    await $('button[aria-label="Edit A Renamed Team"]').click();
+    await $(`#team-members [data-user-name="${player}"]`)
+      .$("button=Remove")
+      .click();
+    await $("#save-team").click();
+    await expect($(`[data-team-name="${teamName}"]`)).not.toHaveText(
+      expect.stringContaining("Author's Player")
+    );
+  });
+
   it("confirms deleting in the page, and can keep it", async () => {
     await $('button[aria-label="Delete A Renamed Team"]').click();
     await expect($("#delete-dialog")).toBeDisplayed();
