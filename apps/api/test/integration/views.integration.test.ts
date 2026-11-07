@@ -130,28 +130,6 @@ function getPage(path: string, account: string | null): request.Test {
 
 // [description, path, account, view, text the page must contain]
 const PAGES: [string, string, string | null, string, string[]][] = [
-  ["new puzzle", "/puzzle/new", "admin", "puzzleEdit", []],
-  [
-    "text puzzle details",
-    "/puzzle/text-puzzle",
-    "admin",
-    "puzzleDetails",
-    ["Text Puzzle"],
-  ],
-  [
-    "image puzzle details",
-    "/puzzle/image-puzzle",
-    "admin",
-    "puzzleDetails",
-    ["Image Puzzle"],
-  ],
-  [
-    "puzzle editor",
-    "/puzzle/text-puzzle/edit",
-    "admin",
-    "puzzleEdit",
-    ["Text Puzzle"],
-  ],
   ["new quest", "/quest/new", "admin", "questEdit", []],
   [
     "quest details",
@@ -235,13 +213,6 @@ describe("a quest puzzle whose puzzle was deleted", () => {
 
 describe("error page", () => {
   it.each([
-    [
-      "a puzzle that does not exist",
-      "/puzzle/missing",
-      "admin",
-      404,
-      "Not found",
-    ],
     [
       "puzzles, for a player",
       "/puzzle/text-puzzle",

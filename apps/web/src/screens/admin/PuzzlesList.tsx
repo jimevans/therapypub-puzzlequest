@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { api, dataOrThrow } from "../../api";
 import { fetchAllPages } from "../../fetchAllPages";
 import { LinkButton } from "../../ui/LinkButton";
+import { puzzleTypeLabel } from "./puzzleTypes";
 import styles from "./Admin.module.css";
 import {
   AdminList,
@@ -11,24 +12,21 @@ import {
   DeleteDialog,
   useDeletion,
 } from "./AdminList";
+import { PUZZLES_KEY } from "./puzzle/puzzleForm";
 
 type Puzzle = Schemas["Puzzle"];
-
-const QUERY_KEY = ["puzzles"];
-
-const TYPES = ["Text", "Image", "Audio", "Video"];
 
 /** Every puzzle, for putting into quests. */
 export function PuzzlesList() {
   const puzzles = useQuery({
-    queryKey: QUERY_KEY,
+    queryKey: PUZZLES_KEY,
     queryFn: () =>
       fetchAllPages(async (after) =>
         dataOrThrow(await api.GET("/puzzles", { params: { query: { after } } }))
       ),
   });
   const flow = useDeletion<Puzzle>({
-    queryKey: QUERY_KEY,
+    queryKey: PUZZLES_KEY,
     remove: async ({ name }) =>
       dataOrThrow(
         await api.DELETE("/puzzles/{name}", { params: { path: { name } } })
@@ -39,12 +37,7 @@ export function PuzzlesList() {
     <AdminList
       title="Puzzles"
       action={
-        <LinkButton
-          id="new-puzzle"
-          to="/puzzle/new"
-          variant="primary"
-          reloadDocument
-        >
+        <LinkButton id="new-puzzle" to="/puzzle/new" variant="primary">
           New puzzle
         </LinkButton>
       }
@@ -67,16 +60,12 @@ export function PuzzlesList() {
             {puzzles.data.map((puzzle) => (
               <tr key={puzzle.name} data-puzzle-name={puzzle.name}>
                 <td>
-                  {/* Reloads, because its page isn't in this app yet. */}
-                  <Link
-                    to={`/puzzle/${encodeURIComponent(puzzle.name)}`}
-                    reloadDocument
-                  >
+                  <Link to={`/puzzle/${encodeURIComponent(puzzle.name)}`}>
                     {puzzle.displayName}
                   </Link>
                 </td>
                 <td className={styles.secondary}>{puzzle.name}</td>
-                <td>{TYPES[puzzle.type] ?? puzzle.type}</td>
+                <td>{puzzleTypeLabel(puzzle.type)}</td>
                 <td className={styles.secondary}>{puzzle.hints.length}</td>
                 <td className={styles.rowActions}>
                   <DeleteButton

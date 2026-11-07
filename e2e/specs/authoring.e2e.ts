@@ -51,22 +51,22 @@ describe("authoring", () => {
     rmSync(uploadedFile, { force: true });
   });
 
-  it("creates a text puzzle with a hint", async () => {
+  it("creates a text puzzle with a hint, previewing its Markdown", async () => {
     await browser.url("/puzzle/new");
     await $("#puzzle-name").setValue(textPuzzle);
     await $("#display-name").setValue("A Text Puzzle");
-    await $("#puzzle-content textarea").setValue("Name a **color**");
+    await $("#puzzle-text").setValue("Name a **color**");
     await expect($("#puzzle-content strong")).toHaveText("color");
     await $("#solution-keyword").setValue("red");
     await $("#solution-display-text").setValue("Red");
-    await $("=Add hint").click();
-    await $('#hints td[data-field-name="text"] input').setValue(
-      "Think of roses"
+    await $("#add-hint").click();
+    await $("#hint-1-text").setValue("Think of roses");
+    await $("#hint-1-penalty").setValue("45");
+    await $("#save-puzzle").click();
+    await expect($("#edit-puzzle")).toExist();
+    await expect(browser).toHaveUrl(
+      expect.stringContaining(`/puzzle/${textPuzzle}`)
     );
-    await $('#hints td[data-field-name="timePenalty"] input').setValue("45");
-    await $("#hints tbody td:last-of-type button:not(.pq-hide)").click();
-    await $("#save-button").click();
-    await expect($("#puzzles")).toExist();
 
     const puzzle = await api("GET", `/puzzles/${textPuzzle}`, admin);
     expect(puzzle).toMatchObject({
@@ -82,11 +82,19 @@ describe("authoring", () => {
     await $("#puzzle-name").setValue(imagePuzzle);
     await $("#display-name").setValue("An Image Puzzle");
     await $("#puzzle-type").selectByAttribute("value", "1");
-    await $('#puzzle-content input[type="file"]').setValue(imageFile);
+    await $("#puzzle-file").setValue(imageFile);
+    await expect($("#puzzle-content img")).toHaveAttribute(
+      "src",
+      expect.stringContaining("blob:")
+    );
     await $("#solution-keyword").setValue("blue");
     await $("#solution-display-text").setValue("Blue");
-    await $("#save-button").click();
-    await expect($("#puzzles")).toExist();
+    await $("#save-puzzle").click();
+    await expect($("#edit-puzzle")).toExist();
+    await expect($("#puzzle-content img")).toHaveAttribute(
+      "src",
+      `/puzzleData/${imagePuzzle}.png`
+    );
 
     const puzzle = await api("GET", `/puzzles/${imagePuzzle}`, admin);
     expect(puzzle.text).toBe(`/puzzleData/${imagePuzzle}.png`);
@@ -95,15 +103,26 @@ describe("authoring", () => {
   it("keeps an image puzzle's file when it's edited without a new one", async () => {
     await browser.url(`/puzzle/${imagePuzzle}/edit`);
     await $("#display-name").setValue("A Renamed Puzzle");
-    await $("#save-button").click();
-    await browser.waitUntil(
-      async () =>
-        (await api("GET", `/puzzles/${imagePuzzle}`, admin)).displayName ===
-        "A Renamed Puzzle"
-    );
+    await $("#save-puzzle").click();
+    await expect($("h1=A Renamed Puzzle")).toExist();
 
     const puzzle = await api("GET", `/puzzles/${imagePuzzle}`, admin);
     expect(puzzle.text).toBe(`/puzzleData/${imagePuzzle}.png`);
+  });
+
+  it("asks in the page before leaving unsaved changes", async () => {
+    await browser.url(`/puzzle/${textPuzzle}/edit`);
+    await $("#display-name").setValue("Never Saved");
+    await $("#puzzles").click();
+    await expect($("#leave-dialog")).toBeDisplayed();
+    await $("#leave-dialog").$("button=Keep editing").click();
+    await expect($("#display-name")).toHaveValue("Never Saved");
+
+    await $("#puzzles").click();
+    await $("#leave-dialog").$("button=Leave").click();
+    await expect($("#new-puzzle")).toExist();
+    const puzzle = await api("GET", `/puzzles/${textPuzzle}`, admin);
+    expect(puzzle.displayName).toBe("A Text Puzzle");
   });
 
   it("lists the puzzles on the admin page", async () => {

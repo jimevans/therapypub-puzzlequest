@@ -58,7 +58,6 @@ const QuestService = await import("../../src/services/quest.service.js");
 const { IndexRouter } = await import("../../src/routes/index.js");
 const { V1Router } = await import("../../src/api/v1/index.js");
 const { AdminRouter } = await import("../../src/routes/admin.js");
-const { PuzzleRouter } = await import("../../src/routes/puzzle.js");
 const { QuestRouter } = await import("../../src/routes/quest.js");
 const { UserRouter } = await import("../../src/routes/user.js");
 
@@ -68,7 +67,6 @@ const MOUNTS: [string, Router][] = [
   ["", AdminRouter],
   ["/api/v1", V1Router],
   ["/user", UserRouter],
-  ["/puzzle", PuzzleRouter],
   ["/quest", QuestRouter],
 ];
 

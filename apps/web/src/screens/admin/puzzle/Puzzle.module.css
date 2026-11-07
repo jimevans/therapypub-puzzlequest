@@ -1,0 +1,184 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.form p {
+  margin: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.field > label,
+.hints legend {
+  font-weight: 600;
+}
+
+.select {
+  width: 100%;
+  max-width: 20rem;
+  min-height: var(--target-size);
+  padding: 0 var(--space-3);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.note {
+  color: var(--ink-soft);
+  font-size: var(--text-small);
+}
+
+.error {
+  color: var(--danger);
+  font-size: var(--text-small);
+  font-weight: 600;
+}
+
+/* The Markdown and its preview: side by side on a laptop, stacked on a phone. */
+.textEditor {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.preview,
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.preview {
+  padding: var(--space-3);
+  border: 1px dashed var(--rule);
+  border-radius: var(--radius);
+}
+
+/* Only the screen's own headings: the puzzle's Markdown may have some too. */
+.label {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-small);
+  font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.section {
+  margin-top: var(--space-5);
+}
+
+.hints {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4) 0 0;
+  border: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.hints legend {
+  padding: 0;
+  font-size: 1.25rem;
+}
+
+.hintList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hint {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+
+.hintSettings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3) var(--space-5);
+}
+
+.hintSettings > :first-child {
+  width: 10rem;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--target-size);
+}
+
+.checkbox input {
+  width: 1.5rem;
+  height: 1.5rem;
+  accent-color: var(--accent);
+}
+
+.checkbox label {
+  font-weight: 600;
+}
+
+.hintActions,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.hints > button {
+  align-self: flex-start;
+}
+
+.details {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  gap: var(--space-2) var(--space-3);
+  margin: var(--space-3) 0 0;
+  overflow-wrap: anywhere;
+}
+
+.details dt {
+  color: var(--ink-soft);
+}
+
+.details dd {
+  margin: 0;
+}
+
+.table .seconds {
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+
+@media (max-width: 40rem) {
+  .details {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .details dd + dt {
+    margin-top: var(--space-2);
+  }
+}

@@ -15,14 +15,6 @@ describe("createApp", () => {
     expect(response.type).toBe("text/css");
   });
 
-  it("serves the browser build of marked from the installed package", async () => {
-    const response = await request(createApp()).get("/vendor/marked.esm.js");
-
-    expect(response.status).toBe(200);
-    expect(response.type).toBe("text/javascript");
-    expect(response.text).toContain("export");
-  });
-
   it("rejects anonymous API requests that require a user", async () => {
     const response = await request(createApp()).get("/api/v1/users");
 

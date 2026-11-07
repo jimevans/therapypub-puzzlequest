@@ -14,9 +14,16 @@ export function preloadPuzzleText(): void {
   void loadPuzzleText().catch(() => {});
 }
 
-const TYPE_IMAGE = 1;
-const TYPE_AUDIO = 2;
-const TYPE_VIDEO = 3;
+/**
+ * What a puzzle shows, as the API numbers it. It's here, rather than in a file
+ * of its own, so that the player's puzzle screen doesn't download it separately.
+ */
+export const PuzzleType = {
+  Text: 0,
+  Image: 1,
+  Audio: 2,
+  Video: 3,
+} as const;
 
 interface PuzzleContentProps {
   displayName: string;
@@ -27,11 +34,11 @@ interface PuzzleContentProps {
 
 function Content({ displayName, type, text }: PuzzleContentProps) {
   switch (type) {
-    case TYPE_IMAGE:
+    case PuzzleType.Image:
       return <img src={text} alt={displayName} />;
-    case TYPE_AUDIO:
+    case PuzzleType.Audio:
       return <audio src={text} controls />;
-    case TYPE_VIDEO:
+    case PuzzleType.Video:
       return <video src={text} controls playsInline />;
     default:
       return (
