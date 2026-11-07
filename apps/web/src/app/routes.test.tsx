@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../api";
@@ -24,6 +24,10 @@ vi.mock("../screens/questConsole/QuestConsole", () => ({
 
 vi.mock("../screens/admin/puzzle/PuzzleDetails", () => ({
   PuzzleDetails: () => <h1>Puzzle details</h1>,
+}));
+
+vi.mock("../screens/admin/quest/QuestEditor", () => ({
+  QuestEditor: () => <h1>Quest editor</h1>,
 }));
 
 vi.mock("../screens/admin/puzzle/PuzzleEditor", () => ({
@@ -97,6 +101,7 @@ function renderAt(path: string) {
       <RouterProvider router={router} />
     </QueryClientProvider>
   );
+  return router;
 }
 
 describe("the routes", () => {
@@ -135,6 +140,8 @@ describe("the routes", () => {
     ["/puzzle/new", "Puzzle editor"],
     ["/puzzle/riddle", "Puzzle details"],
     ["/puzzle/riddle/edit", "Puzzle editor"],
+    ["/quest/new", "Quest editor"],
+    ["/quest/trail/edit", "Quest editor"],
     ["/user/player", "Profile"],
     ["/user/player/edit", "Edit"],
     ["/user/password/reset?token=abc", "Reset"],
@@ -170,6 +177,20 @@ describe("the routes", () => {
         params: { path: params },
       })
     );
+  });
+
+  it("add the administrators' screens only once", async () => {
+    const router = renderAt("/puzzle/riddle");
+    await screen.findByRole("heading", { name: "Puzzle details" });
+    const routeCount = router.routes.length;
+
+    await act(() => router.navigate("/puzzle/cipher"));
+    await act(() => router.navigate("/quest/new"));
+
+    expect(
+      await screen.findByRole("heading", { name: "Quest editor" })
+    ).toBeVisible();
+    expect(router.routes).toHaveLength(routeCount);
   });
 
   it("show an administrator the console at a quest's address", async () => {

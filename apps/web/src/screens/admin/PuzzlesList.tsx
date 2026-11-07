@@ -2,7 +2,6 @@ import type { Schemas } from "@puzzlequest/api-client";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { api, dataOrThrow } from "../../api";
-import { fetchAllPages } from "../../fetchAllPages";
 import { LinkButton } from "../../ui/LinkButton";
 import { puzzleTypeLabel } from "./puzzleTypes";
 import styles from "./Admin.module.css";
@@ -12,19 +11,14 @@ import {
   DeleteDialog,
   useDeletion,
 } from "./AdminList";
+import { allPuzzlesQuery } from "./listQueries";
 import { PUZZLES_KEY } from "./puzzle/puzzleForm";
 
 type Puzzle = Schemas["Puzzle"];
 
 /** Every puzzle, for putting into quests. */
 export function PuzzlesList() {
-  const puzzles = useQuery({
-    queryKey: PUZZLES_KEY,
-    queryFn: () =>
-      fetchAllPages(async (after) =>
-        dataOrThrow(await api.GET("/puzzles", { params: { query: { after } } }))
-      ),
-  });
+  const puzzles = useQuery(allPuzzlesQuery);
   const flow = useDeletion<Puzzle>({
     queryKey: PUZZLES_KEY,
     remove: async ({ name }) =>

@@ -1,0 +1,166 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.form p {
+  margin: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.field > label,
+.stops legend {
+  font-weight: 600;
+}
+
+.select {
+  width: 100%;
+  max-width: 28rem;
+  min-height: var(--target-size);
+  padding: 0 var(--space-3);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.note,
+.secondaryText {
+  color: var(--ink-soft);
+  font-size: var(--text-small);
+}
+
+.error {
+  color: var(--danger);
+  font-size: var(--text-small);
+  font-weight: 600;
+}
+
+.stops {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4) 0 0;
+  border: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.stops legend {
+  padding: 0;
+  font-size: 1.25rem;
+}
+
+.stops > button {
+  align-self: flex-start;
+}
+
+.stopList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+
+.stopNumber {
+  min-width: 1.5rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.stopName {
+  display: flex;
+  flex: 1 1 12rem;
+  flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.stopName .secondaryText {
+  font-family: ui-monospace, monospace;
+}
+
+.stopActions,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.fixedMark {
+  color: var(--ink-soft);
+  font-size: var(--text-small);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* The puzzle picker. */
+.search {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-3) 0;
+}
+
+.search label {
+  font-weight: 600;
+}
+
+.search input {
+  min-height: var(--target-size);
+  padding: 0 var(--space-3);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  font: inherit;
+}
+
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 50vh;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.choices li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.choices input {
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  accent-color: var(--accent);
+}
+
+.choices label {
+  overflow-wrap: anywhere;
+}

@@ -8,7 +8,8 @@ import {
   LIVE_UPDATES_CONNECTED,
   PASSWORD,
   api,
-  pickInLookup,
+  blockedByPolicy,
+  recordPolicyViolations,
   sessionToken,
   signIn,
   unique,
@@ -30,6 +31,7 @@ describe("authoring", () => {
 
   before(async () => {
     admin = await sessionToken(ADMIN);
+    await recordPolicyViolations();
     writeFileSync(
       imageFile,
       Buffer.from(
@@ -139,17 +141,61 @@ describe("authoring", () => {
     await browser.url("/quest/new");
     await $("#quest-name").setValue(questName);
     await $("#display-name").setValue("An Authored Quest");
-    await $("#set-user-button").click();
-    await pickInLookup(player);
-    await $('button[data-action="confirm"]').click();
-    await expect($("#assignee-kind")).toHaveText("(user)");
+    await $("#assignee").selectByAttribute("value", `user:${player}`);
 
-    await $("=Add puzzle to quest").click();
-    await pickInLookup(textPuzzle);
-    await pickInLookup(imagePuzzle);
-    await $('button[data-action="confirm"]').click();
-    await $("#save-button").click();
-    await expect($("#puzzles")).toExist();
+    await $("#add-puzzles").click();
+    for (const puzzle of [textPuzzle, imagePuzzle]) {
+      await $("#puzzle-search").setValue(puzzle);
+      await $("#choose-0").click();
+    }
+    await $("#puzzle-picker").$("button=Add 2 puzzles").click();
+    await expect($(`#stops [data-puzzle-name="${textPuzzle}"]`)).toExist();
+    await expect($(`#stops [data-puzzle-name="${imagePuzzle}"]`)).toExist();
+  });
+
+  it("reorders the stops by keyboard, and with the mouse", async () => {
+    const order = async () =>
+      $$("#stops [data-puzzle-name]").map((stop) =>
+        stop.getAttribute("data-puzzle-name")
+      );
+    expect(await order()).toEqual([textPuzzle, imagePuzzle]);
+
+    await $('button[aria-label="Move A Renamed Puzzle"]').click();
+    await browser.keys(" ");
+    await browser.keys("ArrowUp");
+    await browser.keys(" ");
+    await browser.waitUntil(
+      async () =>
+        JSON.stringify(await order()) ===
+        JSON.stringify([imagePuzzle, textPuzzle])
+    );
+
+    // Moved the way a hand would: the list follows the pointer once it has
+    // moved a few pixels, and needs moves to follow.
+    const handle = await $('button[aria-label="Move A Text Puzzle"]');
+    const target = await $('button[aria-label="Move A Renamed Puzzle"]');
+    await browser
+      .action("pointer")
+      .move({ origin: handle })
+      .down()
+      .move({ origin: handle, y: -10, duration: 100 })
+      .move({ origin: target, duration: 300 })
+      .pause(200)
+      .up()
+      .perform();
+    await browser.waitUntil(
+      async () =>
+        JSON.stringify(await order()) ===
+        JSON.stringify([textPuzzle, imagePuzzle])
+    );
+    // Dragging moves the rows by setting their styles, which the policy
+    // allows only through the DOM, not as markup.
+    expect(await blockedByPolicy()).toEqual([]);
+  });
+
+  it("saves the quest, and opens its console", async () => {
+    await $("#save-quest").click();
+    await expect($("#stops")).toBeDisplayed();
 
     const quest = await api("GET", `/quests/${questName}`, admin);
     expect(quest.assignee).toMatchObject({ kind: "user", name: player });
@@ -188,6 +234,18 @@ describe("authoring", () => {
     await expect($("#activity")).toHaveText(
       expect.stringContaining(`Quest started by ${ADMIN}`)
     );
+  });
+
+  it("keeps the stop the players have reached in place in the editor", async () => {
+    await $("#edit-quest").click();
+    await expect($(`#stops [data-puzzle-name="${textPuzzle}"]`)).toHaveText(
+      // Shown in capitals, which is how the browser reads it out.
+      expect.stringMatching(/reached/i)
+    );
+    await expect($('button[aria-label="Move A Text Puzzle"]')).not.toExist();
+
+    await $("a=Cancel").click();
+    await expect($("#quest-status")).toHaveText("In progress");
   });
 
   it("pauses and resumes the quest", async () => {

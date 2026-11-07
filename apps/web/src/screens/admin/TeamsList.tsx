@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { api, dataOrThrow, messageOf } from "../../api";
-import { fetchAllPages } from "../../fetchAllPages";
 import { fieldErrorsOf } from "../../fieldErrors";
 import { Banner } from "../../ui/Banner";
 import { Button } from "../../ui/Button";
@@ -17,6 +16,7 @@ import {
   DeleteDialog,
   useDeletion,
 } from "./AdminList";
+import { allTeamsQuery } from "./listQueries";
 
 type Team = Schemas["Team"];
 
@@ -115,13 +115,7 @@ function TeamForm({ team, onDone }: { team: Team | null; onDone: () => void }) {
 /** Every team, with its join code and members, for setting teams up. */
 export function TeamsList() {
   const [editing, setEditing] = useState<Team | "new" | null>(null);
-  const teams = useQuery({
-    queryKey: QUERY_KEY,
-    queryFn: () =>
-      fetchAllPages(async (after) =>
-        dataOrThrow(await api.GET("/teams", { params: { query: { after } } }))
-      ),
-  });
+  const teams = useQuery(allTeamsQuery);
   const flow = useDeletion<Team>({
     queryKey: QUERY_KEY,
     remove: async ({ teamName }) =>

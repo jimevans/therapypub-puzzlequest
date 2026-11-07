@@ -53,4 +53,18 @@ export const adminScreens: RouteObject[] = [
         .PuzzleEditor,
     }),
   },
+  {
+    path: "/quest/new",
+    lazy: async () => ({
+      Component: (await import("../screens/admin/quest/QuestEditor"))
+        .QuestEditor,
+    }),
+  },
+  {
+    path: "/quest/:name/edit",
+    lazy: async () => ({
+      Component: (await import("../screens/admin/quest/QuestEditor"))
+        .QuestEditor,
+    }),
+  },
 ];

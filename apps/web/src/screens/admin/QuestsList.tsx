@@ -2,7 +2,6 @@ import type { Schemas } from "@puzzlequest/api-client";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { api, dataOrThrow } from "../../api";
-import { fetchAllPages } from "../../fetchAllPages";
 import { LinkButton } from "../../ui/LinkButton";
 import styles from "./Admin.module.css";
 import {
@@ -11,6 +10,7 @@ import {
   DeleteDialog,
   useDeletion,
 } from "./AdminList";
+import { allQuestsQuery } from "./listQueries";
 
 type Quest = Schemas["Quest"];
 
@@ -22,13 +22,7 @@ function assignedTo({ assignee }: Quest): string {
 
 /** Every quest, however far it has got. */
 export function QuestsList() {
-  const quests = useQuery({
-    queryKey: QUERY_KEY,
-    queryFn: () =>
-      fetchAllPages(async (after) =>
-        dataOrThrow(await api.GET("/quests", { params: { query: { after } } }))
-      ),
-  });
+  const quests = useQuery(allQuestsQuery);
   const flow = useDeletion<Quest>({
     queryKey: QUERY_KEY,
     remove: async ({ name }) =>
@@ -41,12 +35,7 @@ export function QuestsList() {
     <AdminList
       title="Quests"
       action={
-        <LinkButton
-          id="new-quest"
-          to="/quest/new"
-          variant="primary"
-          reloadDocument
-        >
+        <LinkButton id="new-quest" to="/quest/new" variant="primary">
           New quest
         </LinkButton>
       }

@@ -169,18 +169,35 @@ const ADMIN_SECTIONS = new Set([
 ]);
 
 /**
+ * Says whether an address is one of the administrators' screens. The quest
+ * editor's addresses share their start with a quest's page, which everyone
+ * has.
+ * @param path the address's path
+ * @returns true if so
+ */
+function isAdminPath(path: string): boolean {
+  return (
+    ADMIN_SECTIONS.has(path.split("/")[1] ?? "") ||
+    /^\/quest\/(new|[^/]+\/edit)\/?$/.test(path)
+  );
+}
+
+/**
  * Adds administrators' screens to the router when one is first opened, so that
- * nobody else downloads even the list of them. The router asks only about an
- * address none of its routes match.
+ * nobody else downloads even the list of them. The router asks about an address
+ * no route matches, and about one a route with a name in it does, such as
+ * /quest/new, which /quest/:name matches until the editor's own route is
+ * added. Adding the same routes again does nothing.
  */
 export const patchAdminRoutes: PatchRoutesOnNavigationFunction = async ({
   path,
   patch,
 }) => {
-  if (ADMIN_SECTIONS.has(path.split("/")[1] ?? "")) {
+  if (isAdminPath(path)) {
     const { adminScreens } = await import("./adminRoutes");
     patch(null, [
       {
+        id: "admin",
         lazy: async () => ({
           Component: (await import("../screens/admin/AdminLayout")).AdminLayout,
         }),

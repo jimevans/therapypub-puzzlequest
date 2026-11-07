@@ -168,9 +168,27 @@ export async function signIn(
 export const LIVE_UPDATES_CONNECTED = '[data-live-updates="connected"]';
 
 /**
- * Picks an item in the open lookup dialog, by what one of its cells shows.
- * @param text the cell's text
+ * Records what the Content Security Policy blocks on every page from now on,
+ * from before the page's own scripts run.
  */
-export async function pickInLookup(text: string): Promise<void> {
-  await $(`//article[contains(@class,"pq-modal")]//td[.="${text}"]`).click();
+export async function recordPolicyViolations(): Promise<void> {
+  await browser.addInitScript(() => {
+    const blocked: string[] = [];
+    (window as unknown as { blockedByPolicy: string[] }).blockedByPolicy =
+      blocked;
+    document.addEventListener("securitypolicyviolation", (event) => {
+      blocked.push(`${event.effectiveDirective}: ${event.blockedURI}`);
+    });
+  });
+}
+
+/**
+ * Selects what the Content Security Policy has blocked on the page since it
+ * loaded (see recordPolicyViolations).
+ * @returns the blocked directives and addresses
+ */
+export async function blockedByPolicy(): Promise<string[]> {
+  return browser.execute(
+    () => (window as unknown as { blockedByPolicy: string[] }).blockedByPolicy
+  );
 }
