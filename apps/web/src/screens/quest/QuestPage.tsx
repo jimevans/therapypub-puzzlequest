@@ -1,16 +1,19 @@
 import { Suspense, lazy } from "react";
 import { ScrollRestoration } from "react-router";
-import { isAdministrator, useSession } from "../../session";
+import { isAdministrator, isStaff, useSession } from "../../session";
 import { PageShell } from "../../ui/PageShell";
 import { QuestScreen } from "./QuestScreen";
 
 // Administrators download the console only when they open it.
 const QuestConsolePage = lazy(() => import("../questConsole/QuestConsole"));
+// Staff, likewise, download their view only when they open it.
+const StaffQuest = lazy(() => import("../staff/StaffQuest"));
 
 /**
- * A quest's page, which shows players where they've got to and administrators
- * the console for running it. Both are at the quest's one address, so links and
- * bookmarks work for each.
+ * A quest's page, which shows players where they've got to, staff every stop
+ * and how the players are doing, and administrators the console for running
+ * it. All are at the quest's one address, so links and bookmarks work for
+ * each.
  */
 export function QuestPage() {
   const session = useSession();
@@ -24,6 +27,12 @@ export function QuestPage() {
         <Suspense fallback={<PageShell wide />}>
           <QuestConsolePage />
         </Suspense>
+      ) : isStaff(session.data?.user) ? (
+        <PageShell>
+          <Suspense fallback={null}>
+            <StaffQuest />
+          </Suspense>
+        </PageShell>
       ) : (
         <PageShell>
           <QuestScreen />

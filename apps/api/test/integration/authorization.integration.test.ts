@@ -70,7 +70,7 @@ const MOUNTS: [string, Router][] = [
   ["/quest", QuestRouter],
 ];
 
-type Role = "anonymous" | "player" | "other" | "admin";
+type Role = "anonymous" | "player" | "other" | "staff" | "admin";
 
 /**
  * What happens to a request:
@@ -84,21 +84,23 @@ type Role = "anonymous" | "player" | "other" | "admin";
 type Outcome = "allow" | "signIn" | "deny" | "hidden";
 
 /** The outcome for each role, in the order of ROLES. */
-type Policy = [Outcome, Outcome, Outcome, Outcome];
-const ROLES: Role[] = ["anonymous", "player", "other", "admin"];
+type Policy = [Outcome, Outcome, Outcome, Outcome, Outcome];
+const ROLES: Role[] = ["anonymous", "player", "other", "staff", "admin"];
 
-const PUBLIC: Policy = ["allow", "allow", "allow", "allow"];
-const SIGNED_IN: Policy = ["signIn", "allow", "allow", "allow"];
-const ADMIN: Policy = ["signIn", "deny", "deny", "allow"];
+const PUBLIC: Policy = ["allow", "allow", "allow", "allow", "allow"];
+const SIGNED_IN: Policy = ["signIn", "allow", "allow", "allow", "allow"];
+const ADMIN: Policy = ["signIn", "deny", "deny", "deny", "allow"];
+/** Following quests as staff, which administrators may also do. */
+const STAFF: Policy = ["signIn", "deny", "deny", "allow", "allow"];
 /** For routes about the player's own account (":userName" is "player"). */
-const SELF_OR_ADMIN: Policy = ["signIn", "allow", "deny", "allow"];
-const SELF: Policy = ["signIn", "allow", "deny", "deny"];
+const SELF_OR_ADMIN: Policy = ["signIn", "allow", "deny", "deny", "allow"];
+const SELF: Policy = ["signIn", "allow", "deny", "deny", "deny"];
 /** Viewing the quest assigned to the player's team. */
-const QUEST_VIEWER: Policy = ["signIn", "allow", "hidden", "allow"];
+const QUEST_VIEWER: Policy = ["signIn", "allow", "hidden", "hidden", "allow"];
 /** Playing the quest assigned to the player's team. */
-const QUEST_PLAYER: Policy = ["signIn", "allow", "deny", "deny"];
+const QUEST_PLAYER: Policy = ["signIn", "allow", "deny", "deny", "deny"];
 /** Twilio webhooks, which need Twilio's signature, not a user. */
-const TWILIO: Policy = ["deny", "deny", "deny", "deny"];
+const TWILIO: Policy = ["deny", "deny", "deny", "deny", "deny"];
 
 /** [method, path as registered, policy] for every route. */
 const ROUTES: [string, string, Policy][] = [
@@ -156,6 +158,8 @@ const ROUTES: [string, string, Policy][] = [
   ["get", "/api/v1/quests/:name/puzzles/:puzzleName/qr-code", ADMIN],
   ["get", "/api/v1/quests/:name/events", ADMIN],
   ["get", "/api/v1/quests/:name/run-book", ADMIN],
+  ["get", "/api/v1/staff/quests", STAFF],
+  ["get", "/api/v1/quests/:name/staff-view", STAFF],
   ["get", "/api/v1/quests/:name/puzzles/:puzzleName", QUEST_VIEWER],
   ["get", "/api/v1/quests/:name/spectator-view", PUBLIC],
   ["get", "/api/v1/quests/:name/puzzles/:puzzleName/spectator-view", PUBLIC],
@@ -229,7 +233,7 @@ beforeEach(async () => {
     SessionModel.deleteMany({}),
   ]);
   await UserModel.create(
-    (["admin", "player", "other"] as const).map((userName) => ({
+    (["admin", "staff", "player", "other"] as const).map((userName) => ({
       userName,
       displayName: userName,
       email: `${userName}@example.com`,
@@ -237,7 +241,9 @@ beforeEach(async () => {
       authorizationLevel:
         userName === "admin"
           ? AuthorizationLevel.ADMIN
-          : AuthorizationLevel.USER,
+          : userName === "staff"
+            ? AuthorizationLevel.STAFF
+            : AuthorizationLevel.USER,
     }))
   );
   await TeamModel.create({
@@ -267,7 +273,7 @@ beforeEach(async () => {
     await assigneeIdsOf("team-a"),
     quest.puzzles[0].activationCode
   );
-  sessions = await startSessions("admin", "player", "other");
+  sessions = await startSessions("admin", "staff", "player", "other");
 });
 
 /**

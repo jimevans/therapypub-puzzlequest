@@ -1,0 +1,208 @@
+// Tests of what staff see through the v1 API: every quest, and every stop of
+// one in order, but nothing that would tell them how to solve a puzzle. These
+// check the raw answers for anything that mustn't be there.
+import type { Express } from "express";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { MongoMemoryServer } from "mongodb-memory-server";
+import mongoose from "mongoose";
+import request from "supertest";
+import { userIdsOf } from "../references.js";
+import { startSessions } from "../sessions.js";
+
+const { createApp } = await import("../../src/createApp.js");
+const { staffQuestSchema, staffQuestSummarySchema } =
+  await import("../../src/api/v1/resources.js");
+const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
+const { QuestModel } = await import("../../src/models/quest.model.js");
+const { AuthorizationLevel, TeamModel, UserModel } =
+  await import("../../src/models/user.model.js");
+const { SessionModel } = await import("../../src/models/session.model.js");
+const QuestService = await import("../../src/services/quest.service.js");
+
+let mongoServer: MongoMemoryServer | undefined;
+let app: Express;
+let sessions: Record<string, string> = {};
+
+beforeAll(async () => {
+  mongoServer = await MongoMemoryServer.create();
+  await mongoose.connect(mongoServer.getUri());
+  app = createApp();
+}, 120000);
+
+afterAll(async () => {
+  await mongoose.disconnect();
+  await mongoServer?.stop();
+});
+
+beforeEach(async () => {
+  await Promise.all([
+    UserModel.deleteMany({}),
+    TeamModel.deleteMany({}),
+    PuzzleModel.deleteMany({}),
+    QuestModel.deleteMany({}),
+    SessionModel.deleteMany({}),
+  ]);
+  await UserModel.create([
+    {
+      userName: "player",
+      displayName: "Player Person",
+      email: "player@example.com",
+      password: "hash",
+    },
+    {
+      userName: "helper",
+      displayName: "Helper",
+      email: "helper@example.com",
+      password: "hash",
+      authorizationLevel: AuthorizationLevel.STAFF,
+    },
+  ]);
+  await TeamModel.create({
+    teamName: "the-team",
+    displayName: "Team Display",
+    joinCode: "join-code",
+    memberIds: await userIdsOf("player"),
+  });
+  await PuzzleModel.create([
+    {
+      name: "riddle",
+      displayName: "Riddle",
+      text: "What has **keys**?",
+      solutionKeyword: "pianokeyword",
+      solutionDisplayText: "A piano",
+      hints: [
+        { text: "It makes music", timePenalty: 60 },
+        { text: "Unrevealed hint", solutionWarning: true, timePenalty: 300 },
+      ],
+    },
+    {
+      name: "lantern",
+      displayName: "Lantern",
+      text: "Lantern text",
+      solutionKeyword: "lanternkeyword",
+      solutionDisplayText: "Lantern solution",
+    },
+  ]);
+  await QuestService.createQuest({
+    name: "quest",
+    displayName: "Quest",
+    assignee: { kind: "team", name: "the-team" },
+    puzzles: [
+      { puzzleName: "riddle", activationCode: "riddle-code" },
+      { puzzleName: "lantern", activationCode: "lantern-code" },
+    ],
+  });
+  await QuestService.startQuest("quest");
+  await QuestModel.updateOne(
+    { name: "quest" },
+    {
+      "puzzles.0.status": 3,
+      "puzzles.0.activationTime": new Date(),
+      "puzzles.0.endTime": new Date(),
+      "puzzles.0.nextHintToDisplay": 1,
+      textResponse: "secret reply",
+      textResponseConfirmation: "secret confirmation",
+    }
+  );
+  sessions = await startSessions("helper", "player");
+});
+
+/** What no staff answer may contain: anything that tells how to solve. */
+const NEVER_SHOWN = [
+  /activationCode/,
+  /-code/,
+  /solution/i,
+  /keyword/,
+  /A piano/,
+  /It makes music/,
+  /Unrevealed hint/,
+  /What has/,
+  /Lantern text/,
+  /secret/,
+  /textResponse/,
+  /penaltyFreeHints/,
+  /"id"/,
+];
+
+function asStaff(path: string) {
+  return request(app)
+    .get(path)
+    .set("Authorization", `Bearer ${sessions.helper}`);
+}
+
+describe("a quest, as staff see it", () => {
+  it("shows every stop in order, reached or not, with its status", async () => {
+    const response = await asStaff("/api/v1/quests/quest/staff-view");
+
+    expect(response.status).toBe(200);
+    expect(staffQuestSchema.parse(response.body)).toEqual(response.body);
+    expect(response.body).toMatchObject({
+      name: "quest",
+      displayName: "Quest",
+      assignee: { kind: "team", name: "the-team", displayName: "Team Display" },
+      status: 1,
+      paused: false,
+      puzzles: [
+        {
+          name: "riddle",
+          displayName: "Riddle",
+          status: 3,
+          statusDescription: "Completed",
+          hintsRevealed: 1,
+          hintCount: 2,
+        },
+        {
+          name: "lantern",
+          displayName: "Lantern",
+          status: 0,
+          statusDescription: "Unavailable",
+          hintsRevealed: 0,
+          hintCount: 0,
+        },
+      ],
+    });
+    expect(response.body.puzzles[0].endTime).toEqual(expect.any(String));
+  });
+
+  it("tells nothing about how to solve it", async () => {
+    const response = await asStaff("/api/v1/quests/quest/staff-view");
+
+    for (const pattern of NEVER_SHOWN) {
+      expect(response.text).not.toMatch(pattern);
+    }
+  });
+
+  it("is a problem for a quest that doesn't exist", async () => {
+    const response = await asStaff("/api/v1/quests/nothing/staff-view");
+
+    expect(response.status).toBe(404);
+  });
+
+  it("isn't for players, even the quest's own", async () => {
+    const response = await request(app)
+      .get("/api/v1/quests/quest/staff-view")
+      .set("Authorization", `Bearer ${sessions.player}`);
+
+    expect(response.status).toBe(403);
+  });
+});
+
+describe("the quests, as staff see them", () => {
+  it("lists each with who it's for and how it's going", async () => {
+    const response = await asStaff("/api/v1/staff/quests");
+
+    expect(response.status).toBe(200);
+    expect(response.body.next).toBeNull();
+    expect(response.body.items).toHaveLength(1);
+    const [quest] = response.body.items;
+    expect(staffQuestSummarySchema.parse(quest)).toEqual(quest);
+    expect(quest).toMatchObject({
+      name: "quest",
+      assignee: { kind: "team", name: "the-team" },
+      statusDescription: "In progress",
+    });
+    for (const pattern of [...NEVER_SHOWN, /riddle/i, /lantern/i]) {
+      expect(response.text).not.toMatch(pattern);
+    }
+  });
+});

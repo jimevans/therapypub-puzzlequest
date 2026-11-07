@@ -172,6 +172,29 @@ describe("phone numbers", () => {
   });
 });
 
+describe("authorization levels", () => {
+  it("can make a user staff", async () => {
+    const response = await send("patch", "/api/v1/users/player").send({
+      authorizationLevel: 5,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await storedUser("player")).authorizationLevel).toBe(5);
+  });
+
+  it("no longer include Guest", async () => {
+    const response = await send("patch", "/api/v1/users/player").send({
+      authorizationLevel: 0,
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body.errors).toContainEqual({
+      path: "body.authorizationLevel",
+      message: "Must be a known authorization level",
+    });
+  });
+});
+
 describe("values pages send as text", () => {
   it("are converted to numbers", async () => {
     await send("patch", "/api/v1/users/player").send({

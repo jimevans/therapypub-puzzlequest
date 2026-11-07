@@ -79,6 +79,9 @@ export const requireUser = authorize(() => true);
 /** Lets only administrators through. */
 export const requireAdmin = authorize((user) => user.isAdmin());
 
+/** Lets staff and administrators through. */
+export const requireStaff = authorize((user) => user.isStaff());
+
 /**
  * Lets through only the user named by the route's userName parameter: for
  * actions on one's own account that even an administrator may not take for

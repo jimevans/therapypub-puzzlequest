@@ -4,11 +4,15 @@ import { Link, Navigate } from "react-router";
 import { api, dataOrThrow } from "../../api";
 import { ClockTime } from "../../quests/ClockTime";
 import { fetchAllPages } from "../../fetchAllPages";
-import { isAdministrator, useSession } from "../../session";
+import { Suspense, lazy } from "react";
+import { isAdministrator, isStaff, useSession } from "../../session";
 import { Banner } from "../../ui/Banner";
 import { EmailReminder } from "../account/EmailReminder";
 import styles from "./Home.module.css";
 import { Landing } from "./Landing";
+
+// Staff download their list only when they open it.
+const StaffHome = lazy(() => import("../staff/StaffHome"));
 
 /** Starting or resetting a quest sends no live update, so this is how it shows. */
 const REFRESH_MS = 30_000;
@@ -48,7 +52,7 @@ export function Home() {
   const quests = useQuery({
     queryKey: ["users", user?.userName, "quests"],
     queryFn: () => fetchQuests(user?.userName ?? ""),
-    enabled: Boolean(user) && !isAdministrator(user),
+    enabled: Boolean(user) && !isAdministrator(user) && !isStaff(user),
     refetchInterval: REFRESH_MS,
   });
 
@@ -57,6 +61,13 @@ export function Home() {
   }
   if (isAdministrator(user)) {
     return <Navigate to="/quests" replace />;
+  }
+  if (isStaff(user)) {
+    return (
+      <Suspense fallback={null}>
+        <StaffHome />
+      </Suspense>
+    );
   }
 
   return (

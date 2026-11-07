@@ -1,0 +1,135 @@
+.intro {
+  margin: 0 0 var(--space-4);
+  color: var(--ink-soft);
+}
+
+.time,
+.clock {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The list of quests. */
+.quests {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quest {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-1) var(--space-4);
+  align-items: baseline;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--rule);
+  border-left: 6px solid var(--accent);
+  border-radius: var(--radius);
+}
+
+.name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.detail {
+  grid-row: 2;
+  color: var(--ink-soft);
+  font-size: var(--text-small);
+}
+
+.clock {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  align-self: center;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* A quest's stops. */
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--rule);
+  border-left: 6px solid var(--rule);
+  border-radius: var(--radius);
+}
+
+.done {
+  border-left-color: var(--ink-soft);
+}
+
+.current {
+  border-color: var(--accent);
+  border-left-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.stepHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+
+.stepNumber {
+  color: var(--ink-soft);
+  font-size: var(--text-small);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stepName {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.stepStatus {
+  margin: var(--space-1) 0 0;
+}
+
+.current .stepStatus {
+  color: var(--accent);
+}
+
+.stepDetails {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-small);
+}
+
+.stepDetails:empty {
+  display: none;
+}
+
+.stepDetails dt {
+  color: var(--ink-soft);
+}
+
+.stepDetails dd {
+  margin: 0;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: var(--space-5) 0 0;
+  font-weight: 600;
+}

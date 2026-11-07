@@ -33,7 +33,7 @@ export const userSchema = z
       .meta({ description: "True if the user accepts text messages." }),
     authorizationLevel: z.number().int().meta({
       description:
-        "What the user may do: 1 for a player, 10 for an administrator.",
+        "What the user may do: 1 for a player, 5 for staff, 10 for an administrator.",
     }),
     teams: z.array(teamSummarySchema).optional().meta({
       description: "The teams the user is a member of, when getting one user.",
@@ -630,4 +630,128 @@ export const questEventSchema = z
  */
 export function resourcePath(...segments: string[]): string {
   return `/api/v1/${segments.map(encodeURIComponent).join("/")}`;
+}
+
+/** Who a quest is for, as staff see it. */
+const staffAssigneeSchema = z.object({
+  kind: z.enum(["user", "team"]),
+  name: z.string().optional().meta({
+    description: "Missing if the user or team has been deleted.",
+  }),
+  displayName: z.string().optional(),
+});
+
+/**
+ * A quest in the list staff see: who it's for, and how it's going, without its
+ * puzzles. Every field is listed on purpose, as for the public views.
+ */
+export const staffQuestSummarySchema = z
+  .object({
+    name: z.string(),
+    displayName: z.string(),
+    assignee: staffAssigneeSchema,
+    status: z.number().int().meta({
+      description: "0 not started, 1 in progress, 2 completed.",
+    }),
+    statusDescription: z.string(),
+    paused: z.boolean(),
+    progress: z.object(progressFields),
+  })
+  .meta({ id: "StaffQuestSummary" });
+
+/**
+ * A quest as staff see it: every stop, in order, reached or not, with its live
+ * status. Staff run things at the stops, so they need to know what's coming,
+ * but not how to solve it: no solutions, activation codes, hint text, or the
+ * text reply the quest waits for. Every field is listed on purpose.
+ */
+export const staffQuestSchema = z
+  .object({
+    name: z.string(),
+    displayName: z.string(),
+    assignee: staffAssigneeSchema,
+    status: z.number().int().meta({
+      description: "0 not started, 1 in progress, 2 completed.",
+    }),
+    statusDescription: z.string(),
+    paused: z.boolean(),
+    progress: z.object({
+      ...progressFields,
+      puzzles: z.array(z.object({ puzzleName: z.string(), ...progressFields })),
+    }),
+    puzzles: z.array(
+      z.object({
+        name: z.string(),
+        displayName: z.string(),
+        status: z.number().int().meta({
+          description:
+            "0 not reached, 1 awaiting activation, 2 in progress, 3 completed.",
+        }),
+        statusDescription: z.string(),
+        skipped: z.boolean(),
+        hintsRevealed: z.number().int(),
+        hintCount: z.number().int(),
+        activationTime: time.nullable(),
+        startTime: time.nullable(),
+        endTime: time.nullable(),
+      })
+    ),
+  })
+  .meta({ id: "StaffQuest" });
+
+/**
+ * Says who a quest is for, as staff see it.
+ * @param quest the quest
+ * @returns the assignee, without its ID
+ */
+function staffAssigneeOf(quest: QuestService.Quest) {
+  const { kind, name, displayName } = quest.assignee;
+  return { kind, name, displayName };
+}
+
+/**
+ * Makes a quest's resource for the list staff see.
+ * @param quest the quest
+ * @returns the resource, built field by field so that nothing else gets in
+ */
+export function toStaffQuestSummaryResource(quest: QuestService.Quest) {
+  const { puzzles: _puzzles, ...progress } = quest.getProgress();
+  return {
+    name: quest.name,
+    displayName: quest.displayName,
+    assignee: staffAssigneeOf(quest),
+    status: quest.status,
+    statusDescription: quest.statusDescription,
+    paused: quest.paused,
+    progress,
+  };
+}
+
+/**
+ * Makes a quest's resource as staff see it.
+ * @param quest the quest, with every puzzle and its details
+ * @returns the resource, built field by field so that nothing else gets in
+ */
+export function toStaffQuestResource(quest: QuestService.Quest) {
+  return {
+    name: quest.name,
+    displayName: quest.displayName,
+    assignee: staffAssigneeOf(quest),
+    status: quest.status,
+    statusDescription: quest.statusDescription,
+    paused: quest.paused,
+    progress: quest.getProgress(),
+    puzzles: quest.puzzles.map((puzzle) => ({
+      name: puzzle.puzzleName,
+      displayName: puzzle.puzzleDetail?.displayName ?? puzzle.puzzleName,
+      status: puzzle.status,
+      statusDescription: puzzle.statusDescription,
+      skipped: puzzle.skipped,
+      hintsRevealed: puzzle.nextHintToDisplay,
+      hintCount: puzzle.puzzleDetail?.hints.length ?? 0,
+      activationTime: puzzle.activationTime ?? null,
+      startTime: puzzle.startTime ?? null,
+      endTime: puzzle.endTime ?? null,
+    })),
+  };
 }
