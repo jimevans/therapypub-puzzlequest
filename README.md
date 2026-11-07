@@ -126,6 +126,8 @@ npm run test:e2e
 
 These drive the main journeys through the real pages in Chrome and Firefox, with [WebdriverIO](https://webdriver.io/) over WebDriver BiDi: signing up, joining a team, playing a quest from the first call to the last puzzle with a spectator following along, authoring puzzles and quests, and resetting a password. They build the application and run it on an in-memory database, without reading `apps/api/.env`, so they can't send real email or text messages. Both browsers must be installed; WebdriverIO downloads the drivers. `E2E_BROWSER=chrome` or `E2E_BROWSER=firefox` runs just one. The camera is refused in those sessions, so they use the fall-back to typing a code; `e2e/camera-specs` runs in a separate Chrome session whose fake camera shows a QR code, to test scanning.
 
+Chrome runs every spec with the service worker. Firefox runs them without service workers, apart from `specs/serviceWorker.e2e.ts`, which has a Firefox session of its own: on CI's Linux machines, WebdriverIO waits forever for the network record of some page loads the worker answers in Firefox, though the pages load. To run Firefox tests with a particular version, download it (`npx @puppeteer/browsers install firefox@159.0`) and set `E2E_FIREFOX_BINARY` to its program.
+
 ## Repository layout
 
 This is an [npm workspaces](https://docs.npmjs.com/cli/using-npm/workspaces) monorepo with one lockfile. Run `npm ci` and the `npm run` commands from the repository's root.
