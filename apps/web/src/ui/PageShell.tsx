@@ -18,7 +18,14 @@ function AccountLinks() {
 }
 
 /** The frame of every page: the site's name, and the page's content. */
-export function PageShell({ children }: { children?: ReactNode }) {
+export function PageShell({
+  children,
+  wide = false,
+}: {
+  children?: ReactNode;
+  /** For tables and other pages used mainly on a laptop. */
+  wide?: boolean;
+}) {
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
@@ -27,7 +34,9 @@ export function PageShell({ children }: { children?: ReactNode }) {
         </a>
         <AccountLinks />
       </header>
-      <main className={styles.content}>{children}</main>
+      <main className={`${styles.content} ${wide ? styles.wide : ""}`}>
+        {children}
+      </main>
     </div>
   );
 }

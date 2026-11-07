@@ -1,6 +1,7 @@
-import { type ReactNode, useEffect, useRef } from "react";
+import type { ReactNode } from "react";
 import { Button } from "./Button";
-import styles from "./ConfirmDialog.module.css";
+import { Dialog } from "./Dialog";
+import styles from "./Dialog.module.css";
 
 interface ConfirmDialogProps {
   id?: string;
@@ -14,10 +15,7 @@ interface ConfirmDialogProps {
   children: ReactNode;
 }
 
-/**
- * Asks before doing something that can't be undone. The browser's own dialog
- * keeps focus inside it, and hides the rest of the page from screen readers.
- */
+/** Asks before doing something that can't be undone. */
 export function ConfirmDialog({
   id,
   isOpen,
@@ -28,29 +26,8 @@ export function ConfirmDialog({
   onCancel,
   children,
 }: ConfirmDialogProps) {
-  const dialog = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    const element = dialog.current;
-    if (isOpen && !element?.open) {
-      element?.showModal();
-    } else if (!isOpen && element?.open) {
-      element.close();
-    }
-  }, [isOpen]);
-
   return (
-    <dialog
-      id={id}
-      ref={dialog}
-      className={styles.dialog}
-      aria-labelledby={id && `${id}-title`}
-      onCancel={(event) => {
-        event.preventDefault();
-        onCancel();
-      }}
-    >
-      <h2 id={id && `${id}-title`}>{title}</h2>
+    <Dialog id={id} isOpen={isOpen} title={title} onDismiss={onCancel}>
       <p>{children}</p>
       <div className={styles.actions}>
         <Button onPress={onCancel}>{cancelLabel}</Button>
@@ -58,6 +35,6 @@ export function ConfirmDialog({
           {confirmLabel}
         </Button>
       </div>
-    </dialog>
+    </Dialog>
   );
 }

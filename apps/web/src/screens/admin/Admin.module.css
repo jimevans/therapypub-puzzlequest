@@ -1,0 +1,73 @@
+.sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-5);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--rule);
+  font-weight: 600;
+}
+
+.sections a {
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+.sections a[aria-current="page"] {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 6px;
+}
+
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1rem;
+}
+
+.table th,
+.table td {
+  padding: var(--space-2) var(--space-3) var(--space-2) 0;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.table th {
+  color: var(--ink-soft);
+  font-size: var(--text-small);
+}
+
+.table .rowActions {
+  padding-right: 0;
+  overflow-wrap: normal;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.rowActions > * + * {
+  margin-left: var(--space-2);
+}
+
+/* What a phone can do without. */
+@media (max-width: 40rem) {
+  .secondary {
+    display: none;
+  }
+}

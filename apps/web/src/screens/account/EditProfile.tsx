@@ -3,17 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router";
 import { ApiError, api, dataOrThrow, messageOf } from "../../api";
-import { useSession } from "../../session";
+import { isAdministrator, useSession } from "../../session";
+import { fieldErrorsOf } from "../../fieldErrors";
 import { Banner } from "../../ui/Banner";
 import { Button } from "../../ui/Button";
 import styles from "./Account.module.css";
 import { UserFields } from "./UserFields";
-import {
-  type AccountFormValues,
-  fieldErrorsOf,
-  formatPhone,
-  isAdministrator,
-} from "./accountForm";
+import { type AccountFormValues, formatPhone } from "./accountForm";
 import { userQuery } from "./userQuery";
 
 function EditForm({
@@ -67,8 +63,8 @@ function EditForm({
       await navigate(profilePath);
     },
     onError: (error) => {
-      fieldErrorsOf(error).forEach(({ field, message }) =>
-        setError(field, { message })
+      fieldErrorsOf<keyof AccountFormValues>(error).forEach(
+        ({ field, message }) => setError(field, { message })
       );
     },
   });

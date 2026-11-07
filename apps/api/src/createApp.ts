@@ -16,6 +16,7 @@ import {
   viewsDirectory,
 } from "./paths.js";
 import { V1Router } from "./api/v1/index.js";
+import { AdminRouter } from "./routes/admin.js";
 import { IndexRouter } from "./routes/index.js";
 import { PuzzleRouter } from "./routes/puzzle.js";
 import { QuestRouter } from "./routes/quest.js";
@@ -79,6 +80,7 @@ export function createApp(): Express {
   app.use(requireSameOrigin);
 
   app.use("/", IndexRouter);
+  app.use(AdminRouter);
 
   // The API, for the pages' scripts and for apps.
   app.use("/api/v1", V1Router);

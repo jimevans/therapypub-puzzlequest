@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
 import { Home } from "./Home";
@@ -129,6 +129,28 @@ describe("Home", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Couldn't load your quests"
+    );
+  });
+
+  it("sends an administrator to the lists, and fetches no quests of theirs", async () => {
+    const get = apiAnswers({ ...PLAYER, authorizationLevel: 10 });
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/quests" element={<h1>The lists</h1>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "The lists" })
+    ).toBeVisible();
+    expect(get).not.toHaveBeenCalledWith(
+      "/users/{userName}/quests",
+      expect.anything()
     );
   });
 

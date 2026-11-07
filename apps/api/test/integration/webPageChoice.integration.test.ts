@@ -119,7 +119,6 @@ describe("a player", () => {
 
 describe("an administrator", () => {
   it.each([
-    ["/", "admin"],
     ["/quest/trail", "questDetails"],
     ["/quest/new", "questEdit"],
     ["/quest/trail/edit", "questEdit"],
@@ -137,6 +136,26 @@ describe("an administrator, who has no EJS page for it", () => {
 
     expect(response.text).toBe(REACT_PAGE);
   });
+});
+
+describe("administrators' lists", () => {
+  it.each(["/", "/quests", "/puzzles", "/users", "/teams"])(
+    "are in the React app at %s",
+    async (page) => {
+      const response = await getPage(page, "admin");
+
+      expect(response.status).toBe(200);
+      expect(response.text).toBe(REACT_PAGE);
+    }
+  );
+
+  it.each(["/quests", "/puzzles", "/users", "/teams"])(
+    "%s are only for administrators",
+    async (page) => {
+      expect((await getPage(page, "player")).status).toBe(403);
+      expect((await getPage(page)).status).toBe(302);
+    }
+  );
 });
 
 describe("account pages", () => {

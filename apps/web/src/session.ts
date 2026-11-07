@@ -21,3 +21,14 @@ export function goToSignIn(): void {
   const here = `${location.pathname}${location.search}`;
   location.assign(`/login?next=${encodeURIComponent(here)}`);
 }
+
+/**
+ * Says whether a user is an administrator.
+ * @param user the user, if any
+ * @returns true if so
+ */
+export function isAdministrator(user?: {
+  authorizationLevel: number;
+}): boolean {
+  return (user?.authorizationLevel ?? 0) >= 10;
+}

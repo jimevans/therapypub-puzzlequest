@@ -2,7 +2,8 @@ import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { Link, useSearchParams } from "react-router";
 import { api, dataOrThrow, messageOf } from "../../api";
-import { useSession } from "../../session";
+import { isAdministrator, useSession } from "../../session";
+import { fieldErrorsOf } from "../../fieldErrors";
 import { Banner } from "../../ui/Banner";
 import { Button } from "../../ui/Button";
 import { FormTextField } from "../../ui/FormTextField";
@@ -10,11 +11,7 @@ import { pathAfterSignIn } from "../signIn/pathAfterSignIn";
 import styles from "./Account.module.css";
 import { UserFields } from "./UserFields";
 import { PASSWORDS_DIFFER, newPasswordRules } from "./passwords";
-import {
-  type AccountFormValues,
-  fieldErrorsOf,
-  isAdministrator,
-} from "./accountForm";
+import { type AccountFormValues } from "./accountForm";
 
 /** The form for signing up, or for an administrator creating a user. */
 function SignUpForm({ forAdministrator }: { forAdministrator: boolean }) {
@@ -60,8 +57,8 @@ function SignUpForm({ forAdministrator }: { forAdministrator: boolean }) {
     // A full load, because the next page may not be part of this app yet.
     onSuccess: (destination) => location.assign(destination),
     onError: (error) => {
-      fieldErrorsOf(error).forEach(({ field, message }) =>
-        setError(field, { message })
+      fieldErrorsOf<keyof AccountFormValues>(error).forEach(
+        ({ field, message }) => setError(field, { message })
       );
     },
   });
