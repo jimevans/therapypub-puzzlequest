@@ -71,3 +71,79 @@
     display: none;
   }
 }
+
+/* A team's members, in the team form. */
+.members {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  /* A fieldset is otherwise as wide as its content, wider than the dialog. */
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.members legend {
+  padding: 0;
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+}
+
+.members p {
+  margin: 0;
+}
+
+.members ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.members li > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.members li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.secondaryText,
+.note {
+  color: var(--ink-soft);
+  font-size: var(--text-small);
+}
+
+.addMember {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.addMember label {
+  font-weight: 600;
+}
+
+.addMember > div {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.select {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--target-size);
+  padding: 0 var(--space-3);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
