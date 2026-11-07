@@ -1,0 +1,160 @@
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  gap: var(--space-2) var(--space-3);
+  margin: var(--space-3) 0 0;
+  overflow-wrap: anywhere;
+}
+
+.summary dt {
+  color: var(--ink-soft);
+}
+
+.summary dd {
+  margin: 0;
+}
+
+.time {
+  font-variant-numeric: tabular-nums;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+  font-weight: 600;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.section h2 {
+  margin: 0;
+}
+
+.stops .code {
+  font-family: ui-monospace, monospace;
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+
+.stops .time {
+  white-space: nowrap;
+}
+
+.phoneCode {
+  display: none;
+}
+
+.activity {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.activity li {
+  display: grid;
+  grid-template-columns: 13rem minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.activity time {
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.actor {
+  color: var(--ink-soft);
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.checkbox input {
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  accent-color: var(--accent);
+}
+
+.dialogForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dialogForm p {
+  margin: 0;
+}
+
+/* A phone's screen may still be too narrow for the table, which then scrolls
+   within this rather than widening the page. */
+.stopsBox {
+  overflow-x: auto;
+}
+
+@media (max-width: 40rem) {
+  /* Words wrap between themselves; only the codes break anywhere. */
+  table.stops th,
+  table.stops td {
+    overflow-wrap: normal;
+  }
+
+  /* The row's actions stack, rather than widening the table. */
+  table.stops td:last-child {
+    white-space: normal;
+  }
+
+  table.stops td:last-child > * {
+    display: block;
+    width: fit-content;
+    margin: 0 0 0 auto;
+  }
+
+  table.stops td:last-child > * + * {
+    margin-top: var(--space-2);
+  }
+
+  table.stops .phoneCode {
+    display: block;
+    color: var(--ink-soft);
+    font-family: ui-monospace, monospace;
+    font-size: var(--text-small);
+    overflow-wrap: anywhere;
+  }
+
+  .summary {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .summary dd + dt {
+    margin-top: var(--space-2);
+  }
+
+  .activity li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}

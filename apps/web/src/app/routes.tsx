@@ -6,6 +6,7 @@ import type {
 import {
   Outlet,
   type Params,
+  type PatchRoutesOnNavigationFunction,
   type RouteObject,
   ScrollRestoration,
 } from "react-router";
@@ -55,17 +56,6 @@ export function createRoutes(queryClient: QueryClient): RouteObject[] {
           path: "/",
           lazy: async () => ({
             Component: (await import("../screens/home/Home")).Home,
-          }),
-        },
-        {
-          path: "/quest/:name",
-          // A loader starts as the screen's code does, rather than after it has
-          // downloaded, which on a phone saves a whole round trip. It waits for
-          // nothing: the screen shows the outcome, as it does for any fetch.
-          loader: prefetch(({ name = "" }) => questQuery(name)),
-          lazy: async () => ({
-            Component: (await import("../screens/quest/QuestScreen"))
-              .QuestScreen,
           }),
         },
         {
@@ -144,6 +134,18 @@ export function createRoutes(queryClient: QueryClient): RouteObject[] {
         },
       ],
     },
+    // A player's quest, or an administrator's console for it, which has the
+    // wider frame of the administrators' screens. Which it is depends on who's
+    // signed in, so the screen chooses its own frame.
+    {
+      path: "/quest/:name",
+      loader: prefetch(({ name = "" }) => questQuery(name)),
+      hydrateFallbackElement: <PageShell />,
+      errorElement: <ErrorPage />,
+      lazy: async () => ({
+        Component: (await import("../screens/quest/QuestPage")).QuestPage,
+      }),
+    },
     // Fills the screen, so it's outside the frame of the other pages.
     {
       path: "/monitor/quest/:name/board",
@@ -154,62 +156,38 @@ export function createRoutes(queryClient: QueryClient): RouteObject[] {
         Component: (await import("../screens/followAlong/Board")).Board,
       }),
     },
-    // Administrators' screens. Their frame is a download of its own, so that
-    // players never fetch it.
-    {
-      lazy: async () => ({
-        Component: (await import("../screens/admin/AdminLayout")).AdminLayout,
-      }),
-      hydrateFallbackElement: <PageShell wide />,
-      errorElement: <ErrorPage />,
-      children: [
-        {
-          path: "/quests",
-          lazy: async () => ({
-            Component: (await import("../screens/admin/QuestsList")).QuestsList,
-          }),
-        },
-        {
-          path: "/puzzles",
-          lazy: async () => ({
-            Component: (await import("../screens/admin/PuzzlesList"))
-              .PuzzlesList,
-          }),
-        },
-        {
-          path: "/users",
-          lazy: async () => ({
-            Component: (await import("../screens/admin/UsersList")).UsersList,
-          }),
-        },
-        {
-          path: "/teams",
-          lazy: async () => ({
-            Component: (await import("../screens/admin/TeamsList")).TeamsList,
-          }),
-        },
-        {
-          path: "/puzzle/new",
-          lazy: async () => ({
-            Component: (await import("../screens/admin/puzzle/PuzzleEditor"))
-              .PuzzleEditor,
-          }),
-        },
-        {
-          path: "/puzzle/:name",
-          lazy: async () => ({
-            Component: (await import("../screens/admin/puzzle/PuzzleDetails"))
-              .PuzzleDetails,
-          }),
-        },
-        {
-          path: "/puzzle/:name/edit",
-          lazy: async () => ({
-            Component: (await import("../screens/admin/puzzle/PuzzleEditor"))
-              .PuzzleEditor,
-          }),
-        },
-      ],
-    },
   ];
 }
+
+/** The first part of the addresses of administrators' screens. */
+const ADMIN_SECTIONS = new Set([
+  "quests",
+  "puzzles",
+  "users",
+  "teams",
+  "puzzle",
+]);
+
+/**
+ * Adds administrators' screens to the router when one is first opened, so that
+ * nobody else downloads even the list of them. The router asks only about an
+ * address none of its routes match.
+ */
+export const patchAdminRoutes: PatchRoutesOnNavigationFunction = async ({
+  path,
+  patch,
+}) => {
+  if (ADMIN_SECTIONS.has(path.split("/")[1] ?? "")) {
+    const { adminScreens } = await import("./adminRoutes");
+    patch(null, [
+      {
+        lazy: async () => ({
+          Component: (await import("../screens/admin/AdminLayout")).AdminLayout,
+        }),
+        hydrateFallbackElement: <PageShell wide />,
+        errorElement: <ErrorPage />,
+        children: adminScreens,
+      },
+    ]);
+  }
+};

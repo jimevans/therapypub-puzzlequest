@@ -119,7 +119,6 @@ describe("a player", () => {
 
 describe("an administrator", () => {
   it.each([
-    ["/quest/trail", "questDetails"],
     ["/quest/new", "questEdit"],
     ["/quest/trail/edit", "questEdit"],
   ])("gets the EJS page at %s", async (page, script) => {
@@ -131,9 +130,14 @@ describe("an administrator", () => {
 });
 
 describe("an administrator, who has no EJS page for it", () => {
-  it("gets the React app for a puzzle", async () => {
-    const response = await getPage("/quest/trail/puzzle/riddle", "admin");
+  it.each([
+    "/quest/trail",
+    "/quest/no-such-quest",
+    "/quest/trail/puzzle/riddle",
+  ])("gets the React app at %s", async (page) => {
+    const response = await getPage(page, "admin");
 
+    expect(response.status).toBe(200);
     expect(response.text).toBe(REACT_PAGE);
   });
 });

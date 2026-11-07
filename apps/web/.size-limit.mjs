@@ -52,7 +52,7 @@ export default [
   onTopOfFirstLoad("The home screen", "src/screens/home/Home.tsx", "19 KB"),
   onTopOfFirstLoad(
     "The quest screen",
-    "src/screens/quest/QuestScreen.tsx",
+    "src/screens/quest/QuestPage.tsx",
     "4 KB"
   ),
   onTopOfFirstLoad(
@@ -98,6 +98,11 @@ export default [
     "A puzzle's details",
     "src/screens/admin/puzzle/PuzzleDetails.tsx",
     "4 KB"
+  ),
+  onTopOfFirstLoad(
+    "The quest console",
+    "src/screens/questConsole/QuestConsole.tsx",
+    "39 KB"
   ),
   onTopOfFirstLoad(
     "The puzzle editor",

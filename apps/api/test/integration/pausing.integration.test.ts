@@ -290,15 +290,6 @@ describe("a paused quest's pages", () => {
     expect(response.body.progress.clockStart).toBeUndefined();
   });
 
-  it("show the admin a Resume button", async () => {
-    const page = await request(app)
-      .get("/quest/quest")
-      .set("Authorization", `Bearer ${sessions.admin}`);
-
-    expect(page.text).toContain('id="resume-link"');
-    expect(page.text).not.toContain('id="pause-link"');
-  });
-
   it("tell spectators it is paused", async () => {
     const response = await request(app).get(
       "/api/v1/quests/quest/spectator-view"
@@ -306,15 +297,5 @@ describe("a paused quest's pages", () => {
 
     expect(response.body.paused).toBe(true);
     expect(response.body.progress.running).toBe(false);
-  });
-});
-
-describe("a running quest's details page", () => {
-  it("offers the admin a Pause button", async () => {
-    const details = await request(app)
-      .get("/quest/quest")
-      .set("Authorization", `Bearer ${sessions.admin}`);
-
-    expect(details.text).toContain('id="pause-link"');
   });
 });

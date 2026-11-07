@@ -15,13 +15,8 @@ questRouter.get(
   QuestController.renderQuest
 );
 
-questRouter.get(
-  "/:name",
-  authenticateSession,
-  requireUser,
-  UseRenderMode.useRenderMode(UseRenderMode.RenderMode.DISPLAY),
-  QuestController.renderQuest
-);
+// The React app shows players their quest, and administrators its console.
+questRouter.get("/:name", authenticateSession, requireUser, sendWebApp);
 
 questRouter.get(
   "/:name/edit",
@@ -36,20 +31,6 @@ questRouter.get(
   authenticateSession,
   requireUser,
   sendWebApp
-);
-
-questRouter.get(
-  "/:name/puzzle/:puzzleName/qrcode",
-  authenticateSession,
-  requireAdmin,
-  QuestController.renderPuzzleActivationQRCode
-);
-
-questRouter.get(
-  "/:name/pdf",
-  authenticateSession,
-  requireAdmin,
-  QuestController.renderQuestRunBook
 );
 
 export { questRouter as QuestRouter };

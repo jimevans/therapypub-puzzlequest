@@ -317,30 +317,6 @@ describe("resetting a puzzle", () => {
   });
 });
 
-describe("the quest details page", () => {
-  function details() {
-    return request(app)
-      .get("/quest/quest")
-      .set("Authorization", `Bearer ${sessions.admin}`);
-  }
-
-  it("offers the reached puzzles for skipping and resetting", async () => {
-    const page = (await details()).text;
-
-    expect(page).toContain('id="puzzle-rescue"');
-    expect(page).toContain(
-      '<option value="riddle">Riddle (In progress)</option>'
-    );
-    expect(page).not.toContain('<option value="finale">');
-  });
-
-  it("offers nothing before the quest starts", async () => {
-    await QuestService.resetQuest("quest");
-
-    expect((await details()).text).not.toContain('id="puzzle-rescue"');
-  });
-});
-
 describe("a skipped puzzle, as the players see the quest", () => {
   it("shows as Skipped, with its solution", async () => {
     await rescue("skip", "riddle");

@@ -69,12 +69,7 @@ export function QuestsList() {
             {quests.data.map((quest) => (
               <tr key={quest.name} data-quest-name={quest.name}>
                 <td>
-                  {/* Reloads, because its page isn't in this app for
-                      administrators yet. */}
-                  <Link
-                    to={`/quest/${encodeURIComponent(quest.name)}`}
-                    reloadDocument
-                  >
+                  <Link to={`/quest/${encodeURIComponent(quest.name)}`}>
                     {quest.displayName}
                   </Link>
                 </td>

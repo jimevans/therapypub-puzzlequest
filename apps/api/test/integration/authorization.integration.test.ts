@@ -155,6 +155,7 @@ const ROUTES: [string, string, Policy][] = [
   ["post", "/api/v1/quests/:name/puzzles/:puzzleName/reset", ADMIN],
   ["get", "/api/v1/quests/:name/puzzles/:puzzleName/qr-code", ADMIN],
   ["get", "/api/v1/quests/:name/events", ADMIN],
+  ["get", "/api/v1/quests/:name/run-book", ADMIN],
   ["get", "/api/v1/quests/:name/puzzles/:puzzleName", QUEST_VIEWER],
   ["get", "/api/v1/quests/:name/spectator-view", PUBLIC],
   ["get", "/api/v1/quests/:name/puzzles/:puzzleName/spectator-view", PUBLIC],
@@ -180,8 +181,6 @@ const ROUTES: [string, string, Policy][] = [
   ["get", "/quest/:name", SIGNED_IN],
   ["get", "/quest/:name/edit", ADMIN],
   ["get", "/quest/:name/puzzle/:puzzleName", SIGNED_IN],
-  ["get", "/quest/:name/puzzle/:puzzleName/qrcode", ADMIN],
-  ["get", "/quest/:name/pdf", ADMIN],
 ];
 
 /** Values for the route parameters: the fixture's quest, puzzle, and team. */
