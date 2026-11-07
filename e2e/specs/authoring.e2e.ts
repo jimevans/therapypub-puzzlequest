@@ -160,9 +160,17 @@ describe("authoring", () => {
       );
     expect(await order()).toEqual([textPuzzle, imagePuzzle]);
 
-    await $('button[aria-label="Move A Renamed Puzzle"]').click();
+    // Each key waits for what a screen reader would be told, since the list
+    // measures itself after the pick-up and ignores keys until it has.
+    const moving = await $('button[aria-label="Move A Renamed Puzzle"]');
+    await moving.click();
     await browser.keys(" ");
-    await browser.keys("ArrowUp");
+    await expect(moving).toHaveAttribute("aria-pressed", "true");
+    const announced = $('[id^="DndLiveRegion"]');
+    await browser.waitUntil(async () => {
+      await browser.keys("ArrowUp");
+      return (await announced.getText()).includes("over position 1 of 2");
+    });
     await browser.keys(" ");
     await browser.waitUntil(
       async () =>

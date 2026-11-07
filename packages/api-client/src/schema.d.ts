@@ -134,6 +134,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/users/{userName}/teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Join a team by its code
+         * @description Adds the user to the team whose join code is given, in any letter case. The user needn't know the team's name, and players can't list the teams. Wrong codes are limited, since any team's code works.
+         */
+        post: operations["joinTeamByCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/{userName}/password": {
         parameters: {
             query?: never;
@@ -260,7 +280,7 @@ export interface paths {
         };
         /**
          * List teams
-         * @description Any signed-in user may list teams, to choose one to join; only administrators see their join codes and members.
+         * @description Only for administrators. Players join a team by its code alone (POST /users/{userName}/teams), so they never see one client's groups from another's.
          */
         get: operations["listTeams"];
         put?: never;
@@ -307,7 +327,7 @@ export interface paths {
         get?: never;
         /**
          * Join a team
-         * @description Adds the user to the team, with the team's join code. A user may join for themselves; an administrator may add anyone.
+         * @description Adds the user to the team, with the team's join code. Only for administrators: players join by the code alone (POST /users/{userName}/teams), since naming a team here would tell them whether it exists.
          */
         put: operations["joinTeam"];
         post?: never;
@@ -2014,6 +2034,109 @@ export interface operations {
             };
         };
     };
+    joinTeamByCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The user's user name. */
+                userName: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    joinCode: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Joined: the team. */
+            201: {
+                headers: {
+                    /** @description The team. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamSummary"];
+                };
+            };
+            /** @description /problems/invalid-request: The request isn't valid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/forbidden: Not allowed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/already-exists: Already exists. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/wrong-join-code: Wrong join code. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/too-many-requests: Too many requests. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     changePassword: {
         parameters: {
             query?: never;
@@ -2439,6 +2562,15 @@ export interface operations {
             };
             /** @description /problems/sign-in-required: Sign in to do this. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/forbidden: Not allowed. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

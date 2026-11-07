@@ -28,6 +28,7 @@ vi.mock("../../src/middleware/rateLimiter.js", () => {
     passwordRateLimiter: passThrough,
     passwordChangeRateLimiter: passThrough,
     activationRateLimiter: passThrough,
+    joinCodeRateLimiter: passThrough,
     solutionRateLimiter: passThrough,
     emailVerificationRateLimiter: passThrough,
     verificationEmailRateLimiter: passThrough,
@@ -339,13 +340,10 @@ describe("a forgotten password", () => {
 });
 
 describe("listing teams", () => {
-  it("shows a player only what they need to choose one to join", async () => {
+  it("isn't for players, who join by a team's code alone", async () => {
     const response = await as("player", "get", "/teams");
 
-    expect(bodyOf(response)).toEqual({
-      items: [{ teamName: "team-a", displayName: "Team A" }],
-      next: null,
-    });
+    expect(response.status).toBe(403);
   });
 
   it("shows an administrator each team's join code and members", async () => {
@@ -380,6 +378,35 @@ describe("a team", () => {
     });
   });
 
+  it("can't have a join code that differs from another's only in case", async () => {
+    const created = await as("admin", "post", "/teams").send({
+      teamName: "team-b",
+      displayName: "Team B",
+      joinCode: "JOIN-A",
+    });
+    expect(created.status).toBe(409);
+    expect(bodyOf(created).detail).toBe("That join code is already in use");
+
+    await as("admin", "post", "/teams").send({
+      teamName: "team-b",
+      displayName: "Team B",
+      joinCode: "join-b",
+    });
+    const changed = await as("admin", "patch", "/teams/team-b").send({
+      joinCode: " Join-A ",
+    });
+    expect(changed.status).toBe(409);
+  });
+
+  it("can keep its own join code, in another case", async () => {
+    const response = await as("admin", "patch", "/teams/team-a").send({
+      joinCode: "JOIN-A",
+    });
+
+    expect(response.status).toBe(200);
+    expect(bodyOf(response).joinCode).toBe("JOIN-A");
+  });
+
   it("can't share a join code with another", async () => {
     const response = await as("admin", "post", "/teams").send({
       teamName: "team-b",
@@ -403,26 +430,54 @@ describe("a team", () => {
 });
 
 describe("joining and leaving a team", () => {
-  const membership = "/teams/team-a/members/other";
+  const join = (joinCode: string, user: Parameters<typeof as>[0] = "other") =>
+    as(user, "post", `/users/${user}/teams`).send({ joinCode });
 
-  it("needs the team's join code", async () => {
-    const response = await as("other", "put", membership).send({
-      joinCode: "wrong",
+  it("takes only the join code, in any case, and says which team", async () => {
+    const response = await join("  JOIN-a ");
+
+    expect(response.status).toBe(201);
+    expect(response.headers.location).toBe("/api/v1/teams/team-a");
+    expect(bodyOf(response)).toEqual({
+      teamName: "team-a",
+      displayName: "Team A",
     });
+    const user = bodyOf(await as("other", "get", "/users/other"));
+    expect(user.teams).toEqual([{ teamName: "team-a", displayName: "Team A" }]);
+  });
+
+  it("says when no team has the code, without naming any", async () => {
+    const response = await join("wrong");
 
     expect(response.status).toBe(422);
     expect(bodyOf(response)).toMatchObject({
       type: "/problems/wrong-join-code",
-      detail: "Invalid join code for team team-a",
+      detail: "No team has that join code",
     });
   });
 
-  it("joins once, and leaves once", async () => {
-    const join = () =>
-      as("other", "put", membership).send({ joinCode: "JOIN-A" });
+  it("joins once", async () => {
+    expect((await join("join-a")).status).toBe(201);
 
-    expect((await join()).status).toBe(204);
-    expect(bodyOf(await join()).type).toBe("/problems/already-exists");
+    const again = await join("join-a");
+    expect(again.status).toBe(409);
+    expect(bodyOf(again)).toMatchObject({
+      type: "/problems/already-exists",
+      detail: "You're already on Team A",
+    });
+  });
+
+  it("isn't for joining someone else", async () => {
+    const response = await as("other", "post", "/users/player/teams").send({
+      joinCode: "join-a",
+    });
+
+    expect(response.status).toBe(403);
+  });
+
+  it("leaves once", async () => {
+    await join("join-a");
+    const membership = "/teams/team-a/members/other";
 
     expect((await as("other", "delete", membership)).status).toBe(204);
     const again = await as("other", "delete", membership);
@@ -430,5 +485,16 @@ describe("joining and leaving a team", () => {
     expect(bodyOf(again).detail).toBe(
       "User other is not a member of team team-a"
     );
+  });
+
+  it("by naming the team is only for administrators", async () => {
+    const membership = "/teams/team-a/members/other";
+
+    expect(
+      (await as("other", "put", membership).send({ joinCode: "join-a" })).status
+    ).toBe(403);
+    expect(
+      (await as("admin", "put", membership).send({ joinCode: "join-a" })).status
+    ).toBe(204);
   });
 });

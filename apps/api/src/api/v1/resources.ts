@@ -8,7 +8,7 @@ import type * as TeamService from "../../services/team.service.js";
 import type * as UserService from "../../services/user.service.js";
 
 /** A team, as a user's list of teams shows it. */
-const teamSummarySchema = z
+export const teamSummarySchema = z
   .object({
     teamName: z.string(),
     displayName: z.string(),

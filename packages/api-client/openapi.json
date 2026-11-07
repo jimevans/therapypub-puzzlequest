@@ -891,6 +891,155 @@
         }
       }
     },
+    "/users/{userName}/teams": {
+      "post": {
+        "operationId": "joinTeamByCode",
+        "summary": "Join a team by its code",
+        "description": "Adds the user to the team whose join code is given, in any letter case. The user needn't know the team's name, and players can't list the teams. Wrong codes are limited, since any team's code works.",
+        "tags": [
+          "Teams"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userName",
+            "schema": {
+              "type": "string",
+              "description": "The user's user name."
+            },
+            "required": true,
+            "description": "The user's user name."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "joinCode": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "joinCode"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Joined: the team.",
+            "headers": {
+              "Location": {
+                "description": "The team.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "/problems/invalid-request: The request isn't valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "/problems/sign-in-required: Sign in to do this.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "/problems/forbidden: Not allowed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "/problems/not-found: Not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "/problems/already-exists: Already exists.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "/problems/wrong-join-code: Wrong join code.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "/problems/too-many-requests: Too many requests.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "/problems/unexpected: An unexpected error occurred.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/users/{userName}/password": {
       "put": {
         "operationId": "changePassword",
@@ -1403,7 +1552,7 @@
       "get": {
         "operationId": "listTeams",
         "summary": "List teams",
-        "description": "Any signed-in user may list teams, to choose one to join; only administrators see their join codes and members.",
+        "description": "Only for administrators. Players join a team by its code alone (POST /users/{userName}/teams), so they never see one client's groups from another's.",
         "tags": [
           "Teams"
         ],
@@ -1482,6 +1631,16 @@
           },
           "401": {
             "description": "/problems/sign-in-required: Sign in to do this.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "/problems/forbidden: Not allowed.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1897,7 +2056,7 @@
       "put": {
         "operationId": "joinTeam",
         "summary": "Join a team",
-        "description": "Adds the user to the team, with the team's join code. A user may join for themselves; an administrator may add anyone.",
+        "description": "Adds the user to the team, with the team's join code. Only for administrators: players join by the code alone (POST /users/{userName}/teams), since naming a team here would tell them whether it exists.",
         "tags": [
           "Teams"
         ],

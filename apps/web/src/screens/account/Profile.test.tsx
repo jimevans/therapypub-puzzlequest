@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -431,70 +431,63 @@ describe("a profile", () => {
     const BLUE = { teamName: "blue", displayName: "The Blues" };
     const RED = { teamName: "red", displayName: "The Reds" };
 
-    it("joins a team, offering only those the user isn't on", async () => {
+    it("joins a team by its code alone, saying which it was", async () => {
       apiKnows(PLAYER, PLAYER, [RED, BLUE]);
-      const put = vi
-        .spyOn(api, "PUT")
-        .mockResolvedValue(ok(undefined, 204) as never);
+      const get = vi.mocked(api.GET);
+      const post = vi
+        .spyOn(api, "POST")
+        .mockResolvedValue(ok(BLUE, 201) as never);
       show("/user/player");
 
       await userEvent.click(
         await screen.findByRole("button", { name: "Join a team" })
       );
-      const choice = await screen.findByLabelText("Team");
-      expect(within(choice).queryByText("The Reds")).not.toBeInTheDocument();
-      await userEvent.selectOptions(choice, "blue");
+      // No list of teams to choose from, and none fetched.
+      expect(screen.queryByLabelText("Team")).not.toBeInTheDocument();
       await userEvent.type(screen.getByLabelText("Join code"), "secret");
       await userEvent.click(screen.getByRole("button", { name: "Join team" }));
 
-      await waitFor(() =>
-        expect(put).toHaveBeenCalledWith(
-          "/teams/{teamName}/members/{userName}",
-          {
-            params: { path: { teamName: "blue", userName: "player" } },
-            body: { joinCode: "secret" },
-          }
-        )
-      );
+      expect(await screen.findByText("You joined The Blues.")).toBeVisible();
+      expect(post).toHaveBeenCalledWith("/users/{userName}/teams", {
+        params: { path: { userName: "player" } },
+        body: { joinCode: "secret" },
+      });
+      expect(get).not.toHaveBeenCalledWith("/teams", expect.anything());
     });
 
-    it("says when the join code is wrong, and stays open", async () => {
+    it("says when no team has the code, and stays open", async () => {
       apiKnows(PLAYER, PLAYER, [BLUE]);
-      vi.spyOn(api, "PUT").mockResolvedValue(
-        refusal(422, "Incorrect join code") as never
+      vi.spyOn(api, "POST").mockResolvedValue(
+        refusal(422, "No team has that join code") as never
       );
       show("/user/player");
 
       await userEvent.click(
         await screen.findByRole("button", { name: "Join a team" })
-      );
-      await userEvent.selectOptions(
-        await screen.findByLabelText("Team"),
-        "blue"
       );
       await userEvent.type(screen.getByLabelText("Join code"), "wrong");
       await userEvent.click(screen.getByRole("button", { name: "Join team" }));
 
       expect(await screen.findByRole("alert")).toHaveTextContent(
-        "Incorrect join code"
+        "No team has that join code"
       );
+      expect(screen.getByLabelText("Join code")).toBeVisible();
     });
 
-    it("needs a team and a join code", async () => {
+    it("needs a join code", async () => {
       apiKnows(PLAYER, PLAYER, [BLUE]);
-      const put = vi.spyOn(api, "PUT");
+      const post = vi.spyOn(api, "POST");
       show("/user/player");
 
       await userEvent.click(
         await screen.findByRole("button", { name: "Join a team" })
       );
-      await screen.findByLabelText("Team");
       await userEvent.click(screen.getByRole("button", { name: "Join team" }));
 
       expect(
         await screen.findByText("Enter the team's join code")
       ).toBeVisible();
-      expect(put).not.toHaveBeenCalled();
+      expect(post).not.toHaveBeenCalled();
     });
 
     it("asks before leaving a team", async () => {

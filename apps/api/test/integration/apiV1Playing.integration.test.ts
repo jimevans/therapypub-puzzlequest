@@ -29,6 +29,7 @@ vi.mock("../../src/middleware/rateLimiter.js", () => {
     passwordRateLimiter: passThrough,
     passwordChangeRateLimiter: passThrough,
     activationRateLimiter: passThrough,
+    joinCodeRateLimiter: passThrough,
     solutionRateLimiter: passThrough,
     emailVerificationRateLimiter: passThrough,
     verificationEmailRateLimiter: passThrough,

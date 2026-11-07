@@ -128,6 +128,9 @@ export async function createTeam(
       message: `Team with team name ${team.teamName} already exists`,
     };
   }
+  if (await isJoinCodeTaken(team.joinCode)) {
+    return JOIN_CODE_TAKEN;
+  }
   try {
     const newTeam = new TeamModel({
       teamName: team.teamName,
@@ -159,6 +162,43 @@ export async function createTeam(
 }
 
 /**
+ * Join codes are matched without regard to letter case, as players type them,
+ * so they compare in this collation.
+ */
+const JOIN_CODE_COLLATION = { locale: "en", strength: 2 } as const;
+
+/**
+ * Says whether another team already has a join code, ignoring letter case.
+ * Codes must differ by more than case, since a player joins by the code alone.
+ * The database's unique index catches exact repeats, but not ones that differ
+ * only in case.
+ * @param joinCode the code
+ * @param exceptTeamName a team to leave out, such as the one being changed
+ * @returns true if one does
+ */
+async function isJoinCodeTaken(
+  joinCode: string,
+  exceptTeamName?: string
+): Promise<boolean> {
+  const others = await TeamModel.find({
+    joinCode: joinCode.trim(),
+    ...(exceptTeamName ? { teamName: { $ne: exceptTeamName } } : {}),
+  })
+    .collation(JOIN_CODE_COLLATION)
+    .limit(1)
+    .lean();
+  return others.length > 0;
+}
+
+/** The result when another team has the join code. */
+const JOIN_CODE_TAKEN = {
+  status: "error",
+  statusCode: 400,
+  reason: "already-exists",
+  message: "That join code is already in use",
+} as const;
+
+/**
  * Updates a team.
  * @param name the name of the team to update
  * @param teamData the data to update the team definition with
@@ -176,6 +216,9 @@ export async function updateTeam(
       reason: "not-found",
       message: `No team with team name ${name} found`,
     };
+  }
+  if (teamData.joinCode && (await isJoinCodeTaken(teamData.joinCode, name))) {
+    return JOIN_CODE_TAKEN;
   }
   foundTeam.displayName = teamData.displayName || foundTeam.displayName;
   foundTeam.joinCode = teamData.joinCode || foundTeam.joinCode;
@@ -324,6 +367,46 @@ export async function addUserToTeam(
     return unexpectedErrorResult("addUserToTeam", err);
   }
   return { status: "success", statusCode: 200 };
+}
+
+/**
+ * Adds a user to the team whose join code they give, as a player joins: they
+ * needn't know the team's name, nor see the other teams.
+ * @param userName the user to add
+ * @param joinCode the code, in any letter case, with any spaces around it
+ * @returns the team joined, or why it couldn't be
+ */
+export async function joinTeamByCode(
+  userName: string,
+  joinCode: string
+): Promise<TeamResult<{ teamName: string; displayName: string }>> {
+  const teams = await TeamModel.find({ joinCode: joinCode.trim() })
+    .collation(JOIN_CODE_COLLATION)
+    .limit(2)
+    .lean();
+  if (teams.length !== 1) {
+    return {
+      status: "error",
+      statusCode: 400,
+      reason: "wrong-join-code",
+      message:
+        teams.length === 0
+          ? "No team has that join code"
+          : "That join code matches more than one team; ask the puzzle master for the right one",
+    };
+  }
+  const [team] = teams;
+  const joined = await addUserToTeam(team!.teamName, userName, team!.joinCode);
+  if (joined.status === "error") {
+    return joined.reason === "already-exists"
+      ? { ...joined, message: `You're already on ${team!.displayName}` }
+      : joined;
+  }
+  return {
+    status: "success",
+    statusCode: 200,
+    data: { teamName: team!.teamName, displayName: team!.displayName },
+  };
 }
 
 /**

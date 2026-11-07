@@ -78,15 +78,18 @@ describe("playing a quest", () => {
     await expect($("h1=Your quests")).toBeDisplayed();
   });
 
-  it("joins a team with its join code", async () => {
+  it("joins a team with its join code alone", async () => {
     await browser.url(`/user/${player}`);
     await $("#join-team").click();
-    await $("#team-choice").selectByAttribute("value", teamName);
-    await $("#join-code").setValue(joinCode);
+    await expect($("#team-choice")).not.toExist();
+    await $("#join-code").setValue(joinCode.toUpperCase());
     await $("#join-team-confirm").click();
 
     await expect($(`[data-team-name="${teamName}"]`)).toHaveText(
       expect.stringContaining(teamDisplayName)
+    );
+    await expect($('#teams [role="status"]')).toHaveText(
+      `You joined ${teamDisplayName}.`
     );
   });
 
