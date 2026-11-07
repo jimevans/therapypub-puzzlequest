@@ -5,9 +5,18 @@ import { authenticateSession } from "../middleware/sessionAuthentication.js";
 
 const adminRouter = express.Router();
 
-// The React app's lists. Administrators' other pages are under /quest, /puzzle,
-// and /user, with the addresses they have always had.
-for (const page of ["/quests", "/puzzles", "/users", "/teams"]) {
+// The React app's administrators' screens, at the addresses they have always
+// had. The quest screens are still EJS, under /quest.
+const ADMIN_PAGES = [
+  "/quests",
+  "/puzzles",
+  "/users",
+  "/teams",
+  "/puzzle/new",
+  "/puzzle/:name",
+  "/puzzle/:name/edit",
+];
+for (const page of ADMIN_PAGES) {
   adminRouter.get(page, authenticateSession, requireAdmin, sendWebApp);
 }
 
