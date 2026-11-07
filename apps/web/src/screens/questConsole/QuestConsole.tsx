@@ -238,12 +238,7 @@ function Console({ quest }: { quest: Quest }) {
           </a>
         </li>
         <li>
-          {/* Reloads, because the editor isn't in this app yet. */}
-          <Link
-            id="edit-quest"
-            to={`/quest/${encodedName}/edit`}
-            reloadDocument
-          >
+          <Link id="edit-quest" to={`/quest/${encodedName}/edit`}>
             Edit
           </Link>
         </li>

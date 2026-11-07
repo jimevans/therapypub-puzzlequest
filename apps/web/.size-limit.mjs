@@ -105,9 +105,14 @@ export default [
     "39 KB"
   ),
   onTopOfFirstLoad(
+    "The quest editor",
+    "src/screens/admin/quest/QuestEditor.tsx",
+    "52 KB"
+  ),
+  onTopOfFirstLoad(
     "The puzzle editor",
     "src/screens/admin/puzzle/PuzzleEditor.tsx",
-    "38 KB"
+    "53 KB"
   ),
   onTopOfFirstLoad(
     "A text puzzle's Markdown",

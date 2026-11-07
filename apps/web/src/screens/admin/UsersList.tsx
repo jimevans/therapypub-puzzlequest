@@ -2,7 +2,6 @@ import type { Schemas } from "@puzzlequest/api-client";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { api, dataOrThrow } from "../../api";
-import { fetchAllPages } from "../../fetchAllPages";
 import { useSession } from "../../session";
 import { LinkButton } from "../../ui/LinkButton";
 import styles from "./Admin.module.css";
@@ -12,6 +11,7 @@ import {
   DeleteDialog,
   useDeletion,
 } from "./AdminList";
+import { allUsersQuery } from "./listQueries";
 
 type User = Schemas["User"];
 
@@ -20,13 +20,7 @@ const QUERY_KEY = ["users"];
 /** Every user. */
 export function UsersList() {
   const session = useSession();
-  const users = useQuery({
-    queryKey: QUERY_KEY,
-    queryFn: () =>
-      fetchAllPages(async (after) =>
-        dataOrThrow(await api.GET("/users", { params: { query: { after } } }))
-      ),
-  });
+  const users = useQuery(allUsersQuery);
   const flow = useDeletion<User>({
     queryKey: QUERY_KEY,
     remove: async ({ userName }) =>

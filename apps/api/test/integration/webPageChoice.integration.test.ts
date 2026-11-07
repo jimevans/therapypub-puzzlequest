@@ -1,5 +1,5 @@
-// Tests of who gets which page while admin screens are still EJS: the server
-// chooses by session. They use a small stand-in for the React app's build.
+// Tests of who gets which page: the server sends the React app, choosing by
+// session only who may have it. They use a small stand-in for the React app's build.
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -119,18 +119,6 @@ describe("a player", () => {
 
 describe("an administrator", () => {
   it.each([
-    ["/quest/new", "questEdit"],
-    ["/quest/trail/edit", "questEdit"],
-  ])("gets the EJS page at %s", async (page, script) => {
-    const response = await getPage(page, "admin");
-
-    expect(response.status).toBe(200);
-    expect(response.text).toContain(`src="/script/${script}.js"`);
-  });
-});
-
-describe("an administrator, who has no EJS page for it", () => {
-  it.each([
     "/quest/trail",
     "/quest/no-such-quest",
     "/quest/trail/puzzle/riddle",
@@ -150,6 +138,8 @@ const ADMIN_SCREENS = [
   "/puzzle/new",
   "/puzzle/riddle",
   "/puzzle/riddle/edit",
+  "/quest/new",
+  "/quest/trail/edit",
 ];
 
 describe("administrators' screens", () => {

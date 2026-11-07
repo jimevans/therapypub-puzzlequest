@@ -7,21 +7,12 @@ import {
   LIVE_UPDATES_CONNECTED,
   PASSWORD,
   api,
+  blockedByPolicy,
+  recordPolicyViolations,
   sessionToken,
   signIn,
   unique,
 } from "../support.js";
-
-/**
- * Selects what the Content Security Policy has blocked on the page, which
- * browser.addInitScript has been recording since before the page's own scripts.
- * @returns the blocked directives and addresses
- */
-async function blockedByPolicy(): Promise<string[]> {
-  return browser.execute(
-    () => (window as unknown as { blockedByPolicy: string[] }).blockedByPolicy
-  );
-}
 
 describe("the web app", () => {
   const userName = `web-${unique("").slice(1)}`;
@@ -33,14 +24,7 @@ describe("the web app", () => {
       email: `${userName}@example.com`,
       password: PASSWORD,
     });
-    await browser.addInitScript(() => {
-      const blocked: string[] = [];
-      (window as unknown as { blockedByPolicy: string[] }).blockedByPolicy =
-        blocked;
-      document.addEventListener("securitypolicyviolation", (event) => {
-        blocked.push(`${event.effectiveDirective}: ${event.blockedURI}`);
-      });
-    });
+    await recordPolicyViolations();
   });
 
   it("shows its fonts and styles, with nothing blocked", async () => {

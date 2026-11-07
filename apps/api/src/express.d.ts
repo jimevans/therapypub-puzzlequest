@@ -13,7 +13,5 @@ declare module "express-serve-static-core" {
      * by the authenticateSession middleware.
      */
     sessionToken?: string;
-    /** How the page should be rendered. Set by the useRenderMode middleware. */
-    renderMode?: import("./middleware/useRenderMode.js").RenderMode;
   }
 }

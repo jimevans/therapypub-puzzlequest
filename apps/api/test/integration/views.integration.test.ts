@@ -1,7 +1,6 @@
-// Renders every page through createApp(), as an anonymous visitor, an
-// administrator, or a player, so that each EJS view is rendered with the data
-// its controller really passes. Each page is identified by the module script
-// it loads (/script/<view>.js), or by its heading for the error page.
+// Requests pages through createApp(), as an anonymous visitor, an
+// administrator, or a player. The error page is the last EJS view; the rest
+// of the site is the React app (see webPageChoice.integration.test.ts).
 import type { Express } from "express";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
@@ -128,45 +127,6 @@ function getPage(path: string, account: string | null): request.Test {
   return pageRequest.set("Authorization", `Bearer ${sessions[account]}`);
 }
 
-// [description, path, account, view, text the page must contain]
-const PAGES: [string, string, string | null, string, string[]][] = [
-  ["new quest", "/quest/new", "admin", "questEdit", []],
-  [
-    "quest editor",
-    "/quest/running-quest/edit",
-    "admin",
-    "questEdit",
-    ["Running Quest", 'value="team-a" data-kind="team"'],
-  ],
-];
-
-describe.each(PAGES)("%s (%s)", (_description, path, account, view, texts) => {
-  it(`renders the ${view} view`, async () => {
-    const response = await getPage(path, account);
-
-    expect(response.status).toBe(200);
-    expect(response.type).toBe("text/html");
-    expect(response.text).toMatch(/^<!DOCTYPE html>/);
-    expect(response.text).toContain(`src="/script/${view}.js"`);
-    for (const text of texts) {
-      expect(response.text).toContain(text);
-    }
-  });
-
-  it("gives its inline scripts the Content Security Policy's nonce", async () => {
-    const response = await getPage(path, account);
-
-    const nonce = /'nonce-([^']+)'/.exec(
-      response.headers["content-security-policy"]
-    )?.[1];
-    expect(nonce).toBeDefined();
-    const inlineScripts = response.text.match(/<script(?![^>]*\ssrc=)[^>]*>/g);
-    for (const script of inlineScripts ?? []) {
-      expect(script).toBe(`<script nonce="${nonce}">`);
-    }
-  });
-});
-
 describe("a quest puzzle whose puzzle was deleted", () => {
   it("sends an anonymous visitor to sign in, and back to the page afterwards", async () => {
     const response = await getPage("/puzzle/text-puzzle?a=1&b=2", null);
@@ -219,13 +179,6 @@ describe("error page", () => {
       "player",
       403,
       "Forbidden",
-    ],
-    [
-      "the editor of a quest that does not exist",
-      "/quest/missing/edit",
-      "admin",
-      404,
-      "Not found",
     ],
   ])("renders for %s", async (_description, path, account, status, title) => {
     const response = await getPage(path, account);
