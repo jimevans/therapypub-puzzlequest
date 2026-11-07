@@ -250,7 +250,7 @@ export const userRoutes = [
       "Needs the current password, so only the user may do it. The user stays signed in on this device, and is signed out everywhere else.",
     tags: ["Passwords"],
     access: "self",
-    before: [RateLimiter.passwordRateLimiter],
+    before: [RateLimiter.passwordChangeRateLimiter],
     request: { params: userParams, body: changePasswordBody },
     responses: { 204: { description: "Changed." } },
     problems: [

@@ -58,6 +58,22 @@ vi.mock("../screens/account/EditProfile", () => ({
   EditProfile: () => <h1>Edit</h1>,
 }));
 
+vi.mock("../screens/admin/QuestsList", () => ({
+  QuestsList: () => <h1>Quests list</h1>,
+}));
+
+vi.mock("../screens/admin/PuzzlesList", () => ({
+  PuzzlesList: () => <h1>Puzzles list</h1>,
+}));
+
+vi.mock("../screens/admin/UsersList", () => ({
+  UsersList: () => <h1>Users list</h1>,
+}));
+
+vi.mock("../screens/admin/TeamsList", () => ({
+  TeamsList: () => <h1>Teams list</h1>,
+}));
+
 function renderAt(path: string) {
   const client = new QueryClient();
   const router = createMemoryRouter(createRoutes(client), {
@@ -99,6 +115,10 @@ describe("the routes", () => {
     ["/monitor/quest/trail/board", "The board"],
     ["/user/password/forgot", "Forgot"],
     ["/user/register", "Sign-up"],
+    ["/quests", "Quests list"],
+    ["/puzzles", "Puzzles list"],
+    ["/users", "Users list"],
+    ["/teams", "Teams list"],
     ["/user/player", "Profile"],
     ["/user/player/edit", "Edit"],
     ["/user/password/reset?token=abc", "Reset"],

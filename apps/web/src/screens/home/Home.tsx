@@ -1,9 +1,10 @@
 import type { Schemas } from "@puzzlequest/api-client";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router";
+import { Link, Navigate } from "react-router";
 import { api, dataOrThrow } from "../../api";
 import { ClockTime } from "../../quests/ClockTime";
-import { useSession } from "../../session";
+import { fetchAllPages } from "../../fetchAllPages";
+import { isAdministrator, useSession } from "../../session";
 import { Banner } from "../../ui/Banner";
 import { EmailReminder } from "../account/EmailReminder";
 import styles from "./Home.module.css";
@@ -12,19 +13,14 @@ import { Landing } from "./Landing";
 /** Starting or resetting a quest sends no live update, so this is how it shows. */
 const REFRESH_MS = 30_000;
 
-async function fetchQuests(userName: string) {
-  const quests: Schemas["QuestSummary"][] = [];
-  let after: string | undefined;
-  do {
-    const page = dataOrThrow(
+function fetchQuests(userName: string) {
+  return fetchAllPages(async (after) =>
+    dataOrThrow(
       await api.GET("/users/{userName}/quests", {
         params: { path: { userName }, query: { after } },
       })
-    );
-    quests.push(...page.items);
-    after = page.next ?? undefined;
-  } while (after);
-  return quests;
+    )
+  );
 }
 
 function QuestCard({ quest }: { quest: Schemas["QuestSummary"] }) {
@@ -42,19 +38,25 @@ function QuestCard({ quest }: { quest: Schemas["QuestSummary"] }) {
   );
 }
 
-/** The site's home: a player's quests, once started, or the landing page. */
+/**
+ * The site's home: a player's quests, once started; the landing page for anyone
+ * signed out; and the administrators' lists for them.
+ */
 export function Home() {
   const session = useSession();
   const user = session.data?.user;
   const quests = useQuery({
     queryKey: ["users", user?.userName, "quests"],
     queryFn: () => fetchQuests(user?.userName ?? ""),
-    enabled: Boolean(user),
+    enabled: Boolean(user) && !isAdministrator(user),
     refetchInterval: REFRESH_MS,
   });
 
   if (session.data === null) {
     return <Landing />;
+  }
+  if (isAdministrator(user)) {
+    return <Navigate to="/quests" replace />;
   }
 
   return (

@@ -28,6 +28,7 @@ vi.mock("../../src/middleware/rateLimiter.js", () => {
     loginRateLimiter: passThrough,
     loginAddressRateLimiter: passThrough,
     passwordRateLimiter: passThrough,
+    passwordChangeRateLimiter: passThrough,
     activationRateLimiter: passThrough,
     solutionRateLimiter: passThrough,
     emailVerificationRateLimiter: passThrough,
@@ -56,6 +57,7 @@ const { SessionModel } = await import("../../src/models/session.model.js");
 const QuestService = await import("../../src/services/quest.service.js");
 const { IndexRouter } = await import("../../src/routes/index.js");
 const { V1Router } = await import("../../src/api/v1/index.js");
+const { AdminRouter } = await import("../../src/routes/admin.js");
 const { PuzzleRouter } = await import("../../src/routes/puzzle.js");
 const { QuestRouter } = await import("../../src/routes/quest.js");
 const { UserRouter } = await import("../../src/routes/user.js");
@@ -63,6 +65,7 @@ const { UserRouter } = await import("../../src/routes/user.js");
 /** Where createApp mounts each router. */
 const MOUNTS: [string, Router][] = [
   ["", IndexRouter],
+  ["", AdminRouter],
   ["/api/v1", V1Router],
   ["/user", UserRouter],
   ["/puzzle", PuzzleRouter],
@@ -102,6 +105,10 @@ const TWILIO: Policy = ["deny", "deny", "deny", "deny"];
 /** [method, path as registered, policy] for every route. */
 const ROUTES: [string, string, Policy][] = [
   ["get", "/", PUBLIC],
+  ["get", "/quests", ADMIN],
+  ["get", "/puzzles", ADMIN],
+  ["get", "/users", ADMIN],
+  ["get", "/teams", ADMIN],
   ["get", "/logout", PUBLIC],
 
   ["get", "/api/v1/openapi.json", PUBLIC],

@@ -41,8 +41,6 @@ function toReactFor(qualifies: (authorizationLevel: number | null) => boolean) {
   };
 }
 
-const isNotAdministrator = (level: number | null) =>
-  level === null || level < ADMINISTRATOR;
 const isPlayer = (level: number | null) =>
   level !== null && level < ADMINISTRATOR;
 
@@ -79,7 +77,6 @@ export default defineConfig({
     // the API, uploaded media, and the pages not yet moved to React.
     proxy: {
       "/api": { ...toApiServer, ws: true },
-      "^/$": toReactFor(isNotAdministrator),
       "^/quest/(?!new$)[^/]+$": toReactFor(isPlayer),
       "^/quest/[^/]+/puzzle/[^/]+$": toReactFor((level) => level !== null),
       "^/user/(register|password/(forgot|reset)|email/verify)(\\?|$)":

@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { ApiError, api, dataOrThrow, messageOf } from "../../api";
-import { useSession } from "../../session";
+import { isAdministrator, useSession } from "../../session";
 import { Banner } from "../../ui/Banner";
 import { Button } from "../../ui/Button";
 import { LinkButton } from "../../ui/LinkButton";
@@ -9,11 +9,7 @@ import styles from "./Account.module.css";
 import { ChangePassword } from "./ChangePassword";
 import { EmailReminder } from "./EmailReminder";
 import { Teams } from "./Teams";
-import {
-  AUTHORIZATION_LEVELS,
-  formatPhone,
-  isAdministrator,
-} from "./accountForm";
+import { AUTHORIZATION_LEVELS, formatPhone } from "./accountForm";
 import { userQuery } from "./userQuery";
 
 /** For an administrator helping a user who can't sign in. */

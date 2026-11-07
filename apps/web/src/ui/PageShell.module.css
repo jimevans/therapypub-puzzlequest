@@ -43,3 +43,7 @@
   margin: 0 auto;
   padding: var(--space-5);
 }
+
+.wide {
+  max-width: var(--wide-page-width);
+}

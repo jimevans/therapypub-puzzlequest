@@ -93,6 +93,7 @@ export default [
     "src/screens/account/EditProfile.tsx",
     "34 KB"
   ),
+  onTopOfFirstLoad("A list", "src/screens/admin/TeamsList.tsx", "36 KB"),
   onTopOfFirstLoad(
     "A text puzzle's Markdown",
     "src/quests/PuzzleText.tsx",

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { api, dataOrThrow, messageOf } from "../../api";
+import { fetchAllPages } from "../../fetchAllPages";
 import { Banner } from "../../ui/Banner";
 import { Button } from "../../ui/Button";
 import { ConfirmDialog } from "../../ui/ConfirmDialog";
@@ -11,19 +12,6 @@ import styles from "./Account.module.css";
 import { userQuery } from "./userQuery";
 
 type TeamSummary = Schemas["TeamSummary"];
-
-async function fetchAllTeams() {
-  const teams: Schemas["Team"][] = [];
-  let after: string | undefined;
-  do {
-    const page = dataOrThrow(
-      await api.GET("/teams", { params: { query: { after } } })
-    );
-    teams.push(...page.items);
-    after = page.next ?? undefined;
-  } while (after);
-  return teams;
-}
 
 function JoinTeam({
   userName,
@@ -35,7 +23,13 @@ function JoinTeam({
   onDone: () => void;
 }) {
   const queryClient = useQueryClient();
-  const teams = useQuery({ queryKey: ["teams"], queryFn: fetchAllTeams });
+  const teams = useQuery({
+    queryKey: ["teams"],
+    queryFn: () =>
+      fetchAllPages(async (after) =>
+        dataOrThrow(await api.GET("/teams", { params: { query: { after } } }))
+      ),
+  });
   const { control, register, handleSubmit, setError } = useForm({
     defaultValues: { teamName: "", joinCode: "" },
   });

@@ -50,7 +50,24 @@ export const loginAddressRateLimiter = rateLimit({
 });
 
 /**
- * Limits password change, reset, and reset request attempts from a single client.
+ * Limits wrong guesses at a user's current password when changing it. It is
+ * keyed by user rather than by IP address, because players at a venue often
+ * share one network, and one player's mistakes mustn't lock out the others.
+ * Must run after authorization.
+ */
+export const passwordChangeRateLimiter = rateLimit({
+  windowMs: FIFTEEN_MINUTES,
+  limit: 5,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => req.user?.userName ?? "",
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  handler,
+});
+
+/**
+ * Limits password reset and reset request attempts from a single client. Whoever
+ * makes these isn't signed in, so the address is all there is to go on.
  */
 export const passwordRateLimiter = rateLimit({
   windowMs: FIFTEEN_MINUTES,

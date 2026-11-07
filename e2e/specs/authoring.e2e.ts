@@ -18,6 +18,7 @@ describe("authoring", () => {
   const textPuzzle = `text-${suffix}`;
   const imagePuzzle = `image-${suffix}`;
   const questName = `quest-${suffix}`;
+  const teamName = unique("listed-team");
   const player = `author-player-${suffix}`;
   const imageFile = path.join(tmpdir(), `${imagePuzzle}.png`);
   const uploadedFile = path.join(
@@ -107,6 +108,7 @@ describe("authoring", () => {
 
   it("lists the puzzles on the admin page", async () => {
     await browser.url("/");
+    await expect(browser).toHaveUrl(expect.stringContaining("/quests"));
     await $("#puzzles").click();
 
     await expect($(`a[href="/puzzle/${textPuzzle}"]`)).toExist();
@@ -137,12 +139,60 @@ describe("authoring", () => {
   });
 
   it("lists the quest on the admin page, with who it's assigned to", async () => {
-    await browser.url("/");
-    await $("#quests").click();
+    await browser.url("/quests");
 
     await expect($(`a[href="/quest/${questName}"]`)).toExist();
-    await expect(
-      $(`//td[@data-field-name="assignedTo"][.="${player} (user)"]`)
-    ).toExist();
+    await expect($(`[data-quest-name="${questName}"]`)).toHaveText(
+      expect.stringContaining(`${player} (user)`)
+    );
+  });
+
+  it("sets up a team in the page", async () => {
+    await $("#teams").click();
+    await $("#new-team").click();
+    await $("#team-name").setValue(teamName);
+    await $("#team-display-name").setValue("A Listed Team");
+    await $("#team-join-code").setValue(`${teamName}-code`);
+    await $("#save-team").click();
+    await expect($(`[data-team-name="${teamName}"]`)).toHaveText(
+      expect.stringContaining("A Listed Team")
+    );
+
+    await $('button[aria-label="Edit A Listed Team"]').click();
+    await $("#team-display-name").setValue("A Renamed Team");
+    await $("#save-team").click();
+    await expect($(`[data-team-name="${teamName}"]`)).toHaveText(
+      expect.stringContaining("A Renamed Team")
+    );
+  });
+
+  it("confirms deleting in the page, and can keep it", async () => {
+    await $('button[aria-label="Delete A Renamed Team"]').click();
+    await expect($("#delete-dialog")).toBeDisplayed();
+
+    await $("#delete-dialog").$("button=Keep it").click();
+    await expect($("#delete-dialog")).not.toBeDisplayed();
+    await expect($(`[data-team-name="${teamName}"]`)).toExist();
+
+    await $('button[aria-label="Delete A Renamed Team"]').click();
+    await $("#delete-dialog").$("button=Delete").click();
+    await expect($(`[data-team-name="${teamName}"]`)).not.toExist();
+  });
+
+  it("explains why a puzzle a quest uses can't be deleted", async () => {
+    await $("#puzzles").click();
+    await $(`[data-puzzle-name="${textPuzzle}"]`).$("button=Delete").click();
+    await $("#delete-dialog").$("button=Delete").click();
+
+    await expect($('[role="alert"]')).toBeDisplayed();
+    await expect($(`[data-puzzle-name="${textPuzzle}"]`)).toExist();
+  });
+
+  it("deletes a quest", async () => {
+    await $("#quests").click();
+    await $(`[data-quest-name="${questName}"]`).$("button=Delete").click();
+    await $("#delete-dialog").$("button=Delete").click();
+
+    await expect($(`[data-quest-name="${questName}"]`)).not.toExist();
   });
 });
