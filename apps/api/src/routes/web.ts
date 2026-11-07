@@ -5,11 +5,9 @@ import { sendWebApp } from "../controllers/web.controller.js";
 import { webDirectory } from "../paths.js";
 
 /**
- * The pages the React app shows to everyone. Moving a screen to React adds its
- * URL here and deletes its EJS route, so every link keeps working. Where admin
- * screens are still EJS, the page's own controller chooses by session instead,
- * calling sendWebApp for players (see index.controller.ts and
- * quest.controller.ts).
+ * The pages the React app shows to everyone. Pages for only some people are in
+ * their own routers, which check first (admin.ts, quest.ts, user.ts). Any other
+ * address gets the app with a 404 status (see createApp.ts).
  */
 const WEB_PAGES = [
   "/login",

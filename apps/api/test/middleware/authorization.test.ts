@@ -94,9 +94,10 @@ describe("for pages", () => {
 
     expect(passed).toBe(false);
     expect(res.statusCode).toBe(403);
-    expect(res.render).toHaveBeenCalledWith("error", {
-      errorTitle: "Forbidden",
-      errorDetails: "User player is not authorized to view this page",
-    });
+    expect(res.type).toHaveBeenCalledWith("html");
+    expect(res.body).toContain("<h1>Forbidden</h1>");
+    expect(res.body).toContain(
+      "<p>User player is not authorized to view this page</p>"
+    );
   });
 });

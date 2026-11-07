@@ -175,21 +175,14 @@ describe("the Content Security Policy", () => {
     );
   }
 
-  it("allows only this site's scripts and the page's own inline scripts", async () => {
+  it("allows only this site's script files, and no inline scripts", async () => {
     const policy = policyOf(await request(app).get("/"));
 
-    expect(policy["script-src"]).toMatch(/^'self' 'nonce-[A-Za-z0-9+/=]+'$/);
+    expect(policy["script-src"]).toBe("'self'");
     expect(policy["script-src-attr"]).toBe("'none'");
     expect(policy["object-src"]).toBe("'none'");
     expect(policy["frame-ancestors"]).toBe("'none'");
     expect(policy["default-src"]).toBe("'self'");
-  });
-
-  it("uses a new nonce for every response", async () => {
-    const first = policyOf(await request(app).get("/"))["script-src"];
-    const second = policyOf(await request(app).get("/"))["script-src"];
-
-    expect(first).not.toBe(second);
   });
 
   it("allows live updates over this site's websocket", async () => {

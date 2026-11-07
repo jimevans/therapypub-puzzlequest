@@ -28,7 +28,11 @@ export function createMockResponse(): MockResponse {
   res.redirect = vi.fn(() => res);
   res.send = vi.fn((body?: unknown) => {
     res.sendCount++;
-    res.body = typeof body === "string" ? JSON.parse(body) : body;
+    // JSON is parsed for checking; anything else, such as a page, stays text.
+    res.body =
+      typeof body === "string" && /^\s*[[{]/.test(body)
+        ? JSON.parse(body)
+        : body;
     return res;
   });
   res.json = vi.fn((body?: unknown) => {
@@ -36,7 +40,6 @@ export function createMockResponse(): MockResponse {
     res.body = body;
     return res;
   });
-  res.render = vi.fn(() => res) as unknown as Response["render"];
   res.set = vi.fn(() => res);
   res.type = vi.fn(() => res);
   res.cookie = vi.fn(() => res);

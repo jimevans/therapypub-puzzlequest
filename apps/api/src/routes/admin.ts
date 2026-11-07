@@ -6,7 +6,7 @@ import { authenticateSession } from "../middleware/sessionAuthentication.js";
 const adminRouter = express.Router();
 
 // The React app's administrators' screens, at the addresses they have always
-// had. The quest screens are still EJS, under /quest.
+// had. The quest editor's are in quest.ts, beside the quest's page.
 const ADMIN_PAGES = [
   "/quests",
   "/puzzles",

@@ -203,6 +203,19 @@ describe("following a quest", () => {
   });
 });
 
+describe("an address with no page", () => {
+  it.each([undefined, "player", "admin"])(
+    "gets the React app with a 404, so it can say so (%s)",
+    async (account) => {
+      const response = await getPage("/no-such-page/here", account);
+
+      expect(response.status).toBe(404);
+      expect(response.text).toBe(REACT_PAGE);
+      expect(response.headers["cache-control"]).toBe("no-cache");
+    }
+  );
+});
+
 describe("an anonymous visitor", () => {
   it("gets the React app at the site's root, which shows the landing page", async () => {
     const response = await getPage("/");

@@ -67,18 +67,21 @@ describe("errorHandler", () => {
     return { method: "GET", originalUrl } as Request;
   }
 
-  it("responds with plain text outside the API", () => {
+  it("responds with the error page outside the API", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const res = createMockResponse();
     res.type = vi.fn(() => res);
-    // The shared mock parses bodies as JSON; this one is plain text.
+    // The shared mock parses bodies as JSON; this one is HTML.
     res.send = vi.fn(() => res);
 
     errorHandler(new Error("boom"), createRequest("/quest/q1"), res, vi.fn());
 
     expect(res.statusCode).toBe(500);
-    expect(res.type).toHaveBeenCalledWith("text");
-    expect(res.send).toHaveBeenCalledWith("An unexpected error occurred");
+    expect(res.type).toHaveBeenCalledWith("html");
+    const page = vi.mocked(res.send).mock.calls[0]?.[0] as string;
+    expect(page).toContain("<h1>Internal Server Error</h1>");
+    expect(page).toContain("<p>An unexpected error occurred</p>");
+    expect(page).not.toContain("boom");
   });
 
   it("hides the message of a client error that is not meant to be shown", () => {

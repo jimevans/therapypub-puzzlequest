@@ -1,6 +1,7 @@
 // Requests pages through createApp(), as an anonymous visitor, an
-// administrator, or a player. The error page is the last EJS view; the rest
-// of the site is the React app (see webPageChoice.integration.test.ts).
+// administrator, or a player, for the server's own error page, which needs no
+// React. The rest of the site is the React app (see
+// webPageChoice.integration.test.ts).
 import type { Express } from "express";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
@@ -186,5 +187,30 @@ describe("error page", () => {
     expect(response.status).toBe(status);
     expect(response.type).toBe("text/html");
     expect(response.text).toContain(`<h1>${title}</h1>`);
+  });
+
+  it("works under the Content Security Policy: no inline scripts or styles", async () => {
+    const response = await getPage("/user/other", "player");
+
+    expect(response.text).not.toMatch(/<script|<style|\sstyle=/);
+    expect(response.text).toContain('href="/style/error.css"');
+    expect(response.headers["content-security-policy"]).toContain(
+      "script-src 'self'"
+    );
+  });
+
+  it("is shown for a missing file", async () => {
+    const response = await getPage("/image/missing.png", null);
+
+    expect(response.status).toBe(404);
+    expect(response.type).toBe("text/html");
+    expect(response.text).toContain("<h1>Not found</h1>");
+  });
+
+  it("is shown for an address under /api that isn't the API", async () => {
+    const response = await getPage("/api/v2/quests", null);
+
+    expect(response.status).toBe(404);
+    expect(response.text).toContain("<h1>Not found</h1>");
   });
 });

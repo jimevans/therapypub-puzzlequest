@@ -47,6 +47,13 @@ describe("the web app", () => {
     expect(await blockedByPolicy()).toEqual([]);
   });
 
+  it("says so at an address with no page, with nothing blocked", async () => {
+    await browser.url("/no-such-page");
+
+    await expect($("h1=Page not found")).toBeDisplayed();
+    expect(await blockedByPolicy()).toEqual([]);
+  });
+
   it("sends a visitor to sign in, and back to the page they wanted", async () => {
     await browser.url(`/user/${userName}`);
     await expect($("#login")).toBeDisplayed();
