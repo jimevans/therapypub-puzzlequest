@@ -143,6 +143,15 @@ export class User {
   }
 
   /**
+   * Gets a value indicating whether the user may follow every quest as staff
+   * do. Administrators may.
+   * @returns true if so; otherwise, false
+   */
+  isStaff(): boolean {
+    return this.authorizationLevel >= AuthorizationLevel.STAFF;
+  }
+
+  /**
    * Gets a value indicating whether the current user has the specified user
    * name.
    * @param userName the user name to check
@@ -406,7 +415,7 @@ export async function updateUser(
       ? foundUser.sms
       : userData.allowSmsMessages;
   foundUser.authorizationLevel =
-    userData.authorizationLevel || foundUser.authorizationLevel;
+    userData.authorizationLevel ?? foundUser.authorizationLevel;
   // A new password, or a change to what the user may do, signs them out
   // everywhere, so no session goes on with the old password or permissions.
   const endSessions =

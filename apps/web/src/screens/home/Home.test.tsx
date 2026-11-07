@@ -154,6 +154,23 @@ describe("Home", () => {
     );
   });
 
+  it("shows staff every quest, and fetches no quests of theirs", async () => {
+    const get = apiAnswers(
+      { ...PLAYER, authorizationLevel: 5 },
+      { items: [], next: null }
+    );
+    show();
+
+    expect(
+      await screen.findByRole("heading", { name: "Quests" })
+    ).toBeVisible();
+    expect(get).toHaveBeenCalledWith("/staff/quests", expect.anything());
+    expect(get).not.toHaveBeenCalledWith(
+      "/users/{userName}/quests",
+      expect.anything()
+    );
+  });
+
   it("shows the landing page to anyone signed out", async () => {
     apiAnswers(null);
     show();

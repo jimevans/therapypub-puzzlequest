@@ -12,8 +12,8 @@ export interface AccountFormValues {
 
 /** The authorization levels an administrator can choose. */
 export const AUTHORIZATION_LEVELS = [
-  { value: 0, label: "Guest" },
-  { value: 1, label: "Authorized user" },
+  { value: 1, label: "Player" },
+  { value: 5, label: "Staff" },
   { value: 10, label: "Administrator" },
 ];
 

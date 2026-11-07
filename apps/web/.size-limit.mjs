@@ -99,6 +99,12 @@ export default [
     "src/screens/admin/puzzle/PuzzleDetails.tsx",
     "4 KB"
   ),
+  onTopOfFirstLoad("Staff's home", "src/screens/staff/StaffHome.tsx", "3 KB"),
+  onTopOfFirstLoad(
+    "A quest, as staff see it",
+    "src/screens/staff/StaffQuest.tsx",
+    "4 KB"
+  ),
   onTopOfFirstLoad(
     "The quest console",
     "src/screens/questConsole/QuestConsole.tsx",

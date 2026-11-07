@@ -1,10 +1,13 @@
 import { type InferSchemaType, Schema, model } from "mongoose";
 import { organizationField } from "./organization.model.js";
 
-/** How much a user is allowed to do. */
+/**
+ * How much a user is allowed to do. Players play; staff also follow every
+ * quest from the stops they run; administrators do everything.
+ */
 export const AuthorizationLevel = {
-  GUEST: 0,
   USER: 1,
+  STAFF: 5,
   ADMIN: 10,
 } as const;
 export type AuthorizationLevel =
@@ -47,7 +50,7 @@ const userSchema = new Schema({
   /** The authorization level of the user (see AuthorizationLevel). */
   authorizationLevel: {
     type: Number,
-    default: 0,
+    default: AuthorizationLevel.USER,
   },
   /** When the password was last changed, if ever, for the record. */
   passwordChangedAt: {
@@ -66,10 +69,10 @@ const userSchema = new Schema({
 userSchema.virtual("authorizationLevelDescription").get(function () {
   if (this.authorizationLevel >= AuthorizationLevel.ADMIN) {
     return "Administrator";
-  } else if (this.authorizationLevel >= AuthorizationLevel.USER) {
-    return "Authorized user";
+  } else if (this.authorizationLevel >= AuthorizationLevel.STAFF) {
+    return "Staff";
   }
-  return "Guest";
+  return "Player";
 });
 
 userSchema.set("toJSON", { virtuals: true });

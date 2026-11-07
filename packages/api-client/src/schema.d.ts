@@ -756,6 +756,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/staff/quests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List quests for staff
+         * @description Every quest, with who it's for and how it's going, for staff to choose one to follow.
+         */
+        get: operations["listStaffQuests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quests/{name}/staff-view": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Follow a quest as staff
+         * @description Every stop of the quest, in order, whether or not the players have reached it, with its live status and times. No solutions, activation codes, or hint text.
+         */
+        get: operations["getStaffQuest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -795,7 +835,7 @@ export interface components {
             phone: string;
             /** @description True if the user accepts text messages. */
             sms: boolean;
-            /** @description What the user may do: 1 for a player, 10 for an administrator. */
+            /** @description What the user may do: 1 for a player, 5 for staff, 10 for an administrator. */
             authorizationLevel: number;
             /** @description The teams the user is a member of, when getting one user. */
             teams?: components["schemas"]["TeamSummary"][];
@@ -1193,6 +1233,125 @@ export interface components {
                 /** @description Null until the puzzle is completed. */
                 solutionText: string | null;
             };
+        };
+        StaffQuestSummary: {
+            name: string;
+            displayName: string;
+            assignee: {
+                /** @enum {string} */
+                kind: "user" | "team";
+                /** @description Missing if the user or team has been deleted. */
+                name?: string;
+                displayName?: string;
+            };
+            /** @description 0 not started, 1 in progress, 2 completed. */
+            status: number;
+            statusDescription: string;
+            paused: boolean;
+            progress: {
+                /**
+                 * Format: date-time
+                 * @description When the clock started.
+                 */
+                startTime?: string;
+                /**
+                 * Format: date-time
+                 * @description When the clock stopped.
+                 */
+                endTime?: string;
+                /** @description True while the clock runs: started, not stopped or paused. */
+                running: boolean;
+                /**
+                 * Format: date-time
+                 * @description While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.
+                 */
+                clockStart?: string;
+                /** @description Milliseconds on the clock, leaving out paused time. */
+                elapsedMs: number;
+                /** @description The revealed hints' time penalties, in milliseconds. */
+                penaltyMs: number;
+                /** @description The score: elapsed time plus penalties. Lower is better. */
+                totalMs: number;
+            };
+        };
+        StaffQuest: {
+            name: string;
+            displayName: string;
+            assignee: {
+                /** @enum {string} */
+                kind: "user" | "team";
+                /** @description Missing if the user or team has been deleted. */
+                name?: string;
+                displayName?: string;
+            };
+            /** @description 0 not started, 1 in progress, 2 completed. */
+            status: number;
+            statusDescription: string;
+            paused: boolean;
+            progress: {
+                /**
+                 * Format: date-time
+                 * @description When the clock started.
+                 */
+                startTime?: string;
+                /**
+                 * Format: date-time
+                 * @description When the clock stopped.
+                 */
+                endTime?: string;
+                /** @description True while the clock runs: started, not stopped or paused. */
+                running: boolean;
+                /**
+                 * Format: date-time
+                 * @description While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.
+                 */
+                clockStart?: string;
+                /** @description Milliseconds on the clock, leaving out paused time. */
+                elapsedMs: number;
+                /** @description The revealed hints' time penalties, in milliseconds. */
+                penaltyMs: number;
+                /** @description The score: elapsed time plus penalties. Lower is better. */
+                totalMs: number;
+                puzzles: {
+                    puzzleName: string;
+                    /**
+                     * Format: date-time
+                     * @description When the clock started.
+                     */
+                    startTime?: string;
+                    /**
+                     * Format: date-time
+                     * @description When the clock stopped.
+                     */
+                    endTime?: string;
+                    /** @description True while the clock runs: started, not stopped or paused. */
+                    running: boolean;
+                    /**
+                     * Format: date-time
+                     * @description While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.
+                     */
+                    clockStart?: string;
+                    /** @description Milliseconds on the clock, leaving out paused time. */
+                    elapsedMs: number;
+                    /** @description The revealed hints' time penalties, in milliseconds. */
+                    penaltyMs: number;
+                    /** @description The score: elapsed time plus penalties. Lower is better. */
+                    totalMs: number;
+                }[];
+            };
+            puzzles: {
+                name: string;
+                displayName: string;
+                /** @description 0 not reached, 1 awaiting activation, 2 in progress, 3 completed. */
+                status: number;
+                statusDescription: string;
+                skipped: boolean;
+                hintsRevealed: number;
+                hintCount: number;
+                activationTime: string | null;
+                startTime: string | null;
+                endTime: string | null;
+            }[];
         };
         /** @description A message from the live-update websocket, /api/v1/updates, to a client: which kind is in its message field. */
         LiveUpdate: {
@@ -4681,6 +4840,131 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SpectatorPuzzle"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listStaffQuests: {
+        parameters: {
+            query?: {
+                /** @description How many items to return, from 1 to 200. */
+                limit?: number;
+                /** @description Where the page starts: the next value of the page before. Leave it out for the first page. */
+                after?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of quests. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description The page's items. */
+                        items: components["schemas"]["StaffQuestSummary"][];
+                        /** @description The cursor for the next page, to send as after; null on the last page. */
+                        next: string | null;
+                    };
+                };
+            };
+            /** @description /problems/invalid-request: The request isn't valid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/forbidden: Not allowed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getStaffQuest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The quest's name. */
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The quest. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffQuest"];
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/forbidden: Not allowed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description /problems/not-found: Not found. */

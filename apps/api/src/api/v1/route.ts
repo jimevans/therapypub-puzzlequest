@@ -6,6 +6,7 @@ import type { Request, RequestHandler, Response, Router } from "express";
 import type { z } from "zod";
 import {
   requireAdmin,
+  requireStaff,
   requireSelf,
   requireSelfOrAdmin,
   requireUser,
@@ -18,16 +19,19 @@ import { Problems, type ProblemType } from "../problems.js";
  * Who may use a route:
  * - public: anyone, signed in or not;
  * - signedIn: any signed-in user;
+ * - staff: staff and administrators;
  * - admin: administrators;
  * - self: only the user named by the {userName} path parameter;
  * - selfOrAdmin: that user, and administrators.
  */
-export type Access = "public" | "signedIn" | "admin" | "self" | "selfOrAdmin";
+export type Access =
+  "public" | "signedIn" | "staff" | "admin" | "self" | "selfOrAdmin";
 
 /** The middleware that enforces each access rule. */
 const ACCESS_MIDDLEWARE: Record<Access, RequestHandler[]> = {
   public: [],
   signedIn: [requireUser],
+  staff: [requireStaff],
   admin: [requireAdmin],
   self: [requireSelf],
   selfOrAdmin: [requireSelfOrAdmin],

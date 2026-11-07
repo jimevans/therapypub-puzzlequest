@@ -32,3 +32,14 @@ export function isAdministrator(user?: {
 }): boolean {
   return (user?.authorizationLevel ?? 0) >= 10;
 }
+
+/**
+ * Says whether a user is staff: someone who follows every quest from the stops,
+ * without running them. Administrators aren't counted, since they have more.
+ * @param user the user, if any
+ * @returns true if so
+ */
+export function isStaff(user?: { authorizationLevel: number }): boolean {
+  const level = user?.authorizationLevel ?? 0;
+  return level >= 5 && level < 10;
+}

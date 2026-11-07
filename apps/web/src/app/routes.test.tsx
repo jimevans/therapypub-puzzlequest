@@ -26,6 +26,10 @@ vi.mock("../screens/admin/puzzle/PuzzleDetails", () => ({
   PuzzleDetails: () => <h1>Puzzle details</h1>,
 }));
 
+vi.mock("../screens/staff/StaffQuest", () => ({
+  default: () => <h1>The staff view</h1>,
+}));
+
 vi.mock("../screens/admin/quest/QuestEditor", () => ({
   QuestEditor: () => <h1>Quest editor</h1>,
 }));
@@ -209,6 +213,21 @@ describe("the routes", () => {
     expect(
       screen.queryByRole("heading", { name: "The quest screen" })
     ).not.toBeInTheDocument();
+  });
+
+  it("show staff their view at a quest's address", async () => {
+    vi.mocked(api.GET).mockImplementation((async (path: string) =>
+      path === "/sessions/current"
+        ? {
+            data: { user: { userName: "helper", authorizationLevel: 5 } },
+            response: new Response(null, { status: 200 }),
+          }
+        : { response: new Response("{}", { status: 404 }) }) as never);
+    renderAt("/quest/trail");
+
+    expect(
+      await screen.findByRole("heading", { name: "The staff view" })
+    ).toBeVisible();
   });
 
   it("show the board without the frame of the other pages", async () => {

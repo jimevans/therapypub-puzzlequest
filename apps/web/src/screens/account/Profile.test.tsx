@@ -333,7 +333,7 @@ describe("a profile", () => {
       .mockResolvedValue(ok(undefined, 204) as never);
     show("/user/player");
 
-    expect(await screen.findByText("Authorized user")).toBeVisible();
+    expect(await screen.findByText("Player")).toBeVisible();
     expect(
       screen.queryByRole("heading", { name: "Change password" })
     ).not.toBeInTheDocument();
