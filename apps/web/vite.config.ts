@@ -50,6 +50,11 @@ export default defineConfig({
     // Inlined files would be data: URLs, which the Content Security Policy
     // doesn't allow for fonts.
     assetsInlineLimit: 0,
+    // esbuild, rather than Vite's default, Lightning CSS. Since 7 November
+    // 2026, Lightning CSS's Linux library fails to load on the host, which
+    // stops the deployment's build; esbuild's Linux program needs nothing from
+    // the host's system libraries.
+    cssMinify: "esbuild",
     // Lists what each source file loads, for the size budgets (.size-limit.mjs).
     manifest: true,
     rolldownOptions: {
