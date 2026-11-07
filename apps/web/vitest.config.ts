@@ -11,7 +11,9 @@ export default mergeConfig(
       coverage: {
         provider: "v8",
         include: ["src/**/*.{ts,tsx}"],
-        exclude: ["src/main.tsx", "src/test/**"],
+        // The service worker runs in browsers' worker, not here: the browser
+        // tests cover it, and its decisions are tested in routing.test.ts.
+        exclude: ["src/main.tsx", "src/test/**", "src/serviceWorker/sw.ts"],
       },
     },
   })

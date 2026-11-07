@@ -27,6 +27,8 @@ paths.webDirectory = path.join(temporaryDirectory, "built");
 mkdirSync(path.join(paths.webDirectory, "assets"), { recursive: true });
 writeFileSync(path.join(paths.webDirectory, "index.html"), PAGE);
 writeFileSync(path.join(paths.webDirectory, "assets", "a.js"), LARGE_SCRIPT);
+const WORKER = "const PUZZLEQUEST_BUILD = {};";
+writeFileSync(path.join(paths.webDirectory, "sw.js"), WORKER);
 
 const { createApp } = await import("../../src/createApp.js");
 const app = createApp();
@@ -94,6 +96,15 @@ describe("the web app", () => {
     expect(response.text).not.toBe(PAGE);
   });
 
+  it("serves its service worker, which browsers must check for changes", async () => {
+    const response = await request(app).get("/sw.js");
+
+    expect(response.status).toBe(200);
+    expect(response.type).toBe("text/javascript");
+    expect(response.headers["cache-control"]).toBe("no-cache");
+    expect(response.text).toBe(WORKER);
+  });
+
   describe("before it has been built", () => {
     const built = paths.webDirectory;
 
@@ -110,6 +121,12 @@ describe("the web app", () => {
 
       expect(response.status).toBe(503);
       expect(response.text).toBe("The web app hasn't been built.");
+    });
+
+    it("has no service worker", async () => {
+      const response = await request(createApp()).get("/sw.js");
+
+      expect(response.status).toBe(404);
     });
   });
 });

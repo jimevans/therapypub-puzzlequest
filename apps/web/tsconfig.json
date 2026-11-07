@@ -14,5 +14,8 @@
     "src/**/*.tsx",
     "vite.config.ts",
     "vitest.config.ts"
-  ]
+  ],
+  // The service worker runs where there's no page, so it's checked with its
+  // own settings: see tsconfig.sw.json.
+  "exclude": ["src/serviceWorker/sw.ts"]
 }

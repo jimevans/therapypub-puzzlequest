@@ -126,6 +126,8 @@ npm run test:e2e
 
 These drive the main journeys through the real pages in Chrome and Firefox, with [WebdriverIO](https://webdriver.io/) over WebDriver BiDi: signing up, joining a team, playing a quest from the first call to the last puzzle with a spectator following along, authoring puzzles and quests, and resetting a password. They build the application and run it on an in-memory database, without reading `apps/api/.env`, so they can't send real email or text messages. Both browsers must be installed; WebdriverIO downloads the drivers. `E2E_BROWSER=chrome` or `E2E_BROWSER=firefox` runs just one. The camera is refused in those sessions, so they use the fall-back to typing a code; `e2e/camera-specs` runs in a separate Chrome session whose fake camera shows a QR code, to test scanning.
 
+Chrome runs every spec with the service worker. Firefox runs them without service workers, apart from `specs/serviceWorker.e2e.ts`, which has a Firefox session of its own: on CI's Linux machines, WebdriverIO waits forever for the network record of some page loads the worker answers in Firefox, though the pages load. To run Firefox tests with a particular version, download it (`npx @puppeteer/browsers install firefox@159.0`) and set `E2E_FIREFOX_BINARY` to its program.
+
 ## Repository layout
 
 This is an [npm workspaces](https://docs.npmjs.com/cli/using-npm/workspaces) monorepo with one lockfile. Run `npm ci` and the `npm run` commands from the repository's root.
@@ -227,6 +229,41 @@ make npm skip the development dependencies; that's why the install needs
 `--include=dev`. npm 11 warns that it skipped some packages' install scripts;
 that's expected, because bcrypt ships prebuilt binaries and the other scripts
 only matter for tests.
+
+### The service worker
+
+Built copies of the web app register a service worker (`/sw.js`, from
+[apps/web/src/serviceWorker/sw.ts](apps/web/src/serviceWorker/sw.ts)), which
+answers repeat visits from a copy of the app's page and built files kept in the
+browser, so pages open at once. Each visit refreshes the copy, so a deployment
+reaches a browser on its next page load after the one that fetched it. The API,
+signing out, uploaded media, the server's own files, the emailed-link pages and
+the administrators' screens always come from the server. Which requests it
+answers is decided in
+[apps/web/src/serviceWorker/routing.ts](apps/web/src/serviceWorker/routing.ts).
+
+To turn it off for everyone, make `sw.ts` unregister itself and delete what it
+kept, deploy, and leave that in place for a while, since browsers keep using an
+installed worker until they fetch the new `sw.js`:
+
+```ts
+/// <reference lib="webworker" />
+declare const self: ServiceWorkerGlobalScope;
+self.addEventListener("install", () => void self.skipWaiting());
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      for (const name of await caches.keys()) {
+        await caches.delete(name);
+      }
+      await self.registration.unregister();
+    })()
+  );
+});
+```
+
+Also remove `registerServiceWorker()` from
+[apps/web/src/main.tsx](apps/web/src/main.tsx), so browsers don't install it again.
 
 ## Continuous integration
 

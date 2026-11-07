@@ -1,0 +1,13 @@
+{
+  // The service worker, which runs without a page: it has the worker's
+  // globals, not the page's.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["es2023", "webworker"],
+    "types": [],
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src/serviceWorker/sw.ts"]
+}

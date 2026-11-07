@@ -10,7 +10,7 @@
     "size": "size-limit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "typecheck": "node ../../node_modules/typescript-native/bin/tsc -p ."
+    "typecheck": "node ../../node_modules/typescript-native/bin/tsc -p . && node ../../node_modules/typescript-native/bin/tsc -p tsconfig.sw.json"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -41,6 +41,7 @@
     "@vitest/coverage-v8": "^5.0.5",
     "jsdom": "^31.0.0",
     "qrcode": "^1.5.4",
+    "rolldown": "~1.2.16",
     "size-limit": "^14.3.0",
     "vite": "^8.3.6",
     "vitest": "^5.0.5"

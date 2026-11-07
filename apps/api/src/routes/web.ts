@@ -37,6 +37,21 @@ webRouter.use(
   }
 );
 
+// The service worker. Browsers check it for a new version on each visit, so
+// they must always ask, and it's served from the site's root, so that it may
+// answer for every page.
+webRouter.get("/sw.js", (req, res) => {
+  res.sendFile(
+    "sw.js",
+    { root: webDirectory, headers: { "Cache-Control": "no-cache" } },
+    (error) => {
+      if (error && !res.headersSent) {
+        res.sendStatus(404);
+      }
+    }
+  );
+});
+
 webRouter.get(WEB_PAGES, sendWebApp);
 
 webRouter.get(WEB_PAGES_WITH_TOKENS, (req, res) => {
