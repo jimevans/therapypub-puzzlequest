@@ -13,9 +13,10 @@ describe("an administrator creating a user", () => {
   it("stays signed in as themselves", async () => {
     const created = `made-${unique("").slice(1)}`;
     await signIn(ADMIN);
-    await browser.waitUntil(
-      async () => !(await browser.getUrl()).includes("/login")
-    );
+    // Signing in lands on the home page, which then sends an administrator on
+    // to the lists. Opening another page before that redirect happens can be
+    // undone by it, as Firefox does.
+    await expect($("#quests")).toExist();
 
     await browser.url("/user/register");
     await $("#user-name").setValue(created);
