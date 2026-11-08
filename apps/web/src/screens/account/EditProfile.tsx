@@ -92,7 +92,7 @@ function EditForm({
           id="save-profile"
           type="submit"
           variant="primary"
-          isDisabled={save.isPending}
+          isPending={save.isPending}
         >
           Save
         </Button>

@@ -85,7 +85,7 @@ export function ResetPassword() {
               id="reset-password"
               type="submit"
               variant="primary"
-              isDisabled={reset.isPending}
+              isPending={reset.isPending}
             >
               Reset password
             </Button>

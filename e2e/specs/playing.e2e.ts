@@ -137,6 +137,9 @@ describe("playing a quest", () => {
     await $("#activate").click();
 
     await expect($("#guess")).toBeDisplayed();
+    // Screen readers are told what happened (where focus goes is checked in
+    // web.e2e.ts, in a single window).
+    await expect($("[data-announcement]")).toHaveText("The puzzle is started.");
     await expect($("#puzzle-content strong")).toHaveText("keys");
   });
 

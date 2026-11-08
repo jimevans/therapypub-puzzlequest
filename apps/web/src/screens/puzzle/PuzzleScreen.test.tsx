@@ -270,7 +270,9 @@ describe("PuzzleScreen", () => {
       expect(
         screen.getByRole("button", { name: "Start this puzzle" })
       ).toBeDisabled();
-      expect(screen.getByRole("status")).toHaveTextContent("Paused");
+      expect(
+        screen.getByText(/^Paused by the puzzle master/)
+      ).toHaveTextContent("Paused");
     });
   });
 
@@ -510,7 +512,9 @@ describe("PuzzleScreen", () => {
       expect(
         screen.getByRole("button", { name: /Reveal next hint/ })
       ).toBeDisabled();
-      expect(screen.getByRole("status")).toHaveTextContent("Paused");
+      expect(
+        screen.getByText(/^Paused by the puzzle master/)
+      ).toHaveTextContent("Paused");
     });
   });
 

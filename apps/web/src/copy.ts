@@ -3,13 +3,18 @@
 // not be. Everything else calls these things steps, in neutral terms, so that
 // changing the wording means changing only this file.
 
+/** What a step of a quest is called, by its place in the quest. */
+const stepLabel = (stepNumber: number) => `Stop ${stepNumber}`;
+
 export const copy = {
-  /** What a step of a quest is called, by its place in the quest. */
-  stepLabel: (stepNumber: number) => `Stop ${stepNumber}`,
+  stepLabel,
   /** Describes the list of steps reached, for screen readers. */
   stepsReached: "Stops reached",
   /** Says that the quest is over. */
   questFinished: "End of the line",
   /** Goes on to the step just reached. */
   goToNextStep: (displayName: string) => `On to ${displayName}`,
+  /** Tells screen readers a step has been reached. */
+  stepReached: (stepNumber: number, displayName: string) =>
+    `${stepLabel(stepNumber)} reached: ${displayName}.`,
 };

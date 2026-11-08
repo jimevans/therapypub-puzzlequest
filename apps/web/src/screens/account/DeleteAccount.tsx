@@ -62,7 +62,7 @@ function ConfirmDeletion({
           id="delete-account-confirm"
           type="submit"
           variant="primary"
-          isDisabled={remove.isPending}
+          isPending={remove.isPending}
         >
           Delete my account
         </Button>

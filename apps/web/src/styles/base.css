@@ -60,3 +60,10 @@ input {
     touch-action: pan-x pan-y pinch-zoom;
   }
 }
+
+/* A screen's heading takes focus when the screen opens, or when what had
+   focus leaves the page (see ui/FocusOnNavigate.ts), so screen readers say
+   where the reader is. It isn't a control, so it shows no focus ring. */
+h1[tabindex="-1"]:focus {
+  outline: none;
+}

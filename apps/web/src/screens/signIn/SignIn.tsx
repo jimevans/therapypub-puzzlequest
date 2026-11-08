@@ -67,7 +67,7 @@ export function SignIn() {
           id="login"
           type="submit"
           variant="primary"
-          isDisabled={signIn.isPending || signIn.isSuccess}
+          isPending={signIn.isPending || signIn.isSuccess}
         >
           Sign in
         </Button>

@@ -22,7 +22,8 @@ export function EmailReminder({ userName }: { userName: string }) {
       </p>
       <Button
         id="resend-verification"
-        isDisabled={resend.isPending || resend.isSuccess}
+        isDisabled={resend.isSuccess}
+        isPending={resend.isPending}
         onPress={() => resend.mutate()}
       >
         Send it again

@@ -270,7 +270,7 @@ function TeamForm({ team, onDone }: { team: Team | null; onDone: () => void }) {
           id="save-team"
           type="submit"
           variant="primary"
-          isDisabled={save.isPending}
+          isPending={save.isPending}
         >
           Save
         </Button>

@@ -6,6 +6,8 @@ import { ApiError, api, dataOrThrow, messageOf } from "../../api";
 import { copy } from "../../copy";
 import { useLiveQuest } from "../../live/useLiveQuest";
 import { ClockTime } from "../../quests/ClockTime";
+import { describePuzzle, isFinished } from "../../quests/announcements";
+import { Announcement, useAnnouncement } from "../../ui/Announcement";
 import { NotAvailable } from "../../quests/NotAvailable";
 import { PausedBanner } from "../../quests/PausedBanner";
 import { FinishPanel } from "../../quests/FinishPanel";
@@ -81,7 +83,8 @@ function Solving({
         {nextHint && (
           <Button
             id="reveal-hint"
-            isDisabled={paused || reveal.isPending}
+            isDisabled={paused}
+            isPending={reveal.isPending}
             onPress={() => {
               solve.reset();
               if (nextHint.solutionWarning) {
@@ -150,9 +153,21 @@ function PuzzleDetails({
 }) {
   const { quest, puzzle } = view;
   const questPath = `/quest/${encodeURIComponent(path.name)}`;
+  const announcement = useAnnouncement(
+    {
+      paused: quest.paused,
+      status: puzzle.status,
+      skipped: puzzle.skipped,
+      solutionText: puzzle.solutionText ?? null,
+      hints: (puzzle.hints ?? []).map((hint) => hint.text),
+      questFinished: isFinished(quest.status),
+    },
+    describePuzzle
+  );
   return (
     <>
       <title>{`${puzzle.displayName} · PuzzleQuest`}</title>
+      <Announcement message={announcement} />
       <div className={styles.questBar}>
         <Link to={questPath}>{quest.displayName}</Link>
         <ClockTime

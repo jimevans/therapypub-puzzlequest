@@ -246,7 +246,7 @@ function EditorForm({ quest }: { quest?: Quest }) {
             id="save-quest"
             type="submit"
             variant="primary"
-            isDisabled={save.isPending}
+            isPending={save.isPending}
           >
             {save.isPending ? "Saving…" : "Save"}
           </Button>

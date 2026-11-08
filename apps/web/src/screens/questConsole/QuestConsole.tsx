@@ -6,7 +6,9 @@ import { ApiError, messageOf } from "../../api";
 import { useLiveQuest } from "../../live/useLiveQuest";
 import { ClockTime } from "../../quests/ClockTime";
 import { questQuery } from "../../quests/queries";
+import { describeProgress, progressSnapshot } from "../../quests/announcements";
 import { QUEST_COMPLETED, QUEST_NOT_STARTED } from "../../quests/status";
+import { Announcement, useAnnouncement } from "../../ui/Announcement";
 import { Banner } from "../../ui/Banner";
 import { Button } from "../../ui/Button";
 import { ConfirmDialog } from "../../ui/ConfirmDialog";
@@ -89,6 +91,10 @@ function Console({ quest }: { quest: Quest }) {
   const encodedName = encodeURIComponent(quest.name);
   const inProgress =
     quest.status !== QUEST_NOT_STARTED && quest.status !== QUEST_COMPLETED;
+  const announcement = useAnnouncement(
+    progressSnapshot(quest, quest.puzzles),
+    describeProgress
+  );
 
   const ask = (asked: Asking) => {
     setNotice(null);
@@ -97,6 +103,7 @@ function Console({ quest }: { quest: Quest }) {
 
   return (
     <>
+      <Announcement message={announcement} />
       <div className={adminStyles.heading}>
         <h1>{quest.displayName}</h1>
         <div className={styles.actions}>

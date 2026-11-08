@@ -3,6 +3,7 @@ import { useParams } from "react-router";
 import { ApiError } from "../../api";
 import { useLiveQuest } from "../../live/useLiveQuest";
 import { spectatorQuestQuery } from "../../quests/queries";
+import { FocusOnNavigate } from "../../ui/FocusOnNavigate";
 import styles from "./Board.module.css";
 import { BoardEntry } from "./BoardEntry";
 
@@ -19,10 +20,11 @@ export function Board() {
   const gone = quest.error instanceof ApiError && quest.error.status === 404;
 
   return (
-    <div
+    <main
       className={styles.board}
       data-live-updates={connected ? "connected" : "connecting"}
     >
+      <FocusOnNavigate />
       <title>
         {quest.data ? `${quest.data.displayName} · PuzzleQuest` : "PuzzleQuest"}
       </title>
@@ -47,6 +49,6 @@ export function Board() {
           Reconnecting…
         </p>
       )}
-    </div>
+    </main>
   );
 }

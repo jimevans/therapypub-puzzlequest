@@ -119,7 +119,7 @@ function SignUpForm({ forAdministrator }: { forAdministrator: boolean }) {
           id="sign-up"
           type="submit"
           variant="primary"
-          isDisabled={signUp.isPending || signUp.isSuccess}
+          isPending={signUp.isPending || signUp.isSuccess}
         >
           {forAdministrator ? "Create user" : "Sign up"}
         </Button>

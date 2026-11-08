@@ -185,6 +185,9 @@ describe("the web app", () => {
       await $("#activate").click();
 
       await expect($("#puzzle-content strong")).toHaveText("yes");
+      // The form that had focus is gone: focus is on the puzzle's heading,
+      // not lost.
+      await expect($("h1")).toBeFocused();
       expect(await blockedByPolicy()).toEqual([]);
       await expectAccessible();
     });
@@ -216,6 +219,37 @@ describe("the web app", () => {
       await expect($("#paused-banner")).not.toExist();
       expect(await blockedByPolicy()).toEqual([]);
       await expectAccessible();
+    });
+
+    it("fits a 320-pixel screen, as at 400% zoom, without scrolling sideways", async () => {
+      await signIn(userName);
+      await expect($(`a[href="/user/${userName}"]`)).toExist();
+      const viewport = await browser.execute(() => ({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      }));
+      await browser.setViewport({ width: 320, height: 640 });
+      try {
+        for (const path of [
+          "/",
+          `/quest/${questName}`,
+          `/quest/${questName}/puzzle/${first}`,
+          `/monitor/quest/${questName}`,
+          `/user/${userName}`,
+        ]) {
+          await browser.url(path);
+          await expect($("h1")).toBeDisplayed();
+          const scrolls = await browser.execute(
+            () =>
+              document.documentElement.scrollWidth >
+              document.documentElement.clientWidth
+          );
+          expect({ path, scrolls }).toEqual({ path, scrolls: false });
+        }
+      } finally {
+        await browser.setViewport(viewport);
+        await browser.url("/logout");
+      }
     });
 
     it("shows spectators a puzzle, read-only, updating live", async () => {

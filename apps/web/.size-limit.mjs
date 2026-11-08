@@ -48,22 +48,24 @@ const onTopOfFirstLoad = (name, source, limit) =>
   );
 
 export default [
-  budget("What every page downloads first", firstLoad, "118 KB"),
+  // 119 KB from 118 (2026-11-08): moving focus to each new screen's heading,
+  // and keeping it from being lost, which every page needs.
+  budget("What every page downloads first", firstLoad, "119 KB"),
   onTopOfFirstLoad("The home screen", "src/screens/home/Home.tsx", "19 KB"),
   onTopOfFirstLoad(
     "The quest screen",
     "src/screens/quest/QuestPage.tsx",
-    "4 KB"
+    "5 KB"
   ),
   onTopOfFirstLoad(
     "The puzzle screen",
     "src/screens/puzzle/PuzzleScreen.tsx",
-    "23 KB"
+    "24 KB"
   ),
   onTopOfFirstLoad(
     "Following a quest",
     "src/screens/followAlong/FollowQuest.tsx",
-    "4 KB"
+    "5 KB"
   ),
   onTopOfFirstLoad(
     "Following a puzzle",
