@@ -123,6 +123,10 @@ one is in your way, raise it rather than working around it.
 - **The game rules in `apps/api/src/domain` are fully covered**, every branch;
   elsewhere, coverage may not fall below the thresholds in
   `apps/api/vitest.config.js`, which only go up.
+- **Screens meet WCAG 2.2 AA.** After every component test, axe-core checks
+  what's on screen; browser tests check the key screens of each journey with
+  `expectAccessible()`, where contrast and the page's structure can be judged.
+  Give a new screen's browser test a check too.
 - **The first-load budget is tight**: 118 KB for what every visitor
   downloads first (`apps/web/.size-limit.mjs`). Code only some screens need
   goes in their own chunks.
@@ -144,8 +148,10 @@ one is in your way, raise it rather than working around it.
    screens go in `adminRoutes.tsx`, so they aren't in first load.
 2. Build it from the components in `apps/web/src/ui/`, with CSS Modules on
    the design tokens in `apps/web/src/styles/`.
-3. Test its states with Testing Library, faking the API with `fakes.ts`.
-4. If it's a journey people depend on, add to the browser tests.
+3. Test its states with Testing Library, faking the API with `fakes.ts`;
+   each state a test leaves is checked for accessibility.
+4. If it's a journey people depend on, add to the browser tests, with
+   `expectAccessible()` on its screens.
 
 **A decision:** if a change settles a question future contributors will ask
 ("why don't we just use X?"), add a record to

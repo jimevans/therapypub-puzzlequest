@@ -1,6 +1,7 @@
 // What the browser tests share: where the server is, and ways to set up data
 // and see what the server sent without going through a browser.
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import twilio from "twilio";
@@ -203,4 +204,57 @@ export async function blockedByPolicy(): Promise<string[]> {
   return browser.execute(
     () => (window as unknown as { blockedByPolicy: string[] }).blockedByPolicy
   );
+}
+
+/** axe-core's script, put into pages to check them. */
+const AXE_SOURCE = readFileSync(
+  createRequire(import.meta.url).resolve("axe-core/axe.min.js"),
+  "utf8"
+);
+
+/**
+ * Checks the page as it is against WCAG 2.2 AA with axe-core, in the real
+ * browser, where color contrast and the page's structure can be judged.
+ * @returns each problem found, one line each: the rule, and where
+ */
+export async function accessibilityProblems(): Promise<string[]> {
+  // Put in by the automation, which the page's security policy doesn't
+  // govern; the page itself never loads it.
+  await browser.execute(`if (!window.axe) { ${AXE_SOURCE} }`);
+  return browser.execute(async () => {
+    const results = await (
+      window as unknown as {
+        axe: {
+          run(
+            context: Document,
+            options: object
+          ): Promise<{
+            violations: {
+              id: string;
+              help: string;
+              nodes: { target: string[] }[];
+            }[];
+          }>;
+        };
+      }
+    ).axe.run(document, {
+      runOnly: {
+        type: "tag",
+        values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"],
+      },
+    });
+    return results.violations.flatMap((violation) =>
+      violation.nodes.map(
+        (node) =>
+          `${violation.id}: ${violation.help} (${node.target.join(" ")})`
+      )
+    );
+  });
+}
+
+/**
+ * Expects the page as it is to meet WCAG 2.2 AA, as far as axe-core can tell.
+ */
+export async function expectAccessible(): Promise<void> {
+  expect(await accessibilityProblems()).toEqual([]);
 }

@@ -5,10 +5,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import {
   ADMIN,
-  LIVE_UPDATES_CONNECTED,
-  PASSWORD,
   api,
   blockedByPolicy,
+  expectAccessible,
+  LIVE_UPDATES_CONNECTED,
+  PASSWORD,
   recordPolicyViolations,
   sessionToken,
   signIn,
@@ -78,6 +79,7 @@ describe("authoring", () => {
       solutionKeyword: "red",
       hints: [{ text: "Think of roses", timePenalty: 45 }],
     });
+    await expectAccessible();
   });
 
   it("creates an image puzzle, uploading its file", async () => {
@@ -151,6 +153,7 @@ describe("authoring", () => {
     await $("#puzzle-picker").$("button=Add 2 puzzles").click();
     await expect($(`#stops [data-puzzle-name="${textPuzzle}"]`)).toExist();
     await expect($(`#stops [data-puzzle-name="${imagePuzzle}"]`)).toExist();
+    await expectAccessible();
   });
 
   it("reorders the stops by keyboard, and with the mouse", async () => {
@@ -219,6 +222,7 @@ describe("authoring", () => {
     await expect($(`[data-quest-name="${questName}"]`)).toHaveText(
       expect.stringContaining(`${player} (user)`)
     );
+    await expectAccessible();
   });
 
   it("opens the quest's console from the list, showing every stop", async () => {
@@ -229,6 +233,7 @@ describe("authoring", () => {
     );
     await expect($(`#stops [data-puzzle-name="${imagePuzzle}"]`)).toExist();
     await expect($(LIVE_UPDATES_CONNECTED)).toExist();
+    await expectAccessible();
   });
 
   it("starts the quest after asking, and logs it", async () => {
@@ -242,6 +247,7 @@ describe("authoring", () => {
     await expect($("#activity")).toHaveText(
       expect.stringContaining(`Quest started by ${ADMIN}`)
     );
+    await expectAccessible();
   });
 
   it("keeps the stop the players have reached in place in the editor", async () => {
@@ -280,6 +286,7 @@ describe("authoring", () => {
     await expect($(`#stops [data-puzzle-name="${textPuzzle}"]`)).toHaveText(
       expect.stringContaining("In progress")
     );
+    await expectAccessible();
   });
 
   it("says when no player can be texted", async () => {
@@ -339,6 +346,7 @@ describe("authoring", () => {
     await expect($(`[data-team-name="${teamName}"]`)).toHaveText(
       expect.stringContaining("A Renamed Team")
     );
+    await expectAccessible();
   });
 
   it("adds a player to the team, and removes them", async () => {
@@ -362,6 +370,7 @@ describe("authoring", () => {
     await expect($(`[data-team-name="${teamName}"]`)).not.toHaveText(
       expect.stringContaining("Author's Player")
     );
+    await expectAccessible();
   });
 
   it("confirms deleting in the page, and can keep it", async () => {

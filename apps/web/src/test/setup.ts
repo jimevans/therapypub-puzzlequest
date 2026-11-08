@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach, beforeEach } from "vitest";
+import { accessibilityProblems } from "./accessibility";
 import { fakedAnswerMismatches, noteSpiesOnTheApi } from "./contract";
 
 // Every answer a test fakes for the API client is checked against the API's
@@ -22,6 +23,18 @@ afterEach(() => {
   }
 });
 
-// Registered last, so it runs first: after hooks run in reverse order, and a
-// failed check mustn't leave the page in place for the next test.
+// Registered after the hooks it must run before: after hooks run in reverse
+// order. Cleanup runs before the faked-answer check, so a failed check
+// doesn't leave the page in place for the next test; the accessibility check
+// runs before cleanup, while the page is still there.
 afterEach(cleanup);
+
+afterEach(async () => {
+  const problems = await accessibilityProblems();
+  if (problems.length > 0) {
+    cleanup();
+    throw new Error(
+      `The page left by this test isn't accessible (WCAG 2.2 AA):\n${problems.map((problem) => `  ${problem}`).join("\n")}`
+    );
+  }
+});

@@ -2,9 +2,10 @@
 // links the server emails.
 import {
   ADMIN,
-  PASSWORD,
   api,
   emailedLink,
+  expectAccessible,
+  PASSWORD,
   signIn,
   unique,
 } from "../support.js";
@@ -60,6 +61,7 @@ describe("an account", () => {
 
     await expect($("#verify-complete")).toBeDisplayed();
     await expect(browser).toHaveUrl(expect.not.stringContaining("token"));
+    await expectAccessible();
   });
 
   it("asks for a reset link from the sign-in page", async () => {
@@ -69,6 +71,7 @@ describe("an account", () => {
     await $("#send").click();
 
     await expect($("#sent")).toBeDisplayed();
+    await expectAccessible();
   });
 
   it("resets the password from the emailed link", async () => {
@@ -78,6 +81,7 @@ describe("an account", () => {
     await $("#reset-password").click();
 
     await expect($("#reset-complete")).toBeDisplayed();
+    await expectAccessible();
   });
 
   it("can't sign in with the old password", async () => {
@@ -108,6 +112,7 @@ describe("an account", () => {
     await expect($("#user-details")).toHaveText(
       expect.stringContaining("(312) 555-0177")
     );
+    await expectAccessible();
   });
 
   it("changes its password, and stays signed in", async () => {
@@ -125,6 +130,7 @@ describe("an account", () => {
     );
     await browser.refresh();
     await expect($("#user-details")).toBeDisplayed();
+    await expectAccessible();
   });
 
   it("signs in with the changed password, and out again", async () => {
@@ -161,6 +167,7 @@ describe("a player deleting their account", () => {
     await expect($("#delete-account-dialog [role='alert']")).toHaveText(
       "That isn't your password"
     );
+    await expectAccessible();
     await $("#delete-account-dialog").$("button=Keep my account").click();
   });
 

@@ -2,10 +2,11 @@
 // a player gets on, and nothing about how to solve any of it.
 import {
   ADMIN,
-  LIVE_UPDATES_CONNECTED,
-  PASSWORD,
   api,
   blockedByPolicy,
+  expectAccessible,
+  LIVE_UPDATES_CONNECTED,
+  PASSWORD,
   recordPolicyViolations,
   sessionToken,
   signIn,
@@ -76,6 +77,7 @@ describe("staff", () => {
     await expect($(`#staff-steps [data-puzzle-name="${finale}"]`)).toHaveText(
       expect.stringContaining("Unavailable")
     );
+    await expectAccessible();
   });
 
   it("see the players get on, as it happens", async () => {
@@ -101,6 +103,7 @@ describe("staff", () => {
     await expect($(`#staff-steps [data-puzzle-name="${finale}"]`)).toHaveText(
       expect.stringContaining("Players here")
     );
+    await expectAccessible();
   });
 
   it("never see how to solve anything", async () => {
