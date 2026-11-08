@@ -3,11 +3,12 @@
 // finishing, with a spectator following along live in another window.
 import {
   ADMIN,
+  api,
   BASE_URL,
+  callQuestNumber,
+  expectAccessible,
   LIVE_UPDATES_CONNECTED,
   PASSWORD,
-  api,
-  callQuestNumber,
   sessionToken,
   unique,
 } from "../support.js";
@@ -76,6 +77,7 @@ describe("playing a quest", () => {
     // Signing up signs the player in, and goes home.
     await expect($(`a[href="/user/${player}"]`)).toExist();
     await expect($("h1=Your quests")).toBeDisplayed();
+    await expectAccessible();
   });
 
   it("joins a team with its join code alone", async () => {
@@ -116,6 +118,7 @@ describe("playing a quest", () => {
     await expect(
       $(`a[href="/quest/${questName}/puzzle/${finale}"]`)
     ).not.toExist();
+    await expectAccessible();
   });
 
   it("needs the puzzle's activation code", async () => {
@@ -126,6 +129,7 @@ describe("playing a quest", () => {
     await expect($('[role="alert"]')).toHaveText(
       "Incorrect activation code for puzzle"
     );
+    await expectAccessible();
   });
 
   it("activates the puzzle with the right code", async () => {
@@ -149,6 +153,7 @@ describe("playing a quest", () => {
       expect.stringContaining("It is a piano")
     );
     await expect($("#reveal-hint")).not.toExist();
+    await expectAccessible();
   });
 
   it("says when an answer is wrong", async () => {
@@ -159,6 +164,7 @@ describe("playing a quest", () => {
       "Incorrect guess for puzzle solution"
     );
     await expect($("#solution")).not.toExist();
+    await expectAccessible();
   });
 
   it("accepts the right answer, however it's typed", async () => {
@@ -193,6 +199,7 @@ describe("playing a quest", () => {
     await api("POST", `/quests/${questName}/resume`, admin);
     await expect($("#paused-banner")).not.toExist();
     await expect($("#activation-code")).toBeEnabled();
+    await expectAccessible();
   });
 
   it("finishes the quest with the last puzzle", async () => {
@@ -206,5 +213,6 @@ describe("playing a quest", () => {
     const quest = await api("GET", `/quests/${questName}`, admin);
     expect(quest.statusDescription).toBe("Completed");
     expect(quest.progress.penaltyMs).toBe(360000);
+    await expectAccessible();
   });
 });

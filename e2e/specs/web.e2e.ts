@@ -4,10 +4,11 @@
 // playing.e2e.ts.
 import {
   ADMIN,
-  LIVE_UPDATES_CONNECTED,
-  PASSWORD,
   api,
   blockedByPolicy,
+  expectAccessible,
+  LIVE_UPDATES_CONNECTED,
+  PASSWORD,
   recordPolicyViolations,
   sessionToken,
   signIn,
@@ -45,6 +46,7 @@ describe("the web app", () => {
       touchAction.value
     );
     expect(await blockedByPolicy()).toEqual([]);
+    await expectAccessible();
   });
 
   it("says so at an address with no page, with nothing blocked", async () => {
@@ -52,6 +54,7 @@ describe("the web app", () => {
 
     await expect($("h1=Page not found")).toBeDisplayed();
     expect(await blockedByPolicy()).toEqual([]);
+    await expectAccessible();
   });
 
   it("sends a visitor to sign in, and back to the page they wanted", async () => {
@@ -69,6 +72,7 @@ describe("the web app", () => {
     // The address changes as the page starts loading. Wait for the page
     // itself: in Firefox, a page still loading can replace the next test's.
     await expect($("#user-details")).toBeDisplayed();
+    await expectAccessible();
   });
 
   it("has account links once signed in, including signing out", async () => {
@@ -132,6 +136,7 @@ describe("the web app", () => {
       await expect($(LIVE_UPDATES_CONNECTED)).toExist();
       await expect($(`[data-puzzle-name="${first}"]`)).toExist();
       expect(await blockedByPolicy()).toEqual([]);
+      await expectAccessible();
     });
 
     it("shows what the players do, as they do it", async () => {
@@ -156,6 +161,7 @@ describe("the web app", () => {
         expect.stringContaining("Yes")
       );
       await expect($(`[data-puzzle-name="${second}"]`)).toExist();
+      await expectAccessible();
     });
 
     it("shows when the puzzle master pauses and resumes it", async () => {
@@ -180,6 +186,7 @@ describe("the web app", () => {
 
       await expect($("#puzzle-content strong")).toHaveText("yes");
       expect(await blockedByPolicy()).toEqual([]);
+      await expectAccessible();
     });
 
     it("can be followed by anyone, signed in or not", async () => {
@@ -191,6 +198,7 @@ describe("the web app", () => {
       await expect($(`[data-puzzle-name="${second}"]`)).toExist();
       expect(await $("body").getHTML()).not.toContain(hidden);
       await expect($("#activation-code")).not.toExist();
+      await expectAccessible();
     });
 
     it("shows on a big screen, signed out, following along live", async () => {
@@ -207,6 +215,7 @@ describe("the web app", () => {
       await api("POST", `/quests/${questName}/resume`, admin);
       await expect($("#paused-banner")).not.toExist();
       expect(await blockedByPolicy()).toEqual([]);
+      await expectAccessible();
     });
 
     it("shows spectators a puzzle, read-only, updating live", async () => {
@@ -226,6 +235,7 @@ describe("the web app", () => {
 
       await expect($("#solution-text")).toHaveText("Yes");
       expect(await blockedByPolicy()).toEqual([]);
+      await expectAccessible();
     });
 
     it("isn't available once the puzzle master resets it", async () => {
