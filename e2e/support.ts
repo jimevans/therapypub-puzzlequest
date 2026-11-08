@@ -20,7 +20,10 @@ export const SCANNED_CODE = "e2e-scanned-code";
 /** The password of every account the tests create, unless they change it. */
 export const PASSWORD = "a long enough password";
 
-/** The administrator wdio.conf.ts creates: the first account to sign up. */
+/**
+ * The administrator wdio.conf.ts creates, by signing up and promoting the
+ * account, as a new site gets its first one.
+ */
 export const ADMIN = "e2e-admin";
 
 /**

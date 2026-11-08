@@ -12,7 +12,8 @@
     "generate:api": "tsx scripts/writeOpenApi.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "typecheck": "node ../../node_modules/typescript-native/bin/tsc -p ."
+    "typecheck": "node ../../node_modules/typescript-native/bin/tsc -p .",
+    "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

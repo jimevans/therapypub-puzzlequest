@@ -381,11 +381,9 @@ export async function createUser(user: User): Promise<UserResult<undefined>> {
   if (policyResult.status === "error") {
     return policyResult;
   }
-  let authLevel = user.authorizationLevel || AuthorizationLevel.USER;
-  if ((await UserModel.countDocuments()) === 0) {
-    // First user created must be an admin user
-    authLevel = AuthorizationLevel.ADMIN;
-  }
+  // A new site's first administrator is made with the promote command
+  // (src/admin/cli.ts), not by signing up first, which anyone could do.
+  const authLevel = user.authorizationLevel || AuthorizationLevel.USER;
   // validatePasswordPolicy has checked that the password is a string.
   const password = await AuthorizationService.encryptPassword(
     user.password as string

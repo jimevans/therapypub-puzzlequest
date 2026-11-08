@@ -14,6 +14,7 @@ import path from "node:path";
 import { readdir, rm } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import mongoose from "mongoose";
+import { runIfStarted } from "../command.js";
 import { config } from "../config.js";
 import { puzzleDataDirectory } from "../paths.js";
 import { runningCommit } from "../version.js";
@@ -112,14 +113,4 @@ export async function run(args: string[]): Promise<number> {
   }
 }
 
-// Run when started as a script, not when a test imports it.
-if (process.argv[1] && import.meta.filename === path.resolve(process.argv[1])) {
-  try {
-    process.exitCode = await run(process.argv.slice(2));
-  } catch (err) {
-    process.stderr.write(
-      `${err instanceof Error ? err.message : String(err)}\n`
-    );
-    process.exitCode = 1;
-  }
-}
+await runIfStarted(import.meta.filename, run);
