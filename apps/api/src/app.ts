@@ -12,6 +12,7 @@ import { logger } from "./logger.js";
 import { ensureDefaultOrganization } from "./models/organization.model.js";
 import * as WebSocketService from "./services/websocket.service.js";
 import { createShutdown } from "./shutdown.js";
+import { runningCommit } from "./version.js";
 
 // An error nothing caught leaves the server in a state no one planned for,
 // so it's logged and the process ends; the host starts a fresh one.
@@ -24,7 +25,7 @@ process.on("unhandledRejection", (err) => {
   process.exit(1);
 });
 
-logger.info({ configSource }, "starting");
+logger.info({ configSource, commit: runningCommit() }, "starting");
 
 mongoose.set("strictQuery", false);
 mongoose.connection.on("error", (err) => {

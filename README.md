@@ -203,7 +203,9 @@ Deploy with **Deploy HEAD Commit** in cPanel's Git Version Control. It runs the
 tasks in [.cpanel.yml](.cpanel.yml), which:
 
 1. Copy the repository, except `.git`, to the application directory. Uploaded
-   media in `storage/` isn't in the repository, so it's left alone.
+   media in `storage/` isn't in the repository, so it's left alone. The
+   commit deployed is written to `DEPLOYED_COMMIT`, which the server logs on
+   starting and backups record.
 2. Install the packages listed in `package-lock.json`, including the
    development dependencies the build needs (`npm ci --include=dev`).
 3. Compile the server to `apps/api/dist/` and build the web app to
@@ -229,6 +231,100 @@ make npm skip the development dependencies; that's why the install needs
 `--include=dev`. npm 11 warns that it skipped some packages' install scripts;
 that's expected, because bcrypt ships prebuilt binaries and the other scripts
 only matter for tests.
+
+### The log
+
+The server logs one JSON object per line on standard error, which Passenger
+appends to `stderr.log` in the application directory. Each request's entries
+share a `reqId`, which is also the `X-Request-Id` header, and the reference a
+server error shows people. Passwords, tokens, email addresses, phone numbers
+and query strings are kept out. Security events have an `event` field:
+`sign-in-failed`, `forbidden`, `rate-limited`, `cross-site-request-refused`
+and `webhook-refused`. `PQ_LOG_LEVEL` sets the least severe entries kept
+(default `info`).
+
+Nothing else empties `stderr.log`, so a daily cron job (cPanel's **Cron Jobs**
+page, "Once Per Day") keeps it in bounds with
+[apps/api/scripts/rotate-log.sh](apps/api/scripts/rotate-log.sh): past 10 MB,
+it keeps a compressed copy and empties the file, keeping 5 copies.
+
+```sh
+sh /home/thepuzzlequest/puzzlequest/apps/api/scripts/rotate-log.sh /home/thepuzzlequest/puzzlequest/stderr.log
+```
+
+`/healthz` answers 200 while the server can reach its database, and 503 when
+it can't.
+
+### Backups
+
+A backup holds what Git doesn't: the database and the uploaded media. The code
+is rebuilt from the commit a backup records. Each backup is a folder in
+`~/backups`, named by when it was made, holding every collection as
+compressed Extended JSON (exact IDs and dates), a copy of `storage/puzzleData`,
+and a `manifest.json` of record counts and checksums. Sessions and emailed
+links are left out, so after a restore everyone signs in again. The newest 14
+backups are kept, and the newest of each of the last 8 weeks. The commands are
+in [apps/api/src/backup/cli.ts](apps/api/src/backup/cli.ts).
+
+**Nightly backups aren't turned on yet.** The backups sit on the same server
+as the app, which protects against mistakes, such as a bad migration or a
+wrong deletion, but not against losing the host: download one now and then
+(compress its folder in File Manager, then download it). To turn them on:
+
+1. In Atlas, under **Database Access**, add a database user for backups with
+   the built-in role **Only read any database**, so a leaked backup
+   credential can't change anything.
+2. In your home folder, create `.puzzlequest-backup.env`, readable only by
+   you (`chmod 600`), holding that user's connection string, for the same
+   database as the site's:
+
+   ```sh
+   PQ_MONGODB_URI=mongodb+srv://backup:PASSWORD@CLUSTER/DATABASE?retryWrites=true&w=majority
+   ```
+
+3. Add a daily cron job ("Once Per Day"; early morning is quietest). It says
+   nothing when it works, so cron only reports failures:
+
+   ```sh
+   . /home/thepuzzlequest/nodevenv/puzzlequest/24/bin/activate && node --env-file=/home/thepuzzlequest/.puzzlequest-backup.env /home/thepuzzlequest/puzzlequest/apps/api/dist/backup/cli.js backup
+   ```
+
+4. The next day, check a backup is whole, in cPanel's **Terminal**:
+
+   ```sh
+   . /home/thepuzzlequest/nodevenv/puzzlequest/24/bin/activate
+   node /home/thepuzzlequest/puzzlequest/apps/api/dist/backup/cli.js verify ~/backups/NAME
+   ```
+
+**Restoring.** A restore replaces the database's collections and the media
+with a backup's, rebuilds the indexes, and checks the result against the
+manifest. It needs a user that can write, so use the site's own connection
+string, from the **Setup Node.js App** page, given just for the command. In
+cPanel's **Terminal**, first run
+`. /home/thepuzzlequest/nodevenv/puzzlequest/24/bin/activate`, so `node` is
+the app's Node 24.
+
+1. Check the backup:
+   `node /home/thepuzzlequest/puzzlequest/apps/api/dist/backup/cli.js verify ~/backups/NAME`.
+2. Restore it, confirming the database's name, since it replaces what's
+   there:
+
+   ```sh
+   PQ_MONGODB_URI='CONNECTION_STRING' node /home/thepuzzlequest/puzzlequest/apps/api/dist/backup/cli.js restore ~/backups/NAME --confirm DATABASE
+   ```
+
+3. The command says which commit made the backup. If the code has changed the
+   data's shape since then, deploy that commit, or run the later migrations
+   on the restored data.
+4. Restart the app (`touch /home/thepuzzlequest/puzzlequest/tmp/restart.txt`).
+
+**Practice.** To check a backup restores, without touching production,
+restore a downloaded copy into a local database and folder:
+
+```sh
+npm run build --workspace=@puzzlequest/api
+PQ_MONGODB_URI=mongodb://localhost:27017/puzzlequest-drill node apps/api/dist/backup/cli.js restore ~/Downloads/NAME --media /tmp/puzzlequest-drill-media
+```
 
 ### The service worker
 

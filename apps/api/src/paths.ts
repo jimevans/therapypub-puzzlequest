@@ -23,5 +23,14 @@ export const storageDirectory = path.resolve(workspaceRoot, "../../storage");
 /** Uploaded puzzle media, served from /puzzleData. */
 export const puzzleDataDirectory = path.join(storageDirectory, "puzzleData");
 
+/**
+ * The Git commit deployed, which the deployment writes (see .cpanel.yml),
+ * since a deployment copies files without Git's.
+ */
+export const deployedCommitFile = path.resolve(
+  workspaceRoot,
+  "../../DEPLOYED_COMMIT"
+);
+
 /** The optional .env file with configuration settings, for development. */
 export const environmentFile = path.join(workspaceRoot, ".env");
