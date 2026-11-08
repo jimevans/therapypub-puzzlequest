@@ -4,6 +4,10 @@ The Therapy Pub and Co. PuzzleQuest website: a React web app (`apps/web`) on
 an Express + MongoDB API (`apps/api`, under `/api/v1`), with Twilio voice/SMS
 integration.
 
+To change the code, read [CONTRIBUTING.md](CONTRIBUTING.md): how work is
+organized, and the rules the code keeps. Why it's built the way it is, is in
+[docs/decisions](docs/decisions/README.md).
+
 ## Requirements
 
 - **Node.js 24.** Production runs Node 24, so local development uses the
@@ -202,14 +206,15 @@ During development, `npm run dev` and the VS Code launch configuration run the
 source with [tsx](https://tsx.is), which handles the mix of `.ts` and `.js`
 files without a build.
 
-The views and static files stay in `apps/api/src/` and are not copied into
+The static files stay in `apps/api/src/public/` and are not copied into
 `apps/api/dist/`. Uploaded puzzle media lives in `storage/puzzleData`, outside
 the code, and isn't committed. The application finds all of these through
 [apps/api/src/paths.ts](apps/api/src/paths.ts), so it works the same whether it
 runs from `src/` or `dist/`.
 
-The browser scripts in `apps/api/src/public/script` and the tests aren't type-checked
-yet.
+The tests are type-checked with the code. The browser script in
+`apps/api/src/public/script` isn't; ESLint checks it with the browser's
+globals.
 
 ## Deployment
 
