@@ -26,12 +26,18 @@ export async function accessibilityProblems(): Promise<string[]> {
   if (document.body.childElementCount === 0) {
     return [];
   }
-  const results = await axe.run(document.body, {
-    runOnly: { type: "tag", values: WCAG_AA },
-    rules: Object.fromEntries(
-      NEEDS_A_BROWSER.map((rule) => [rule, { enabled: false }])
-    ),
-  });
+  // React Aria's own announcer, which reads out a button's busy state by
+  // naming the button, is left out: once the button is gone, the leftover
+  // has no name until the announcer clears it, a few seconds later.
+  const results = await axe.run(
+    { include: [document.body], exclude: ["[data-live-announcer]"] },
+    {
+      runOnly: { type: "tag", values: WCAG_AA },
+      rules: Object.fromEntries(
+        NEEDS_A_BROWSER.map((rule) => [rule, { enabled: false }])
+      ),
+    }
+  );
   return results.violations.flatMap((violation) =>
     violation.nodes.map(
       (node) => `${violation.id}: ${violation.help} (${node.target.join(" ")})`

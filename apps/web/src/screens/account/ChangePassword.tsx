@@ -75,7 +75,7 @@ export function ChangePassword({ userName }: { userName: string }) {
         <Button
           id="change-password-button"
           type="submit"
-          isDisabled={change.isPending}
+          isPending={change.isPending}
         >
           Change password
         </Button>

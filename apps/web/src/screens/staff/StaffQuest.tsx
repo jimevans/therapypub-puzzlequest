@@ -10,6 +10,8 @@ import {
   STEP_COMPLETED,
   STEP_IN_PROGRESS,
 } from "../../quests/status";
+import { describeProgress, progressSnapshot } from "../../quests/announcements";
+import { Announcement, useAnnouncement } from "../../ui/Announcement";
 import { Banner } from "../../ui/Banner";
 import styles from "./Staff.module.css";
 import { assigneeOf } from "./assignee";
@@ -97,9 +99,14 @@ function StepCard({
 
 function QuestView({ quest }: { quest: StaffQuest }) {
   const encodedName = encodeURIComponent(quest.name);
+  const announcement = useAnnouncement(
+    progressSnapshot(quest, quest.puzzles),
+    describeProgress
+  );
   return (
     <>
       <h1>{quest.displayName}</h1>
+      <Announcement message={announcement} />
       <p className={styles.intro}>
         {assigneeOf(quest.assignee)} · {quest.statusDescription}
         {quest.progress.startTime && (

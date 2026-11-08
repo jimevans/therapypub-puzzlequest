@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import { useInRouterContext } from "react-router";
 import { useSession } from "../session";
+import { FocusOnNavigate } from "./FocusOnNavigate";
 import styles from "./PageShell.module.css";
 
 /** Links for whoever is signed in. Some lead to pages not yet in this app. */
@@ -26,8 +28,10 @@ export function PageShell({
   /** For tables and other pages used mainly on a laptop. */
   wide?: boolean;
 }) {
+  const inRouter = useInRouterContext();
   return (
     <div className={styles.shell}>
+      {inRouter && <FocusOnNavigate />}
       <header className={styles.header}>
         <a className={styles.name} href="/">
           PuzzleQuest

@@ -102,7 +102,7 @@ function TextMessageForm({ questName, onClose }: TextMessageDialogProps) {
       />
       <div className={dialogStyles.actions}>
         <Button onPress={() => onClose(false)}>Cancel</Button>
-        <Button type="submit" variant="primary" isDisabled={send.isPending}>
+        <Button type="submit" variant="primary" isPending={send.isPending}>
           {send.isPending ? "Sending…" : "Send"}
         </Button>
       </div>

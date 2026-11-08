@@ -44,7 +44,7 @@ export function VerifyEmail() {
           <Button
             id="verify"
             variant="primary"
-            isDisabled={verify.isPending}
+            isPending={verify.isPending}
             onPress={() => verify.mutate()}
           >
             Verify my email address

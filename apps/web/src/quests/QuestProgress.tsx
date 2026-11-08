@@ -2,8 +2,10 @@ import type { Schemas } from "@puzzlequest/api-client";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { copy } from "../copy";
+import { Announcement, useAnnouncement } from "../ui/Announcement";
 import { ProgressLine, ProgressStep } from "../ui/ProgressLine";
 import { ClockTime } from "./ClockTime";
+import { describeProgress, progressSnapshot } from "./announcements";
 import { PausedBanner } from "./PausedBanner";
 import { type Clock, formatDuration, formatMoment } from "./clock";
 import styles from "./QuestProgress.module.css";
@@ -117,10 +119,15 @@ export function QuestProgress({
 }) {
   const { progress } = quest;
   const completed = quest.status === QUEST_COMPLETED;
+  const announcement = useAnnouncement(
+    progressSnapshot(quest, steps),
+    describeProgress
+  );
   return (
     <>
       <title>{`${quest.displayName} · PuzzleQuest`}</title>
       <h1>{quest.displayName}</h1>
+      <Announcement message={announcement} />
       {quest.paused && <PausedBanner />}
       <section id="quest-progress" className={styles.summary}>
         <ClockTime className={styles.clock} clock={progress} show="total" />

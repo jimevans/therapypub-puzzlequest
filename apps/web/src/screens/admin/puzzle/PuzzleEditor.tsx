@@ -218,7 +218,7 @@ function EditorForm({ puzzle }: { puzzle?: Puzzle }) {
             id="save-puzzle"
             type="submit"
             variant="primary"
-            isDisabled={save.isPending}
+            isPending={save.isPending}
           >
             {save.isPending ? "Saving…" : "Save"}
           </Button>

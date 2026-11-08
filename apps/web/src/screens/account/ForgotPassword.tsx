@@ -72,7 +72,7 @@ export function ForgotPassword() {
               id="send"
               type="submit"
               variant="primary"
-              isDisabled={request.isPending}
+              isPending={request.isPending}
             >
               Send reset link
             </Button>

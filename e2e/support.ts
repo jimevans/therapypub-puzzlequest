@@ -226,7 +226,7 @@ export async function accessibilityProblems(): Promise<string[]> {
       window as unknown as {
         axe: {
           run(
-            context: Document,
+            context: object,
             options: object
           ): Promise<{
             violations: {
@@ -237,12 +237,16 @@ export async function accessibilityProblems(): Promise<string[]> {
           }>;
         };
       }
-    ).axe.run(document, {
-      runOnly: {
-        type: "tag",
-        values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"],
-      },
-    });
+    ).axe.run(
+      // React Aria's own announcer: see apps/web/src/test/accessibility.ts.
+      { include: [document], exclude: ["[data-live-announcer]"] },
+      {
+        runOnly: {
+          type: "tag",
+          values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"],
+        },
+      }
+    );
     return results.violations.flatMap((violation) =>
       violation.nodes.map(
         (node) =>

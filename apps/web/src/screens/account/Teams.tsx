@@ -65,7 +65,7 @@ function JoinTeam({
           id="join-team-confirm"
           type="submit"
           variant="primary"
-          isDisabled={join.isPending}
+          isPending={join.isPending}
         >
           Join team
         </Button>

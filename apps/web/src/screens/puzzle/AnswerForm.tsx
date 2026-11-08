@@ -64,7 +64,8 @@ export function AnswerForm({
         id={buttonId}
         type="submit"
         variant="primary"
-        isDisabled={isDisabled || isPending}
+        isDisabled={isDisabled}
+        isPending={isPending}
       >
         {buttonLabel}
       </Button>

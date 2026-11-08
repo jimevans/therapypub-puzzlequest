@@ -40,7 +40,7 @@ function SendResetLink({
       {send.isSuccess && <Banner>Password reset email sent to {email}.</Banner>}
       <Button
         id="send-reset-link-button"
-        isDisabled={send.isPending}
+        isPending={send.isPending}
         onPress={() => send.mutate()}
       >
         Send password reset email

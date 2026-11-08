@@ -13,6 +13,7 @@ export function ErrorPage() {
   if (isRouteErrorResponse(error) && error.status === 404) {
     return (
       <PageShell>
+        <title>Page not found · PuzzleQuest</title>
         <h1>Page not found</h1>
         <p>There's nothing at this address.</p>
       </PageShell>
@@ -20,6 +21,7 @@ export function ErrorPage() {
   }
   return (
     <PageShell>
+      <title>Something went wrong · PuzzleQuest</title>
       <h1>Something went wrong</h1>
       <Banner tone="danger">This page couldn't be shown.</Banner>
       <p>

@@ -194,9 +194,9 @@ describe("following a quest", () => {
     apiShows({ ...QUEST, paused: true });
     show(QUEST_PAGE);
 
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "Paused by the puzzle master"
-    );
+    expect(
+      await screen.findByText(/^Paused by the puzzle master/)
+    ).toHaveTextContent("Paused by the puzzle master");
   });
 
   it("marks the end once the quest is over", async () => {
@@ -301,7 +301,9 @@ describe("following a puzzle", () => {
     apiShows({ ...PUZZLE, quest: { ...PUZZLE.quest, paused: true } });
     show(PUZZLE_PAGE);
 
-    expect(await screen.findByRole("status")).toHaveTextContent("Paused");
+    expect(
+      await screen.findByText(/^Paused by the puzzle master/)
+    ).toHaveTextContent("Paused");
   });
 
   it("says when the puzzle isn't available", async () => {

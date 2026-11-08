@@ -206,8 +206,23 @@ describe("QuestScreen", () => {
     apiAnswers({ ...QUEST, paused: true });
     show();
 
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "Paused by the puzzle master"
+    expect(
+      await screen.findByText(/^Paused by the puzzle master/)
+    ).toHaveTextContent("Paused by the puzzle master");
+  });
+
+  it("tells screen readers what changes while it's on screen", async () => {
+    const get = apiAnswers({ ...QUEST, puzzles: [COMPLETED_STEP] });
+    const client = show();
+    await screen.findByRole("heading", { name: "The Trail", level: 1 });
+
+    get.mockResolvedValue(ok(QUEST) as never);
+    await client.invalidateQueries({ queryKey: questQueryKey("trail") });
+
+    await waitFor(() =>
+      expect(document.querySelector("[data-announcement]")).toHaveTextContent(
+        `${copy.stepLabel(2)} reached: The Bridge.`
+      )
     );
   });
 
