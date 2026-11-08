@@ -10,6 +10,8 @@ export default defineConfig({
     // Settings the configuration module requires. Tests never read .env.
     env: {
       PQ_MONGODB_URI: "mongodb://127.0.0.1:27017/puzzlequest_test",
+      // Tests that check what's logged turn it on (see test/logs.ts).
+      PQ_LOG_LEVEL: "silent",
     },
     // `npm run test:coverage` measures coverage of the server code. The game
     // rules in src/domain must be fully covered. Elsewhere, coverage may not

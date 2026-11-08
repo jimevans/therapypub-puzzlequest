@@ -26,6 +26,17 @@ describe("the error page", () => {
     expect(page).toContain("<p>Not for you</p>");
   });
 
+  it("gives a server error's request ID, to quote when reporting it", () => {
+    const res = Object.assign(capture(), { req: { id: "request-7" } });
+
+    sendErrorPage(res as unknown as Response, 500, "Server error", "Oops");
+    const page = res.send.mock.calls[0]?.[0] ?? "";
+    expect(page).toContain("If you report this, quote reference request-7.");
+
+    sendErrorPage(res as unknown as Response, 403, "Forbidden", "Not yours");
+    expect(res.send.mock.calls[1]?.[0]).not.toContain("request-7");
+  });
+
   it("shows what it's given as text, never as markup", () => {
     const res = capture();
 

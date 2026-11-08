@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { config } from "../config.js";
+import { log } from "../logger.js";
 import { Problems, sendProblem } from "../api/problems.js";
 
 /** Methods that change things, which other sites must not be able to send. */
@@ -61,6 +62,10 @@ export function requireSameOrigin(
     next();
     return;
   }
+  log().warn(
+    { event: "cross-site-request-refused", origin },
+    "refused a request from another site"
+  );
   sendProblem(
     res,
     Problems.crossSiteRequest,

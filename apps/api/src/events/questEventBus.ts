@@ -4,7 +4,7 @@ import type {
   PuzzleStarted,
   QuestEvent,
 } from "../domain/quest/index.js";
-import { getErrorMessage } from "../errors.js";
+import { log } from "../logger.js";
 
 /**
  * A quest event as published, with the details players' screens show. The
@@ -86,8 +86,9 @@ export class QuestEventBus {
         try {
           await handler(activity);
         } catch (err) {
-          console.error(
-            `Handling quest activity for ${activity.questName} failed: ${getErrorMessage(err)}`
+          log().error(
+            { err, questName: activity.questName },
+            "handling quest activity failed"
           );
         }
       })

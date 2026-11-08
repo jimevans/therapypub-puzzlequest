@@ -5809,6 +5809,10 @@
             "items": {
               "$ref": "#/components/schemas/FieldError"
             }
+          },
+          "requestId": {
+            "description": "For an unexpected error, the request's ID, also in the X-Request-Id header: quote it when reporting the problem, to find it in the server's log.",
+            "type": "string"
           }
         },
         "required": [

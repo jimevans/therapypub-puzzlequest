@@ -10,6 +10,7 @@ import {
   it,
   vi,
 } from "vitest";
+import { recordLogs } from "../logs.js";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
@@ -119,7 +120,7 @@ describe("signing up", () => {
   });
 
   it("still succeeds when the email can't be sent", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    const logs = recordLogs();
     vi.mocked(EmailService.sendEmail).mockResolvedValueOnce({
       status: "error",
       statusCode: 500,
@@ -133,9 +134,15 @@ describe("signing up", () => {
     });
 
     expect(response.status).toBe(201);
-    expect(console.error).toHaveBeenCalledWith(
-      "Sending a verification email to newcomer failed: SMTP down"
+    expect(logs).toContainEqual(
+      expect.objectContaining({
+        level: "error",
+        msg: "verification email not sent",
+        reason: "SMTP down",
+      })
     );
+    // Nothing that names them.
+    expect(JSON.stringify(logs)).not.toContain("newcomer");
   });
 });
 

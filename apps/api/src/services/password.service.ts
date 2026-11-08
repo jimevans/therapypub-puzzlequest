@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "crypto";
 import { config } from "../config.js";
+import { log } from "../logger.js";
 import { PasswordResetModel } from "../models/passwordReset.model.js";
 import { UserModel } from "../models/user.model.js";
 import * as AuthenticationService from "./authentication.service.js";
@@ -60,7 +61,7 @@ async function sendPasswordChangedNotice(
       "If you did not make this change, reset your password immediately and contact an administrator.",
   });
   if (result.status === "error") {
-    console.error(`Password change notice not sent: ${result.message}`);
+    log().error({ reason: result.message }, "password change notice not sent");
   }
 }
 

@@ -53,6 +53,15 @@ const configSchema = z
     ),
     PQ_BASE_URL: setting(z.url("must be a URL").optional()),
     PQ_TRUST_PROXY: setting(z.string().optional().transform(parseTrustProxy)),
+    // The least severe entries the log keeps.
+    PQ_LOG_LEVEL: setting(
+      z
+        .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"], {
+          error:
+            "must be one of fatal, error, warn, info, debug, trace, or silent",
+        })
+        .default("info")
+    ),
 
     PQ_SMTP_HOST: setting(z.string().optional()),
     PQ_SMTP_PORT: setting(
@@ -111,14 +120,14 @@ export function parseConfig(
 // Settings come from environment variables, with apps/api/.env (if present) filling
 // in any that are not set. Tests supply their own settings (see
 // vitest.config.js), so a developer's .env never affects them.
+/** Where the settings came from, for the log when the server starts. */
+export let configSource = "process.env";
 if (process.env.NODE_ENV !== "test") {
-  // quiet: dotenv's own log line would duplicate the one below.
+  // quiet: the server logs where its settings came from instead.
   const result = loadEnvironmentFile({ path: environmentFile, quiet: true });
-  console.log(
-    "error" in result
-      ? "loaded config from process.env"
-      : `loaded config from ${environmentFile} and process.env`
-  );
+  if (!("error" in result)) {
+    configSource = `${environmentFile} and process.env`;
+  }
 }
 
 export const config: Config = parseConfig(process.env);

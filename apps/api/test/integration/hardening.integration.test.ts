@@ -11,6 +11,7 @@ import {
   it,
   vi,
 } from "vitest";
+import { recordLogs } from "../logs.js";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
@@ -110,6 +111,7 @@ describe("request bodies", () => {
 describe("signing in", () => {
   it("gives the same answer for an unknown user and a wrong password", async () => {
     await createUser("known");
+    const logs = recordLogs();
 
     const unknown = await login("nobody", "secret password");
     const wrong = await login("known", "secret password");
@@ -123,6 +125,17 @@ describe("signing in", () => {
         detail: "Incorrect user name or password",
       });
     }
+    // Logged by the user's ID when there's an account, and never by the
+    // name typed, which could be a password in the wrong box.
+    const known = await UserModel.findOne({ userName: "known" }).lean();
+    expect(
+      logs.filter((entry) => entry.event === "sign-in-failed")
+    ).toMatchObject([
+      { level: "warn", knownUser: false },
+      { level: "warn", userId: known!._id.toString() },
+    ]);
+    expect(JSON.stringify(logs)).not.toContain("nobody");
+    expect(JSON.stringify(logs)).not.toContain("secret password");
   });
 
   it("checks a password even for an unknown user, so it takes as long", async () => {
@@ -153,8 +166,12 @@ describe("signing in", () => {
       expect((await login("unlucky", "wrong")).status).toBe(401);
     }
 
+    const logs = recordLogs();
     const limited = await login("unlucky", "wrong");
     expect(limited.status).toBe(429);
+    expect(logs).toContainEqual(
+      expect.objectContaining({ level: "warn", event: "rate-limited" })
+    );
     expect(JSON.parse(limited.text)).toMatchObject({
       type: "/problems/too-many-requests",
       status: 429,

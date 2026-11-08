@@ -10,6 +10,7 @@ import {
   it,
   vi,
 } from "vitest";
+import { recordLogs } from "../logs.js";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import { assigneeIdsOf, withPuzzleNames } from "../references.js";
@@ -218,7 +219,7 @@ describe("the quest event log", () => {
   });
 
   it("does not fail a player's action when the log can't be written", async () => {
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const logs = recordLogs();
     vi.spyOn(QuestEventModel, "insertMany").mockRejectedValue(
       new Error("database down")
     );
@@ -226,8 +227,13 @@ describe("the quest event log", () => {
     const result = await QuestService.startQuest("test-quest");
 
     expect(result.status).toBe("success");
-    expect(error).toHaveBeenCalledWith(
-      "Handling quest activity for test-quest failed: database down"
+    expect(logs).toContainEqual(
+      expect.objectContaining({
+        level: "error",
+        msg: "handling quest activity failed",
+        questName: "test-quest",
+        err: expect.objectContaining({ message: "database down" }),
+      })
     );
   });
 });

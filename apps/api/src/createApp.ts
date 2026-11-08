@@ -7,10 +7,12 @@ import { sendWebAppNotFound } from "./controllers/web.controller.js";
 import { sendErrorPage } from "./errorPage.js";
 import { contentSecurityPolicy } from "./middleware/contentSecurityPolicy.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { logRequests } from "./middleware/requestLogging.js";
 import { requireSameOrigin } from "./middleware/sameOrigin.js";
 import { publicDirectory, puzzleDataDirectory } from "./paths.js";
 import { V1Router } from "./api/v1/index.js";
 import { AdminRouter } from "./routes/admin.js";
+import { HealthRouter } from "./routes/health.js";
 import { IndexRouter } from "./routes/index.js";
 import { QuestRouter } from "./routes/quest.js";
 import { UserRouter } from "./routes/user.js";
@@ -24,6 +26,9 @@ import { WebRouter } from "./routes/web.js";
  */
 export function createApp(): Express {
   const app = express();
+
+  // First, so every request has an ID, and its handling is logged with it.
+  app.use(logRequests);
 
   if (config.PQ_TRUST_PROXY !== undefined) {
     // Required behind a reverse proxy (such as cPanel's Apache front end) so
@@ -49,6 +54,8 @@ export function createApp(): Express {
   );
 
   app.use(contentSecurityPolicy);
+
+  app.use(HealthRouter);
 
   app.use(compression());
 

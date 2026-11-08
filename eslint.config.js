@@ -54,6 +54,12 @@ export default defineConfig([
     },
   },
   {
+    // The server logs through its logger (src/logger.ts), which keeps
+    // personal data out and ties each entry to its request.
+    files: ["apps/api/src/**/*.ts"],
+    rules: { "no-console": "error" },
+  },
+  {
     // The React app, in the browser. It uses only the public API, through the
     // API client, as any other client must, so it can't use the server's code.
     files: ["apps/web/src/**/*.ts", "apps/web/src/**/*.tsx"],

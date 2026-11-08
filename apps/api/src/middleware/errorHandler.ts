@@ -7,6 +7,7 @@ import {
   sendProblem,
 } from "../api/problems.js";
 import { sendErrorPage } from "../errorPage.js";
+import { log } from "../logger.js";
 
 /**
  * Handles errors thrown by routes and middleware, including rejected promises
@@ -45,7 +46,7 @@ export function errorHandler(
     status >= 400 &&
     status < 500;
   if (!isClientError) {
-    console.error(`Error handling ${req.method} ${req.originalUrl}:`, err);
+    log().error({ err }, "unexpected error handling the request");
   }
   const statusCode = isClientError ? status : 500;
   // The body parsers' error for a body over their limit has no problem of

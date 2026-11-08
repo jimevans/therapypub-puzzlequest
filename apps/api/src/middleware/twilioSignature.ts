@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import twilio from "twilio";
 import { config } from "../config.js";
+import { log } from "../logger.js";
 
 /** The header in which Twilio sends its signature of a webhook request. */
 export const TWILIO_SIGNATURE_HEADER = "x-twilio-signature";
@@ -22,8 +23,9 @@ export function requireTwilioSignature(
   next: NextFunction
 ): void {
   if (!config.PQ_TWILIO_AUTH_TOKEN || !config.PQ_BASE_URL) {
-    console.error(
-      "Rejected a Twilio webhook: PQ_TWILIO_AUTH_TOKEN and PQ_BASE_URL must be set to check its signature"
+    log().error(
+      { event: "webhook-refused", reason: "not-configured" },
+      "refused a Twilio webhook: PQ_TWILIO_AUTH_TOKEN and PQ_BASE_URL must be set to check its signature"
     );
     res.status(403).type("text").send("Forbidden");
     return;
@@ -39,6 +41,10 @@ export function requireTwilioSignature(
       req.body ?? {}
     )
   ) {
+    log().warn(
+      { event: "webhook-refused", reason: "bad-signature" },
+      "refused a Twilio webhook without a valid signature"
+    );
     res.status(403).type("text").send("Forbidden");
     return;
   }

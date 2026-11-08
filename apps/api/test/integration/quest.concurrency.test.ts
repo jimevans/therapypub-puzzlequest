@@ -12,6 +12,7 @@ import {
   it,
   vi,
 } from "vitest";
+import { recordLogs } from "../logs.js";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import { assigneeIdsOf, userIdsOf } from "../references.js";
@@ -275,7 +276,7 @@ describe("simultaneous actions on a quest", () => {
   });
 
   it("reports other save failures as server errors, logging the details", async () => {
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const logs = recordLogs();
     const diskFull = new Error("disk full");
     vi.spyOn(QuestModel.prototype, "save").mockRejectedValue(diskFull);
 
@@ -284,7 +285,13 @@ describe("simultaneous actions on a quest", () => {
       statusCode: 500,
       message: "An unexpected error occurred",
     });
-    expect(error).toHaveBeenCalledWith("applyQuestAction failed:", diskFull);
+    expect(logs).toContainEqual(
+      expect.objectContaining({
+        level: "error",
+        msg: "applyQuestAction failed",
+        err: expect.objectContaining({ message: "disk full" }),
+      })
+    );
   });
 });
 

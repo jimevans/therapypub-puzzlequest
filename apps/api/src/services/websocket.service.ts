@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { type WebSocket, WebSocketServer } from "ws";
+import { log } from "../logger.js";
 import {
   type LiveUpdate,
   type QuestUpdate,
@@ -30,7 +31,9 @@ export function initialize(): WebSocketServer {
   socketServer.on("connection", (socket) => {
     const connectionId = randomUUID().replaceAll("-", "");
     webSocketSessions.set(connectionId, { id: connectionId, socket });
-    socket.on("error", console.error);
+    socket.on("error", (err) => {
+      log().warn({ err }, "live-update connection error");
+    });
     socket.on("message", (data) => {
       // Anyone can connect, so ignore anything that isn't a valid message; an
       // exception here would stop the whole server.

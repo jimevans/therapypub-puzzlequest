@@ -4,6 +4,7 @@ import {
   rateLimit,
 } from "express-rate-limit";
 import { Problems, sendProblem } from "../api/problems.js";
+import { log } from "../logger.js";
 
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
 
@@ -12,6 +13,7 @@ const FIFTEEN_MINUTES = 15 * 60 * 1000;
  * again.
  */
 const handler: RateLimitExceededEventHandler = (req, res) => {
+  log().warn({ event: "rate-limited" }, "too many requests");
   sendProblem(
     res,
     Problems.tooManyRequests,

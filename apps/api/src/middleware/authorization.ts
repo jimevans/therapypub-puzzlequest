@@ -1,5 +1,6 @@
 import type { Request, RequestHandler, Response } from "express";
 import { sendErrorPage } from "../errorPage.js";
+import { log } from "../logger.js";
 import * as UserService from "../services/user.service.js";
 import { Problems, isV1Request, sendProblem } from "../api/problems.js";
 
@@ -44,6 +45,8 @@ function refuse(req: Request, res: Response, user: UserService.User): void {
     );
     return;
   }
+  // sendProblem logs the API's refusals; this logs the pages'.
+  log().warn({ event: "forbidden", userId: user.id }, "refused a request");
   sendErrorPage(
     res,
     403,

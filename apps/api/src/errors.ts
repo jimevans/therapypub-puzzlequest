@@ -1,3 +1,5 @@
+import { log } from "./logger.js";
+
 /**
  * Gets a message describing a caught value. JavaScript can throw anything, so
  * a caught value isn't necessarily an Error.
@@ -32,7 +34,7 @@ export function unexpectedErrorResult(
   action: string,
   err: unknown
 ): { status: "error"; statusCode: 500; message: string } {
-  console.error(`${action} failed:`, err);
+  log().error({ err }, `${action} failed`);
   return {
     status: "error",
     statusCode: 500,

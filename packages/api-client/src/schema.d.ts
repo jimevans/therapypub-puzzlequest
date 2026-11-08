@@ -831,6 +831,8 @@ export interface components {
             detail: string;
             /** @description For an invalid request, each problem with it. */
             errors?: components["schemas"]["FieldError"][];
+            /** @description For an unexpected error, the request's ID, also in the X-Request-Id header: quote it when reporting the problem, to find it in the server's log. */
+            requestId?: string;
         };
         FieldError: {
             /** @description Where the problem is, such as body.email or query.limit. */

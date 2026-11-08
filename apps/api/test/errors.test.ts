@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { isDuplicateKeyError, unexpectedErrorResult } from "../src/errors.js";
+import { recordLogs } from "./logs.js";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -7,7 +8,7 @@ afterEach(() => {
 
 describe("unexpectedErrorResult", () => {
   it("logs the details and returns a generic error", () => {
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const logs = recordLogs();
     const cause = new Error("connection refused at 10.0.0.5:27017");
 
     expect(unexpectedErrorResult("saveThing", cause)).toEqual({
@@ -15,7 +16,15 @@ describe("unexpectedErrorResult", () => {
       statusCode: 500,
       message: "An unexpected error occurred",
     });
-    expect(error).toHaveBeenCalledWith("saveThing failed:", cause);
+    expect(logs).toEqual([
+      expect.objectContaining({
+        level: "error",
+        msg: "saveThing failed",
+        err: expect.objectContaining({
+          message: "connection refused at 10.0.0.5:27017",
+        }),
+      }),
+    ]);
   });
 });
 
