@@ -24,6 +24,9 @@ deployment:
     # built files stay until a new build replaces them, so a failed build
     # leaves the previous ones serving.
     - rsync -a --delete --exclude=/apps/web/dist apps e2e packages $DEPLOYPATH/
+    # Record the commit deployed, since the copy has no .git: the server logs
+    # it on starting, and a backup records it, so its data's shape is known.
+    - git rev-parse HEAD > $DEPLOYPATH/DEPLOYED_COMMIT
     # Install exactly what the deployed package-lock.json lists. Both files are
     # linked into the environment on every deployment, so a new host can deploy
     # without first using cPanel's "Run NPM Install" button (cPanel itself
