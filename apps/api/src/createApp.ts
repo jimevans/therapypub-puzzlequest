@@ -12,6 +12,7 @@ import { requireSameOrigin } from "./middleware/sameOrigin.js";
 import { publicDirectory, puzzleDataDirectory } from "./paths.js";
 import { V1Router } from "./api/v1/index.js";
 import { AdminRouter } from "./routes/admin.js";
+import { ApiReferenceRouter } from "./routes/apiReference.js";
 import { HealthRouter } from "./routes/health.js";
 import { IndexRouter } from "./routes/index.js";
 import { QuestRouter } from "./routes/quest.js";
@@ -73,7 +74,8 @@ export function createApp(): Express {
   app.use("/", IndexRouter);
   app.use(AdminRouter);
 
-  // The API, for the pages' scripts and for apps.
+  // The API, for the pages' scripts and for apps, and its reference.
+  app.use("/api/v1/docs", ApiReferenceRouter);
   app.use("/api/v1", V1Router);
 
   // The pages.

@@ -187,7 +187,9 @@ describe("checking a backup", () => {
   });
 });
 
-describe("restoring a backup", () => {
+// A restore rebuilds every index, which can take a few seconds on a busy
+// machine, such as a CI runner measuring coverage.
+describe("restoring a backup", { timeout: 30000 }, () => {
   it("gives back exactly what was backed up, with the indexes, and no sessions", async () => {
     const backup = await backUp();
     const restoredMedia = path.join(folder, "restored-media");
@@ -270,7 +272,7 @@ describe("restoring a backup", () => {
   });
 });
 
-describe("the backup command", () => {
+describe("the backup command", { timeout: 30000 }, () => {
   it("makes a backup quietly, and removes ones no longer kept", async () => {
     const original = config.PQ_MONGODB_URI;
     config.PQ_MONGODB_URI = mongoServer.getUri("puzzlequest");

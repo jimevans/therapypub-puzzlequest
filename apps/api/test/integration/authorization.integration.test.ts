@@ -58,6 +58,8 @@ const { AuthorizationLevel, TeamModel, UserModel } =
 const { SessionModel } = await import("../../src/models/session.model.js");
 const QuestService = await import("../../src/services/quest.service.js");
 const { IndexRouter } = await import("../../src/routes/index.js");
+const { HealthRouter } = await import("../../src/routes/health.js");
+const { ApiReferenceRouter } = await import("../../src/routes/apiReference.js");
 const { V1Router } = await import("../../src/api/v1/index.js");
 const { AdminRouter } = await import("../../src/routes/admin.js");
 const { QuestRouter } = await import("../../src/routes/quest.js");
@@ -67,6 +69,8 @@ const { UserRouter } = await import("../../src/routes/user.js");
 const MOUNTS: [string, Router][] = [
   ["", IndexRouter],
   ["", AdminRouter],
+  ["", HealthRouter],
+  ["/api/v1/docs", ApiReferenceRouter],
   ["/api/v1", V1Router],
   ["/user", UserRouter],
   ["/quest", QuestRouter],
@@ -112,6 +116,11 @@ const ROUTES: [string, string, Policy][] = [
   ["get", "/users", ADMIN],
   ["get", "/teams", ADMIN],
   ["get", "/logout", PUBLIC],
+  ["get", "/healthz", PUBLIC],
+
+  ["get", "/api/v1/docs", PUBLIC],
+  ["get", "/api/v1/docs/swagger-ui.css", PUBLIC],
+  ["get", "/api/v1/docs/swagger-ui-bundle.js", PUBLIC],
 
   ["get", "/api/v1/openapi.json", PUBLIC],
   ["post", "/api/v1/sessions", PUBLIC],

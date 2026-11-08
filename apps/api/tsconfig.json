@@ -13,5 +13,7 @@
     "test/**/*.ts",
     "scripts/**/*.ts",
     "*.js"
-  ]
+  ],
+  // Browser scripts, which ESLint checks with the browser's globals.
+  "exclude": ["src/public/**"]
 }
