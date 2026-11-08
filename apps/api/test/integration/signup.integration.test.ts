@@ -130,7 +130,7 @@ describe("signing up", () => {
     expect(await storedLevel()).toBe(AuthorizationLevel.ADMIN);
   });
 
-  it("still makes the very first account an administrator", async () => {
+  it("makes even the very first account a player", async () => {
     const response = await request(app).post("/api/v1/users").send({
       userName: "newcomer",
       displayName: "Newcomer",
@@ -139,6 +139,6 @@ describe("signing up", () => {
     });
 
     expect(response.status).toBe(201);
-    expect(await storedLevel()).toBe(AuthorizationLevel.ADMIN);
+    expect(await storedLevel()).toBe(AuthorizationLevel.USER);
   });
 });

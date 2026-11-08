@@ -19,6 +19,10 @@ import {
 } from "./support.js";
 
 const APPLICATION = path.join(import.meta.dirname, "../apps/api/dist/app.js");
+const ADMIN_COMMANDS = path.join(
+  import.meta.dirname,
+  "../apps/api/dist/admin/cli.js"
+);
 
 let mongoServer: MongoMemoryServer | undefined;
 let server: ChildProcess | undefined;
@@ -200,13 +204,31 @@ export const config: WebdriverIO.Config = {
     });
     closeSync(log);
     await waitForServer();
-    // The first account to sign up becomes an administrator.
+    // An administrator, made as a new site's first one is: by signing up,
+    // then promoting the account. Run without blocking, since this process
+    // hosts the database, which stalls if its output isn't read.
     await api("POST", "/users", undefined, {
       userName: ADMIN,
       displayName: "E2E Admin",
       email: "e2e-admin@example.com",
       password: PASSWORD,
     });
+    const promote = spawn(
+      process.execPath,
+      [ADMIN_COMMANDS, "promote", ADMIN],
+      {
+        stdio: "inherit",
+        env: {
+          PATH: process.env.PATH,
+          NODE_ENV: "test",
+          PQ_MONGODB_URI: mongoServer.getUri("puzzlequest"),
+        },
+      }
+    );
+    const code = await new Promise((resolve) => promote.on("exit", resolve));
+    if (code !== 0) {
+      throw new Error(`Promoting ${ADMIN} failed (exit code ${String(code)})`);
+    }
   },
 
   async onComplete() {

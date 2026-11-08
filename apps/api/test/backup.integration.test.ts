@@ -21,6 +21,7 @@ import {
   describe,
   expect,
   it,
+  vi,
 } from "vitest";
 
 const {
@@ -294,6 +295,57 @@ describe("the backup command", () => {
     expect(left.filter((name) => name.startsWith("2026-11-"))).toHaveLength(1);
     // The newest 14, and the newest of each earlier week.
     expect(left).toHaveLength(14 + 1);
+  });
+
+  it("says whether a backup is whole", async () => {
+    const backup = await backUp();
+    const out = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true);
+    const err = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+
+    expect(await run(["verify", backup])).toBe(0);
+    expect(String(out.mock.calls[0]?.[0])).toMatch(
+      /^Whole: \d+ collections and 2 media files, from 2026-11-08T03:00:00.000Z \(commit abc123\)/
+    );
+    await rm(path.join(backup, "media", "riddle.png"));
+    expect(await run(["verify", backup])).toBe(1);
+    expect(String(err.mock.calls[0]?.[0])).toContain("missing riddle.png");
+    vi.restoreAllMocks();
+  });
+
+  it("restores a backup into the configured database", async () => {
+    const backup = await backUp();
+    const original = config.PQ_MONGODB_URI;
+    config.PQ_MONGODB_URI = mongoServer.getUri("restored");
+    // The command connects to its own database.
+    await mongoose.disconnect();
+    target = mongoose.createConnection(mongoServer.getUri("restored"));
+    const out = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true);
+
+    try {
+      expect(
+        await run([
+          "restore",
+          backup,
+          "--media",
+          path.join(folder, "restored-media"),
+        ])
+      ).toBe(0);
+    } finally {
+      config.PQ_MONGODB_URI = original;
+      vi.restoreAllMocks();
+      await mongoose.connect(mongoServer.getUri("puzzlequest"));
+    }
+
+    expect(String(out.mock.calls[0]?.[0])).toContain(
+      "Restored 2026-11-08T03:00:00.000Z's backup into restored"
+    );
+    expect(await target.db!.collection("users").countDocuments()).toBe(1);
   });
 
   it("explains itself when given something it doesn't do", async () => {

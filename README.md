@@ -99,8 +99,24 @@ npm run build  # compiles the server and builds the web app
 npm start
 ```
 
-Open <http://localhost:3000> and sign up at `/user/register`. The first user
-created in an empty database becomes an administrator.
+Open <http://localhost:3000>. To fill your development database with sample
+data (people of every role, a team, puzzles of every kind with their media,
+and quests in every state), run:
+
+```bash
+npm run seed              # into an empty database
+npm run seed -- --reset   # replacing what's there
+```
+
+It prints who's who; everyone's password is `puzzlequest sample`. It runs only
+when `PQ_RUNTIME_ENVIRONMENT` is `development`, as `.env.example` sets it.
+
+Or sign up at `/user/register`, and make yourself an administrator:
+
+```bash
+npm run build --workspace=@puzzlequest/api
+node apps/api/dist/admin/cli.js promote YOUR_USER_NAME
+```
 
 ### Debugging in VS Code
 
@@ -255,6 +271,48 @@ sh /home/thepuzzlequest/puzzlequest/apps/api/scripts/rotate-log.sh /home/thepuzz
 `/healthz` answers 200 while the server can reach its database, and 503 when
 it can't.
 
+### Running commands on the site
+
+Some jobs are commands: making an administrator, and checking or restoring a
+backup. cPanel's **Terminal** can run them, but two other ways don't need it:
+
+- **From your own computer**, for commands that only touch the database, such
+  as `promote`. Clone the repository, run `npm ci` and
+  `npm run build --workspace=@puzzlequest/api`, and in Atlas, under
+  **Network Access**, add your computer's address (remove it afterwards).
+  Then give the site's connection string, from the **Setup Node.js App** page,
+  just for the command:
+
+  ```sh
+  PQ_MONGODB_URI='CONNECTION_STRING' node apps/api/dist/admin/cli.js promote USER_NAME
+  ```
+
+- **As a one-off cron job**, for commands that need the server's files, such
+  as checking or restoring a backup. On the **Cron Jobs** page, add a job for
+  a minute or two from now (set the minute, hour, day and month, not a
+  "Common Setting", so it runs once), whose command starts with the app's
+  Node and saves what it says:
+
+  ```sh
+  . /home/thepuzzlequest/nodevenv/puzzlequest/24/bin/activate && node /home/thepuzzlequest/puzzlequest/apps/api/dist/backup/cli.js verify /home/thepuzzlequest/backups/NAME >> /home/thepuzzlequest/command-output.txt 2>&1
+  ```
+
+  Once it has run, **delete the job**, and read `command-output.txt` in File
+  Manager. A job holding a connection string must be deleted promptly.
+
+### Making an administrator
+
+A new site has no administrator: signing up makes a player, however early.
+Sign up on the site, then run `promote` with your user name, from your own
+computer as above (or in the Terminal):
+
+```sh
+node apps/api/dist/admin/cli.js promote USER_NAME
+```
+
+It signs that user out, so their next sign-in has the new role. After that,
+administrators can make others administrators by editing their profiles.
+
 ### Backups
 
 A backup holds what Git doesn't: the database and the uploaded media. The code
@@ -289,34 +347,29 @@ wrong deletion, but not against losing the host: download one now and then
    . /home/thepuzzlequest/nodevenv/puzzlequest/24/bin/activate && node --env-file=/home/thepuzzlequest/.puzzlequest-backup.env /home/thepuzzlequest/puzzlequest/apps/api/dist/backup/cli.js backup
    ```
 
-4. The next day, check a backup is whole, in cPanel's **Terminal**:
-
-   ```sh
-   . /home/thepuzzlequest/nodevenv/puzzlequest/24/bin/activate
-   node /home/thepuzzlequest/puzzlequest/apps/api/dist/backup/cli.js verify ~/backups/NAME
-   ```
+4. The next day, check a backup is whole, with the `verify` command, as a
+   one-off cron job (see "Running commands on the site"). It writes
+   "Whole: …", or what's wrong.
 
 **Restoring.** A restore replaces the database's collections and the media
 with a backup's, rebuilds the indexes, and checks the result against the
-manifest. It needs a user that can write, so use the site's own connection
-string, from the **Setup Node.js App** page, given just for the command. In
-cPanel's **Terminal**, first run
-`. /home/thepuzzlequest/nodevenv/puzzlequest/24/bin/activate`, so `node` is
-the app's Node 24.
+manifest. It needs the server's files and a user that can write, so run it as
+a one-off cron job (see "Running commands on the site") with the site's own
+connection string, from the **Setup Node.js App** page:
 
-1. Check the backup:
-   `node /home/thepuzzlequest/puzzlequest/apps/api/dist/backup/cli.js verify ~/backups/NAME`.
-2. Restore it, confirming the database's name, since it replaces what's
-   there:
+1. Check the backup, with `verify`, as a one-off job.
+2. Restore it, as a one-off job, confirming the database's name, since it
+   replaces what's there; then delete the job at once, since it holds the
+   connection string:
 
    ```sh
-   PQ_MONGODB_URI='CONNECTION_STRING' node /home/thepuzzlequest/puzzlequest/apps/api/dist/backup/cli.js restore ~/backups/NAME --confirm DATABASE
+   . /home/thepuzzlequest/nodevenv/puzzlequest/24/bin/activate && PQ_MONGODB_URI='CONNECTION_STRING' node /home/thepuzzlequest/puzzlequest/apps/api/dist/backup/cli.js restore /home/thepuzzlequest/backups/NAME --confirm DATABASE >> /home/thepuzzlequest/command-output.txt 2>&1
    ```
 
 3. The command says which commit made the backup. If the code has changed the
    data's shape since then, deploy that commit, or run the later migrations
    on the restored data.
-4. Restart the app (`touch /home/thepuzzlequest/puzzlequest/tmp/restart.txt`).
+4. Restart the app, with **Restart** on the **Setup Node.js App** page.
 
 **Practice.** To check a backup restores, without touching production,
 restore a downloaded copy into a local database and folder:

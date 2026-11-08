@@ -24,7 +24,8 @@
     "lint": "eslint .",
     "typecheck": "node node_modules/typescript-native/bin/tsc -p . && npm run typecheck --workspaces",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "seed": "npm run seed --workspace=@puzzlequest/api --"
   },
   "repository": {
     "type": "git",
