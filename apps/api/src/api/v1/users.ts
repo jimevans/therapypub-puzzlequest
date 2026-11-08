@@ -17,7 +17,7 @@ import * as PasswordService from "../../services/password.service.js";
 import * as QuestService from "../../services/quest.service.js";
 import * as TeamService from "../../services/team.service.js";
 import * as UserService from "../../services/user.service.js";
-import { getErrorMessage } from "../../errors.js";
+import { log } from "../../logger.js";
 import { pageQuery, pageSchema } from "../paging.js";
 import { Problems, sendProblem, sendServiceProblem } from "../problems.js";
 import {
@@ -396,12 +396,15 @@ export const userRoutes = [
           req.body.identifier
         );
         if (result.status === "error") {
-          console.error(`Password reset request failed: ${result.message}`);
+          log().error(
+            { reason: result.message },
+            "password reset request failed"
+          );
         }
       } catch (err) {
         // The response has been sent, so an uncaught rejection here would
         // otherwise crash the process.
-        console.error(`Password reset request failed: ${getErrorMessage(err)}`);
+        log().error({ err }, "password reset request failed");
       }
     },
   }),

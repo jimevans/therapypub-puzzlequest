@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "crypto";
 import { config } from "../config.js";
+import { log } from "../logger.js";
 import { EmailVerificationModel } from "../models/emailVerification.model.js";
 import { UserModel } from "../models/user.model.js";
 import type { ServiceResult } from "../types.js";
@@ -82,9 +83,7 @@ export async function trySendVerificationEmail(
 ): Promise<void> {
   const result = await sendVerificationEmail(userName);
   if (result.status === "error") {
-    console.error(
-      `Sending a verification email to ${userName} failed: ${result.message}`
-    );
+    log().error({ reason: result.message }, "verification email not sent");
   }
 }
 

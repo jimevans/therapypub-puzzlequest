@@ -12,6 +12,7 @@ import {
   it,
   vi,
 } from "vitest";
+import { recordLogs } from "../logs.js";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
@@ -354,7 +355,7 @@ describe("a forgotten password", () => {
   });
 
   it("is accepted even when sending fails, which is logged", async () => {
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const logs = recordLogs();
     vi.spyOn(PasswordService, "requestPasswordReset").mockRejectedValueOnce(
       new Error("SMTP down")
     );
@@ -365,8 +366,13 @@ describe("a forgotten password", () => {
 
     expect(response.status).toBe(202);
     await vi.waitFor(() =>
-      expect(error).toHaveBeenCalledWith(
-        "Password reset request failed: SMTP down"
+      expect(logs).toContainEqual(
+        expect.objectContaining({
+          level: "error",
+          msg: "password reset request failed",
+          reqId: response.get("X-Request-Id"),
+          err: expect.objectContaining({ message: "SMTP down" }),
+        })
       )
     );
   });

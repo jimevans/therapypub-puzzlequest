@@ -16,15 +16,15 @@ const AuthenticationService =
 const { createApp } = await import("../src/createApp.js");
 const { errorHandler } = await import("../src/middleware/errorHandler.js");
 
+const { recordLogs } = await import("./logs.js");
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
 describe("error handling in the app", () => {
   it("reports a rejected promise from an async handler as a 500 without details", async () => {
-    const consoleError = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
+    const logs = recordLogs();
     vi.mocked(AuthenticationService.authenticate).mockRejectedValue(
       new Error("database exploded")
     );
@@ -35,14 +35,24 @@ describe("error handling in the app", () => {
 
     expect(response.status).toBe(500);
     expect(response.type).toBe("application/problem+json");
+    const requestId = response.get("X-Request-Id");
+    expect(requestId).toMatch(/^[0-9a-f-]{36}$/);
     expect(JSON.parse(response.text)).toEqual({
       type: "/problems/unexpected",
       title: "An unexpected error occurred",
       status: 500,
       detail: "An unexpected error occurred",
+      requestId,
     });
     expect(response.text).not.toContain("database exploded");
-    expect(consoleError).toHaveBeenCalled();
+    // The details are in the log, under the same request ID.
+    expect(logs).toContainEqual(
+      expect.objectContaining({
+        level: "error",
+        reqId: requestId,
+        err: expect.objectContaining({ message: "database exploded" }),
+      })
+    );
   });
 
   it("reports malformed JSON as a 400 with the parser's message", async () => {
@@ -68,7 +78,6 @@ describe("errorHandler", () => {
   }
 
   it("responds with the error page outside the API", () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
     const res = createMockResponse();
     res.type = vi.fn(() => res);
     // The shared mock parses bodies as JSON; this one is HTML.

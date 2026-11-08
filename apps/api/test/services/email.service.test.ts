@@ -2,6 +2,7 @@
 // server configured until one is set up, and a link in an email must never end
 // up in its logs.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { recordLogs } from "../logs.js";
 
 const transport = vi.hoisted(() => ({ sendMail: vi.fn() }));
 const createTransport = vi.hoisted(() => vi.fn(() => transport));
@@ -16,15 +17,19 @@ const MESSAGE = {
 
 /**
  * Loads the service afresh, since it keeps its connection once made, along with
- * the configuration it will see.
+ * the configuration it will see, and records what it logs.
  * @param settings the configuration to give it
- * @returns the service
+ * @returns the service, and what it logs
  */
 async function emailService(settings: Record<string, unknown>) {
   vi.resetModules();
   const { config } = await import("../../src/config.js");
   Object.assign(config, settings);
-  return import("../../src/services/email.service.js");
+  const logs = recordLogs(await import("../../src/logger.js"));
+  return {
+    ...(await import("../../src/services/email.service.js")),
+    logs,
+  };
 }
 
 const NO_MAIL_SERVER = { PQ_SMTP_HOST: undefined };
@@ -48,7 +53,6 @@ describe("sendEmail", () => {
 
   describe("without a mail server", () => {
     it("reports a failure in production, for callers to decide what it means", async () => {
-      vi.spyOn(console, "error").mockImplementation(() => {});
       const { sendEmail } = await emailService({
         ...NO_MAIL_SERVER,
         PQ_RUNTIME_ENVIRONMENT: "production",
@@ -62,29 +66,32 @@ describe("sendEmail", () => {
     });
 
     it("keeps links out of production's logs", async () => {
-      const error = vi.spyOn(console, "error").mockImplementation(() => {});
-      const log = vi.spyOn(console, "log").mockImplementation(() => {});
-      const { sendEmail } = await emailService({
+      const { sendEmail, logs } = await emailService({
         ...NO_MAIL_SERVER,
         PQ_RUNTIME_ENVIRONMENT: "production",
       });
 
       await sendEmail(MESSAGE);
 
-      const written = JSON.stringify([error.mock.calls, log.mock.calls]);
+      expect(logs).toContainEqual(
+        expect.objectContaining({
+          level: "error",
+          msg: "email not sent: SMTP isn't configured (PQ_SMTP_HOST unset)",
+        })
+      );
+      const written = JSON.stringify(logs);
       expect(written).not.toContain("secret-link");
       expect(written).not.toContain(MESSAGE.to);
     });
 
     it("writes the message out in development, to follow its links", async () => {
-      const log = vi.spyOn(console, "log").mockImplementation(() => {});
-      const { sendEmail } = await emailService({
+      const { sendEmail, logs } = await emailService({
         ...NO_MAIL_SERVER,
         PQ_RUNTIME_ENVIRONMENT: "development",
       });
 
       expect((await sendEmail(MESSAGE)).status).toBe("success");
-      expect(log.mock.calls[0]?.[0]).toContain("secret-link");
+      expect(logs[0]?.msg).toContain("secret-link");
       expect(createTransport).not.toHaveBeenCalled();
     });
   });
@@ -130,7 +137,6 @@ describe("sendEmail", () => {
     });
 
     it("reports a failure without details when sending fails", async () => {
-      vi.spyOn(console, "error").mockImplementation(() => {});
       transport.sendMail.mockRejectedValue(new Error("Connection refused"));
       const { sendEmail } = await emailService(MAIL_SERVER);
 

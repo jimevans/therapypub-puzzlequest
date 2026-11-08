@@ -1,5 +1,6 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { config } from "../config.js";
+import { log } from "../logger.js";
 import type { ServiceResult } from "../types.js";
 import { unexpectedErrorResult } from "../errors.js";
 
@@ -55,15 +56,17 @@ export async function sendEmail({
     if (config.PQ_RUNTIME_ENVIRONMENT !== "development") {
       // Never write message bodies (which may contain reset links) to
       // production logs.
-      console.error("SMTP not configured (PQ_SMTP_HOST unset); email not sent");
+      log().error("email not sent: SMTP isn't configured (PQ_SMTP_HOST unset)");
       return {
         status: "error",
         statusCode: 500,
         message: "Email delivery is not configured",
       };
     }
-    console.log(
-      `SMTP not configured (PQ_SMTP_HOST unset); email not sent.\nTo: ${to}\nSubject: ${subject}\n\n${text}`
+    // In development only, the message is logged in full, so its links can
+    // be followed.
+    log().info(
+      `email not sent: SMTP isn't configured (PQ_SMTP_HOST unset).\nTo: ${to}\nSubject: ${subject}\n\n${text}`
     );
     return { status: "success", statusCode: 200 };
   }

@@ -26,7 +26,8 @@ function escapeHtml(text: string): string {
  * @param res the response
  * @param status the HTTP status
  * @param title what went wrong, in a few words, such as "Forbidden"
- * @param details more about it
+ * @param details more about it. A server error also gives the request's ID,
+ *  to quote when reporting it.
  */
 export function sendErrorPage(
   res: Response,
@@ -34,6 +35,11 @@ export function sendErrorPage(
   title: string,
   details: string
 ): void {
+  const requestId = res.req?.id;
+  const reference =
+    status >= 500 && typeof requestId === "string"
+      ? `      <p>If you report this, quote reference ${escapeHtml(requestId)}.</p>\n`
+      : "";
   res
     .status(status)
     .type("html")
@@ -52,7 +58,7 @@ export function sendErrorPage(
     <main>
       <h1>${escapeHtml(title)}</h1>
       <p>${escapeHtml(details)}</p>
-      <p><a href="/">Go to the home page</a></p>
+${reference}      <p><a href="/">Go to the home page</a></p>
     </main>
   </body>
 </html>

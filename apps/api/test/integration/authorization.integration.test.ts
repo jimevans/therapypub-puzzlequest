@@ -13,6 +13,7 @@ import {
   it,
   vi,
 } from "vitest";
+import { recordLogs } from "../logs.js";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
@@ -345,12 +346,26 @@ describe.each(ROUTES)("%s %s", (method, routePath, policy) => {
   it.each(ROLES.map((role, index) => [role, policy[index]] as const))(
     "as %s: %s",
     async (role, expected) => {
+      const logs = recordLogs();
       const response = await send(method, routePath, role);
 
       expect(
         outcomeOf(response),
         `${response.status} ${response.text?.slice(0, 200)}`
       ).toBe(expected);
+      // A refusal is a security event: logged by who was refused, or for a
+      // webhook, as one refused.
+      if (expected === "deny") {
+        expect(logs).toContainEqual(
+          routePath.includes("/webhooks/")
+            ? expect.objectContaining({ event: "webhook-refused" })
+            : expect.objectContaining({
+                level: "warn",
+                event: "forbidden",
+                userId: expect.any(String),
+              })
+        );
+      }
     }
   );
 });

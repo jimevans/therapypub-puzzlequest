@@ -120,7 +120,7 @@ export async function callQuestNumber(from: string): Promise<string> {
 
 /**
  * Waits for a link in an email the server sent. With no mail server
- * configured, it writes emails to its output.
+ * configured, it logs each email instead.
  * @param to the address the email went to
  * @param linkPath the path of the link, such as /user/email/verify
  * @returns the link
@@ -132,9 +132,18 @@ export async function emailedLink(
   let link: string | undefined;
   await browser.waitUntil(
     () => {
+      // The server logs each email it would send, in development, as the
+      // message of a JSON log line.
       const emails = readFileSync(SERVER_LOG, "utf8")
-        .split(`To: ${to}\n`)
-        .slice(1);
+        .split("\n")
+        .flatMap((line) => {
+          try {
+            return [String((JSON.parse(line) as { msg?: unknown }).msg)];
+          } catch {
+            return [];
+          }
+        })
+        .filter((message) => message.includes(`To: ${to}\n`));
       link = emails
         .flatMap((email) => email.match(/https?:\/\/\S+/g) ?? [])
         .findLast((url) => new URL(url).pathname === linkPath);

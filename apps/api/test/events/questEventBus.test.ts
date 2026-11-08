@@ -3,6 +3,7 @@ import {
   type QuestActivity,
   QuestEventBus,
 } from "../../src/events/questEventBus.js";
+import { recordLogs } from "../logs.js";
 
 const activity: QuestActivity = {
   questName: "quest1",
@@ -53,7 +54,7 @@ describe("QuestEventBus", () => {
   });
 
   it("logs a failing handler without affecting the others or the caller", async () => {
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const logs = recordLogs();
     const bus = new QuestEventBus();
     const working = vi.fn();
     bus.subscribe(async () => {
@@ -67,11 +68,15 @@ describe("QuestEventBus", () => {
     await expect(bus.publish(activity)).resolves.toBeUndefined();
 
     expect(working).toHaveBeenCalledWith(activity);
-    expect(error).toHaveBeenCalledWith(
-      "Handling quest activity for quest1 failed: database down"
-    );
-    expect(error).toHaveBeenCalledWith(
-      "Handling quest activity for quest1 failed: socket closed"
-    );
+    for (const message of ["database down", "socket closed"]) {
+      expect(logs).toContainEqual(
+        expect.objectContaining({
+          level: "error",
+          msg: "handling quest activity failed",
+          questName: "quest1",
+          err: expect.objectContaining({ message }),
+        })
+      );
+    }
   });
 });

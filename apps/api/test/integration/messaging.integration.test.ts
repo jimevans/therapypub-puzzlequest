@@ -13,6 +13,7 @@ import {
   it,
   vi,
 } from "vitest";
+import { recordLogs } from "../logs.js";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
@@ -174,9 +175,19 @@ describe("Twilio webhook signatures", () => {
   );
 
   it.each(webhooks)("%s rejects an unsigned request", async (path, fields) => {
+    const logs = recordLogs();
     const response = await request(app).post(path).type("form").send(fields);
 
     expect(response.status).toBe(403);
+    expect(logs).toContainEqual(
+      expect.objectContaining({
+        level: "warn",
+        event: "webhook-refused",
+        reason: "bad-signature",
+      })
+    );
+    // Not the caller's number.
+    expect(JSON.stringify(logs)).not.toContain(fields.From);
     // A bare refusal, which tells the sender nothing.
     expect(response.text).toBe("Forbidden");
     // A forged call must not start the caller's quests.
@@ -222,7 +233,6 @@ describe("Twilio webhook signatures", () => {
   it.each(webhooks)(
     "%s rejects every request when the auth token is not configured",
     async (path, fields) => {
-      vi.spyOn(console, "error").mockImplementation(() => {});
       const signature = Twilio.getExpectedTwilioSignature(
         AUTH_TOKEN,
         `${BASE_URL}${path}`,
@@ -471,7 +481,7 @@ describe("POST /api/v1/quests/{name}/text-messages", () => {
   });
 
   it("reports a Twilio API error without its details, which it logs", async () => {
-    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const logs = recordLogs();
     await createQuest("player-quest", "player");
     await QuestService.startQuest("player-quest");
     vi.mocked(Twilio.RequestClient.prototype.request).mockResolvedValue({
@@ -491,13 +501,15 @@ describe("POST /api/v1/quests/{name}/text-messages", () => {
       type: "/problems/messaging-failed",
       detail: "An unexpected error occurred",
     });
-    expect(error).toHaveBeenCalledWith(
-      "sendOutgoingTextMessage failed:",
+    expect(logs).toContainEqual(
       expect.objectContaining({
-        message: "The 'To' number is not a valid phone number.",
+        level: "error",
+        msg: "sendOutgoingTextMessage failed",
+        err: expect.objectContaining({
+          message: "The 'To' number is not a valid phone number.",
+        }),
       })
     );
-    error.mockRestore();
   });
 
   it("refuses when no one on the quest accepts texts", async () => {

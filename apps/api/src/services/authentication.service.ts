@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
 import type { ServiceResult } from "../types.js";
 import * as UserService from "./user.service.js";
+import { log } from "../logger.js";
 
 export const MINIMUM_PASSWORD_LENGTH = 8;
 
@@ -37,6 +38,14 @@ export async function authenticate(
     passwordHash !== "" &&
     (await bcrypt.compare(password, passwordHash));
   if (userResponse.status === "error" || !matches) {
+    // Named by ID, never by the typed name, which could be someone's
+    // password typed in the wrong box.
+    log().warn(
+      userResponse.status === "success"
+        ? { event: "sign-in-failed", userId: userResponse.data.id }
+        : { event: "sign-in-failed", knownUser: false },
+      "sign-in failed"
+    );
     return {
       status: "error",
       statusCode: 401,

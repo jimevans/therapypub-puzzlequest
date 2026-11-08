@@ -5,6 +5,7 @@ import { STATUS_CODES } from "http";
 import type { Request, Response } from "express";
 import { z } from "zod";
 import type { ServiceErrorReason } from "../types.js";
+import { log } from "../logger.js";
 
 /** A kind of problem the API reports. */
 export interface ProblemType {
@@ -241,6 +242,10 @@ export const problemSchema = z
     errors: z.array(fieldErrorSchema).optional().meta({
       description: "For an invalid request, each problem with it.",
     }),
+    requestId: z.string().optional().meta({
+      description:
+        "For an unexpected error, the request's ID, also in the X-Request-Id header: quote it when reporting the problem, to find it in the server's log.",
+    }),
   })
   .meta({ id: "Problem" });
 export type Problem = z.infer<typeof problemSchema>;
@@ -271,12 +276,25 @@ export function sendProblem(
   detail: string,
   extensions: Partial<Pick<Problem, "errors">> = {}
 ): void {
+  const requestId = res.req?.id;
+  // Refusing a signed-in user is a security event, wherever it's decided:
+  // by a route's access rule, or by a service, such as for a quest that
+  // isn't theirs.
+  if (problem.type === Problems.forbidden.type) {
+    log().warn(
+      { event: "forbidden", userId: res.req?.user?.id },
+      "refused a request"
+    );
+  }
   const body: Problem = {
     type: problem.type,
     title: problem.title,
     status: problem.status,
     detail,
     ...extensions,
+    ...(problem.status >= 500 && typeof requestId === "string"
+      ? { requestId }
+      : {}),
   };
   res
     .status(problem.status)
