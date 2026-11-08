@@ -3,7 +3,8 @@ import { type InferSchemaType, Schema, model } from "mongoose";
 /**
  * Something that happened in a quest. The collection is an append-only log
  * of quest progress: entries are never changed, and resetting a quest adds a
- * QuestReset entry rather than removing earlier ones.
+ * QuestReset entry rather than removing earlier ones. The one exception is
+ * deleting an account, which takes its user name out of the log.
  */
 const questEventSchema = new Schema(
   {
@@ -29,6 +30,13 @@ const questEventSchema = new Schema(
     /** The user name of whoever acted; absent when the system acted. */
     actor: {
       type: String,
+    },
+    /**
+     * True if whoever acted has since deleted their account, which took their
+     * user name out of the log.
+     */
+    actorDeleted: {
+      type: Boolean,
     },
     /** Details particular to the type, such as a hint's time penalty. */
     data: {

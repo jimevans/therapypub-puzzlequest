@@ -7,6 +7,7 @@ import { Button } from "../../ui/Button";
 import { LinkButton } from "../../ui/LinkButton";
 import styles from "./Account.module.css";
 import { ChangePassword } from "./ChangePassword";
+import { DeleteAccount } from "./DeleteAccount";
 import { EmailReminder } from "./EmailReminder";
 import { Teams } from "./Teams";
 import { AUTHORIZATION_LEVELS, formatPhone } from "./accountForm";
@@ -110,6 +111,7 @@ export function Profile() {
       </LinkButton>
       <Teams userName={details.userName} teams={details.teams ?? []} />
       {isSelf && <ChangePassword userName={details.userName} />}
+      {isSelf && <DeleteAccount userName={details.userName} />}
       {isAdministrator(viewer) && !isSelf && (
         <SendResetLink userName={details.userName} email={details.email} />
       )}

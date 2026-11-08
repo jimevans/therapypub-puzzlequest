@@ -195,7 +195,9 @@ function Console({ quest }: { quest: Quest }) {
         <dd>
           {quest.assignee.name
             ? `${quest.assignee.displayName ?? quest.assignee.name} (${quest.assignee.kind})`
-            : `A deleted ${quest.assignee.kind}`}
+            : quest.assignee.kind === "team"
+              ? "A deleted team"
+              : "A deleted player"}
         </dd>
         <dt>Status</dt>
         <dd id="quest-status">

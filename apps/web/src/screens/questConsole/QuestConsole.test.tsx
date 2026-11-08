@@ -91,6 +91,12 @@ const EVENTS = [
     puzzleName: "riddle",
     actor: "player",
   },
+  {
+    type: "PuzzleActivated",
+    at: "2026-11-07T10:06:00.000Z",
+    puzzleName: "cipher",
+    actorDeleted: true,
+  },
 ];
 
 function ok(data?: unknown, status = 200) {
@@ -426,9 +432,12 @@ describe("the quest console", () => {
       await screen.findByRole("region", { name: "Activity" })
     );
     await waitFor(() =>
-      expect(activity.getAllByRole("listitem")).toHaveLength(3)
+      expect(activity.getAllByRole("listitem")).toHaveLength(4)
     );
     const items = activity.getAllByRole("listitem");
+    expect(items.shift()).toHaveTextContent(
+      "The cipher activated by a deleted player"
+    );
     expect(items[0]).toHaveTextContent("The riddle solved by player");
     expect(items[1]).toHaveTextContent(
       "Hint 1 revealed on The riddle, adding 1:00 by player"
