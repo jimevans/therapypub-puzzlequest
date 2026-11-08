@@ -28,6 +28,7 @@ describe("the service worker", () => {
   it.each([
     "/api/v1/quests",
     "/logout",
+    "/healthz",
     "/puzzleData/riddle.png",
     "/policies/privacy.html",
     "/style/error.css",

@@ -15,10 +15,11 @@ export type Handling = "page" | "asset" | "network";
  * the app's pages that the server must answer itself.
  */
 const SERVER_PAGES = [
-  // Not the app: the API, signing out, uploaded media, and the server's own
-  // files, including the legal pages.
+  // Not the app: the API, signing out, the health check, uploaded media, and
+  // the server's own files, including the legal pages.
   /^\/api\//,
   /^\/logout$/,
+  /^\/healthz$/,
   /^\/puzzleData\//,
   /^\/policies\//,
   /^\/style\//,
