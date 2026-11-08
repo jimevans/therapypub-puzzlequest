@@ -686,7 +686,7 @@
       "delete": {
         "operationId": "deleteUser",
         "summary": "Delete a user",
-        "description": "Deletes the user, ends their sessions, and removes them from their teams. Quests assigned to them stay, assigned to a deleted user.",
+        "description": "Deletes the user, ends their sessions, removes them from their teams, and takes their name out of quests' activity logs. Quests assigned to them stay, assigned to a deleted user. Deleting your own account needs your password; wrong ones are limited, as for changing it. The only administrator can't be deleted.",
         "tags": [
           "Users"
         ],
@@ -710,9 +710,35 @@
             "description": "The user's user name."
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "password": {
+                    "description": "Your password, to delete your own account.",
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "204": {
             "description": "Deleted."
+          },
+          "400": {
+            "description": "/problems/invalid-request: The request isn't valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
           },
           "401": {
             "description": "/problems/sign-in-required: Sign in to do this.",
@@ -736,6 +762,36 @@
           },
           "404": {
             "description": "/problems/not-found: Not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "/problems/wrong-state: Not possible now.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "/problems/incorrect-password: Incorrect password.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "/problems/too-many-requests: Too many requests.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -6102,8 +6158,12 @@
             "type": "string"
           },
           "actor": {
-            "description": "The user name of whoever acted; missing when the system did, such as on an incoming call.",
+            "description": "The user name of whoever acted; missing when the system did, such as on an incoming call, or when they have since deleted their account.",
             "type": "string"
+          },
+          "actorDeleted": {
+            "description": "True when whoever acted has since deleted their account, which took their name out of the log.",
+            "type": "boolean"
           },
           "data": {
             "description": "Details particular to the type.",

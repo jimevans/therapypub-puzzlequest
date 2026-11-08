@@ -5,6 +5,7 @@ import { AuthorizationLevel } from "../../models/user.model.js";
 import {
   changePasswordBody,
   createUserBody,
+  deleteUserBody,
   forgotPasswordBody,
   resetPasswordBody,
   updateUserBody,
@@ -229,14 +230,28 @@ export const userRoutes = [
     operationId: "deleteUser",
     summary: "Delete a user",
     description:
-      "Deletes the user, ends their sessions, and removes them from their teams. Quests assigned to them stay, assigned to a deleted user.",
+      "Deletes the user, ends their sessions, removes them from their teams, and takes their name out of quests' activity logs. Quests assigned to them stay, assigned to a deleted user. Deleting your own account needs your password; wrong ones are limited, as for changing it. The only administrator can't be deleted.",
     tags: ["Users"],
     access: "selfOrAdmin",
-    request: { params: userParams },
+    before: [RateLimiter.passwordChangeRateLimiter],
+    request: { params: userParams, body: deleteUserBody },
     responses: { 204: { description: "Deleted." } },
-    problems: [Problems.notFound],
+    problems: [
+      Problems.notFound,
+      Problems.incorrectPassword,
+      Problems.wrongState,
+      Problems.tooManyRequests,
+    ],
     async handle(req, res) {
-      const deleted = await UserService.deleteUser(req.params.userName);
+      const isOwnAccount = UserService.requireLoggedInUser(
+        req.user
+      ).isCurrentUser(req.params.userName);
+      const deleted = isOwnAccount
+        ? await UserService.deleteOwnAccount(
+            req.params.userName,
+            req.body.password
+          )
+        : await UserService.deleteUser(req.params.userName);
       if (deleted.status === "error") {
         sendServiceProblem(res, deleted);
         return;

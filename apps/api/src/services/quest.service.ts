@@ -872,6 +872,7 @@ export async function listQuestEventsPage(
       at: Date;
       puzzleName?: string | null;
       actor?: string | null;
+      actorDeleted?: boolean;
       data?: unknown;
     }>
   >
@@ -897,13 +898,16 @@ export async function listQuestEventsPage(
     statusCode: 200,
     data: {
       next: page.next,
-      items: page.items.map(({ type, at, puzzleName, actor, data }) => ({
-        type,
-        at,
-        ...(puzzleName ? { puzzleName } : {}),
-        ...(actor ? { actor } : {}),
-        ...(data ? { data } : {}),
-      })),
+      items: page.items.map(
+        ({ type, at, puzzleName, actor, actorDeleted, data }) => ({
+          type,
+          at,
+          ...(puzzleName ? { puzzleName } : {}),
+          ...(actor ? { actor } : {}),
+          ...(actorDeleted ? { actorDeleted: true } : {}),
+          ...(data ? { data } : {}),
+        })
+      ),
     },
   };
 }

@@ -80,3 +80,14 @@ export const verifyEmailBody = z.object({
   token: requiredText,
 });
 export type VerifyEmailBody = z.infer<typeof verifyEmailBody>;
+
+/**
+ * DELETE /api/v1/users/{userName}: deleting your own account needs your
+ * password; an administrator deleting someone else sends nothing.
+ */
+export const deleteUserBody = z.object({
+  password: z.string().optional().meta({
+    description: "Your password, to delete your own account.",
+  }),
+});
+export type DeleteUserBody = z.infer<typeof deleteUserBody>;

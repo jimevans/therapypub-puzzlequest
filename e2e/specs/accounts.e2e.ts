@@ -137,3 +137,44 @@ describe("an account", () => {
     await expect($("#login")).toBeDisplayed();
   });
 });
+
+describe("a player deleting their account", () => {
+  const userName = `leaving-${unique("").slice(1)}`;
+
+  before(async () => {
+    await api("POST", "/users", undefined, {
+      userName,
+      displayName: "A Leaving Player",
+      email: `${userName}@example.com`,
+      password: PASSWORD,
+    });
+    await signIn(userName);
+    await expect($(`a[href="/user/${userName}"]`)).toExist();
+  });
+
+  it("needs their password", async () => {
+    await browser.url(`/user/${userName}`);
+    await $("#delete-account-button").click();
+    await $("#delete-account-password").setValue("not my password");
+    await $("#delete-account-confirm").click();
+
+    await expect($("#delete-account-dialog [role='alert']")).toHaveText(
+      "That isn't your password"
+    );
+    await $("#delete-account-dialog").$("button=Keep my account").click();
+  });
+
+  it("deletes it, signed out, so it can't sign in again", async () => {
+    await $("#delete-account-button").click();
+    await $("#delete-account-password").setValue(PASSWORD);
+    await $("#delete-account-confirm").click();
+
+    await expect($(`a[href="/user/${userName}"]`)).not.toExist();
+    await expect(browser).toHaveUrl(expect.not.stringContaining("/user/"));
+
+    await signIn(userName);
+    await expect($("[role='alert']")).toHaveText(
+      expect.stringContaining("Incorrect user name or password")
+    );
+  });
+});

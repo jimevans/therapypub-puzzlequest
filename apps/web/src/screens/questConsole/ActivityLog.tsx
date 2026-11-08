@@ -49,8 +49,12 @@ export function ActivityLog({ quest }: { quest: Schemas["Quest"] }) {
             </time>
             <span>
               {describeEvent(event, (name) => labels.get(name) ?? name)}
-              {event.actor && (
+              {event.actor ? (
                 <span className={styles.actor}> by {event.actor}</span>
+              ) : (
+                event.actorDeleted && (
+                  <span className={styles.actor}> by a deleted player</span>
+                )
               )}
             </span>
           </li>

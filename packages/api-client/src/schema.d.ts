@@ -102,7 +102,7 @@ export interface paths {
         post?: never;
         /**
          * Delete a user
-         * @description Deletes the user, ends their sessions, and removes them from their teams. Quests assigned to them stay, assigned to a deleted user.
+         * @description Deletes the user, ends their sessions, removes them from their teams, and takes their name out of quests' activity logs. Quests assigned to them stay, assigned to a deleted user. Deleting your own account needs your password; wrong ones are limited, as for changing it. The only administrator can't be deleted.
          */
         delete: operations["deleteUser"];
         options?: never;
@@ -1032,8 +1032,10 @@ export interface components {
             /** Format: date-time */
             at: string;
             puzzleName?: string;
-            /** @description The user name of whoever acted; missing when the system did, such as on an incoming call. */
+            /** @description The user name of whoever acted; missing when the system did, such as on an incoming call, or when they have since deleted their account. */
             actor?: string;
+            /** @description True when whoever acted has since deleted their account, which took their name out of the log. */
+            actorDeleted?: boolean;
             /** @description Details particular to the type. */
             data?: {
                 [key: string]: unknown;
@@ -1821,7 +1823,14 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Your password, to delete your own account. */
+                    password?: string;
+                };
+            };
+        };
         responses: {
             /** @description Deleted. */
             204: {
@@ -1829,6 +1838,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description /problems/invalid-request: The request isn't valid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
             };
             /** @description /problems/sign-in-required: Sign in to do this. */
             401: {
@@ -1850,6 +1868,33 @@ export interface operations {
             };
             /** @description /problems/not-found: Not found. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/wrong-state: Not possible now. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/incorrect-password: Incorrect password. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/too-many-requests: Too many requests. */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

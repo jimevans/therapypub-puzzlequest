@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -515,6 +515,97 @@ describe("a profile", () => {
           }
         )
       );
+    });
+  });
+
+  describe("deleting an account", () => {
+    async function openDeletion() {
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Delete my account" })
+      );
+      return within(
+        screen.getByRole("dialog", { name: "Delete your account?" })
+      );
+    }
+
+    it("is offered only to the account's own user", async () => {
+      apiKnows(ADMIN, PLAYER);
+      show("/user/player");
+
+      await screen.findByText("player@example.com");
+      expect(
+        screen.queryByRole("button", { name: "Delete my account" })
+      ).not.toBeInTheDocument();
+    });
+
+    it("explains what it means, and needs the password", async () => {
+      apiKnows(PLAYER);
+      const del = vi.spyOn(api, "DELETE");
+      show("/user/player");
+
+      const dialog = await openDeletion();
+      expect(dialog.getByText(/can't be undone/)).toBeVisible();
+      await userEvent.click(
+        dialog.getByRole("button", { name: "Delete my account" })
+      );
+
+      expect(await dialog.findByText("Enter your password")).toBeVisible();
+      expect(del).not.toHaveBeenCalled();
+    });
+
+    it("says when the password is wrong, keeping the account", async () => {
+      apiKnows(PLAYER);
+      vi.spyOn(api, "DELETE").mockResolvedValue(
+        refusal(422, "That isn't your password") as never
+      );
+      show("/user/player");
+
+      const dialog = await openDeletion();
+      await userEvent.type(dialog.getByLabelText("Your password"), "wrong");
+      await userEvent.click(
+        dialog.getByRole("button", { name: "Delete my account" })
+      );
+
+      expect(await dialog.findByRole("alert")).toHaveTextContent(
+        "That isn't your password"
+      );
+      expect(assign).not.toHaveBeenCalled();
+    });
+
+    it("deletes it with the password, and starts afresh signed out", async () => {
+      apiKnows(PLAYER);
+      const del = vi
+        .spyOn(api, "DELETE")
+        .mockResolvedValue(ok(undefined, 204) as never);
+      show("/user/player");
+
+      const dialog = await openDeletion();
+      await userEvent.type(dialog.getByLabelText("Your password"), "secret");
+      await userEvent.click(
+        dialog.getByRole("button", { name: "Delete my account" })
+      );
+
+      await waitFor(() => expect(assign).toHaveBeenCalledWith("/"));
+      expect(del).toHaveBeenCalledWith("/users/{userName}", {
+        params: { path: { userName: "player" } },
+        body: { password: "secret" },
+      });
+    });
+
+    it("can be called off", async () => {
+      apiKnows(PLAYER);
+      const del = vi.spyOn(api, "DELETE");
+      show("/user/player");
+
+      const dialog = await openDeletion();
+      await userEvent.click(
+        dialog.getByRole("button", { name: "Keep my account" })
+      );
+
+      expect(
+        screen.queryByRole("dialog", { name: "Delete your account?" })
+      ).not.toBeInTheDocument();
+      expect(del).not.toHaveBeenCalled();
     });
   });
 });

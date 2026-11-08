@@ -614,7 +614,11 @@ export const questEventSchema = z
     puzzleName: z.string().optional(),
     actor: z.string().optional().meta({
       description:
-        "The user name of whoever acted; missing when the system did, such as on an incoming call.",
+        "The user name of whoever acted; missing when the system did, such as on an incoming call, or when they have since deleted their account.",
+    }),
+    actorDeleted: z.boolean().optional().meta({
+      description:
+        "True when whoever acted has since deleted their account, which took their name out of the log.",
     }),
     data: z
       .record(z.string(), z.unknown())

@@ -27,6 +27,8 @@ export function UsersList() {
       dataOrThrow(
         await api.DELETE("/users/{userName}", {
           params: { path: { userName } },
+          // An administrator deleting someone else needs no password.
+          body: {},
         })
       ),
   });

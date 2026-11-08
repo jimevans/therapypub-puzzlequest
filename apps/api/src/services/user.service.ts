@@ -5,6 +5,9 @@ import {
   TeamModel,
   UserModel,
 } from "../models/user.model.js";
+import { EmailVerificationModel } from "../models/emailVerification.model.js";
+import { PasswordResetModel } from "../models/passwordReset.model.js";
+import { QuestEventModel } from "../models/questEvent.model.js";
 import type { ServiceResult } from "../types.js";
 import { type Page, type PageQuery, findPage } from "../api/paging.js";
 import * as AuthorizationService from "./authentication.service.js";
@@ -285,8 +288,8 @@ export async function getUsersByPhoneNumber(
  * @returns a success result, or an error result
  */
 export async function deleteUser(name: string): Promise<UserResult<undefined>> {
-  const result = await UserModel.findOneAndDelete({ userName: name });
-  if (result === null) {
+  const user = await UserModel.findOne({ userName: name });
+  if (user === null) {
     return {
       status: "error",
       statusCode: 404,
@@ -294,12 +297,64 @@ export async function deleteUser(name: string): Promise<UserResult<undefined>> {
       message: `User with user name ${name} does not exist`,
     };
   }
-  await SessionService.deleteUserSessions(result.id);
+  // Someone must be left to run the site.
+  if (
+    user.authorizationLevel >= AuthorizationLevel.ADMIN &&
+    (await UserModel.countDocuments({
+      authorizationLevel: { $gte: AuthorizationLevel.ADMIN },
+    })) === 1
+  ) {
+    return {
+      status: "error",
+      statusCode: 409,
+      reason: "wrong-state",
+      message:
+        "The only administrator can't be deleted: make someone else an administrator first",
+    };
+  }
+  await UserModel.deleteOne({ _id: user._id });
+  await SessionService.deleteUserSessions(user.id);
   await TeamModel.updateMany(
-    { memberIds: result._id },
-    { $pull: { memberIds: result._id } }
+    { memberIds: user._id },
+    { $pull: { memberIds: user._id } }
+  );
+  // Links sent to them, and their name in quests' activity logs, go too, so
+  // that nothing left names them. Quests assigned to them stay, for an
+  // administrator to reassign or delete.
+  await PasswordResetModel.deleteMany({ userId: user._id });
+  await EmailVerificationModel.deleteMany({ userId: user._id });
+  await QuestEventModel.updateMany(
+    { actor: name },
+    { $unset: { actor: 1 }, $set: { actorDeleted: true } }
   );
   return { status: "success", statusCode: 200 };
+}
+
+/**
+ * Deletes a user's own account, once they've given their password again, so
+ * that someone using a session left signed in can't.
+ * @param name the user's name
+ * @param password their password
+ * @returns a success result, or an error result
+ */
+export async function deleteOwnAccount(
+  name: string,
+  password: string | undefined
+): Promise<UserResult<undefined>> {
+  const user = await UserModel.findOne({ userName: name });
+  if (
+    user === null ||
+    password === undefined ||
+    !(await AuthorizationService.comparePassword(password, user.password))
+  ) {
+    return {
+      status: "error",
+      statusCode: 400,
+      reason: "incorrect-password",
+      message: "That isn't your password",
+    };
+  }
+  return deleteUser(name);
 }
 
 /**

@@ -40,6 +40,10 @@ vi.mock("../../src/services/email.service.js", () => ({
 
 const bcrypt = (await import("bcrypt")).default;
 const { config } = await import("../../src/config.js");
+const { PasswordResetModel } =
+  await import("../../src/models/passwordReset.model.js");
+const { QuestEventModel } =
+  await import("../../src/models/questEvent.model.js");
 const { createApp } = await import("../../src/createApp.js");
 const EmailService = await import("../../src/services/email.service.js");
 const PasswordService = await import("../../src/services/password.service.js");
@@ -225,13 +229,74 @@ describe("a user", () => {
     });
   });
 
-  it("can delete their own account, leaving their teams", async () => {
-    const response = await as("player", "delete", "/users/player");
+  it("can delete their own account with their password, leaving their teams", async () => {
+    const response = await as("player", "delete", "/users/player").send({
+      password: "current password",
+    });
 
     expect(response.status).toBe(204);
     expect(await UserModel.countDocuments({ userName: "player" })).toBe(0);
     const team = await TeamModel.findOne({ teamName: "team-a" }).lean();
     expect(team!.memberIds).toEqual([]);
+  });
+
+  it.each([
+    ["without their password", {}],
+    ["with a wrong password", { password: "wrong" }],
+  ])("can't delete their own account %s", async (_, body) => {
+    const response = await as("player", "delete", "/users/player").send(body);
+
+    expect(response.status).toBe(422);
+    expect(bodyOf(response)).toMatchObject({
+      type: "/problems/incorrect-password",
+      detail: "That isn't your password",
+    });
+    expect(await UserModel.countDocuments({ userName: "player" })).toBe(1);
+  });
+
+  it("can be deleted by an administrator, who needs no password", async () => {
+    const response = await as("admin", "delete", "/users/player");
+
+    expect(response.status).toBe(204);
+    expect(await UserModel.countDocuments({ userName: "player" })).toBe(0);
+  });
+
+  it("leaves no trace of their name in quests' activity logs, or links sent to them", async () => {
+    const { _id: userId } = (await UserModel.findOne({
+      userName: "player",
+    }).lean())!;
+    await QuestEventModel.create([
+      { questName: "q", type: "PuzzleSolved", at: new Date(), actor: "player" },
+      { questName: "q", type: "QuestStarted", at: new Date(), actor: "admin" },
+    ]);
+    await PasswordResetModel.create({
+      userId,
+      tokenHash: "a-hash",
+      expiresAt: new Date(Date.now() + 60000),
+    });
+
+    await as("admin", "delete", "/users/player");
+
+    const events = await QuestEventModel.find({ questName: "q" }).lean();
+    expect(
+      events.map(({ actor, actorDeleted }) => [actor, actorDeleted])
+    ).toEqual([
+      [undefined, true],
+      ["admin", undefined],
+    ]);
+    expect(await PasswordResetModel.countDocuments({ userId })).toBe(0);
+  });
+
+  it("can't take the only administrator", async () => {
+    const response = await as("admin", "delete", "/users/admin").send({
+      password: "current password",
+    });
+
+    expect(response.status).toBe(409);
+    expect(bodyOf(response).detail).toBe(
+      "The only administrator can't be deleted: make someone else an administrator first"
+    );
+    expect(await UserModel.countDocuments({ userName: "admin" })).toBe(1);
   });
 });
 
