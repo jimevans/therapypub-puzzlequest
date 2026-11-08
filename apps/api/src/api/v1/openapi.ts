@@ -23,7 +23,7 @@ import { type AnyRoute, problemsOf } from "./route.js";
 export const API_VERSION = "1.0.0";
 
 /** The API's description, with the problem types it reports. */
-const DESCRIPTION = `PuzzleQuest's API, for its web pages and for apps.
+const DESCRIPTION = `PuzzleQuest's API, for its web pages and for apps. This description is at \`/api/v1/openapi.json\`, and shown as a reference at \`/api/v1/docs\`.
 
 Sign in with \`POST /sessions\`. A browser keeps the session in a cookie; an app asks for its token (\`"client": "native"\`) and sends it as \`Authorization: Bearer <token>\`. A request that changes something and is sent with the cookie must come from this site.
 
