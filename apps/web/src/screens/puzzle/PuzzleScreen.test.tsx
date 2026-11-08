@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
 import { copy } from "../../copy";
 import { questQueryKey } from "../../live/useLiveQuest";
+import { ok, refusal } from "../../test/fakes";
 import { PuzzleScreen } from "./PuzzleScreen";
 
 vi.mock("../../live/useLiveQuest", async (importOriginal) => ({
@@ -57,16 +58,18 @@ function viewOf(puzzle = {}, rest = {}) {
 const AWAITING = { status: 1, type: null, text: null };
 const SOLVED = { status: 3, solutionText: "A piano" };
 
-function ok(data: unknown) {
-  return { data, response: new Response("{}", { status: 200 }) };
-}
-
-function refusal(status: number, detail: string) {
-  return {
-    error: { title: "Refused", status, detail },
-    response: new Response("{}", { status }),
-  };
-}
+const ACTIVATED = { activationTime: "2026-11-08T12:00:00.000Z" };
+const SOLUTION = {
+  solutionText: "A piano",
+  nextPuzzle: null,
+  questComplete: false,
+};
+const HINT = {
+  text: "It has hammers",
+  timePenalty: 90,
+  moreHints: false,
+  isNextHintSolution: false,
+};
 
 function apiShows(view: unknown) {
   return vi.spyOn(api, "GET").mockResolvedValue(ok(view) as never);
@@ -154,7 +157,7 @@ describe("PuzzleScreen", () => {
 
     it("says when the puzzle isn't available", async () => {
       vi.spyOn(api, "GET").mockResolvedValue(
-        refusal(404, "No puzzle") as never
+        refusal("not-found", "No puzzle") as never
       );
       show();
 
@@ -188,7 +191,7 @@ describe("PuzzleScreen", () => {
   describe("awaiting activation", () => {
     it("sends the code typed, without its surrounding spaces", async () => {
       apiShows(viewOf(AWAITING));
-      const post = apiAnswersAction(ok({ activationTime: "now" }));
+      const post = apiAnswersAction(ok(ACTIVATED));
       show();
 
       await userEvent.type(
@@ -209,7 +212,7 @@ describe("PuzzleScreen", () => {
 
     it("moves on to the puzzle once activated", async () => {
       const get = apiShows(viewOf(AWAITING));
-      apiAnswersAction(ok({ activationTime: "now" }));
+      apiAnswersAction(ok(ACTIVATED));
       show();
 
       await userEvent.type(
@@ -226,7 +229,9 @@ describe("PuzzleScreen", () => {
 
     it("says why a code was refused, and stays", async () => {
       apiShows(viewOf(AWAITING));
-      apiAnswersAction(refusal(422, "Incorrect activation code for puzzle"));
+      apiAnswersAction(
+        refusal("wrong-activation-code", "Incorrect activation code for puzzle")
+      );
       show();
 
       await userEvent.type(
@@ -245,7 +250,7 @@ describe("PuzzleScreen", () => {
 
     it("asks for a code rather than sending nothing", async () => {
       apiShows(viewOf(AWAITING));
-      const post = apiAnswersAction(ok({}));
+      const post = apiAnswersAction(ok(ACTIVATED));
       show();
 
       await screen.findByLabelText("Activation code");
@@ -333,7 +338,7 @@ describe("PuzzleScreen", () => {
 
     it("sends a guess, with the live connection, and shows the solution", async () => {
       const get = apiShows(viewOf());
-      const post = apiAnswersAction(ok({}));
+      const post = apiAnswersAction(ok(SOLUTION));
       show();
 
       await userEvent.type(
@@ -354,7 +359,9 @@ describe("PuzzleScreen", () => {
 
     it("says when a guess is wrong, and keeps it to correct", async () => {
       apiShows(viewOf());
-      apiAnswersAction(refusal(422, "Incorrect guess for puzzle solution"));
+      apiAnswersAction(
+        refusal("wrong-answer", "Incorrect guess for puzzle solution")
+      );
       show();
 
       await userEvent.type(
@@ -388,7 +395,7 @@ describe("PuzzleScreen", () => {
 
     it("catches up when a teammate got there first", async () => {
       const get = apiShows(viewOf());
-      apiAnswersAction(refusal(409, "The puzzle isn't in progress"));
+      apiAnswersAction(refusal("wrong-state", "The puzzle isn't in progress"));
       show();
 
       await userEvent.type(await screen.findByLabelText("Your answer"), "x");
@@ -417,7 +424,7 @@ describe("PuzzleScreen", () => {
     });
 
     it("says what the next hint costs, and reveals it at once", async () => {
-      const post = apiAnswersAction(ok({}));
+      const post = apiAnswersAction(ok(HINT));
       apiShows(
         viewOf({ nextHint: { timePenalty: 90, solutionWarning: false } })
       );
@@ -447,7 +454,7 @@ describe("PuzzleScreen", () => {
 
     describe("a hint that gives away the solution", () => {
       async function askForIt() {
-        const post = apiAnswersAction(ok({}));
+        const post = apiAnswersAction(ok(HINT));
         apiShows(
           viewOf({ nextHint: { timePenalty: 300, solutionWarning: true } })
         );

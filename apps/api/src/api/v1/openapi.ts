@@ -41,7 +41,7 @@ ${Object.values(Problems as Record<string, ProblemType>)
       `| \`${problem.type}\` | ${problem.status} | ${problem.description} |`
   )
   .join("\n")}
-| \`about:blank\` | 4xx | Any other HTTP error, such as a body too large to read; the title is the status's. |`;
+| \`about:blank\` | 4xx | Any other HTTP error, such as a body that isn't valid JSON; the title is the status's. |`;
 
 /**
  * Describes a route's responses: its successes, and its problems, grouped

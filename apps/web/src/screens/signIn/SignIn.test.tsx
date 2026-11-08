@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
+import { aUser, ok, refusal } from "../../test/fakes";
 import { SignIn } from "./SignIn";
 import { pathAfterSignIn } from "./pathAfterSignIn";
 
@@ -19,12 +20,8 @@ function show(path = "/login") {
   );
 }
 
-function apiAnswers(status: number, body: object) {
-  return vi.spyOn(api, "POST").mockResolvedValue({
-    data: status < 400 ? body : undefined,
-    error: status < 400 ? undefined : body,
-    response: new Response("{}", { status }),
-  } as never);
+function apiAnswers(answer: unknown) {
+  return vi.spyOn(api, "POST").mockResolvedValue(answer as never);
 }
 
 async function fillIn() {
@@ -45,7 +42,7 @@ describe("SignIn", () => {
   });
 
   it("signs in, and goes home", async () => {
-    const post = apiAnswers(201, { user: {} });
+    const post = apiAnswers(ok({ user: aUser() }, 201));
     show();
 
     await fillIn();
@@ -57,7 +54,7 @@ describe("SignIn", () => {
   });
 
   it("returns to the page that asked for sign-in", async () => {
-    apiAnswers(201, { user: {} });
+    apiAnswers(ok({ user: aUser() }, 201));
     show(`/login?next=${encodeURIComponent("/quest/trail?view=all")}`);
 
     await fillIn();
@@ -68,12 +65,7 @@ describe("SignIn", () => {
   });
 
   it("says why the API refused, and stays", async () => {
-    apiAnswers(401, {
-      type: "/problems/sign-in-failed",
-      title: "Sign-in failed",
-      status: 401,
-      detail: "Incorrect user name or password",
-    });
+    apiAnswers(refusal("sign-in-failed", "Incorrect user name or password"));
     show();
 
     await fillIn();
@@ -97,7 +89,7 @@ describe("SignIn", () => {
   });
 
   it("asks for what's missing, without calling the API", async () => {
-    const post = apiAnswers(201, { user: {} });
+    const post = apiAnswers(ok({ user: aUser() }, 201));
     show();
 
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));

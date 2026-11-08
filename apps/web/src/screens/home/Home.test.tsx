@@ -4,11 +4,12 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
+import { aUser, ok, refusal, signedOut } from "../../test/fakes";
 import { Home } from "./Home";
 
 const assign = vi.fn();
 
-const PLAYER = { userName: "player one", emailVerified: true };
+const PLAYER = aUser({ userName: "player one" });
 
 const CLOCK = { running: false, elapsedMs: 0, penaltyMs: 0, totalMs: 0 };
 
@@ -24,18 +25,12 @@ function summary(name: string, fields = {}) {
   };
 }
 
-function ok(data: unknown) {
-  return { data, response: new Response("{}", { status: 200 }) };
-}
-
 /** Has the API answer with the user, and each of the given pages in turn. */
 function apiAnswers(user: unknown, ...pages: unknown[]) {
   const remaining = [...pages];
   return vi.spyOn(api, "GET").mockImplementation((async (path: string) => {
     if (path === "/sessions/current") {
-      return user
-        ? ok({ user })
-        : { response: new Response("{}", { status: 401 }) };
+      return user ? ok({ user }) : signedOut();
     }
     return ok(remaining.shift());
   }) as never);
@@ -192,12 +187,8 @@ describe("Home", () => {
   });
 
   describe("the email reminder", () => {
-    function resendAnswers(status: number, body: object) {
-      return vi.spyOn(api, "POST").mockResolvedValue({
-        data: status < 400 ? body : undefined,
-        error: status < 400 ? undefined : body,
-        response: new Response("{}", { status }),
-      } as never);
+    function resendAnswers(answer: unknown) {
+      return vi.spyOn(api, "POST").mockResolvedValue(answer as never);
     }
 
     it("doesn't appear once the address is verified", async () => {
@@ -215,7 +206,7 @@ describe("Home", () => {
         { ...PLAYER, emailVerified: false },
         { items: [], next: null }
       );
-      const post = resendAnswers(202, {});
+      const post = resendAnswers(ok(undefined, 204));
       show();
 
       const button = await screen.findByRole("button", {
@@ -236,11 +227,7 @@ describe("Home", () => {
         { ...PLAYER, emailVerified: false },
         { items: [], next: null }
       );
-      resendAnswers(429, {
-        title: "Too many requests",
-        status: 429,
-        detail: "Try again later",
-      });
+      resendAnswers(refusal("too-many-requests", "Try again later"));
       show();
 
       const button = await screen.findByRole("button", {

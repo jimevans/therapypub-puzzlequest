@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
+import { ok, refusal } from "../../test/fakes";
 import StaffHome from "./StaffHome";
 import StaffQuest from "./StaffQuest";
 
@@ -55,9 +56,16 @@ const QUEST = {
   ],
 };
 
-function ok(data?: unknown) {
-  return { data, response: new Response(null, { status: 200 }) };
-}
+/** A quest as staff's list shows it: no puzzles, so no length. */
+const SUMMARY = {
+  name: QUEST.name,
+  displayName: QUEST.displayName,
+  assignee: QUEST.assignee,
+  status: QUEST.status,
+  statusDescription: QUEST.statusDescription,
+  paused: QUEST.paused,
+  progress: { ...STOPPED, startTime: "2026-11-07T10:00:00.000Z" },
+};
 
 function show(element: React.ReactNode, path: string, pattern: string) {
   render(
@@ -85,14 +93,14 @@ describe("staff's home", () => {
       ok({
         items: [
           {
-            ...QUEST,
+            ...SUMMARY,
             name: "done",
             displayName: "Done",
             status: 2,
             statusDescription: "Completed",
           },
-          { ...QUEST, name: "later", displayName: "Later", status: 0 },
-          QUEST,
+          { ...SUMMARY, name: "later", displayName: "Later", status: 0 },
+          SUMMARY,
         ],
         next: null,
       }) as never
@@ -143,10 +151,9 @@ describe("a quest, as staff follow it", () => {
   });
 
   it("says when there's no such quest", async () => {
-    vi.spyOn(api, "GET").mockResolvedValue({
-      error: { title: "Not found", status: 404, detail: "No quest" },
-      response: new Response(null, { status: 404 }),
-    } as never);
+    vi.spyOn(api, "GET").mockResolvedValue(
+      refusal("not-found", "No quest") as never
+    );
     show(<StaffQuest />, "/quest/missing", "/quest/:name");
 
     expect(

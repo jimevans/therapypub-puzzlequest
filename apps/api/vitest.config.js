@@ -5,6 +5,8 @@ export default defineConfig({
     environment: "node",
     include: ["test/**/*.test.ts"],
     setupFiles: ["test/setup.ts"],
+    // Checks that the tests saw every documented success response.
+    globalSetup: ["test/contractCoverage.ts"],
     // Settings the configuration module requires. Tests never read .env.
     env: {
       PQ_MONGODB_URI: "mongodb://127.0.0.1:27017/puzzlequest_test",

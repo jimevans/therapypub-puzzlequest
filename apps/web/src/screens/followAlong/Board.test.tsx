@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
 import { copy } from "../../copy";
+import { ok, refusal, serverError } from "../../test/fakes";
 import { Board } from "./Board";
 
 const live = vi.hoisted(() => ({ connected: true }));
@@ -54,17 +55,11 @@ const QUEST = {
 };
 
 function apiShows(data: unknown) {
-  return vi.spyOn(api, "GET").mockResolvedValue({
-    data,
-    response: new Response("{}", { status: 200 }),
-  } as never);
+  return vi.spyOn(api, "GET").mockResolvedValue(ok(data) as never);
 }
 
-function apiRefuses(status: number) {
-  vi.spyOn(api, "GET").mockResolvedValue({
-    error: { title: "Refused", status },
-    response: new Response("{}", { status }),
-  } as never);
+function apiRefuses(answer: unknown) {
+  vi.spyOn(api, "GET").mockResolvedValue(answer as never);
 }
 
 function show() {
@@ -163,7 +158,7 @@ describe("Board", () => {
   });
 
   it("says when the quest isn't available", async () => {
-    apiRefuses(404);
+    apiRefuses(refusal("not-found", "No such quest"));
     show();
 
     expect(
@@ -172,7 +167,7 @@ describe("Board", () => {
   });
 
   it("says when it can't load anything", async () => {
-    apiRefuses(500);
+    apiRefuses(serverError());
     show();
 
     expect(await screen.findByText(/Can't reach PuzzleQuest/)).toBeVisible();

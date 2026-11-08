@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
 import { copy } from "../../copy";
+import { ok, refusal, serverError } from "../../test/fakes";
 import { FollowPuzzle } from "./FollowPuzzle";
 import { FollowQuest } from "./FollowQuest";
 
@@ -85,17 +86,11 @@ const PUZZLE = {
 };
 
 function apiShows(data: unknown) {
-  return vi.spyOn(api, "GET").mockResolvedValue({
-    data,
-    response: new Response("{}", { status: 200 }),
-  } as never);
+  return vi.spyOn(api, "GET").mockResolvedValue(ok(data) as never);
 }
 
-function apiRefuses(status: number) {
-  vi.spyOn(api, "GET").mockResolvedValue({
-    error: { title: "Refused", status },
-    response: new Response("{}", { status }),
-  } as never);
+function apiRefuses(answer: unknown) {
+  vi.spyOn(api, "GET").mockResolvedValue(answer as never);
 }
 
 function show(path: string) {
@@ -232,7 +227,7 @@ describe("following a quest", () => {
   });
 
   it("says when there's no such quest", async () => {
-    apiRefuses(404);
+    apiRefuses(refusal("not-found", "No such quest"));
     show(QUEST_PAGE);
 
     expect(
@@ -241,7 +236,7 @@ describe("following a quest", () => {
   });
 
   it("says when it can't load the quest", async () => {
-    apiRefuses(500);
+    apiRefuses(serverError());
     show(QUEST_PAGE);
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -310,7 +305,7 @@ describe("following a puzzle", () => {
   });
 
   it("says when the puzzle isn't available", async () => {
-    apiRefuses(404);
+    apiRefuses(refusal("not-found", "No such quest"));
     show(PUZZLE_PAGE);
 
     expect(
@@ -319,7 +314,7 @@ describe("following a puzzle", () => {
   });
 
   it("says when it can't load the puzzle", async () => {
-    apiRefuses(500);
+    apiRefuses(serverError());
     show(PUZZLE_PAGE);
 
     expect(await screen.findByRole("alert")).toHaveTextContent(

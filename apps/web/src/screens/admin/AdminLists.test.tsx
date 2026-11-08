@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
+import { aUser, ok, refusal } from "../../test/fakes";
 import { AdminLayout } from "./AdminLayout";
 import { PuzzlesList } from "./PuzzlesList";
 import { QuestsList } from "./QuestsList";
@@ -16,6 +17,15 @@ const QUEST = {
   assignee: { kind: "team", id: "1", name: "red" },
   status: 1,
   statusDescription: "In progress",
+  paused: false,
+  puzzles: [],
+  progress: {
+    running: false,
+    elapsedMs: 0,
+    penaltyMs: 0,
+    totalMs: 0,
+    puzzles: [],
+  },
 };
 const ORPHAN = {
   ...QUEST,
@@ -32,35 +42,20 @@ const PUZZLE = {
   solutionDisplayText: "X",
   hints: [{ text: "h", solutionWarning: false, timePenalty: 1 }],
 };
-const BOSS = {
+const BOSS = aUser({
+  id: "2",
   userName: "boss",
   displayName: "The Boss",
   email: "boss@example.com",
   authorizationLevel: 10,
-};
-const PLAYER = {
-  userName: "player",
-  displayName: "The Player",
-  email: "player@example.com",
-  authorizationLevel: 1,
-};
+});
+const PLAYER = aUser();
 const TEAM = {
   teamName: "red",
   displayName: "The Reds",
   joinCode: "secret",
   members: [{ userName: "player", displayName: "The Player" }],
 };
-
-function ok(data?: unknown, status = 200) {
-  return { data, response: new Response(null, { status }) };
-}
-
-function refusal(status: number, detail: string, errors?: object[]) {
-  return {
-    error: { title: "Refused", status, detail, errors },
-    response: new Response(null, { status }),
-  };
-}
 
 /** Has the API answer with these lists, and whoever's signed in. */
 function apiLists(lists: Record<string, unknown[]>) {
@@ -191,7 +186,9 @@ describe("the quests list", () => {
   describe("deleting", () => {
     it("asks in the page first, saying what it means", async () => {
       apiLists({ "/quests": [QUEST] });
-      const del = vi.spyOn(api, "DELETE").mockResolvedValue(ok() as never);
+      const del = vi
+        .spyOn(api, "DELETE")
+        .mockResolvedValue(ok(undefined, 204) as never);
       const confirm = vi.spyOn(window, "confirm");
       show(<QuestsList />);
 
@@ -225,7 +222,9 @@ describe("the quests list", () => {
 
     it("deletes once confirmed, and refreshes the list", async () => {
       const get = apiLists({ "/quests": [QUEST] });
-      const del = vi.spyOn(api, "DELETE").mockResolvedValue(ok() as never);
+      const del = vi
+        .spyOn(api, "DELETE")
+        .mockResolvedValue(ok(undefined, 204) as never);
       show(<QuestsList />);
 
       await userEvent.click(
@@ -260,7 +259,7 @@ describe("the puzzles list", () => {
   it("says why a puzzle a quest uses can't be deleted", async () => {
     apiLists({ "/puzzles": [PUZZLE] });
     vi.spyOn(api, "DELETE").mockResolvedValue(
-      refusal(409, "A quest uses this puzzle") as never
+      refusal("in-use", "A quest uses this puzzle") as never
     );
     show(<PuzzlesList />);
 
@@ -387,7 +386,7 @@ describe("the teams list", () => {
   it("stays open, saying why, when refused", async () => {
     apiLists({ "/teams": [TEAM] });
     vi.spyOn(api, "PATCH").mockResolvedValue(
-      refusal(409, "That join code is already in use") as never
+      refusal("already-exists", "That join code is already in use") as never
     );
     show(<TeamsList />);
 
@@ -405,7 +404,7 @@ describe("the teams list", () => {
   it("shows a field's problem beside it", async () => {
     apiLists({ "/teams": [TEAM] });
     vi.spyOn(api, "PATCH").mockResolvedValue(
-      refusal(400, "Invalid", [
+      refusal("invalid-request", "Invalid", [
         { path: "body.joinCode", message: "Too short" },
       ]) as never
     );
@@ -504,11 +503,11 @@ describe("the teams list", () => {
     apiLists({ "/teams": [TEAM], "/users": [BOSS, PLAYER] });
     vi.spyOn(api, "PATCH").mockResolvedValue(ok(TEAM) as never);
     vi.spyOn(api, "PUT").mockResolvedValue(
-      refusal(404, "No user named boss") as never
+      refusal("not-found", "No user named boss") as never
     );
     vi.spyOn(api, "DELETE").mockResolvedValue(
       // Already gone, which is what removing them was for.
-      refusal(404, "Not a member") as never
+      refusal("not-found", "Not a member") as never
     );
     show(<TeamsList />);
 
@@ -538,7 +537,7 @@ describe("the teams list", () => {
     apiLists({ "/teams": [TEAM], "/users": [BOSS, PLAYER] });
     vi.spyOn(api, "PATCH").mockResolvedValue(ok(TEAM) as never);
     vi.spyOn(api, "PUT").mockResolvedValue(
-      refusal(409, "Already a member") as never
+      refusal("already-exists", "Already a member") as never
     );
     show(<TeamsList />);
 

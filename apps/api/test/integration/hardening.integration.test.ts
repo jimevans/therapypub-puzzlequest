@@ -103,6 +103,7 @@ describe("request bodies", () => {
       .send({ userName: "x", password: "y".repeat(101 * 1024) });
 
     expect(response.status).toBe(413);
+    expect(JSON.parse(response.text).type).toBe("/problems/body-too-large");
   });
 });
 

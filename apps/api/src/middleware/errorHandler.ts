@@ -26,6 +26,8 @@ export function errorHandler(
     expose?: boolean;
     /** The kind of problem, for the v1 API, when the error says. */
     problem?: ProblemType;
+    /** The kind of error, from the body parsers. */
+    type?: string;
   },
   req: Request,
   res: Response,
@@ -46,6 +48,11 @@ export function errorHandler(
     console.error(`Error handling ${req.method} ${req.originalUrl}:`, err);
   }
   const statusCode = isClientError ? status : 500;
+  // The body parsers' error for a body over their limit has no problem of
+  // its own, but clients may want to act on it.
+  const problem =
+    err.problem ??
+    (err.type === "entity.too.large" ? Problems.bodyTooLarge : undefined);
   const message =
     isClientError && err.expose ? err.message : "An unexpected error occurred";
   if (isV1Request(req)) {
@@ -54,8 +61,8 @@ export function errorHandler(
     // parsers, such as malformed JSON, doesn't.
     sendProblem(
       res,
-      isClientError && err.problem
-        ? err.problem
+      isClientError && problem
+        ? problem
         : isClientError
           ? {
               type: "about:blank",

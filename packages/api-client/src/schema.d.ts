@@ -1521,6 +1521,24 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description /problems/cross-site-request: Request from another site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description /problems/too-many-requests: Too many requests. */
             429: {
                 headers: {
@@ -1594,6 +1612,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description /problems/cross-site-request: Request from another site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
             };
             /** @description /problems/unexpected: An unexpected error occurred. */
             500: {
@@ -1716,7 +1743,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/cross-site-request: Request from another site. /problems/forbidden: Not allowed. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1727,6 +1754,15 @@ export interface operations {
             };
             /** @description /problems/already-exists: Already exists. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1857,7 +1893,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1877,6 +1913,15 @@ export interface operations {
             };
             /** @description /problems/wrong-state: Not possible now. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1963,7 +2008,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1983,6 +2028,15 @@ export interface operations {
             };
             /** @description /problems/already-exists: Already exists. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2126,7 +2180,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2146,6 +2200,15 @@ export interface operations {
             };
             /** @description /problems/already-exists: Already exists. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2226,8 +2289,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2292,7 +2364,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2358,7 +2430,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2427,6 +2499,24 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description /problems/cross-site-request: Request from another site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description /problems/too-many-requests: Too many requests. */
             429: {
                 headers: {
@@ -2472,6 +2562,24 @@ export interface operations {
             };
             /** @description /problems/invalid-request: The request isn't valid. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/cross-site-request: Request from another site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2532,6 +2640,24 @@ export interface operations {
             };
             /** @description /problems/invalid-request: The request isn't valid. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/cross-site-request: Request from another site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2680,7 +2806,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2691,6 +2817,15 @@ export interface operations {
             };
             /** @description /problems/already-exists: Already exists. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2796,7 +2931,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2871,7 +3006,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2891,6 +3026,15 @@ export interface operations {
             };
             /** @description /problems/already-exists: Already exists. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2954,7 +3098,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2974,6 +3118,15 @@ export interface operations {
             };
             /** @description /problems/already-exists: Already exists. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3031,7 +3184,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3186,7 +3339,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3197,6 +3350,15 @@ export interface operations {
             };
             /** @description /problems/already-exists: Already exists. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3302,7 +3464,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3396,7 +3558,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3407,6 +3569,15 @@ export interface operations {
             };
             /** @description /problems/not-found: Not found. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3477,7 +3648,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3486,7 +3657,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/upload-too-large: Upload too large. */
+            /** @description /problems/body-too-large: Request too large. /problems/upload-too-large: Upload too large. */
             413: {
                 headers: {
                     [name: string]: unknown;
@@ -3627,7 +3798,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3638,6 +3809,15 @@ export interface operations {
             };
             /** @description /problems/already-exists: Already exists. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3743,7 +3923,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3826,7 +4006,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3846,6 +4026,15 @@ export interface operations {
             };
             /** @description /problems/wrong-state: Not possible now. /problems/try-again: Changed at the same time. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3903,7 +4092,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3971,7 +4160,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4039,7 +4228,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4107,7 +4296,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4177,7 +4366,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4263,7 +4452,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4283,6 +4472,15 @@ export interface operations {
             };
             /** @description /problems/wrong-state: Not possible now. /problems/try-again: Changed at the same time. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4546,7 +4744,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4566,6 +4764,15 @@ export interface operations {
             };
             /** @description /problems/wrong-state: Not possible now. /problems/no-recipients: Nobody to text. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4708,7 +4915,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/cross-site-request: Request from another site. /problems/forbidden: Not allowed. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4728,6 +4935,15 @@ export interface operations {
             };
             /** @description /problems/wrong-state: Not possible now. /problems/quest-paused: Quest paused. /problems/try-again: Changed at the same time. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. /problems/upload-too-large: Upload too large. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4813,7 +5029,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/cross-site-request: Request from another site. /problems/forbidden: Not allowed. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4833,6 +5049,15 @@ export interface operations {
             };
             /** @description /problems/wrong-state: Not possible now. /problems/quest-paused: Quest paused. /problems/try-again: Changed at the same time. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4917,7 +5142,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description /problems/forbidden: Not allowed. */
+            /** @description /problems/cross-site-request: Request from another site. /problems/forbidden: Not allowed. */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4937,6 +5162,15 @@ export interface operations {
             };
             /** @description /problems/wrong-state: Not possible now. /problems/quest-paused: Quest paused. /problems/try-again: Changed at the same time. /problems/no-more-hints: No more hints. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };

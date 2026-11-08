@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
+import { ok, refusal, signedOut } from "../../test/fakes";
 import { EditProfile } from "./EditProfile";
 import { Profile } from "./Profile";
 import { SignUp } from "./SignUp";
@@ -28,18 +29,12 @@ const ADMIN = {
   authorizationLevel: 10,
 };
 
-function ok(data: unknown, status = 200) {
-  return {
-    data,
-    response: new Response(null, { status: status === 204 ? 204 : status }),
-  };
-}
-
-function refusal(status: number, detail: string, errors?: object[]) {
-  return {
-    error: { title: "Refused", status, detail, errors },
-    response: new Response(null, { status }),
-  };
+/** Has the API create the account, then answer signing in as it. */
+function apiSignsUp(signIn: unknown = ok({ user: PLAYER }, 201)) {
+  return vi
+    .spyOn(api, "POST")
+    .mockImplementation((async (path: string) =>
+      path === "/users" ? ok(PLAYER, 201) : signIn) as never);
 }
 
 const assign = vi.fn();
@@ -52,12 +47,12 @@ function apiKnows(
 ) {
   return vi.spyOn(api, "GET").mockImplementation((async (path: string) => {
     if (path === "/sessions/current") {
-      return viewer ? ok({ user: viewer }) : refusal(401, "Signed out");
+      return viewer ? ok({ user: viewer }) : signedOut();
     }
     if (path === "/teams") {
       return ok({ items: teams, next: null });
     }
-    return user ? ok(user) : refusal(404, "No such user");
+    return user ? ok(user) : refusal("not-found", "No such user");
   }) as never);
 }
 
@@ -127,9 +122,7 @@ describe("signing up", () => {
 
   it("creates the account, signs in, and goes home", async () => {
     apiKnows(null);
-    const post = vi
-      .spyOn(api, "POST")
-      .mockResolvedValue(ok({ user: {} }, 201) as never);
+    const post = apiSignsUp();
     show("/user/register");
 
     await fillIn();
@@ -154,7 +147,7 @@ describe("signing up", () => {
 
   it("goes on to the page they wanted, but only on this site", async () => {
     apiKnows(null);
-    vi.spyOn(api, "POST").mockResolvedValue(ok({ user: {} }, 201) as never);
+    apiSignsUp();
     show(`/user/register?next=${encodeURIComponent("//evil.example")}`);
 
     await fillIn();
@@ -165,9 +158,7 @@ describe("signing up", () => {
 
   it("sends them to sign in if signing in fails, as the account exists", async () => {
     apiKnows(null);
-    vi.spyOn(api, "POST")
-      .mockResolvedValueOnce(ok({}, 201) as never)
-      .mockResolvedValueOnce(refusal(429, "Slow down") as never);
+    apiSignsUp(refusal("too-many-requests", "Slow down"));
     show(`/user/register?next=${encodeURIComponent("/quest/trail")}`);
 
     await fillIn();
@@ -198,7 +189,7 @@ describe("signing up", () => {
   it("shows the server's complaint beside the field it's about", async () => {
     apiKnows(null);
     vi.spyOn(api, "POST").mockResolvedValue(
-      refusal(400, "Invalid", [
+      refusal("invalid-request", "Invalid", [
         { path: "body.phone", message: "Enter a valid phone number" },
       ]) as never
     );
@@ -215,7 +206,7 @@ describe("signing up", () => {
   it("says why it was refused otherwise", async () => {
     apiKnows(null);
     vi.spyOn(api, "POST").mockResolvedValue(
-      refusal(409, "That user name is already in use") as never
+      refusal("already-exists", "That user name is already in use") as never
     );
     show("/user/register");
 
@@ -268,9 +259,7 @@ describe("signing up", () => {
   describe("by an administrator", () => {
     it("creates the user with a level, without signing in as them", async () => {
       apiKnows(ADMIN);
-      const post = vi
-        .spyOn(api, "POST")
-        .mockResolvedValue(ok({ user: {} }, 201) as never);
+      const post = apiSignsUp();
       show("/user/register");
 
       expect(
@@ -402,7 +391,7 @@ describe("a profile", () => {
     it("says when the current password is wrong", async () => {
       apiKnows(PLAYER);
       vi.spyOn(api, "PUT").mockResolvedValue(
-        refusal(422, "Incorrect password") as never
+        refusal("incorrect-password", "Incorrect password") as never
       );
       show("/user/player");
 
@@ -458,7 +447,7 @@ describe("a profile", () => {
     it("says when no team has the code, and stays open", async () => {
       apiKnows(PLAYER, PLAYER, [BLUE]);
       vi.spyOn(api, "POST").mockResolvedValue(
-        refusal(422, "No team has that join code") as never
+        refusal("wrong-join-code", "No team has that join code") as never
       );
       show("/user/player");
 
@@ -556,7 +545,7 @@ describe("a profile", () => {
     it("says when the password is wrong, keeping the account", async () => {
       apiKnows(PLAYER);
       vi.spyOn(api, "DELETE").mockResolvedValue(
-        refusal(422, "That isn't your password") as never
+        refusal("incorrect-password", "That isn't your password") as never
       );
       show("/user/player");
 
@@ -672,7 +661,7 @@ describe("editing a profile", () => {
   it("shows the server's complaint beside the field", async () => {
     apiKnows(PLAYER);
     vi.spyOn(api, "PATCH").mockResolvedValue(
-      refusal(400, "Invalid", [
+      refusal("invalid-request", "Invalid", [
         { path: "body.email", message: "Enter a valid email address" },
       ]) as never
     );

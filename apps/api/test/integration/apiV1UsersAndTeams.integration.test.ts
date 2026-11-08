@@ -277,7 +277,9 @@ describe("a user", () => {
 
     await as("admin", "delete", "/users/player");
 
-    const events = await QuestEventModel.find({ questName: "q" }).lean();
+    const events = await QuestEventModel.find({ questName: "q" })
+      .sort({ _id: 1 })
+      .lean();
     expect(
       events.map(({ actor, actorDeleted }) => [actor, actorDeleted])
     ).toEqual([
