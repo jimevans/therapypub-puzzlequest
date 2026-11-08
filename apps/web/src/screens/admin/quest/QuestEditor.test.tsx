@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { RouterProvider, createMemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../../api";
+import { aUser, ok, refusal } from "../../../test/fakes";
 import { QuestEditor } from "./QuestEditor";
 
 const STOPPED = { running: false, elapsedMs: 0, penaltyMs: 0, totalMs: 0 };
@@ -48,26 +49,15 @@ const PUZZLES = ["riddle", "cipher", "finale", "lantern", "bell"].map(
   })
 );
 
-function ok(data?: unknown, status = 200) {
-  return { data, response: new Response(null, { status }) };
-}
-
-function refusal(status: number, detail: string, errors?: object[]) {
-  return {
-    error: { title: "Refused", status, detail, errors },
-    response: new Response(null, { status }),
-  };
-}
-
 /** Has the API answer with this quest, and everyone and everything. */
 function apiWith(quest: unknown) {
   return vi.spyOn(api, "GET").mockImplementation((async (path: string) => {
     switch (path) {
       case "/quests/{name}":
-        return quest ? ok(quest) : refusal(404, "No such quest");
+        return quest ? ok(quest) : refusal("not-found", "No such quest");
       case "/users":
         return ok({
-          items: [{ userName: "pat", displayName: "Pat" }],
+          items: [aUser({ userName: "pat", displayName: "Pat" })],
           next: null,
         });
       case "/teams":
@@ -78,7 +68,7 @@ function apiWith(quest: unknown) {
       case "/puzzles":
         return ok({ items: PUZZLES, next: null });
       default:
-        return refusal(404, "Not here");
+        return refusal("not-found", "Not here");
     }
   }) as never);
 }
@@ -189,7 +179,7 @@ describe("creating a quest", () => {
     const user = userEvent.setup();
     apiWith(null);
     vi.spyOn(api, "POST").mockResolvedValue(
-      refusal(409, "A quest named trail already exists", [
+      refusal("already-exists", "A quest named trail already exists", [
         { path: "body.name", message: "Already taken" },
       ]) as never
     );
@@ -303,7 +293,7 @@ describe("editing a quest", () => {
     apiWith(RUNNING);
     vi.spyOn(api, "PATCH").mockResolvedValue(
       refusal(
-        400,
+        "wrong-state",
         "Puzzle cipher has already been reached by the players, so it must stay in its place at the start of the quest"
       ) as never
     );

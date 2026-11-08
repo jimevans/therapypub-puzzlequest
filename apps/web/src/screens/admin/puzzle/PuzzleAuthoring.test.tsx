@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { RouterProvider, createMemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../../api";
+import { ok, refusal } from "../../../test/fakes";
 import { PuzzleDetails } from "./PuzzleDetails";
 import { PuzzleEditor } from "./PuzzleEditor";
 
@@ -28,17 +29,6 @@ const PICTURE = {
   hints: [],
 };
 
-function ok(data?: unknown, status = 200) {
-  return { data, response: new Response(null, { status }) };
-}
-
-function refusal(status: number, detail: string, errors?: object[]) {
-  return {
-    error: { title: "Refused", status, detail, errors },
-    response: new Response(null, { status }),
-  };
-}
-
 /** Has the API answer with these puzzles. */
 function apiPuzzles(...puzzles: (typeof RIDDLE)[]) {
   return vi.spyOn(api, "GET").mockImplementation((async (
@@ -46,7 +36,7 @@ function apiPuzzles(...puzzles: (typeof RIDDLE)[]) {
     init?: { params: { path: { name: string } } }
   ) => {
     const puzzle = puzzles.find(({ name }) => name === init?.params.path.name);
-    return puzzle ? ok(puzzle) : refusal(404, "No such puzzle");
+    return puzzle ? ok(puzzle) : refusal("not-found", "No such puzzle");
   }) as never);
 }
 
@@ -192,7 +182,7 @@ describe("creating a puzzle", () => {
   it("shows the server's objection beside the field", async () => {
     const user = userEvent.setup();
     vi.spyOn(api, "POST").mockResolvedValue(
-      refusal(409, "A puzzle named riddle already exists", [
+      refusal("already-exists", "A puzzle named riddle already exists", [
         { path: "body.name", message: "Already taken" },
       ]) as never
     );
@@ -269,7 +259,7 @@ describe("creating a puzzle", () => {
     apiPuzzles(PICTURE);
     vi.spyOn(api, "POST").mockImplementation((async (path: string) =>
       path === "/puzzle-media"
-        ? refusal(400, "Files of type .heic cannot be uploaded")
+        ? refusal("invalid-upload", "Files of type .heic cannot be uploaded")
         : ok(PICTURE, 201)) as never);
     const router = show("/puzzle/new");
 

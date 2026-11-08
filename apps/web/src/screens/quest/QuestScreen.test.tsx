@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
 import { copy } from "../../copy";
 import { questQueryKey } from "../../live/useLiveQuest";
+import { ok, refusal, serverError } from "../../test/fakes";
 import { QuestScreen } from "./QuestScreen";
 
 const live = vi.hoisted(() => ({ connected: false }));
@@ -68,10 +69,7 @@ const QUEST = {
 };
 
 function apiAnswers(data: unknown) {
-  return vi.spyOn(api, "GET").mockResolvedValue({
-    data,
-    response: new Response("{}", { status: 200 }),
-  } as never);
+  return vi.spyOn(api, "GET").mockResolvedValue(ok(data) as never);
 }
 
 function show(
@@ -232,10 +230,9 @@ describe("QuestScreen", () => {
   });
 
   it("says so when the quest doesn't exist or isn't theirs", async () => {
-    vi.spyOn(api, "GET").mockResolvedValue({
-      error: { title: "Not found", status: 404 },
-      response: new Response("{}", { status: 404 }),
-    } as never);
+    vi.spyOn(api, "GET").mockResolvedValue(
+      refusal("not-found", "No such quest") as never
+    );
     show();
 
     expect(
@@ -248,10 +245,7 @@ describe("QuestScreen", () => {
     const client = show();
     await screen.findByRole("heading", { name: "The Trail", level: 1 });
 
-    get.mockResolvedValue({
-      error: { title: "Not found", status: 404 },
-      response: new Response("{}", { status: 404 }),
-    } as never);
+    get.mockResolvedValue(refusal("not-found", "No such quest") as never);
     await client.invalidateQueries({ queryKey: questQueryKey("trail") });
 
     expect(
@@ -286,10 +280,7 @@ describe("QuestScreen", () => {
   });
 
   it("treats other refusals as a failure to load", async () => {
-    vi.spyOn(api, "GET").mockResolvedValue({
-      error: { title: "Server error", status: 500 },
-      response: new Response("{}", { status: 500 }),
-    } as never);
+    vi.spyOn(api, "GET").mockResolvedValue(serverError() as never);
     show();
 
     expect(await screen.findByRole("alert")).toBeVisible();

@@ -3,6 +3,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
+import { ok, refusal } from "../../test/fakes";
 import { Activation } from "./Activation";
 
 const decoder = vi.hoisted(() => ({ sees: null as string | null }));
@@ -11,18 +12,12 @@ vi.mock("./decodeQr", () => ({ decodeQr: () => decoder.sees }));
 
 const PATH = { name: "trail", puzzleName: "riddle" };
 
-function ok() {
-  return {
-    data: { activationTime: "now" },
-    response: new Response("{}", { status: 200 }),
-  };
+function activated() {
+  return ok({ activationTime: "2026-11-08T12:00:00.000Z" });
 }
 
 function wrongCode() {
-  return {
-    error: { title: "Wrong", status: 422, detail: "Incorrect code" },
-    response: new Response("{}", { status: 422 }),
-  };
+  return refusal("wrong-activation-code", "Incorrect code");
 }
 
 function cameraAttempt() {
@@ -100,7 +95,7 @@ describe("Activation", () => {
   });
 
   it("sends a code as soon as it sees one, as ordinary text", async () => {
-    const post = vi.spyOn(api, "POST").mockResolvedValue(ok() as never);
+    const post = vi.spyOn(api, "POST").mockResolvedValue(activated() as never);
     decoder.sees = "riddle-code";
     show();
 

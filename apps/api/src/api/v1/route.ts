@@ -152,11 +152,20 @@ export function problemsOf(route: AnyRoute): ProblemType[] {
   if (route.request?.body || route.request?.query) {
     implied.push(Problems.invalidRequest);
   }
+  // The body parsers read only so much.
+  if (route.request?.body || route.request?.multipart) {
+    implied.push(Problems.bodyTooLarge);
+  }
   if (route.access !== "public") {
     implied.push(Problems.signInRequired);
   }
   if (route.access !== "public" && route.access !== "signedIn") {
     implied.push(Problems.forbidden);
+  }
+  // Anything that changes something is refused when another site's page
+  // sends it with the session cookie (see requireSameOrigin).
+  if (route.method !== "get") {
+    implied.push(Problems.crossSiteRequest);
   }
   return [...implied, ...(route.problems ?? [])];
 }

@@ -124,6 +124,7 @@ export const playingRoutes = [
       ...playingProblems,
       Problems.wrongActivationCode,
       Problems.unreadableQrCode,
+      Problems.uploadTooLarge,
       Problems.tooManyRequests,
     ],
     async handle(req, res) {

@@ -3,7 +3,7 @@
   "info": {
     "title": "PuzzleQuest API",
     "version": "1.0.0",
-    "description": "PuzzleQuest's API, for its web pages and for apps.\n\nSign in with `POST /sessions`. A browser keeps the session in a cookie; an app asks for its token (`\"client\": \"native\"`) and sends it as `Authorization: Bearer <token>`. A request that changes something and is sent with the cookie must come from this site.\n\nLists come a page at a time: `?limit=` (default 50, at most 200) and `?after=`, the `next` value of the page before.\n\nClients follow a quest as it happens over the live-update websocket, `/api/v1/updates`. Anyone may connect. A client sends a `LiveUpdateSubscription` naming the quest; the server answers with its connection's ID, then sends a `LiveUpdate` for each change to that quest, naming the puzzle concerned where there is one. A client sends its connection's ID as `connectionId` with its own actions, so their updates aren't sent back to it. Both messages are described under the schemas. Updates can be missed, so a client should fetch the quest's state again each time it connects. Starting and resetting a quest send no update.\n\nErrors are problem details (RFC 9457), sent as `application/problem+json`. Act on their `type`, one of:\n\n| Type | Status | When |\n| --- | --- | --- |\n| `/problems/invalid-request` | 400 | The request's parameters or body are missing, malformed, or have values that aren't allowed. The errors member lists each problem, with where it is, such as body.email. |\n| `/problems/sign-in-required` | 401 | The request needs a signed-in user, and has no session, or one that has ended. |\n| `/problems/sign-in-failed` | 401 | The user name and password don't match an account. Which of them is wrong isn't said. |\n| `/problems/forbidden` | 403 | The signed-in user isn't allowed to do this. |\n| `/problems/cross-site-request` | 403 | A request that changes something was sent with this site's cookie from a page on another site. Send it from this site, or with a Bearer token. |\n| `/problems/not-found` | 404 | There is no such resource, or the signed-in user may not know about it. |\n| `/problems/already-exists` | 409 | Something with that name, email address, or join code already exists, or the user is already a member of the team. |\n| `/problems/email-not-verified` | 409 | The user hasn't verified their email address, so nothing can be sent to it that depends on it, such as a password reset link. |\n| `/problems/incorrect-password` | 422 | The current password given isn't the user's password. |\n| `/problems/password-not-allowed` | 422 | The new password doesn't meet the password policy, such as its length, or is the same as the current one. |\n| `/problems/wrong-join-code` | 422 | The join code isn't the team's. |\n| `/problems/invalid-link` | 422 | The token from a password reset or email verification link isn't valid: it is malformed, already used, or expired. |\n| `/problems/in-use` | 409 | It can't be deleted while something uses it, such as a puzzle a quest includes. The detail says what uses it. |\n| `/problems/invalid-upload` | 400 | The upload is missing a field, sends its fields in the wrong order, or is a kind of file that isn't accepted. |\n| `/problems/upload-too-large` | 413 | The uploaded file is larger than allowed. |\n| `/problems/invalid-quest` | 422 | The quest is assigned to a user or team that doesn't exist, or lists a puzzle that doesn't exist or appears twice. |\n| `/problems/wrong-state` | 409 | The quest or puzzle isn't in a state that allows this: for example, the quest has already started, isn't paused, or is completed, or the puzzle hasn't been reached or solved. The detail says which. |\n| `/problems/quest-paused` | 409 | The puzzle master has paused the quest; the players can't act until it resumes. |\n| `/problems/try-again` | 409 | Someone else changed the quest at the same moment, several times over. Try again. |\n| `/problems/wrong-activation-code` | 422 | The activation code, typed or scanned, isn't the puzzle's. |\n| `/problems/wrong-answer` | 422 | The guess isn't the puzzle's solution. |\n| `/problems/no-recipients` | 409 | Nobody the quest is assigned to has a phone number and accepts text messages. |\n| `/problems/messaging-failed` | 502 | The text messaging service refused or failed to send a message. The details are logged. |\n| `/problems/unreadable-qr-code` | 422 | No QR code could be read from the scanned image; try again, closer or with more light, or type the code. |\n| `/problems/no-more-hints` | 409 | Every one of the puzzle's hints has been revealed. |\n| `/problems/too-many-requests` | 429 | Too many attempts in a short time. The RateLimit and RateLimit-Policy headers say when to try again. |\n| `/problems/unexpected` | 500 | Something went wrong on the server. The details are logged, not sent. |\n| `about:blank` | 4xx | Any other HTTP error, such as a body too large to read; the title is the status's. |"
+    "description": "PuzzleQuest's API, for its web pages and for apps.\n\nSign in with `POST /sessions`. A browser keeps the session in a cookie; an app asks for its token (`\"client\": \"native\"`) and sends it as `Authorization: Bearer <token>`. A request that changes something and is sent with the cookie must come from this site.\n\nLists come a page at a time: `?limit=` (default 50, at most 200) and `?after=`, the `next` value of the page before.\n\nClients follow a quest as it happens over the live-update websocket, `/api/v1/updates`. Anyone may connect. A client sends a `LiveUpdateSubscription` naming the quest; the server answers with its connection's ID, then sends a `LiveUpdate` for each change to that quest, naming the puzzle concerned where there is one. A client sends its connection's ID as `connectionId` with its own actions, so their updates aren't sent back to it. Both messages are described under the schemas. Updates can be missed, so a client should fetch the quest's state again each time it connects. Starting and resetting a quest send no update.\n\nErrors are problem details (RFC 9457), sent as `application/problem+json`. Act on their `type`, one of:\n\n| Type | Status | When |\n| --- | --- | --- |\n| `/problems/invalid-request` | 400 | The request's parameters or body are missing, malformed, or have values that aren't allowed. The errors member lists each problem, with where it is, such as body.email. |\n| `/problems/sign-in-required` | 401 | The request needs a signed-in user, and has no session, or one that has ended. |\n| `/problems/sign-in-failed` | 401 | The user name and password don't match an account. Which of them is wrong isn't said. |\n| `/problems/forbidden` | 403 | The signed-in user isn't allowed to do this. |\n| `/problems/cross-site-request` | 403 | A request that changes something was sent with this site's cookie from a page on another site. Send it from this site, or with a Bearer token. |\n| `/problems/not-found` | 404 | There is no such resource, or the signed-in user may not know about it. |\n| `/problems/already-exists` | 409 | Something with that name, email address, or join code already exists, or the user is already a member of the team. |\n| `/problems/email-not-verified` | 409 | The user hasn't verified their email address, so nothing can be sent to it that depends on it, such as a password reset link. |\n| `/problems/incorrect-password` | 422 | The current password given isn't the user's password. |\n| `/problems/password-not-allowed` | 422 | The new password doesn't meet the password policy, such as its length, or is the same as the current one. |\n| `/problems/wrong-join-code` | 422 | The join code isn't the team's. |\n| `/problems/invalid-link` | 422 | The token from a password reset or email verification link isn't valid: it is malformed, already used, or expired. |\n| `/problems/in-use` | 409 | It can't be deleted while something uses it, such as a puzzle a quest includes. The detail says what uses it. |\n| `/problems/invalid-upload` | 400 | The upload is missing a field, sends its fields in the wrong order, or is a kind of file that isn't accepted. |\n| `/problems/body-too-large` | 413 | The request's body is larger than the server reads. |\n| `/problems/upload-too-large` | 413 | The uploaded file is larger than allowed. |\n| `/problems/invalid-quest` | 422 | The quest is assigned to a user or team that doesn't exist, or lists a puzzle that doesn't exist or appears twice. |\n| `/problems/wrong-state` | 409 | The quest or puzzle isn't in a state that allows this: for example, the quest has already started, isn't paused, or is completed, or the puzzle hasn't been reached or solved. The detail says which. |\n| `/problems/quest-paused` | 409 | The puzzle master has paused the quest; the players can't act until it resumes. |\n| `/problems/try-again` | 409 | Someone else changed the quest at the same moment, several times over. Try again. |\n| `/problems/wrong-activation-code` | 422 | The activation code, typed or scanned, isn't the puzzle's. |\n| `/problems/wrong-answer` | 422 | The guess isn't the puzzle's solution. |\n| `/problems/no-recipients` | 409 | Nobody the quest is assigned to has a phone number and accepts text messages. |\n| `/problems/messaging-failed` | 502 | The text messaging service refused or failed to send a message. The details are logged. |\n| `/problems/unreadable-qr-code` | 422 | No QR code could be read from the scanned image; try again, closer or with more light, or type the code. |\n| `/problems/no-more-hints` | 409 | Every one of the puzzle's hints has been revealed. |\n| `/problems/too-many-requests` | 429 | Too many attempts in a short time. The RateLimit and RateLimit-Policy headers say when to try again. |\n| `/problems/unexpected` | 500 | Something went wrong on the server. The details are logged, not sent. |\n| `about:blank` | 4xx | Any other HTTP error, such as a body that isn't valid JSON; the title is the status's. |"
   },
   "servers": [
     {
@@ -134,6 +134,26 @@
               }
             }
           },
+          "403": {
+            "description": "/problems/cross-site-request: Request from another site.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
           "429": {
             "description": "/problems/too-many-requests: Too many requests.",
             "content": {
@@ -217,6 +237,16 @@
         "responses": {
           "204": {
             "description": "Signed out."
+          },
+          "403": {
+            "description": "/problems/cross-site-request: Request from another site.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
           },
           "500": {
             "description": "/problems/unexpected: An unexpected error occurred.",
@@ -429,7 +459,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/cross-site-request: Request from another site. /problems/forbidden: Not allowed.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -440,6 +470,16 @@
           },
           "409": {
             "description": "/problems/already-exists: Already exists.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -642,7 +682,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -663,6 +703,16 @@
           },
           "409": {
             "description": "/problems/already-exists: Already exists.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -751,7 +801,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -772,6 +822,16 @@
           },
           "409": {
             "description": "/problems/wrong-state: Not possible now.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1034,7 +1094,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1055,6 +1115,16 @@
           },
           "409": {
             "description": "/problems/already-exists: Already exists.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1173,7 +1243,17 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1258,7 +1338,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1342,7 +1422,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1426,6 +1506,26 @@
               }
             }
           },
+          "403": {
+            "description": "/problems/cross-site-request: Request from another site.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
           "429": {
             "description": "/problems/too-many-requests: Too many requests.",
             "content": {
@@ -1488,6 +1588,26 @@
           },
           "400": {
             "description": "/problems/invalid-request: The request isn't valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "/problems/cross-site-request: Request from another site.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1563,6 +1683,26 @@
           },
           "400": {
             "description": "/problems/invalid-request: The request isn't valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "/problems/cross-site-request: Request from another site.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1802,7 +1942,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1813,6 +1953,16 @@
           },
           "409": {
             "description": "/problems/already-exists: Already exists.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1993,7 +2143,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2014,6 +2164,16 @@
           },
           "409": {
             "description": "/problems/already-exists: Already exists.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2076,7 +2236,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2190,7 +2350,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2211,6 +2371,16 @@
           },
           "409": {
             "description": "/problems/already-exists: Already exists.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2293,7 +2463,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2562,7 +2732,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2573,6 +2743,16 @@
           },
           "409": {
             "description": "/problems/already-exists: Already exists.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2789,7 +2969,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2800,6 +2980,16 @@
           },
           "404": {
             "description": "/problems/not-found: Not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2862,7 +3052,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2991,7 +3181,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3001,7 +3191,7 @@
             }
           },
           "413": {
-            "description": "/problems/upload-too-large: Upload too large.",
+            "description": "/problems/body-too-large: Request too large. /problems/upload-too-large: Upload too large.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3256,7 +3446,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3267,6 +3457,16 @@
           },
           "409": {
             "description": "/problems/already-exists: Already exists.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3482,7 +3682,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3503,6 +3703,16 @@
           },
           "409": {
             "description": "/problems/wrong-state: Not possible now. /problems/try-again: Changed at the same time.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3575,7 +3785,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3657,7 +3867,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3749,7 +3959,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3841,7 +4051,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3933,7 +4143,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -4035,7 +4245,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -4163,7 +4373,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -4184,6 +4394,16 @@
           },
           "409": {
             "description": "/problems/wrong-state: Not possible now. /problems/try-again: Changed at the same time.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -4596,7 +4816,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -4617,6 +4837,16 @@
           },
           "409": {
             "description": "/problems/wrong-state: Not possible now. /problems/no-recipients: Nobody to text.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -4858,7 +5088,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/cross-site-request: Request from another site. /problems/forbidden: Not allowed.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -4879,6 +5109,16 @@
           },
           "409": {
             "description": "/problems/wrong-state: Not possible now. /problems/quest-paused: Quest paused. /problems/try-again: Changed at the same time.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large. /problems/upload-too-large: Upload too large.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -5013,7 +5253,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/cross-site-request: Request from another site. /problems/forbidden: Not allowed.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -5034,6 +5274,16 @@
           },
           "409": {
             "description": "/problems/wrong-state: Not possible now. /problems/quest-paused: Quest paused. /problems/try-again: Changed at the same time.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -5161,7 +5411,7 @@
             }
           },
           "403": {
-            "description": "/problems/forbidden: Not allowed.",
+            "description": "/problems/cross-site-request: Request from another site. /problems/forbidden: Not allowed.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -5182,6 +5432,16 @@
           },
           "409": {
             "description": "/problems/wrong-state: Not possible now. /problems/quest-paused: Quest paused. /problems/try-again: Changed at the same time. /problems/no-more-hints: No more hints.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
             "content": {
               "application/problem+json": {
                 "schema": {

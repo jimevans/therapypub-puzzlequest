@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
+import { aUser, ok, refusal } from "../../test/fakes";
 import QuestConsole from "./QuestConsole";
 import { describeEvent } from "./describeEvent";
 
@@ -99,27 +100,16 @@ const EVENTS = [
   },
 ];
 
-function ok(data?: unknown, status = 200) {
-  return { data, response: new Response(null, { status }) };
-}
-
-function refusal(status: number, detail: string, errors?: object[]) {
-  return {
-    error: { title: "Refused", status, detail, errors },
-    response: new Response(null, { status }),
-  };
-}
-
 /** Has the API answer with this quest and its events. */
 function apiQuest(quest: unknown, events: unknown[] = EVENTS) {
   return vi.spyOn(api, "GET").mockImplementation((async (path: string) => {
     if (path === "/quests/{name}") {
-      return quest ? ok(quest) : refusal(404, "No such quest");
+      return quest ? ok(quest) : refusal("not-found", "No such quest");
     }
     if (path === "/quests/{name}/events") {
       return ok({ items: events, next: null });
     }
-    return ok({ user: { userName: "boss", authorizationLevel: 10 } });
+    return ok({ user: aUser({ userName: "boss", authorizationLevel: 10 }) });
   }) as never);
 }
 
@@ -332,7 +322,7 @@ describe("the quest console", () => {
     const user = userEvent.setup();
     apiQuest(RUNNING);
     vi.spyOn(api, "POST").mockResolvedValue(
-      refusal(409, "The quest is already paused") as never
+      refusal("wrong-state", "The quest is already paused") as never
     );
     show();
 
@@ -395,7 +385,10 @@ describe("the quest console", () => {
     const user = userEvent.setup();
     apiQuest(RUNNING);
     vi.spyOn(api, "POST").mockResolvedValue(
-      refusal(422, "None of the quest's players accept text messages") as never
+      refusal(
+        "no-recipients",
+        "None of the quest's players accept text messages"
+      ) as never
     );
     show();
 

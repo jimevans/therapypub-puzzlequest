@@ -5,7 +5,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./contract": "./src/contract.ts",
+    "./openapi.json": "./openapi.json"
   },
   "scripts": {
     "generate": "openapi-typescript openapi.json --output src/schema.d.ts",
@@ -17,9 +19,11 @@
     "openapi-fetch": "^0.17.0"
   },
   "devDependencies": {
-    "openapi-typescript": "^7.13.0",
     "@vitest/coverage-v8": "^5.0.5",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "jsdom": "^31.0.0",
+    "openapi-typescript": "^7.13.0",
     "vitest": "^5.0.5"
   }
 }

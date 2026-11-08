@@ -276,9 +276,19 @@ describe("the OpenAPI document", () => {
       "201",
       "400",
       "401",
+      "403",
+      "413",
       "429",
       "500",
     ]);
+    // Every route that changes something can be refused as coming from
+    // another site, and every route with a body can be sent one too large.
+    expect(signIn.responses["403"].description).toBe(
+      "/problems/cross-site-request: Request from another site."
+    );
+    expect(signIn.responses["413"].description).toBe(
+      "/problems/body-too-large: Request too large."
+    );
     expect(signIn.responses["401"].description).toBe(
       "/problems/sign-in-failed: Incorrect user name or password."
     );

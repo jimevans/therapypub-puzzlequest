@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../api";
+import { aUser, ok, signedOut } from "../test/fakes";
 import { PageShell } from "./PageShell";
 
 function show() {
@@ -12,20 +13,15 @@ function show() {
   );
 }
 
-function apiAnswers(status: number, data?: unknown) {
-  vi.spyOn(api, "GET").mockResolvedValue({
-    data,
-    response: new Response("{}", { status }),
-  } as never);
-}
-
 describe("PageShell", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   it("shows the page, with links for whoever is signed in", async () => {
-    apiAnswers(200, { user: { userName: "a player/1" } });
+    vi.spyOn(api, "GET").mockResolvedValue(
+      ok({ user: aUser({ userName: "a player/1" }) }) as never
+    );
 
     show();
 
@@ -44,9 +40,7 @@ describe("PageShell", () => {
   });
 
   it("shows no account links to a visitor who isn't signed in", async () => {
-    const get = vi.spyOn(api, "GET").mockResolvedValue({
-      response: new Response("{}", { status: 401 }),
-    } as never);
+    const get = vi.spyOn(api, "GET").mockResolvedValue(signedOut() as never);
 
     show();
 

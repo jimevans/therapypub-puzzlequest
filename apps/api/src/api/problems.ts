@@ -20,7 +20,7 @@ export interface ProblemType {
 
 /**
  * Every kind of problem the API reports. A problem that isn't one of these,
- * such as a request too large to read, is reported with the type
+ * such as a body that isn't valid JSON, is reported with the type
  * "about:blank", whose title is the HTTP status's.
  */
 export const Problems = {
@@ -118,6 +118,12 @@ export const Problems = {
     status: 400,
     description:
       "The upload is missing a field, sends its fields in the wrong order, or is a kind of file that isn't accepted.",
+  },
+  bodyTooLarge: {
+    type: "/problems/body-too-large",
+    title: "Request too large",
+    status: 413,
+    description: "The request's body is larger than the server reads.",
   },
   uploadTooLarge: {
     type: "/problems/upload-too-large",

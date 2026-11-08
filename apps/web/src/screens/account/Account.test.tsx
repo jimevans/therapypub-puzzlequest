@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
+import { ok, refusal } from "../../test/fakes";
 import { ForgotPassword } from "./ForgotPassword";
 import { ResetPassword } from "./ResetPassword";
 import { VerifyEmail } from "./VerifyEmail";
@@ -24,19 +25,11 @@ function show(element: React.ReactNode, path = "/") {
   );
 }
 
-function apiAnswers(status: number, problem?: object) {
-  return vi.spyOn(api, "POST").mockResolvedValue({
-    data: undefined,
-    error: problem,
-    response: new Response(null, { status }),
-  } as never);
+function apiAnswers(answer: unknown) {
+  return vi.spyOn(api, "POST").mockResolvedValue(answer as never);
 }
 
-const REFUSED_LINK = {
-  title: "Invalid link",
-  status: 422,
-  detail: "This link has expired",
-};
+const REFUSED_LINK = refusal("invalid-link", "This link has expired");
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -44,7 +37,7 @@ afterEach(() => {
 
 describe("ForgotPassword", () => {
   it("asks for the link, without its surrounding spaces", async () => {
-    const post = apiAnswers(202);
+    const post = apiAnswers(ok(undefined, 202));
     show(<ForgotPassword />);
 
     await userEvent.type(
@@ -62,7 +55,7 @@ describe("ForgotPassword", () => {
   });
 
   it("asks for something rather than sending nothing", async () => {
-    const post = apiAnswers(202);
+    const post = apiAnswers(ok(undefined, 202));
     show(<ForgotPassword />);
 
     await userEvent.click(
@@ -76,7 +69,7 @@ describe("ForgotPassword", () => {
   });
 
   it("says why it was refused, such as too many requests", async () => {
-    apiAnswers(429, { title: "Slow down", status: 429, detail: "Try later" });
+    apiAnswers(refusal("too-many-requests", "Try later"));
     show(<ForgotPassword />);
 
     await userEvent.type(screen.getByLabelText("User name or email"), "x");
@@ -117,7 +110,7 @@ describe("ResetPassword", () => {
   }
 
   it("resets the password with the link's token", async () => {
-    const post = apiAnswers(204);
+    const post = apiAnswers(ok(undefined, 204));
     show(<ResetPassword />, LINK);
 
     await choose("a long enough password");
@@ -132,7 +125,7 @@ describe("ResetPassword", () => {
   });
 
   it("removes the token from the address, and keeps working", async () => {
-    apiAnswers(204);
+    apiAnswers(ok(undefined, 204));
     show(<ResetPassword />, LINK);
 
     await waitFor(() =>
@@ -142,7 +135,7 @@ describe("ResetPassword", () => {
   });
 
   it("refuses a password that's too short", async () => {
-    const post = apiAnswers(204);
+    const post = apiAnswers(ok(undefined, 204));
     show(<ResetPassword />, LINK);
 
     await choose("short");
@@ -154,7 +147,7 @@ describe("ResetPassword", () => {
   });
 
   it("refuses passwords that don't match", async () => {
-    const post = apiAnswers(204);
+    const post = apiAnswers(ok(undefined, 204));
     show(<ResetPassword />, LINK);
 
     await choose("a long enough password", "a different password");
@@ -164,7 +157,7 @@ describe("ResetPassword", () => {
   });
 
   it("says when the link has expired", async () => {
-    apiAnswers(422, REFUSED_LINK);
+    apiAnswers(REFUSED_LINK);
     show(<ResetPassword />, LINK);
 
     await choose("a long enough password");
@@ -192,7 +185,7 @@ describe("VerifyEmail", () => {
   const LINK = "/?token=abc_123";
 
   it("waits for a press, so that following the link alone does nothing", async () => {
-    const post = apiAnswers(204);
+    const post = apiAnswers(ok(undefined, 204));
     show(<VerifyEmail />, LINK);
 
     await waitFor(() =>
@@ -202,7 +195,7 @@ describe("VerifyEmail", () => {
   });
 
   it("verifies the address with the link's token", async () => {
-    const post = apiAnswers(204);
+    const post = apiAnswers(ok(undefined, 204));
     show(<VerifyEmail />, LINK);
 
     await userEvent.click(
@@ -216,7 +209,7 @@ describe("VerifyEmail", () => {
   });
 
   it("says when the link has expired, and lets the player try again", async () => {
-    apiAnswers(422, REFUSED_LINK);
+    apiAnswers(REFUSED_LINK);
     show(<VerifyEmail />, LINK);
     const button = screen.getByRole("button", {
       name: "Verify my email address",

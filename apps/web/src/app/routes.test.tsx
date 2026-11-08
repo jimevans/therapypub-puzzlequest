@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../api";
 import { ErrorPage } from "./ErrorPage";
 import { createRoutes, patchAdminRoutes } from "./routes";
+import { aUser, ok, refusal, signedOut } from "../test/fakes";
 
 vi.mock("../screens/signIn/SignIn", () => ({
   SignIn: () => <h1>The screen</h1>,
@@ -110,9 +111,12 @@ function renderAt(path: string) {
 
 describe("the routes", () => {
   beforeEach(() => {
-    vi.spyOn(api, "GET").mockResolvedValue({
-      response: new Response("{}", { status: 401 }),
-    } as never);
+    // Nobody's signed in: the public spectator views find nothing, and
+    // everything else needs signing in.
+    vi.spyOn(api, "GET").mockImplementation((async (path: string) =>
+      path.endsWith("/spectator-view")
+        ? refusal("not-found", "No such quest")
+        : signedOut()) as never);
   });
 
   afterEach(() => {
@@ -200,11 +204,8 @@ describe("the routes", () => {
   it("show an administrator the console at a quest's address", async () => {
     vi.mocked(api.GET).mockImplementation((async (path: string) =>
       path === "/sessions/current"
-        ? {
-            data: { user: { userName: "boss", authorizationLevel: 10 } },
-            response: new Response(null, { status: 200 }),
-          }
-        : { response: new Response("{}", { status: 404 }) }) as never);
+        ? ok({ user: aUser({ userName: "boss", authorizationLevel: 10 }) })
+        : refusal("not-found", "No such quest")) as never);
     renderAt("/quest/trail");
 
     expect(
@@ -218,11 +219,8 @@ describe("the routes", () => {
   it("show staff their view at a quest's address", async () => {
     vi.mocked(api.GET).mockImplementation((async (path: string) =>
       path === "/sessions/current"
-        ? {
-            data: { user: { userName: "helper", authorizationLevel: 5 } },
-            response: new Response(null, { status: 200 }),
-          }
-        : { response: new Response("{}", { status: 404 }) }) as never);
+        ? ok({ user: aUser({ userName: "helper", authorizationLevel: 5 }) })
+        : refusal("not-found", "No such quest")) as never);
     renderAt("/quest/trail");
 
     expect(
