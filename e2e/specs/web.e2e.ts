@@ -66,6 +66,9 @@ describe("the web app", () => {
     await expect(browser).toHaveUrl(
       expect.stringContaining(`/user/${userName}`)
     );
+    // The address changes as the page starts loading. Wait for the page
+    // itself: in Firefox, a page still loading can replace the next test's.
+    await expect($("#user-details")).toBeDisplayed();
   });
 
   it("has account links once signed in, including signing out", async () => {
