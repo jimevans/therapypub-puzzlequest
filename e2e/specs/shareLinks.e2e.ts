@@ -53,6 +53,10 @@ describe("a private quest", () => {
 
   it("lets its player make a link", async () => {
     await signIn(player);
+    // Going elsewhere before signing in has finished would cancel it.
+    await browser.waitUntil(
+      async () => !(await browser.getUrl()).includes("/login")
+    );
     await browser.url(`/quest/${questName}`);
 
     await $("#share-link-label").setValue("My grandmother");
