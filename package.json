@@ -56,5 +56,13 @@
   },
   "scarfSettings": {
     "enabled": false
+  },
+  "allowScripts": {
+    "bcrypt@6.0.0": true,
+    "esbuild@0.28.2": true,
+    "mongodb-memory-server@11.3.0": true,
+    "geckodriver@8.0.0": true,
+    "edgedriver": false,
+    "@scarf/scarf": false
   }
 }
