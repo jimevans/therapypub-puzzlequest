@@ -5464,6 +5464,81 @@
         }
       }
     },
+    "/quests/{name}/live-tickets": {
+      "post": {
+        "operationId": "createLiveTicket",
+        "summary": "Get a ticket to follow a quest's live updates",
+        "description": "A ticket lets one connection to the live-update websocket, /api/v1/updates, follow the quest. It expires within a minute and can be used once, so ask for a new one for each connection.",
+        "tags": [
+          "Spectating"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "schema": {
+              "type": "string",
+              "description": "The quest's name."
+            },
+            "required": true,
+            "description": "The quest's name."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "The ticket.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveTicket"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "/problems/cross-site-request: Request from another site.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "/problems/not-found: Not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "/problems/too-many-requests: Too many requests.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "/problems/unexpected: An unexpected error occurred.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/quests/{name}/spectator-view": {
       "get": {
         "operationId": "getSpectatorQuest",
@@ -6816,6 +6891,25 @@
         ],
         "additionalProperties": false
       },
+      "LiveTicket": {
+        "type": "object",
+        "properties": {
+          "ticket": {
+            "type": "string",
+            "description": "Send this with the subscribe message, once."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "ticket",
+          "expiresAt"
+        ],
+        "additionalProperties": false
+      },
       "SpectatorQuest": {
         "type": "object",
         "properties": {
@@ -7639,6 +7733,11 @@
           "questName": {
             "type": "string",
             "minLength": 1
+          },
+          "ticket": {
+            "description": "A ticket from POST /quests/{name}/live-tickets, which can be used once.",
+            "type": "string",
+            "minLength": 1
           }
         },
         "required": [
@@ -7646,7 +7745,7 @@
           "questName"
         ],
         "additionalProperties": false,
-        "description": "The message a client sends to the live-update websocket to follow a quest. Sending another follows that quest instead."
+        "description": "The message a client sends to the live-update websocket to follow a quest. Sending another follows that quest instead. A ticket that isn't valid for the quest closes the connection."
       }
     },
     "securitySchemes": {

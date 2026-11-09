@@ -33,6 +33,7 @@ vi.mock("../../src/middleware/rateLimiter.js", () => {
     activationRateLimiter: passThrough,
     joinCodeRateLimiter: passThrough,
     solutionRateLimiter: passThrough,
+    liveTicketRateLimiter: passThrough,
     emailVerificationRateLimiter: passThrough,
     verificationEmailRateLimiter: passThrough,
   };
@@ -173,6 +174,7 @@ const ROUTES: [string, string, Policy][] = [
   ["get", "/api/v1/staff/quests", STAFF],
   ["get", "/api/v1/quests/:name/staff-view", STAFF],
   ["get", "/api/v1/quests/:name/puzzles/:puzzleName", QUEST_VIEWER],
+  ["post", "/api/v1/quests/:name/live-tickets", PUBLIC],
   ["get", "/api/v1/quests/:name/spectator-view", PUBLIC],
   ["get", "/api/v1/quests/:name/puzzles/:puzzleName/spectator-view", PUBLIC],
   ["post", "/api/v1/quests/:name/puzzles/:puzzleName/activation", QUEST_PLAYER],

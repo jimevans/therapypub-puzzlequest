@@ -19,6 +19,8 @@ export interface FollowQuestOptions {
   /** The socket's address, such as wss://example.com/api/v1/updates. */
   url: string;
   questName: string;
+  /** Gets a new ticket from POST /quests/{name}/live-tickets. */
+  getTicket: () => Promise<string>;
   /** The quest's state may have changed, and should be fetched again. */
   onChange: () => void;
   /** The connection was made or lost. */
@@ -40,7 +42,7 @@ export interface QuestFollower {
  * @returns a way to get the connection's ID, and to stop following
  */
 export function followQuest(options: FollowQuestOptions): QuestFollower {
-  const { url, questName, onChange, onConnectionChange } = options;
+  const { url, questName, getTicket, onChange, onConnectionChange } = options;
   let socket: WebSocket | undefined;
   let connectionId: string | undefined;
   let attempts = 0;
@@ -58,11 +60,22 @@ export function followQuest(options: FollowQuestOptions): QuestFollower {
     const current = new WebSocket(url);
     socket = current;
     current.addEventListener("open", () => {
-      const subscription: LiveUpdateSubscription = {
-        message: "subscribe",
-        questName,
-      };
-      current.send(JSON.stringify(subscription));
+      getTicket().then(
+        (ticket) => {
+          if (socket === current && current.readyState === WebSocket.OPEN) {
+            const subscription: LiveUpdateSubscription = {
+              message: "subscribe",
+              questName,
+              ticket,
+            };
+            current.send(JSON.stringify(subscription));
+          }
+        },
+        // Closing it brings the usual wait before trying again.
+        () => {
+          current.close();
+        }
+      );
     });
     current.addEventListener("message", (event: MessageEvent<string>) => {
       if (socket !== current) {

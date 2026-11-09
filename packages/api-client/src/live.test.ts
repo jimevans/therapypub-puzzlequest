@@ -65,6 +65,7 @@ function setVisibility(state: "visible" | "hidden"): void {
 describe("followQuest", () => {
   const onChange = vi.fn();
   const onConnectionChange = vi.fn();
+  const getTicket = vi.fn<() => Promise<string>>();
   let follower: QuestFollower;
 
   beforeEach(() => {
@@ -73,9 +74,12 @@ describe("followQuest", () => {
     FakeSocket.all = [];
     onChange.mockClear();
     onConnectionChange.mockClear();
+    getTicket.mockReset();
+    getTicket.mockResolvedValue("ticket-1");
     follower = followQuest({
       url: "ws://site/api/v1/updates",
       questName: "trail",
+      getTicket,
       onChange,
       onConnectionChange,
     });
@@ -94,14 +98,38 @@ describe("followQuest", () => {
       expect(latest().url).toBe("ws://site/api/v1/updates");
     });
 
-    it("subscribes to the quest once the socket opens", () => {
+    it("subscribes to the quest with a new ticket once the socket opens", async () => {
       expect(latest().sent).toEqual([]);
+      expect(getTicket).not.toHaveBeenCalled();
 
       latest().open();
+      await vi.advanceTimersByTimeAsync(0);
 
       expect(latest().sent).toEqual([
-        { message: "subscribe", questName: "trail" },
+        { message: "subscribe", questName: "trail", ticket: "ticket-1" },
       ]);
+    });
+
+    it("tries again with a new connection if it can't get a ticket", async () => {
+      getTicket.mockRejectedValueOnce(new Error("offline"));
+
+      latest().open();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(latest().sent).toEqual([]);
+      expect(latest().readyState).toBe(FakeSocket.CLOSED);
+
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(FakeSocket.all).toHaveLength(2);
+    });
+
+    it("sends nothing if stopped while getting a ticket", async () => {
+      const socket = latest();
+      socket.open();
+
+      follower.stop();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(socket.sent).toEqual([]);
     });
 
     it("keeps the connection's ID for the client's own actions", () => {

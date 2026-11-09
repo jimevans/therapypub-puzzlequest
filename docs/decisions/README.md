@@ -23,6 +23,7 @@ ask.
 - [0016. Structured logs on standard error](0016-logging.md)
 - [0017. Our own backups, ready but not active](0017-backups.md)
 - [0018. Deploys build on the host](0018-deploy-by-building-on-the-host.md)
+- [0019. The live-update websocket is authorized with tickets](0019-live-update-tickets.md)
 
 To add one, copy the shape of an existing record (status, date, context,
 decision, consequences, alternatives), number it next, and add it here. A
