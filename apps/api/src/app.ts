@@ -43,14 +43,15 @@ try {
 await ensureDefaultOrganization();
 subscribeQuestEventHandlers();
 
-const server = http.createServer(createApp());
+const app = createApp();
+const server = http.createServer(app);
 
 const socketServer = WebSocketService.initialize();
-server.on("upgrade", (req, socket, header) => {
-  socketServer.handleUpgrade(req, socket, header, (ws) =>
-    socketServer.emit("connection", ws, req)
-  );
-});
+WebSocketService.attachToServer(
+  server,
+  socketServer,
+  app.get("trust proxy fn")
+);
 
 const shutdown = createShutdown({
   server,
