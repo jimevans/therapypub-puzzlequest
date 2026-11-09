@@ -34,7 +34,8 @@ jobs:
         env:
           STRESS_ITERATIONS: 1000
           STRESS_EVENT_LOG: ${{ runner.temp }}/logs/events.jsonl
-        run: mkdir -p "$RUNNER_TEMP/logs" && npx wdio run wdio.conf.ts --spec stress/navigation.e2e.ts --logLevel ${{ matrix.level }} --outputDir "$RUNNER_TEMP/logs/targeted"
+          STRESS_NO_WORKER: true
+        run: mkdir -p "$RUNNER_TEMP/logs" && npx wdio run stress/wdio.no-worker.conf.ts --spec stress/navigation.e2e.ts --logLevel ${{ matrix.level }} --outputDir "$RUNNER_TEMP/logs/targeted"
       - name: Repeat the whole Firefox suite
         if: false
         timeout-minutes: 15

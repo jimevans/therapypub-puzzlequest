@@ -6,6 +6,7 @@ import { appendFileSync } from "node:fs";
 const ITERATIONS = Number(process.env.STRESS_ITERATIONS ?? 300);
 const EVENT_LOG = process.env.STRESS_EVENT_LOG;
 const STALLS_PER_TEST = 5;
+const NO_WORKER = process.env.STRESS_NO_WORKER === "true";
 const EVENTS = [
   "browsingContext.navigationStarted",
   "browsingContext.navigationAborted",
@@ -47,6 +48,9 @@ async function repeat(
 /** Goes to a page, and checks that the service worker controls it. */
 async function visitThroughWorker(iteration: number): Promise<void> {
   await browser.url("/login");
+  if (NO_WORKER) {
+    return;
+  }
   const controlled = await browser.execute(
     () => navigator.serviceWorker.controller !== null
   );
@@ -79,6 +83,9 @@ describe("navigating after a page navigates itself", function () {
       );
     }
     await browser.url("/login");
+    if (NO_WORKER) {
+      return;
+    }
     await browser.waitUntil(() =>
       browser.execute(async () =>
         Boolean((await navigator.serviceWorker.ready).active)
