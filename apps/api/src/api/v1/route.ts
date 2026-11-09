@@ -76,6 +76,8 @@ export interface Route<
    */
   documented?: boolean;
   access: Access;
+  /** True if a share link's token, in X-Share-Token, can stand in for access. */
+  acceptsShareLink?: boolean;
   /** Middleware that runs before validation, such as rate limits. */
   before?: RequestHandler[];
   /**

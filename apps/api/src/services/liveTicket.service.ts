@@ -20,11 +20,13 @@ function hashTicket(ticket: string): string {
 /**
  * Issues a ticket to follow a quest.
  * @param questName the quest's name
+ * @param shareLinkId the share link it's issued through, if any
  * @returns the ticket and when it expires, or undefined if there's no such
  *  quest
  */
 export async function issueLiveTicket(
-  questName: string
+  questName: string,
+  shareLinkId?: string
 ): Promise<{ ticket: string; expiresAt: Date } | undefined> {
   const quest = await QuestModel.findOne(
     { name: questName },
@@ -38,6 +40,7 @@ export async function issueLiveTicket(
   await LiveTicketModel.create({
     tokenHash: hashTicket(ticket),
     questId: quest._id,
+    ...(shareLinkId ? { shareLinkId } : {}),
     expiresAt,
   });
   return { ticket, expiresAt };
@@ -47,22 +50,25 @@ export async function issueLiveTicket(
  * Uses up a ticket, if it's good for a quest.
  * @param ticket the ticket
  * @param questName the quest being followed
- * @returns whether the ticket is valid for that quest; either way, a ticket
- *  that existed can't be used again
+ * @returns what it admits, or undefined if it isn't valid for that quest;
+ *  either way, a ticket that existed can't be used again
  */
 export async function redeemLiveTicket(
   ticket: string,
   questName: string
-): Promise<boolean> {
+): Promise<{ shareLinkId?: string } | undefined> {
   const redeemed = await LiveTicketModel.findOneAndDelete({
     tokenHash: hashTicket(ticket),
     expiresAt: { $gt: new Date() },
   }).lean();
   if (!redeemed) {
-    return false;
+    return undefined;
   }
-  return (
-    (await QuestModel.exists({ _id: redeemed.questId, name: questName })) !==
-    null
-  );
+  const isForQuest = await QuestModel.exists({
+    _id: redeemed.questId,
+    name: questName,
+  });
+  return isForQuest
+    ? { shareLinkId: redeemed.shareLinkId?.toString() }
+    : undefined;
 }

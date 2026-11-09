@@ -10,6 +10,11 @@ import { QuestScreen } from "./QuestScreen";
 
 const live = vi.hoisted(() => ({ connected: false }));
 
+// The share links panel has tests of its own.
+vi.mock("../../quests/ShareLinksSection", () => ({
+  ShareLinksSection: () => null,
+}));
+
 vi.mock("../../live/useLiveQuest", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../live/useLiveQuest")>()),
   useLiveQuest: () => ({

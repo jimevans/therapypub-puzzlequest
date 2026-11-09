@@ -7,6 +7,11 @@ import { ok, refusal } from "../../test/fakes";
 import StaffHome from "./StaffHome";
 import StaffQuest from "./StaffQuest";
 
+// The share links panel has tests of its own.
+vi.mock("../../quests/ShareLinksSection", () => ({
+  ShareLinksSection: () => null,
+}));
+
 vi.mock("../../live/useLiveQuest", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../live/useLiveQuest")>()),
   useLiveQuest: () => ({ connected: true, connectionId: () => undefined }),

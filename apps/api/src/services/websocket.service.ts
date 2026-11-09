@@ -21,6 +21,8 @@ interface WebSocketSession {
   socket: WebSocket;
   /** The quest the client follows, once it has sent "subscribe". */
   questName?: string;
+  /** The share link it follows through, if any. */
+  shareLinkId?: string;
 }
 
 const webSocketSessions = new Map<string, WebSocketSession>();
@@ -129,7 +131,8 @@ export function initialize(
       ticket,
     }: LiveUpdateSubscription): Promise<void> {
       const thisSubscription = ++latestSubscription;
-      if (!(await redeemLiveTicket(ticket, questName))) {
+      const admitted = await redeemLiveTicket(ticket, questName);
+      if (!admitted) {
         if (socket.readyState === socket.OPEN) {
           logRefused("invalid-ticket");
           socket.close(POLICY_VIOLATION, "Invalid ticket");
@@ -147,6 +150,7 @@ export function initialize(
       const session = webSocketSessions.get(connectionId);
       if (session) {
         session.questName = questName;
+        session.shareLinkId = admitted.shareLinkId;
       }
     }
 
@@ -240,6 +244,18 @@ function send(socket: WebSocket, update: LiveUpdate): void {
 export function disconnectQuestFollowers(questName: string): void {
   webSocketSessions.forEach((session) => {
     if (session.questName === questName) {
+      session.socket.close(SUBSCRIBE_AGAIN, "Subscribe again");
+    }
+  });
+}
+
+/**
+ * Closes the connections following through a share link, once it's revoked.
+ * @param shareLinkId the link's ID
+ */
+export function disconnectShareLinkFollowers(shareLinkId: string): void {
+  webSocketSessions.forEach((session) => {
+    if (session.shareLinkId === shareLinkId) {
       session.socket.close(SUBSCRIBE_AGAIN, "Subscribe again");
     }
   });

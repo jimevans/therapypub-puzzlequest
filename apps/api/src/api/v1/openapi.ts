@@ -105,8 +105,11 @@ function describeOperation(route: AnyRoute): ZodOpenApiOperationObject {
     summary: route.summary,
     ...(route.description ? { description: route.description } : {}),
     tags: route.tags,
-    security:
-      route.access === "public" ? [] : [{ sessionCookie: [] }, { bearer: [] }],
+    security: route.acceptsShareLink
+      ? [{}, { shareLink: [] }, { sessionCookie: [] }, { bearer: [] }]
+      : route.access === "public"
+        ? []
+        : [{ sessionCookie: [] }, { bearer: [] }],
     ...(query || params
       ? {
           requestParams: {
@@ -165,6 +168,13 @@ export function createOpenApiDocument(
         LiveUpdateSubscription: liveUpdateSubscriptionSchema,
       },
       securitySchemes: {
+        shareLink: {
+          type: "apiKey",
+          in: "header",
+          name: "X-Share-Token",
+          description:
+            "A share link's token, which lets its holder follow a private quest.",
+        },
         sessionCookie: {
           type: "apiKey",
           in: "cookie",
