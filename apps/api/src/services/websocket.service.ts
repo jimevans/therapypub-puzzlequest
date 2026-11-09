@@ -55,6 +55,9 @@ const ONE_MINUTE = 60 * 1000;
 /** The websocket close code for breaking the rules of the connection. */
 const POLICY_VIOLATION = 1008;
 
+/** The websocket close code for having to subscribe again (a private code). */
+const SUBSCRIBE_AGAIN = 4001;
+
 /** The websocket close code for the server failing to do something. */
 const INTERNAL_ERROR = 1011;
 
@@ -126,12 +129,7 @@ export function initialize(
       ticket,
     }: LiveUpdateSubscription): Promise<void> {
       const thisSubscription = ++latestSubscription;
-      // A subscription without a ticket is accepted only until quests can be
-      // private: pages cached before tickets arrived still send those.
-      if (
-        ticket !== undefined &&
-        !(await redeemLiveTicket(ticket, questName))
-      ) {
+      if (!(await redeemLiveTicket(ticket, questName))) {
         if (socket.readyState === socket.OPEN) {
           logRefused("invalid-ticket");
           socket.close(POLICY_VIOLATION, "Invalid ticket");
@@ -232,6 +230,19 @@ export function attachToServer(
  */
 function send(socket: WebSocket, update: LiveUpdate): void {
   socket.send(JSON.stringify(liveUpdateSchema.parse(update)));
+}
+
+/**
+ * Closes the connections following a quest, whose clients reconnect and get a
+ * ticket again if they're still allowed one.
+ * @param questName the quest's name
+ */
+export function disconnectQuestFollowers(questName: string): void {
+  webSocketSessions.forEach((session) => {
+    if (session.questName === questName) {
+      session.socket.close(SUBSCRIBE_AGAIN, "Subscribe again");
+    }
+  });
 }
 
 /**

@@ -151,6 +151,19 @@ function EditorForm({ quest }: { quest?: Quest }) {
           description="What players see."
         />
         <AssigneeSelect register={register} error={errors.assignee?.message} />
+        <div className={styles.field}>
+          <label>
+            <input
+              type="checkbox"
+              aria-describedby="private-description"
+              {...register("isPrivate")}
+            />{" "}
+            Private
+          </label>
+          <p id="private-description" className={styles.note}>
+            Only its players and staff can follow it. Otherwise anyone can.
+          </p>
+        </div>
 
         <fieldset id="stops" className={styles.stops}>
           <legend>Stops</legend>

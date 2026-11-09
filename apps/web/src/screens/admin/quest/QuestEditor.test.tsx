@@ -155,6 +155,7 @@ describe("creating a quest", () => {
       body: {
         name: "trail",
         displayName: "The Trail",
+        visibility: "public",
         assignee: { kind: "team", name: "reds" },
         puzzles: [{ puzzleName: "lantern" }, { puzzleName: "riddle" }],
       },
@@ -222,9 +223,28 @@ describe("editing a quest", () => {
       params: { path: { name: "trail" } },
       body: {
         displayName: "The Trail",
+        visibility: "public",
         assignee: { kind: "team", name: "reds" },
         puzzles: [{ puzzleName: "finale" }, { puzzleName: "cipher" }],
       },
+    });
+  });
+
+  it("makes a quest private, and shows that it is", async () => {
+    const user = userEvent.setup();
+    apiWith({ ...QUEST, visibility: "private" });
+    const patch = vi.spyOn(api, "PATCH").mockResolvedValue(ok(QUEST) as never);
+    show("/quest/trail/edit");
+
+    const box = await screen.findByLabelText("Private");
+    expect(box).toBeChecked();
+    await user.click(box);
+    await user.click(box);
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(patch).toHaveBeenCalled());
+    expect(patch.mock.calls[0]?.[1]).toMatchObject({
+      body: { visibility: "private" },
     });
   });
 

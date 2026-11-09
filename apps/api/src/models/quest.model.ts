@@ -6,6 +6,10 @@ import { QuestPuzzleStatus, QuestStatus } from "../domain/quest/state.js";
 // domain; they are re-exported here for code that already imports them.
 export { QuestPuzzleStatus, QuestStatus };
 
+/** Who can follow a quest: anyone, or only those it's for and those given a link. */
+export const QuestVisibility = ["public", "private"] as const;
+export type QuestVisibility = (typeof QuestVisibility)[number];
+
 /** What a quest can be assigned to. */
 export const AssigneeKind = ["user", "team"] as const;
 export type AssigneeKind = (typeof AssigneeKind)[number];
@@ -108,6 +112,12 @@ const questSchema = new Schema(
     displayName: {
       type: String,
       default: "",
+    },
+    /** Who can follow the quest. Older quests have none, and are public. */
+    visibility: {
+      type: String,
+      enum: QuestVisibility,
+      default: "public",
     },
     /** The user or team the quest is assigned to. */
     assignee: {

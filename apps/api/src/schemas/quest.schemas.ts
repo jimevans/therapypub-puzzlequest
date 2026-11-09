@@ -18,10 +18,16 @@ const assignee = z.object({
   name: requiredText,
 });
 
+const visibility = z.enum(["public", "private"]).meta({
+  description:
+    "Who can follow the quest: anyone, or only its players and staff. New quests are public.",
+});
+
 /** POST /api/v1/quests */
 export const createQuestBody = z.object({
   name: newName,
   displayName: displayName.min(1, "Required"),
+  visibility: visibility.optional(),
   assignee,
   puzzles: z.array(questPuzzle).default([]),
 });
@@ -33,6 +39,7 @@ export type CreateQuestBody = z.infer<typeof createQuestBody>;
  */
 export const updateQuestBody = z.object({
   displayName: displayName.min(1, "Required").optional(),
+  visibility: visibility.optional(),
   assignee: assignee.optional(),
   puzzles: z.array(questPuzzle).optional(),
 });

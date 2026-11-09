@@ -3357,6 +3357,14 @@
                     "minLength": 1,
                     "maxLength": 200
                   },
+                  "visibility": {
+                    "type": "string",
+                    "enum": [
+                      "public",
+                      "private"
+                    ],
+                    "description": "Who can follow the quest: anyone, or only its players and staff. New quests are public."
+                  },
                   "assignee": {
                     "type": "object",
                     "properties": {
@@ -3607,6 +3615,14 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 200
+                  },
+                  "visibility": {
+                    "type": "string",
+                    "enum": [
+                      "public",
+                      "private"
+                    ],
+                    "description": "Who can follow the quest: anyone, or only its players and staff. New quests are public."
                   },
                   "assignee": {
                     "type": "object",
@@ -5468,7 +5484,7 @@
       "post": {
         "operationId": "createLiveTicket",
         "summary": "Get a ticket to follow a quest's live updates",
-        "description": "A ticket lets one connection to the live-update websocket, /api/v1/updates, follow the quest. It expires within a minute and can be used once, so ask for a new one for each connection.",
+        "description": "A ticket lets one connection to the live-update websocket, /api/v1/updates, follow the quest. It expires within a minute and can be used once, so ask for a new one for each connection. A private quest gives one only to its players and staff, and is otherwise not found.",
         "tags": [
           "Spectating"
         ],
@@ -5543,7 +5559,7 @@
       "get": {
         "operationId": "getSpectatorQuest",
         "summary": "Follow a quest",
-        "description": "What anyone may see of a quest: its progress and the puzzles its players have reached. How many puzzles it has is never shown. A quest that hasn't started shows its name and status, with no puzzles.",
+        "description": "What anyone may see of a quest: its progress and the puzzles its players have reached. How many puzzles it has is never shown. A quest that hasn't started shows its name and status, with no puzzles. A private quest is not found, except by its players and staff.",
         "tags": [
           "Spectating"
         ],
@@ -6208,6 +6224,14 @@
           },
           "displayName": {
             "type": "string"
+          },
+          "visibility": {
+            "description": "Who can follow the quest; only for administrators.",
+            "type": "string",
+            "enum": [
+              "public",
+              "private"
+            ]
           },
           "assignee": {
             "type": "object",
@@ -7735,14 +7759,15 @@
             "minLength": 1
           },
           "ticket": {
-            "description": "A ticket from POST /quests/{name}/live-tickets, which can be used once.",
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "description": "A ticket from POST /quests/{name}/live-tickets, which can be used once."
           }
         },
         "required": [
           "message",
-          "questName"
+          "questName",
+          "ticket"
         ],
         "additionalProperties": false,
         "description": "The message a client sends to the live-update websocket to follow a quest. Sending another follows that quest instead. A ticket that isn't valid for the quest closes the connection."

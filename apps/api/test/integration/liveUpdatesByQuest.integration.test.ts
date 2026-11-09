@@ -122,7 +122,11 @@ async function follow(questName: string) {
   const raw: string[] = [];
   socket.on("message", (data) => raw.push(data.toString()));
   await new Promise((resolve) => socket.on("open", resolve));
-  socket.send(JSON.stringify({ message: "subscribe", questName }));
+  const { text } = await request(app).post(
+    `/api/v1/quests/${questName}/live-tickets`
+  );
+  const { ticket } = JSON.parse(text) as { ticket: string };
+  socket.send(JSON.stringify({ message: "subscribe", questName, ticket }));
   await vi.waitFor(() => expect(raw).toHaveLength(1));
   const { connectionId } = JSON.parse(raw[0]) as { connectionId: string };
   raw.length = 0;
@@ -208,6 +212,12 @@ describe("following a quest as it's played", () => {
   });
 
   it("sends nothing about another quest", async () => {
+    await QuestService.createQuest({
+      name: "another-quest",
+      displayName: "Another",
+      assignee: { kind: "user", name: "player" },
+      puzzles: [],
+    });
     const follower = await follow("another-quest");
 
     await play("activation", "riddle", { activationCode: "riddle-code" });

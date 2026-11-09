@@ -96,7 +96,7 @@ export const liveUpdateSubscriptionSchema = z
   .object({
     message: z.literal("subscribe"),
     questName: z.string().min(1),
-    ticket: z.string().min(1).optional().meta({
+    ticket: z.string().min(1).meta({
       description:
         "A ticket from POST /quests/{name}/live-tickets, which can be used once.",
     }),
