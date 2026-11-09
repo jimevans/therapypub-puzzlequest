@@ -24,10 +24,20 @@ const server = createServer((request, response) => {
     response.end();
     return;
   }
+  if (request.url === "/app.js") {
+    response.writeHead(200, { "Content-Type": "text/javascript", "Cache-Control": "no-store" });
+    response.end('fetch("/data").then((r) => r.text()).then((t) => { document.title = t; });');
+    return;
+  }
   // A slower answer leaves navigations overlapping for longer.
   setTimeout(() => {
+    if (request.url === "/data") {
+      response.writeHead(200, { "Content-Type": "text/plain", "Cache-Control": "no-store" });
+      response.end("loaded");
+      return;
+    }
     response.writeHead(200, { "Content-Type": "text/html", "Cache-Control": "no-store" });
-    response.end(`<!doctype html><title>${request.url}</title><h1>${request.url}</h1>`);
+    response.end(`<!doctype html><title>${request.url}</title><h1>${request.url}</h1><script type="module" src="/app.js"></script>`);
   }, DELAY);
 });
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -110,6 +120,9 @@ try {
       "browsingContext.navigationFailed",
       "browsingContext.domContentLoaded",
       "browsingContext.load",
+      "network.beforeRequestSent",
+      "network.responseCompleted",
+      "network.fetchError",
     ],
   });
   const { contexts } = await must("browsingContext.getTree", {});
