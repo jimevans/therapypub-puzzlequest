@@ -90,7 +90,7 @@ export default defineConfig({
       output: {
         // The libraries, apart from the app's code, so that a change to the app
         // leaves them in the browser's cache.
-        advancedChunks: {
+        codeSplitting: {
           groups: [
             {
               name: "react",
