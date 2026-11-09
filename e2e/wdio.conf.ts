@@ -83,10 +83,6 @@ function writeFakeCameraVideo(text: string): void {
 
 const SPECS = path.join(import.meta.dirname, "specs/**/*.e2e.ts");
 const CAMERA_SPECS = path.join(import.meta.dirname, "camera-specs/**/*.e2e.ts");
-const SERVICE_WORKER_SPEC = path.join(
-  import.meta.dirname,
-  "specs/serviceWorker.e2e.ts"
-);
 
 const chromeArguments = [
   "--headless=new",
@@ -106,41 +102,16 @@ const chrome = {
   },
 };
 
-const firefoxOptions = {
-  args: ["-headless", "-width=1280", "-height=900"],
-  // E2E_FIREFOX_BINARY runs a particular Firefox, such as one downloaded with
-  // `npx @puppeteer/browsers install firefox@159.0`.
-  ...(process.env.E2E_FIREFOX_BINARY
-    ? { binary: process.env.E2E_FIREFOX_BINARY }
-    : {}),
-};
-
-// Firefox runs every spec but the service worker's without service workers. On
-// CI's Linux machines, WebdriverIO waits forever for the network record of
-// some page loads the worker answers in Firefox, though the page loads (not
-// seen on a Mac, with the same Firefox). Chrome runs everything with the
-// worker, so the worker is still tested in every journey.
 const firefox = {
   browserName: "firefox",
   webSocketUrl: true,
-  "wdio:exclude": [SERVICE_WORKER_SPEC],
   "moz:firefoxOptions": {
-    ...firefoxOptions,
-    prefs: {
-      "permissions.default.camera": 2,
-      "dom.serviceWorkers.enabled": false,
-    },
-  },
-};
-
-// The service worker's own spec, in Firefox, with service workers on.
-const firefoxWithServiceWorker = {
-  browserName: "firefox",
-  webSocketUrl: true,
-  "wdio:specs": [SERVICE_WORKER_SPEC],
-  "wdio:exclude": [],
-  "moz:firefoxOptions": {
-    ...firefoxOptions,
+    args: ["-headless", "-width=1280", "-height=900"],
+    // E2E_FIREFOX_BINARY runs a particular Firefox, such as one downloaded with
+    // `npx @puppeteer/browsers install firefox@159.0`.
+    ...(process.env.E2E_FIREFOX_BINARY
+      ? { binary: process.env.E2E_FIREFOX_BINARY }
+      : {}),
     prefs: { "permissions.default.camera": 2 },
   },
 };
@@ -163,6 +134,29 @@ const chromeWithCamera = {
   },
 };
 
+/**
+ * Makes `browser.url()` try again once after Firefox's lost navigation event.
+ * Now and then, when navigations overlap, Firefox reports a navigation's
+ * loading but never `browsingContext.navigationStarted`, which WebdriverIO
+ * waits for. Seen in Firefox 159 on Linux, with and without service workers.
+ */
+function retryStalledNavigation(): void {
+  browser.overwriteCommand("url", async function (original, path, options) {
+    try {
+      return await original(path, options);
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        !error.message.includes("no request payload was received")
+      ) {
+        throw error;
+      }
+      console.warn(`Retrying after a stalled navigation: ${error.message}`);
+      return original(path, options);
+    }
+  });
+}
+
 export const config: WebdriverIO.Config = {
   runner: "local",
   tsConfigPath: path.join(import.meta.dirname, "tsconfig.json"),
@@ -170,12 +164,7 @@ export const config: WebdriverIO.Config = {
   // One browser at a time: they share the server and its rate limits.
   maxInstances: 1,
   // E2E_BROWSER=chrome or firefox runs just that one.
-  capabilities: [
-    chrome,
-    chromeWithCamera,
-    firefox,
-    firefoxWithServiceWorker,
-  ].filter(
+  capabilities: [chrome, chromeWithCamera, firefox].filter(
     ({ browserName }) =>
       !process.env.E2E_BROWSER || browserName === process.env.E2E_BROWSER
   ),
@@ -241,6 +230,9 @@ export const config: WebdriverIO.Config = {
   before() {
     if (!browser.isBidi) {
       throw new Error("This session isn't using WebDriver BiDi");
+    }
+    if (browser.capabilities.browserName?.toLowerCase() === "firefox") {
+      retryStalledNavigation();
     }
   },
 };
