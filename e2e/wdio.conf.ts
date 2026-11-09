@@ -141,9 +141,9 @@ const chromeWithCamera = {
  * waits for. Seen in Firefox 159 on Linux, with and without service workers.
  */
 function retryStalledNavigation(): void {
-  browser.overwriteCommand("url", async function (original, ...args) {
+  browser.overwriteCommand("url", async function (original, path, options) {
     try {
-      return await original(...args);
+      return await original(path, options);
     } catch (error) {
       if (
         !(error instanceof Error) ||
@@ -152,7 +152,7 @@ function retryStalledNavigation(): void {
         throw error;
       }
       console.warn(`Retrying after a stalled navigation: ${error.message}`);
-      return original(...args);
+      return original(path, options);
     }
   });
 }
