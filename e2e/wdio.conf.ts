@@ -134,6 +134,29 @@ const chromeWithCamera = {
   },
 };
 
+/**
+ * Makes `browser.url()` try again once after Firefox's lost navigation event.
+ * Now and then, when navigations overlap, Firefox reports a navigation's
+ * loading but never `browsingContext.navigationStarted`, which WebdriverIO
+ * waits for. Seen in Firefox 159 on Linux, with and without service workers.
+ */
+function retryStalledNavigation(): void {
+  browser.overwriteCommand("url", async function (original, ...args) {
+    try {
+      return await original(...args);
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        !error.message.includes("no request payload was received")
+      ) {
+        throw error;
+      }
+      console.warn(`Retrying after a stalled navigation: ${error.message}`);
+      return original(...args);
+    }
+  });
+}
+
 export const config: WebdriverIO.Config = {
   runner: "local",
   tsConfigPath: path.join(import.meta.dirname, "tsconfig.json"),
@@ -207,6 +230,9 @@ export const config: WebdriverIO.Config = {
   before() {
     if (!browser.isBidi) {
       throw new Error("This session isn't using WebDriver BiDi");
+    }
+    if (browser.capabilities.browserName?.toLowerCase() === "firefox") {
+      retryStalledNavigation();
     }
   },
 };
