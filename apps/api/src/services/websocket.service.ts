@@ -23,6 +23,8 @@ interface WebSocketSession {
   questName?: string;
   /** The share link it follows through, if any. */
   shareLinkId?: string;
+  /** The user whose list of quests the client follows, instead of a quest. */
+  userId?: string;
 }
 
 const webSocketSessions = new Map<string, WebSocketSession>();
@@ -86,7 +88,7 @@ export function initialize(
     webSocketSessions.set(connectionId, { id: connectionId, socket });
     const subscribeDeadline = setTimeout(() => {
       logRefused("did-not-subscribe");
-      socket.close(POLICY_VIOLATION, "Subscribe to a quest");
+      socket.close(POLICY_VIOLATION, "Subscribe");
     }, limits.subscribeWithinMs);
     subscribeDeadline.unref();
     let minuteStarted = Date.now();
@@ -125,13 +127,18 @@ export function initialize(
       });
     });
 
-    /** Follows a quest, if the subscription's ticket allows it. */
+    /** Follows what the subscription asks, if its ticket allows it. */
     async function subscribe({
-      questName,
       ticket,
+      ...subscription
     }: LiveUpdateSubscription): Promise<void> {
       const thisSubscription = ++latestSubscription;
-      const admitted = await redeemLiveTicket(ticket, questName);
+      const admitted = await redeemLiveTicket(
+        ticket,
+        "questName" in subscription
+          ? { questName: subscription.questName }
+          : { userName: subscription.userName }
+      );
       if (!admitted) {
         if (socket.readyState === socket.OPEN) {
           logRefused("invalid-ticket");
@@ -149,8 +156,15 @@ export function initialize(
       send(socket, { message: "connection", connectionId });
       const session = webSocketSessions.get(connectionId);
       if (session) {
-        session.questName = questName;
-        session.shareLinkId = admitted.shareLinkId;
+        if ("userId" in admitted) {
+          session.questName = undefined;
+          session.shareLinkId = undefined;
+          session.userId = admitted.userId;
+        } else {
+          session.questName = admitted.questName;
+          session.shareLinkId = admitted.shareLinkId;
+          session.userId = undefined;
+        }
       }
     }
 
@@ -277,6 +291,46 @@ export function notifyQuestFollowers(
       !excludeConnections.includes(session.id)
     ) {
       send(session.socket, update);
+    }
+  });
+}
+
+/**
+ * Tells whether any client follows a user's list of quests, so that finding
+ * whom to tell about a change can be skipped when nobody's listening.
+ * @returns true if one does
+ */
+export function hasUserFollowers(): boolean {
+  for (const session of webSocketSessions.values()) {
+    if (session.userId !== undefined) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Tells the clients following users' lists of quests that their lists changed.
+ * @param userIds the users' IDs
+ */
+export function notifyUserFollowers(userIds: readonly string[]): void {
+  const users = new Set(userIds);
+  webSocketSessions.forEach((session) => {
+    if (session.userId !== undefined && users.has(session.userId)) {
+      send(session.socket, { message: "questsChanged" });
+    }
+  });
+}
+
+/**
+ * Closes the connections following a user's list of quests, as when the user
+ * is deleted; their clients can't get a ticket again.
+ * @param userId the user's ID
+ */
+export function disconnectUserFollowers(userId: string): void {
+  webSocketSessions.forEach((session) => {
+    if (session.userId === userId) {
+      session.socket.close(SUBSCRIBE_AGAIN, "Subscribe again");
     }
   });
 }

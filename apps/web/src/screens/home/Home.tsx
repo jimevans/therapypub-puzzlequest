@@ -2,6 +2,10 @@ import type { Schemas } from "@puzzlequest/api-client";
 import { useQuery } from "@tanstack/react-query";
 import { Link, Navigate } from "react-router";
 import { api, dataOrThrow } from "../../api";
+import {
+  useLiveUserQuests,
+  userQuestsQueryKey,
+} from "../../live/useLiveUserQuests";
 import { ClockTime } from "../../quests/ClockTime";
 import { fetchAllPages } from "../../fetchAllPages";
 import { Suspense, lazy } from "react";
@@ -13,9 +17,6 @@ import { Landing } from "./Landing";
 
 // Staff download their list only when they open it.
 const StaffHome = lazy(() => import("../staff/StaffHome"));
-
-/** Starting or resetting a quest sends no live update, so this is how it shows. */
-const REFRESH_MS = 30_000;
 
 function fetchQuests(userName: string) {
   return fetchAllPages(async (after) =>
@@ -49,12 +50,14 @@ function QuestCard({ quest }: { quest: Schemas["QuestSummary"] }) {
 export function Home() {
   const session = useSession();
   const user = session.data?.user;
+  const isPlayer = Boolean(user) && !isAdministrator(user) && !isStaff(user);
   const quests = useQuery({
-    queryKey: ["users", user?.userName, "quests"],
+    queryKey: userQuestsQueryKey(user?.userName ?? ""),
     queryFn: () => fetchQuests(user?.userName ?? ""),
-    enabled: Boolean(user) && !isAdministrator(user) && !isStaff(user),
-    refetchInterval: REFRESH_MS,
+    enabled: isPlayer,
   });
+  // A quest shows the moment it starts, and its progress as it's played.
+  useLiveUserQuests(isPlayer ? user?.userName : undefined);
 
   if (session.data === null) {
     return <Landing />;

@@ -135,6 +135,7 @@ const ROUTES: [string, string, Policy][] = [
   ["post", "/api/v1/users", PUBLIC],
   ["get", "/api/v1/users/:userName", SELF_OR_ADMIN],
   ["get", "/api/v1/users/:userName/quests", SELF_OR_ADMIN],
+  ["post", "/api/v1/users/:userName/live-tickets", SELF_OR_ADMIN],
   ["patch", "/api/v1/users/:userName", SELF_OR_ADMIN],
   ["delete", "/api/v1/users/:userName", SELF_OR_ADMIN],
   ["put", "/api/v1/users/:userName/password", SELF],

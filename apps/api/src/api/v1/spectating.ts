@@ -35,7 +35,7 @@ function shareTokenOf(req: Pick<Request, "get">): string | undefined {
   return req.get("x-share-token") || undefined;
 }
 
-const liveTicketSchema = z
+export const liveTicketSchema = z
   .object({
     ticket: z.string().meta({
       description: "Send this with the subscribe message, once.",

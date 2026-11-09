@@ -1,4 +1,5 @@
 import type { QuestUpdate } from "../schemas/liveUpdates.js";
+import { notifyPlayersOf } from "../services/playerUpdates.service.js";
 import * as WebSocketService from "../services/websocket.service.js";
 import type { QuestActivity } from "./questEventBus.js";
 
@@ -75,4 +76,15 @@ export function sendLiveUpdates(activity: QuestActivity): void {
         break;
     }
   }
+}
+
+/**
+ * Tells the quest's players that their list of quests changed: every action
+ * changes how far along a quest is, and starting one adds it to the list.
+ * @param activity the activity
+ */
+export async function sendPlayerUpdates(
+  activity: QuestActivity
+): Promise<void> {
+  await notifyPlayersOf([activity.assignee]);
 }

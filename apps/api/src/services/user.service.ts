@@ -13,6 +13,7 @@ import { type Page, type PageQuery, findPage } from "../api/paging.js";
 import * as AuthorizationService from "./authentication.service.js";
 import * as TeamService from "./team.service.js";
 import { isDuplicateKeyError, unexpectedErrorResult } from "../errors.js";
+import { disconnectUserFollowers } from "./websocket.service.js";
 
 /**
  * The result of a user service operation; data is a User unless the
@@ -314,6 +315,7 @@ export async function deleteUser(name: string): Promise<UserResult<undefined>> {
   }
   await UserModel.deleteOne({ _id: user._id });
   await SessionService.deleteUserSessions(user.id);
+  disconnectUserFollowers(user.id);
   await TeamModel.updateMany(
     { memberIds: user._id },
     { $pull: { memberIds: user._id } }

@@ -147,6 +147,7 @@ describe("pausing a quest", () => {
       questName: "quest",
       actor: "admin",
       events: [{ type: "QuestPaused", at: expect.any(Date) }],
+      assignee: { kind: "user", id: expect.any(String) },
     });
   });
 
