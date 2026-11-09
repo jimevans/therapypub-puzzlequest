@@ -9,6 +9,7 @@ import { questQuery } from "../../quests/queries";
 import { describeProgress, progressSnapshot } from "../../quests/announcements";
 import { QUEST_COMPLETED, QUEST_NOT_STARTED } from "../../quests/status";
 import { Announcement, useAnnouncement } from "../../ui/Announcement";
+import { ShareLinksSection } from "../../quests/ShareLinksSection";
 import { Banner } from "../../ui/Banner";
 import { Button } from "../../ui/Button";
 import { ConfirmDialog } from "../../ui/ConfirmDialog";
@@ -340,7 +341,10 @@ export default function QuestConsole() {
             <Link to="/quests">See every quest</Link>
           </>
         ) : quest.data ? (
-          <Console quest={quest.data} />
+          <>
+            <Console quest={quest.data} />
+            <ShareLinksSection questName={name} />
+          </>
         ) : (
           quest.isError && (
             <Banner tone="danger">{messageOf(quest.error)}</Banner>

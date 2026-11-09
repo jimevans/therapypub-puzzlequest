@@ -12,6 +12,7 @@ import {
 } from "../../quests/status";
 import { describeProgress, progressSnapshot } from "../../quests/announcements";
 import { Announcement, useAnnouncement } from "../../ui/Announcement";
+import { ShareLinksSection } from "../../quests/ShareLinksSection";
 import { Banner } from "../../ui/Banner";
 import styles from "./Staff.module.css";
 import { assigneeOf } from "./assignee";
@@ -131,6 +132,7 @@ function QuestView({ quest }: { quest: StaffQuest }) {
           <StepCard key={step.name} quest={quest} step={step} index={index} />
         ))}
       </ol>
+      <ShareLinksSection questName={quest.name} />
       <p className={styles.links}>
         <Link to={`/monitor/quest/${encodedName}/board`}>Board</Link>
         <Link to="/">All quests</Link>

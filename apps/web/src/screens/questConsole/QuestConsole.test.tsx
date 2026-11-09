@@ -8,6 +8,11 @@ import { aUser, ok, refusal } from "../../test/fakes";
 import QuestConsole from "./QuestConsole";
 import { describeEvent } from "./describeEvent";
 
+// The share links panel has tests of its own.
+vi.mock("../../quests/ShareLinksSection", () => ({
+  ShareLinksSection: () => null,
+}));
+
 vi.mock("../../live/useLiveQuest", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../live/useLiveQuest")>()),
   useLiveQuest: () => ({ connected: true, connectionId: () => undefined }),

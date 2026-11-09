@@ -31,6 +31,11 @@ import {
   questEventBus,
 } from "../events/questEventBus.js";
 import { disconnectQuestFollowers } from "./websocket.service.js";
+import {
+  deleteShareLinksOfQuest,
+  findValidShareLink,
+  isQuestMember,
+} from "./shareLink.service.js";
 import { PuzzleModel } from "../models/puzzle.model.js";
 import { QuestEventModel } from "../models/questEvent.model.js";
 import {
@@ -991,7 +996,8 @@ export async function getQuestAndPuzzle(
  */
 export async function getSpectatedQuest(
   questName: string,
-  viewer: User | null = null
+  viewer: User | null = null,
+  shareToken?: string
 ): Promise<QuestResult> {
   const found = await findQuests(
     { questName, puzzleStatus: QuestPuzzleStatus.AWAITING_ACTIVATION },
@@ -1001,7 +1007,11 @@ export async function getSpectatedQuest(
     return found;
   }
   const quest = found.data[0];
-  if (!(await mayFollow(quest, viewer))) {
+  const allowed =
+    (await mayFollow(quest, viewer)) ||
+    (shareToken !== undefined &&
+      (await findValidShareLink(shareToken, questName)) !== undefined);
+  if (!allowed) {
     // The same answer as for a quest that doesn't exist, so that a name can't
     // be tried to learn whether there's a private quest by that name.
     return {
@@ -1025,13 +1035,7 @@ async function mayFollow(quest: Quest, viewer: User | null): Promise<boolean> {
   if (quest.visibility === "public") {
     return true;
   }
-  if (!viewer) {
-    return false;
-  }
-  return (
-    viewer.isStaff() ||
-    (await viewer.getAssigneeIds()).includes(quest.assignee.id)
-  );
+  return viewer !== null && isQuestMember(quest.assignee.id, viewer);
 }
 
 /**
@@ -1041,13 +1045,15 @@ async function mayFollow(quest: Quest, viewer: User | null): Promise<boolean> {
  * @param questName the name of the quest
  * @param puzzleName the name of the puzzle
  * @param viewer who's asking, or null if they aren't signed in
+ * @param shareToken the share link's token they hold, if any
  * @returns a result containing the quest, the puzzle, and its definition, or
  *  an error result if they aren't found
  */
 export async function getSpectatedQuestPuzzle(
   questName: string,
   puzzleName: string,
-  viewer: User | null = null
+  viewer: User | null = null,
+  shareToken?: string
 ): Promise<
   QuestResult<{
     quest: Quest;
@@ -1055,7 +1061,7 @@ export async function getSpectatedQuestPuzzle(
     detail: PuzzleService.Puzzle;
   }>
 > {
-  const found = await getSpectatedQuest(questName, viewer);
+  const found = await getSpectatedQuest(questName, viewer, shareToken);
   if (found.status === "error") {
     return found;
   }
@@ -1262,6 +1268,7 @@ export async function deleteQuest(
       message: `Quest with name ${name} does not exist`,
     };
   }
+  await deleteShareLinksOfQuest(result._id);
   return { status: "success", statusCode: 200 };
 }
 

@@ -106,6 +106,10 @@ const SELF: Policy = ["signIn", "allow", "deny", "deny", "deny"];
 const QUEST_VIEWER: Policy = ["signIn", "allow", "hidden", "hidden", "allow"];
 /** Playing the quest assigned to the player's team. */
 const QUEST_PLAYER: Policy = ["signIn", "allow", "deny", "deny", "deny"];
+/** Managing a quest's share links, for its players and staff. */
+const QUEST_MEMBER: Policy = ["signIn", "allow", "hidden", "allow", "allow"];
+/** Revoking a link that doesn't exist; revoking itself has its own tests. */
+const NO_SUCH_LINK: Policy = ["signIn", "hidden", "hidden", "hidden", "hidden"];
 /** Twilio webhooks, which need Twilio's signature, not a user. */
 const TWILIO: Policy = ["deny", "deny", "deny", "deny", "deny"];
 
@@ -175,6 +179,9 @@ const ROUTES: [string, string, Policy][] = [
   ["get", "/api/v1/quests/:name/staff-view", STAFF],
   ["get", "/api/v1/quests/:name/puzzles/:puzzleName", QUEST_VIEWER],
   ["post", "/api/v1/quests/:name/live-tickets", PUBLIC],
+  ["get", "/api/v1/quests/:name/share-links", QUEST_MEMBER],
+  ["post", "/api/v1/quests/:name/share-links", QUEST_MEMBER],
+  ["delete", "/api/v1/quests/:name/share-links/:linkId", NO_SUCH_LINK],
   ["get", "/api/v1/quests/:name/spectator-view", PUBLIC],
   ["get", "/api/v1/quests/:name/puzzles/:puzzleName/spectator-view", PUBLIC],
   ["post", "/api/v1/quests/:name/puzzles/:puzzleName/activation", QUEST_PLAYER],
@@ -207,6 +214,7 @@ const PARAMS: Record<string, string> = {
   name: "quest",
   puzzleName: "riddle",
   teamName: "team-a",
+  linkId: "000000000000000000000000",
 };
 
 /**
@@ -214,6 +222,7 @@ const PARAMS: Record<string, string> = {
  * decision. Most authorization doesn't depend on the body.
  */
 const BODIES: Record<string, object> = {
+  "/api/v1/quests/:name/share-links": { label: "A link" },
   "/api/v1/quests/:name/puzzles/:puzzleName/activation": {
     activationCode: "wrong",
   },

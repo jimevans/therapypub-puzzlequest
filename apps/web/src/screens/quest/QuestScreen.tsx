@@ -6,6 +6,7 @@ import { useLiveQuest } from "../../live/useLiveQuest";
 import { FinishPanel } from "../../quests/FinishPanel";
 import { NotAvailable } from "../../quests/NotAvailable";
 import { QuestProgress } from "../../quests/QuestProgress";
+import { ShareLinksSection } from "../../quests/ShareLinksSection";
 import { formatDuration } from "../../quests/clock";
 import { questQuery } from "../../quests/queries";
 import { Banner } from "../../ui/Banner";
@@ -55,7 +56,10 @@ export function QuestScreen() {
       {gone ? (
         <NotAvailable what="quest" />
       ) : quest.data ? (
-        <QuestDetails quest={quest.data} />
+        <>
+          <QuestDetails quest={quest.data} />
+          <ShareLinksSection questName={name} />
+        </>
       ) : (
         quest.isError && (
           <Banner tone="danger">

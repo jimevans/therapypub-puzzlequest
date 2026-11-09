@@ -5484,11 +5484,22 @@
       "post": {
         "operationId": "createLiveTicket",
         "summary": "Get a ticket to follow a quest's live updates",
-        "description": "A ticket lets one connection to the live-update websocket, /api/v1/updates, follow the quest. It expires within a minute and can be used once, so ask for a new one for each connection. A private quest gives one only to its players and staff, and is otherwise not found.",
+        "description": "A ticket lets one connection to the live-update websocket, /api/v1/updates, follow the quest. It expires within a minute and can be used once, so ask for a new one for each connection. A private quest gives one only to its players, its staff, and holders of a share link, and is otherwise not found.",
         "tags": [
           "Spectating"
         ],
-        "security": [],
+        "security": [
+          {},
+          {
+            "shareLink": []
+          },
+          {
+            "sessionCookie": []
+          },
+          {
+            "bearer": []
+          }
+        ],
         "parameters": [
           {
             "in": "path",
@@ -5559,11 +5570,22 @@
       "get": {
         "operationId": "getSpectatorQuest",
         "summary": "Follow a quest",
-        "description": "What anyone may see of a quest: its progress and the puzzles its players have reached. How many puzzles it has is never shown. A quest that hasn't started shows its name and status, with no puzzles. A private quest is not found, except by its players and staff.",
+        "description": "What anyone may see of a quest: its progress and the puzzles its players have reached. How many puzzles it has is never shown. A quest that hasn't started shows its name and status, with no puzzles. A private quest is not found, except by its players, its staff, and holders of a share link.",
         "tags": [
           "Spectating"
         ],
-        "security": [],
+        "security": [
+          {},
+          {
+            "shareLink": []
+          },
+          {
+            "sessionCookie": []
+          },
+          {
+            "bearer": []
+          }
+        ],
         "parameters": [
           {
             "in": "path",
@@ -5618,7 +5640,18 @@
         "tags": [
           "Spectating"
         ],
-        "security": [],
+        "security": [
+          {},
+          {
+            "shareLink": []
+          },
+          {
+            "sessionCookie": []
+          },
+          {
+            "bearer": []
+          }
+        ],
         "parameters": [
           {
             "in": "path",
@@ -5648,6 +5681,290 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SpectatorPuzzle"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "/problems/not-found: Not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "/problems/unexpected: An unexpected error occurred.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/quests/{name}/share-links": {
+      "get": {
+        "operationId": "listShareLinks",
+        "summary": "List a quest's share links",
+        "description": "For the quest's assigned player or team members, and staff. Anyone else finds no such quest.",
+        "tags": [
+          "Spectating"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "schema": {
+              "type": "string",
+              "description": "The quest's name."
+            },
+            "required": true,
+            "description": "The quest's name."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The links.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShareLinks"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "/problems/sign-in-required: Sign in to do this.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "/problems/not-found: Not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "/problems/unexpected: An unexpected error occurred.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createShareLink",
+        "summary": "Make a share link",
+        "description": "Lets whoever holds the link follow the quest, without an account, until it expires or is revoked.",
+        "tags": [
+          "Spectating"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "schema": {
+              "type": "string",
+              "description": "The quest's name."
+            },
+            "required": true,
+            "description": "The quest's name."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Who or what it's for, such as \"Lobby screen\"."
+                  },
+                  "expiresAt": {
+                    "description": "When it stops working; only staff may choose. In 30 days if left out.",
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  }
+                },
+                "required": [
+                  "label"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The link.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedShareLink"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "/problems/invalid-request: The request isn't valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "/problems/sign-in-required: Sign in to do this.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "/problems/cross-site-request: Request from another site. /problems/forbidden: Not allowed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "/problems/not-found: Not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "/problems/unexpected: An unexpected error occurred.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/quests/{name}/share-links/{linkId}": {
+      "delete": {
+        "operationId": "revokeShareLink",
+        "summary": "Revoke a share link",
+        "description": "By the player who made it, or staff. Anyone following through the link is cut off at once.",
+        "tags": [
+          "Spectating"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "schema": {
+              "type": "string",
+              "description": "The quest's name."
+            },
+            "required": true,
+            "description": "The quest's name."
+          },
+          {
+            "in": "path",
+            "name": "linkId",
+            "schema": {
+              "type": "string",
+              "description": "The share link's ID."
+            },
+            "required": true,
+            "description": "The share link's ID."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Revoked."
+          },
+          "401": {
+            "description": "/problems/sign-in-required: Sign in to do this.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "/problems/cross-site-request: Request from another site. /problems/forbidden: Not allowed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             }
@@ -7229,6 +7546,94 @@
         ],
         "additionalProperties": false
       },
+      "ShareLinks": {
+        "type": "object",
+        "properties": {
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "private"
+            ],
+            "description": "A public quest can be followed without a link."
+          },
+          "canSetExpiry": {
+            "type": "boolean"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShareLink"
+            }
+          }
+        },
+        "required": [
+          "visibility",
+          "canSetExpiry",
+          "links"
+        ],
+        "additionalProperties": false
+      },
+      "ShareLink": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "createdBy": {
+            "description": "Who made it. Missing if their account has been deleted.",
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "canRevoke": {
+            "type": "boolean",
+            "description": "Whether the user asking may revoke it."
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "createdAt",
+          "expiresAt",
+          "canRevoke"
+        ],
+        "additionalProperties": false
+      },
+      "CreatedShareLink": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string",
+            "description": "Send as the X-Share-Token header. Shown only now; it can't be got again."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "token",
+          "expiresAt"
+        ],
+        "additionalProperties": false
+      },
       "StaffQuestSummary": {
         "type": "object",
         "properties": {
@@ -7774,6 +8179,12 @@
       }
     },
     "securitySchemes": {
+      "shareLink": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Share-Token",
+        "description": "A share link's token, which lets its holder follow a private quest."
+      },
       "sessionCookie": {
         "type": "apiKey",
         "in": "cookie",

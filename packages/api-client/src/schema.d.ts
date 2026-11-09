@@ -747,7 +747,7 @@ export interface paths {
         put?: never;
         /**
          * Get a ticket to follow a quest's live updates
-         * @description A ticket lets one connection to the live-update websocket, /api/v1/updates, follow the quest. It expires within a minute and can be used once, so ask for a new one for each connection. A private quest gives one only to its players and staff, and is otherwise not found.
+         * @description A ticket lets one connection to the live-update websocket, /api/v1/updates, follow the quest. It expires within a minute and can be used once, so ask for a new one for each connection. A private quest gives one only to its players, its staff, and holders of a share link, and is otherwise not found.
          */
         post: operations["createLiveTicket"];
         delete?: never;
@@ -765,7 +765,7 @@ export interface paths {
         };
         /**
          * Follow a quest
-         * @description What anyone may see of a quest: its progress and the puzzles its players have reached. How many puzzles it has is never shown. A quest that hasn't started shows its name and status, with no puzzles. A private quest is not found, except by its players and staff.
+         * @description What anyone may see of a quest: its progress and the puzzles its players have reached. How many puzzles it has is never shown. A quest that hasn't started shows its name and status, with no puzzles. A private quest is not found, except by its players, its staff, and holders of a share link.
          */
         get: operations["getSpectatorQuest"];
         put?: never;
@@ -791,6 +791,50 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quests/{name}/share-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a quest's share links
+         * @description For the quest's assigned player or team members, and staff. Anyone else finds no such quest.
+         */
+        get: operations["listShareLinks"];
+        put?: never;
+        /**
+         * Make a share link
+         * @description Lets whoever holds the link follow the quest, without an account, until it expires or is revoked.
+         */
+        post: operations["createShareLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quests/{name}/share-links/{linkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke a share link
+         * @description By the player who made it, or staff. Anyone following through the link is cut off at once.
+         */
+        delete: operations["revokeShareLink"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1288,6 +1332,34 @@ export interface components {
                 /** @description Null until the puzzle is completed. */
                 solutionText: string | null;
             };
+        };
+        ShareLinks: {
+            /**
+             * @description A public quest can be followed without a link.
+             * @enum {string}
+             */
+            visibility: "public" | "private";
+            canSetExpiry: boolean;
+            links: components["schemas"]["ShareLink"][];
+        };
+        ShareLink: {
+            id: string;
+            label: string;
+            /** @description Who made it. Missing if their account has been deleted. */
+            createdBy?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** @description Whether the user asking may revoke it. */
+            canRevoke: boolean;
+        };
+        CreatedShareLink: {
+            id: string;
+            /** @description Send as the X-Share-Token header. Shown only now; it can't be got again. */
+            token: string;
+            /** Format: date-time */
+            expiresAt: string;
         };
         StaffQuestSummary: {
             name: string;
@@ -5355,6 +5427,204 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SpectatorPuzzle"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listShareLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The quest's name. */
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The links. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShareLinks"];
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    createShareLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The quest's name. */
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Who or what it's for, such as "Lobby screen". */
+                    label: string;
+                    /**
+                     * Format: date-time
+                     * @description When it stops working; only staff may choose. In 30 days if left out.
+                     */
+                    expiresAt?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The link. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedShareLink"];
+                };
+            };
+            /** @description /problems/invalid-request: The request isn't valid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/cross-site-request: Request from another site. /problems/forbidden: Not allowed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    revokeShareLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The quest's name. */
+                name: string;
+                /** @description The share link's ID. */
+                linkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/cross-site-request: Request from another site. /problems/forbidden: Not allowed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description /problems/not-found: Not found. */

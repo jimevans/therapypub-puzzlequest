@@ -8,6 +8,7 @@ import { playingRoutes } from "./playing.js";
 import { puzzleRoutes } from "./puzzles.js";
 import { questRoutes } from "./quests.js";
 import { sessionRoutes } from "./sessions.js";
+import { shareLinkRoutes } from "./shareLinks.js";
 import { spectatingRoutes } from "./spectating.js";
 import { staffRoutes } from "./staff.js";
 import { teamRoutes } from "./teams.js";
@@ -45,6 +46,7 @@ export const v1Routes: AnyRoute[] = [
   ...questRoutes,
   ...playingRoutes,
   ...spectatingRoutes,
+  ...shareLinkRoutes,
   ...staffRoutes,
   ...webhookRoutes,
 ];

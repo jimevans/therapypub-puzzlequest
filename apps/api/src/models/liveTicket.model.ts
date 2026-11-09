@@ -14,6 +14,11 @@ const liveTicketSchema = new Schema({
     ref: "Quest",
     required: true,
   },
+  /** The share link it came through, if any, so revoking can cut it off. */
+  shareLinkId: {
+    type: Schema.Types.ObjectId,
+    ref: "ShareLink",
+  },
   /** When the ticket stops being valid. */
   expiresAt: {
     type: Date,

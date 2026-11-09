@@ -97,6 +97,11 @@ export default defineConfig({
               test: /node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/,
             },
             { name: "query", test: /node_modules[\\/]@tanstack[\\/]/ },
+            // Apart, so that sharing it doesn't tie staff screens to the player's.
+            {
+              name: "share-links",
+              test: /src[\\/]quests[\\/]ShareLinksSection/,
+            },
             {
               name: "aria",
               test: /node_modules[\\/](@react-aria|@react-stately|@react-types|@internationalized|react-aria|react-aria-components|react-stately)[\\/]/,
