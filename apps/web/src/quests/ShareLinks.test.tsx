@@ -98,10 +98,42 @@ describe("share links", () => {
     expect(await screen.findByLabelText("Send them this link")).toHaveValue(
       `${location.origin}/monitor/quest/trail#share=secret`
     );
+    expect(screen.getByLabelText("Board link")).toHaveValue(
+      `${location.origin}/monitor/quest/trail/board#share=secret`
+    );
     expect(post).toHaveBeenCalledWith("/quests/{name}/share-links", {
       params: { path: { name: "trail" } },
       body: { label: "Lobby" },
     });
+  });
+
+  it("copies the address asked for", async () => {
+    const user = userEvent.setup();
+    apiWith({ visibility: "private", canSetExpiry: false, links: [] });
+    vi.spyOn(api, "POST").mockResolvedValue(
+      ok(
+        { id: "new", token: "secret", expiresAt: "2026-12-01T00:00:00.000Z" },
+        201
+      ) as never
+    );
+    show();
+    const writeText = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockResolvedValue(undefined);
+
+    await user.type(await screen.findByLabelText("Who is it for?"), "Lobby");
+    await user.click(screen.getByRole("button", { name: "Make a link" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Copy board link" })
+    );
+
+    expect(writeText).toHaveBeenCalledWith(
+      `${location.origin}/monitor/quest/trail/board#share=secret`
+    );
+    expect(screen.getByRole("button", { name: "Copied" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Copy link" })
+    ).toBeInTheDocument();
   });
 
   it("asks only staff when it should expire", async () => {
