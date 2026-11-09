@@ -134,6 +134,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/users/{userName}/live-tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get a ticket to hear when a user's quests change
+         * @description A ticket lets one connection to the live-update websocket, /api/v1/updates, follow the list of quests the user plays: it's sent questsChanged whenever that list should be fetched again, as when one of the quests starts. It expires within a minute and can be used once, so ask for a new one for each connection.
+         */
+        post: operations["createUserLiveTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/{userName}/teams": {
         parameters: {
             query?: never;
@@ -963,6 +983,12 @@ export interface components {
                 totalMs: number;
             };
         };
+        LiveTicket: {
+            /** @description Send this with the subscribe message, once. */
+            ticket: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
         Team: {
             teamName: string;
             displayName: string;
@@ -1227,12 +1253,6 @@ export interface components {
             timePenalty: number;
             moreHints: boolean;
             isNextHintSolution: boolean;
-        };
-        LiveTicket: {
-            /** @description Send this with the subscribe message, once. */
-            ticket: string;
-            /** Format: date-time */
-            expiresAt: string;
         };
         SpectatorQuest: {
             name: string;
@@ -1527,13 +1547,22 @@ export interface components {
             /** @constant */
             message: "questUpdated";
             questName: string;
+        } | {
+            /** @constant */
+            message: "questsChanged";
         };
-        /** @description The message a client sends to the live-update websocket to follow a quest. Sending another follows that quest instead. A ticket that isn't valid for the quest closes the connection. */
+        /** @description The message a client sends to the live-update websocket: with questName, to follow every update of a quest; with userName, to hear when the list of quests the user plays changes. Sending another follows that instead. A ticket that isn't valid for it closes the connection. */
         LiveUpdateSubscription: {
             /** @constant */
             message: "subscribe";
             questName: string;
             /** @description A ticket from POST /quests/{name}/live-tickets, which can be used once. */
+            ticket: string;
+        } | {
+            /** @constant */
+            message: "subscribe";
+            userName: string;
+            /** @description A ticket from POST /users/{userName}/live-tickets, which can be used once. */
             ticket: string;
         };
     };
@@ -2222,6 +2251,74 @@ export interface operations {
             };
             /** @description /problems/not-found: Not found. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    createUserLiveTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The user's user name. */
+                userName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The ticket. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveTicket"];
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/too-many-requests: Too many requests. */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

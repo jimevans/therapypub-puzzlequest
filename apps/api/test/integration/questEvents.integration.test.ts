@@ -253,6 +253,7 @@ describe("published quest activity", () => {
       questName: "test-quest",
       actor: "player",
       connectionId: "c1",
+      assignee: { kind: "user", id: expect.any(String) },
       events: [
         {
           type: "HintRevealed",

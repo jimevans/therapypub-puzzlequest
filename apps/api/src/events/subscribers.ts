@@ -1,5 +1,5 @@
 import { type QuestEventBus, questEventBus } from "./questEventBus.js";
-import { sendLiveUpdates } from "./liveUpdates.js";
+import { sendLiveUpdates, sendPlayerUpdates } from "./liveUpdates.js";
 import { recordQuestActivity } from "./questEventLog.js";
 
 /**
@@ -13,6 +13,7 @@ export function subscribeQuestEventHandlers(
 ): () => void {
   const unsubscribers = [
     bus.subscribe(sendLiveUpdates),
+    bus.subscribe(sendPlayerUpdates),
     bus.subscribe(recordQuestActivity),
   ];
   return () => unsubscribers.forEach((unsubscribe) => unsubscribe());

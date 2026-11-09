@@ -15,7 +15,9 @@ open a websocket to this one.
 
 A client asks the API for a ticket with whatever credentials it has, then sends
 the ticket with its `subscribe` message. A ticket is random, stored only as a
-hash, usable once, valid for about a minute, and scoped to what it allows.
+hash, usable once, valid for about a minute, and scoped to what it allows:
+one quest, or (since 2026-11-09, for a player's home screen) the list of
+quests one user plays.
 They're kept in the database, so a second server process could honor them.
 
 ## Consequences

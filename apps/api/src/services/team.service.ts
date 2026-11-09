@@ -3,6 +3,7 @@ import { TeamModel, UserModel } from "../models/user.model.js";
 import type { ServiceResult } from "../types.js";
 import { type Page, type PageQuery, findPage } from "../api/paging.js";
 import { isDuplicateKeyError, unexpectedErrorResult } from "../errors.js";
+import { notifyUserFollowers } from "./websocket.service.js";
 
 /**
  * The result of a team service operation; data is a Team unless the
@@ -105,6 +106,8 @@ export async function deleteTeam(name: string): Promise<TeamResult<undefined>> {
       message: `Team with team name ${name} does not exist`,
     };
   }
+  // The team's quests are no longer theirs.
+  notifyUserFollowers(result.memberIds.map(String));
   return { status: "success", statusCode: 200 };
 }
 
@@ -366,6 +369,8 @@ export async function addUserToTeam(
   } catch (err) {
     return unexpectedErrorResult("addUserToTeam", err);
   }
+  // The team's quests are now theirs too.
+  notifyUserFollowers([userId.toString()]);
   return { status: "success", statusCode: 200 };
 }
 
@@ -440,5 +445,6 @@ export async function removeUserFromTeam(
   } catch (err) {
     return unexpectedErrorResult("removeUserFromTeam", err);
   }
+  notifyUserFollowers([userId.toString()]);
   return { status: "success", statusCode: 200 };
 }

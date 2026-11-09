@@ -256,10 +256,20 @@ describe("the OpenAPI document", () => {
       "puzzleStarted",
       "hintRequested",
       "questUpdated",
+      "questsChanged",
     ]);
-    expect(document.components.schemas.LiveUpdateSubscription).toMatchObject({
-      properties: { message: { const: "subscribe" } },
-    });
+    const subscription = document.components.schemas.LiveUpdateSubscription;
+    expect(
+      subscription.anyOf.map(
+        (kind: { properties: Record<string, { const?: string }> }) => [
+          kind.properties.message.const,
+          Object.keys(kind.properties).sort(),
+        ]
+      )
+    ).toEqual([
+      ["subscribe", ["message", "questName", "ticket"]],
+      ["subscribe", ["message", "ticket", "userName"]],
+    ]);
   });
 
   it("says nothing about webhooks", async () => {

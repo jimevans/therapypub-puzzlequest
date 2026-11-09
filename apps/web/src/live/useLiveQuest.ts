@@ -14,7 +14,11 @@ export function questQueryKey(questName: string): readonly [string, string] {
   return ["quests", questName];
 }
 
-function liveUpdatesAddress(): string {
+/**
+ * Gets the live-update websocket's address, on this site.
+ * @returns the address
+ */
+export function liveUpdatesAddress(): string {
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
   return `${protocol}//${location.host}/api/v1/updates`;
 }

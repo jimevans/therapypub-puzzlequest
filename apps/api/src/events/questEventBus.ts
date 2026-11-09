@@ -5,6 +5,7 @@ import type {
   QuestEvent,
 } from "../domain/quest/index.js";
 import { log } from "../logger.js";
+import type { AssigneeRef } from "../services/playerUpdates.service.js";
 
 /**
  * A quest event as published, with the details players' screens show. The
@@ -47,6 +48,8 @@ export interface QuestActivity extends QuestActionOrigin {
   questName: string;
   /** What happened. */
   events: readonly PublishedQuestEvent[];
+  /** Whom the quest is assigned to, if anyone. */
+  assignee?: AssigneeRef;
 }
 
 /** Receives quest activity. */

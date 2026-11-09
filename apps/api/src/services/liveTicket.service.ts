@@ -2,8 +2,10 @@
 // knows who it is whether it uses a cookie or a Bearer token, and hands it
 // over when it subscribes, so the websocket needn't know how clients sign in.
 import { createHash, randomBytes } from "crypto";
+import { Types } from "mongoose";
 import { LiveTicketModel } from "../models/liveTicket.model.js";
 import { QuestModel } from "../models/quest.model.js";
+import { UserModel } from "../models/user.model.js";
 
 /** Long enough to open a connection; a client asks for one each time. */
 const TICKET_LIFETIME_MS = 60 * 1000;
@@ -15,6 +17,26 @@ const TICKET_LIFETIME_MS = 60 * 1000;
  */
 function hashTicket(ticket: string): string {
   return createHash("sha256").update(ticket).digest("hex");
+}
+
+/**
+ * Stores a new ticket.
+ * @param target what the ticket lets its holder follow
+ * @returns the ticket and when it expires
+ */
+async function storeTicket(
+  target:
+    | { questId: Types.ObjectId; shareLinkId?: string }
+    | { userId: Types.ObjectId }
+): Promise<{ ticket: string; expiresAt: Date }> {
+  const ticket = randomBytes(32).toString("base64url");
+  const expiresAt = new Date(Date.now() + TICKET_LIFETIME_MS);
+  await LiveTicketModel.create({
+    tokenHash: hashTicket(ticket),
+    ...target,
+    expiresAt,
+  });
+  return { ticket, expiresAt };
 }
 
 /**
@@ -35,28 +57,41 @@ export async function issueLiveTicket(
   if (!quest) {
     return undefined;
   }
-  const ticket = randomBytes(32).toString("base64url");
-  const expiresAt = new Date(Date.now() + TICKET_LIFETIME_MS);
-  await LiveTicketModel.create({
-    tokenHash: hashTicket(ticket),
+  return storeTicket({
     questId: quest._id,
     ...(shareLinkId ? { shareLinkId } : {}),
-    expiresAt,
   });
-  return { ticket, expiresAt };
 }
 
 /**
- * Uses up a ticket, if it's good for a quest.
+ * Issues a ticket to follow the list of quests a user plays.
+ * @param userId the user's ID
+ * @returns the ticket and when it expires
+ */
+export async function issueUserLiveTicket(
+  userId: string
+): Promise<{ ticket: string; expiresAt: Date }> {
+  return storeTicket({ userId: new Types.ObjectId(userId) });
+}
+
+/** What a client asks to follow when it subscribes. */
+export type LiveChannel = { questName: string } | { userName: string };
+
+/** What a redeemed ticket lets a connection follow. */
+export type AdmittedChannel =
+  { questName: string; shareLinkId?: string } | { userId: string };
+
+/**
+ * Uses up a ticket, if it's good for what the client asks to follow.
  * @param ticket the ticket
- * @param questName the quest being followed
- * @returns what it admits, or undefined if it isn't valid for that quest;
- *  either way, a ticket that existed can't be used again
+ * @param channel the quest, or the user whose quests, being followed
+ * @returns what it admits, or undefined if it isn't valid for that; either
+ *  way, a ticket that existed can't be used again
  */
 export async function redeemLiveTicket(
   ticket: string,
-  questName: string
-): Promise<{ shareLinkId?: string } | undefined> {
+  channel: LiveChannel
+): Promise<AdmittedChannel | undefined> {
   const redeemed = await LiveTicketModel.findOneAndDelete({
     tokenHash: hashTicket(ticket),
     expiresAt: { $gt: new Date() },
@@ -64,11 +99,25 @@ export async function redeemLiveTicket(
   if (!redeemed) {
     return undefined;
   }
-  const isForQuest = await QuestModel.exists({
-    _id: redeemed.questId,
-    name: questName,
-  });
-  return isForQuest
-    ? { shareLinkId: redeemed.shareLinkId?.toString() }
-    : undefined;
+  if ("questName" in channel) {
+    const isForQuest =
+      redeemed.questId &&
+      (await QuestModel.exists({
+        _id: redeemed.questId,
+        name: channel.questName,
+      }));
+    return isForQuest
+      ? {
+          questName: channel.questName,
+          shareLinkId: redeemed.shareLinkId?.toString(),
+        }
+      : undefined;
+  }
+  const isForUser =
+    redeemed.userId &&
+    (await UserModel.exists({
+      _id: redeemed.userId,
+      userName: channel.userName,
+    }));
+  return isForUser ? { userId: redeemed.userId!.toString() } : undefined;
 }

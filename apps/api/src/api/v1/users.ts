@@ -15,10 +15,12 @@ import { joinTeamBody } from "../../schemas/team.schemas.js";
 import * as EmailVerificationService from "../../services/emailVerification.service.js";
 import * as PasswordService from "../../services/password.service.js";
 import * as QuestService from "../../services/quest.service.js";
+import { issueUserLiveTicket } from "../../services/liveTicket.service.js";
 import * as TeamService from "../../services/team.service.js";
 import * as UserService from "../../services/user.service.js";
 import { log } from "../../logger.js";
 import { pageQuery, pageSchema } from "../paging.js";
+import { liveTicketSchema } from "./spectating.js";
 import { Problems, sendProblem, sendServiceProblem } from "../problems.js";
 import {
   questSummarySchema,
@@ -181,6 +183,39 @@ export const userRoutes = [
       res.json({
         items: page.items.map(toQuestSummaryResource),
         next: page.next,
+      });
+    },
+  }),
+  defineRoute({
+    method: "post",
+    path: "/users/{userName}/live-tickets",
+    operationId: "createUserLiveTicket",
+    summary: "Get a ticket to hear when a user's quests change",
+    description:
+      "A ticket lets one connection to the live-update websocket, /api/v1/updates, follow the list of quests the user plays: it's sent questsChanged whenever that list should be fetched again, as when one of the quests starts. It expires within a minute and can be used once, so ask for a new one for each connection.",
+    tags: ["Users"],
+    access: "selfOrAdmin",
+    before: [RateLimiter.liveTicketRateLimiter],
+    request: { params: userParams },
+    responses: {
+      201: { description: "The ticket.", body: liveTicketSchema },
+    },
+    problems: [Problems.notFound, Problems.tooManyRequests],
+    async handle(req, res) {
+      const found = await UserService.getUserByUserName(req.params.userName);
+      if (found.status === "error") {
+        sendServiceProblem(res, found);
+        return;
+      }
+      const userId = found.data.id;
+      if (!userId) {
+        sendProblem(res, Problems.notFound, "The user no longer exists");
+        return;
+      }
+      const issued = await issueUserLiveTicket(userId);
+      res.status(201).json({
+        ticket: issued.ticket,
+        expiresAt: issued.expiresAt.toISOString(),
       });
     },
   }),

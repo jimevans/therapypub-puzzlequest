@@ -30,6 +30,7 @@ import {
   type QuestActionOrigin,
   questEventBus,
 } from "../events/questEventBus.js";
+import { type AssigneeRef, notifyPlayersOf } from "./playerUpdates.service.js";
 import { disconnectQuestFollowers } from "./websocket.service.js";
 import {
   deleteShareLinksOfQuest,
@@ -1269,6 +1270,7 @@ export async function deleteQuest(
     };
   }
   await deleteShareLinksOfQuest(result._id);
+  await notifyPlayersOf([result.assignee]);
   return { status: "success", statusCode: 200 };
 }
 
@@ -1319,6 +1321,9 @@ export async function updateQuest(
       (foundQuest.visibility !== "private" ||
         (assignee !== undefined &&
           !assignee.id.equals(foundQuest.assignee?.id)));
+    const formerAssignee = foundQuest.assignee
+      ? { kind: foundQuest.assignee.kind, id: foundQuest.assignee.id }
+      : undefined;
     foundQuest.visibility = visibility;
     if (questDefinition.displayName) {
       foundQuest.displayName = questDefinition.displayName;
@@ -1373,6 +1378,8 @@ export async function updateQuest(
     if (fewerMayFollow) {
       disconnectQuestFollowers(questDefinition.name);
     }
+    // Its name or its players may have changed.
+    await notifyPlayersOf([formerAssignee, foundQuest.assignee]);
     return { status: "success", statusCode: 200 };
   }
   return questChangingError(questDefinition.name);
@@ -1412,6 +1419,8 @@ type QuestActionOutcome<R> =
       events: readonly QuestEvent[];
       now: Date;
       rules: R;
+      /** Whom the quest is assigned to, if anyone. */
+      assignee?: AssigneeRef;
     };
 
 /**
@@ -1595,6 +1604,14 @@ async function applyQuestAction<R>(
       events: result.events,
       now,
       rules: loaded.rules,
+      ...(quest.assignee
+        ? {
+            assignee: {
+              kind: quest.assignee.kind,
+              id: quest.assignee.id.toString(),
+            },
+          }
+        : {}),
     };
   }
   return questChangingError(questName);
@@ -1755,18 +1772,23 @@ async function describeEvents(
  * Describes an action's events and publishes them.
  * @param questName the name of the quest
  * @param origin who or what caused the action
- * @param events the events
+ * @param applied the action's events, and whom the quest is assigned to
  * @param puzzle the puzzle the action was on, if any
  * @returns the published events
  */
 async function publishActivity(
   questName: string,
   origin: QuestActionOrigin,
-  events: readonly QuestEvent[],
+  applied: { events: readonly QuestEvent[]; assignee?: AssigneeRef },
   puzzle?: PuzzleService.Puzzle
 ): Promise<PublishedQuestEvent[]> {
-  const described = await describeEvents(events, puzzle);
-  await questEventBus.publish({ ...origin, questName, events: described });
+  const described = await describeEvents(applied.events, puzzle);
+  await questEventBus.publish({
+    ...origin,
+    questName,
+    events: described,
+    ...(applied.assignee ? { assignee: applied.assignee } : {}),
+  });
   return described;
 }
 
@@ -1795,7 +1817,7 @@ export async function startQuest(
   if (outcome.status === "error") {
     return outcome;
   }
-  await publishActivity(name, origin, outcome.events);
+  await publishActivity(name, origin, outcome);
   return { status: "success", statusCode: 200 };
 }
 
@@ -1816,7 +1838,7 @@ export async function resetQuest(
   if (outcome.status === "refused") {
     throw new Error(`The rules refused to reset quest ${questName}`);
   }
-  await publishActivity(questName, origin, outcome.events);
+  await publishActivity(questName, origin, outcome);
   return { status: "success", statusCode: 200 };
 }
 
@@ -1846,7 +1868,7 @@ export async function pauseQuest(
   if (outcome.status === "error") {
     return outcome;
   }
-  await publishActivity(questName, origin, outcome.events);
+  await publishActivity(questName, origin, outcome);
   return { status: "success", statusCode: 200 };
 }
 
@@ -1872,7 +1894,7 @@ export async function resumeQuest(
   if (outcome.status === "error") {
     return outcome;
   }
-  await publishActivity(questName, origin, outcome.events);
+  await publishActivity(questName, origin, outcome);
   return { status: "success", statusCode: 200 };
 }
 
@@ -1901,7 +1923,7 @@ export async function skipQuestPuzzle(
   if (outcome.status === "error") {
     return outcome;
   }
-  await publishActivity(questName, origin, outcome.events);
+  await publishActivity(questName, origin, outcome);
   return { status: "success", statusCode: 200 };
 }
 
@@ -1933,7 +1955,7 @@ export async function resetQuestPuzzle(
   if (outcome.status === "error") {
     return outcome;
   }
-  await publishActivity(questName, origin, outcome.events);
+  await publishActivity(questName, origin, outcome);
   return { status: "success", statusCode: 200 };
 }
 
@@ -1965,7 +1987,7 @@ export async function activatePuzzle(
   if (outcome.status === "error") {
     return outcome;
   }
-  await publishActivity(questName, origin, outcome.events);
+  await publishActivity(questName, origin, outcome);
   return {
     status: "success",
     statusCode: 200,
@@ -2012,7 +2034,7 @@ export async function finishPuzzle(
   const events = await publishActivity(
     questName,
     origin,
-    outcome.events,
+    outcome,
     outcome.rules
   );
   const solution: PuzzleSolution = {
@@ -2065,7 +2087,7 @@ export async function getPuzzleHint(
   const events = await publishActivity(
     questName,
     origin,
-    outcome.events,
+    outcome,
     outcome.rules
   );
   const hint = events.find((event) => event.type === "HintRevealed");

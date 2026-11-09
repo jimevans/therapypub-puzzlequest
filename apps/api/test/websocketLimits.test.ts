@@ -10,8 +10,17 @@ import * as WebSocketService from "../src/services/websocket.service.js";
 import { recordLogs } from "./logs.js";
 
 // Tickets have tests of their own, with a database.
+// Here, a user's ID is their name.
 vi.mock("../src/services/liveTicket.service.js", () => ({
-  redeemLiveTicket: () => Promise.resolve(true),
+  redeemLiveTicket: (
+    _ticket: string,
+    channel: { questName: string } | { userName: string }
+  ) =>
+    Promise.resolve(
+      "questName" in channel
+        ? { questName: channel.questName }
+        : { userId: channel.userName }
+    ),
 }));
 
 const LIMITS: WebSocketService.LiveUpdateLimits = {

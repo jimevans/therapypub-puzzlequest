@@ -4,6 +4,7 @@ import {
   REFRESH_INTERVAL_MS,
   type QuestFollower,
   followQuest,
+  followUserQuests,
 } from "./live.js";
 
 /** Stands in for the browser's WebSocket, driven by the tests. */
@@ -346,5 +347,41 @@ describe("followQuest", () => {
 
       expect(FakeSocket.all).toHaveLength(1);
     });
+  });
+});
+
+// The same follower underneath, so only what differs is tested here.
+describe("followUserQuests", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubGlobal("WebSocket", FakeSocket);
+    FakeSocket.all = [];
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("subscribes to the user's quests, and asks for fresh state on each change", async () => {
+    const onChange = vi.fn();
+    const follower = followUserQuests({
+      url: "ws://site/api/v1/updates",
+      userName: "pat",
+      getTicket: () => Promise.resolve("ticket-1"),
+      onChange,
+    });
+
+    latest().open();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(latest().sent).toEqual([
+      { message: "subscribe", userName: "pat", ticket: "ticket-1" },
+    ]);
+    latest().receive({ message: "connection", connectionId: "c1" });
+    latest().receive({ message: "questsChanged" });
+
+    expect(onChange).toHaveBeenCalledTimes(2);
+    follower.stop();
+    expect(latest().readyState).toBe(FakeSocket.CLOSED);
   });
 });

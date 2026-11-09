@@ -71,6 +71,16 @@ const questUpdated = z.object({
   questName: z.string(),
 });
 
+/**
+ * The quests assigned to the user, or to their teams, changed: one started,
+ * moved on, or ended, was paused, reset, reassigned, or deleted, or the user
+ * joined or left a team. Sent to clients following the user's quests, which
+ * fetch the list again; it says nothing about which quest it was.
+ */
+const questsChanged = z.object({
+  message: z.literal("questsChanged"),
+});
+
 /** A message the server sends to a page. */
 export const liveUpdateSchema = z
   .discriminatedUnion("message", [
@@ -80,6 +90,7 @@ export const liveUpdateSchema = z
     puzzleStarted,
     hintRequested,
     questUpdated,
+    questsChanged,
   ])
   .meta({
     id: "LiveUpdate",
@@ -88,23 +99,38 @@ export const liveUpdateSchema = z
   });
 export type LiveUpdate = z.infer<typeof liveUpdateSchema>;
 
-/** A message from the server about a quest, which is every one but the first. */
-export type QuestUpdate = Exclude<LiveUpdate, { message: "connection" }>;
+/** A message from the server about a quest. */
+export type QuestUpdate = Exclude<
+  LiveUpdate,
+  { message: "connection" | "questsChanged" }
+>;
 
-/** The message a client sends to follow a quest: every update of it. */
+const ticket = z.string().min(1);
+
+/** The message a client sends to follow what a ticket allows. */
 export const liveUpdateSubscriptionSchema = z
-  .object({
-    message: z.literal("subscribe"),
-    questName: z.string().min(1),
-    ticket: z.string().min(1).meta({
-      description:
-        "A ticket from POST /quests/{name}/live-tickets, which can be used once.",
+  .union([
+    z.strictObject({
+      message: z.literal("subscribe"),
+      questName: z.string().min(1),
+      ticket: ticket.meta({
+        description:
+          "A ticket from POST /quests/{name}/live-tickets, which can be used once.",
+      }),
     }),
-  })
+    z.strictObject({
+      message: z.literal("subscribe"),
+      userName: z.string().min(1),
+      ticket: ticket.meta({
+        description:
+          "A ticket from POST /users/{userName}/live-tickets, which can be used once.",
+      }),
+    }),
+  ])
   .meta({
     id: "LiveUpdateSubscription",
     description:
-      "The message a client sends to the live-update websocket to follow a quest. Sending another follows that quest instead. A ticket that isn't valid for the quest closes the connection.",
+      "The message a client sends to the live-update websocket: with questName, to follow every update of a quest; with userName, to hear when the list of quests the user plays changes. Sending another follows that instead. A ticket that isn't valid for it closes the connection.",
   });
 export type LiveUpdateSubscription = z.infer<
   typeof liveUpdateSubscriptionSchema

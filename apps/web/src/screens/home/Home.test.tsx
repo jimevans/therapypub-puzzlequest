@@ -7,6 +7,13 @@ import { api } from "../../api";
 import { aUser, ok, refusal, signedOut } from "../../test/fakes";
 import { Home } from "./Home";
 
+// Following live updates has tests of its own.
+const { followed } = vi.hoisted(() => ({ followed: vi.fn() }));
+vi.mock("../../live/useLiveUserQuests", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../live/useLiveUserQuests")>()),
+  useLiveUserQuests: followed,
+}));
+
 const assign = vi.fn();
 
 const PLAYER = aUser({ userName: "player one" });
@@ -52,6 +59,7 @@ function show() {
 describe("Home", () => {
   beforeEach(() => {
     assign.mockClear();
+    followed.mockClear();
     vi.stubGlobal("location", { ...location, assign });
   });
 
@@ -75,6 +83,14 @@ describe("Home", () => {
     expect(link).toHaveAttribute("href", "/quest/trail");
     expect(screen.getByText("In progress")).toBeVisible();
     expect(screen.getByText("6:00")).toBeVisible();
+  });
+
+  it("keeps the player's quests up to date as they change", async () => {
+    apiAnswers(PLAYER, { items: [], next: null });
+    show();
+
+    await screen.findByText("You have no quests yet.");
+    expect(followed).toHaveBeenLastCalledWith("player one");
   });
 
   it("asks for the signed-in player's quests", async () => {
@@ -164,6 +180,7 @@ describe("Home", () => {
       "/users/{userName}/quests",
       expect.anything()
     );
+    expect(followed).not.toHaveBeenCalledWith(expect.any(String));
   });
 
   it("shows the landing page to anyone signed out", async () => {
