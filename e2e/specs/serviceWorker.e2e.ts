@@ -1,6 +1,4 @@
 // The service worker, which answers repeat visits from its copy of the app.
-// Chrome runs every spec with it; Firefox runs only this one with it (see
-// wdio.conf.ts).
 import { blockedByPolicy, recordPolicyViolations } from "../support.js";
 
 describe("the service worker", () => {

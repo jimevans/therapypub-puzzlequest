@@ -18,8 +18,9 @@ project**, under any circumstances.
 ## Consequences
 
 - Tests drive real browsers through a W3C standard.
-- Firefox's specs run without the service worker, apart from its own spec,
-  because of a timeout seen on Linux in CI that is still to be investigated.
+- Firefox sometimes never sends `browsingContext.navigationStarted` when
+  navigations overlap, which makes `browser.url()` time out, so Firefox's
+  sessions retry that one error once.
 - WebdriverIO's selectors are strict: duplicate IDs fail tests, which has
   caught real bugs.
 
