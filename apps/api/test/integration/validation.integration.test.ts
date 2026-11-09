@@ -135,6 +135,29 @@ describe("invalid input", () => {
     ]);
   });
 
+  it.each(["", "   "])(
+    "refuses to rename a quest to %j, keeping its name",
+    async (displayName) => {
+      await QuestService.createQuest({
+        name: "quest",
+        displayName: "Quest",
+        assignee: { kind: "user", name: "player" },
+        puzzles: [],
+      });
+
+      const response = await send("patch", "/api/v1/quests/quest").send({
+        displayName,
+      });
+
+      expect(response.status).toBe(400);
+      expect(JSON.parse(response.text).errors).toEqual([
+        { path: "body.displayName", message: "Required" },
+      ]);
+      const quest = await QuestModel.findOne({ name: "quest" }).lean();
+      expect(quest?.displayName).toBe("Quest");
+    }
+  );
+
   it("is checked only after authorization", async () => {
     const response = await send("post", "/api/v1/quests", "player").send({});
 

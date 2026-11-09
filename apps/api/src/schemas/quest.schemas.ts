@@ -32,7 +32,7 @@ export type CreateQuestBody = z.infer<typeof createQuestBody>;
  * out the puzzle list keeps the puzzles unchanged.
  */
 export const updateQuestBody = z.object({
-  displayName: displayName.optional(),
+  displayName: displayName.min(1, "Required").optional(),
   assignee: assignee.optional(),
   puzzles: z.array(questPuzzle).optional(),
 });
