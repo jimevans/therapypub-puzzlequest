@@ -5,7 +5,12 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { questQueryKey, useLiveQuest } from "./useLiveQuest";
 
+const { post } = vi.hoisted(() => ({ post: vi.fn() }));
 vi.mock("@puzzlequest/api-client", () => ({ followQuest: vi.fn() }));
+vi.mock("../api", () => ({
+  api: { POST: post },
+  dataOrThrow: (result: { data: unknown }) => result.data,
+}));
 
 describe("useLiveQuest", () => {
   const stop = vi.fn();
@@ -41,6 +46,17 @@ describe("useLiveQuest", () => {
 
     expect(followed().questName).toBe("trail");
     expect(followed().url).toBe(`ws://${location.host}/api/v1/updates`);
+  });
+
+  it("gets each ticket for the quest it follows", async () => {
+    post.mockResolvedValue({ data: { ticket: "ticket-1" } });
+    renderHook(() => useLiveQuest("trail"), { wrapper });
+
+    await expect(followed().getTicket()).resolves.toBe("ticket-1");
+
+    expect(post).toHaveBeenCalledWith("/quests/{name}/live-tickets", {
+      params: { path: { name: "trail" } },
+    });
   });
 
   it("marks what's been fetched about the quest as out of date on a change", () => {

@@ -96,9 +96,16 @@ export const liveUpdateSubscriptionSchema = z
   .object({
     message: z.literal("subscribe"),
     questName: z.string().min(1),
+    ticket: z.string().min(1).optional().meta({
+      description:
+        "A ticket from POST /quests/{name}/live-tickets, which can be used once.",
+    }),
   })
   .meta({
     id: "LiveUpdateSubscription",
     description:
-      "The message a client sends to the live-update websocket to follow a quest. Sending another follows that quest instead.",
+      "The message a client sends to the live-update websocket to follow a quest. Sending another follows that quest instead. A ticket that isn't valid for the quest closes the connection.",
   });
+export type LiveUpdateSubscription = z.infer<
+  typeof liveUpdateSubscriptionSchema
+>;

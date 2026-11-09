@@ -1,8 +1,10 @@
 // Following a quest from outside it: what anyone may see, without signing in.
 // Players can open these too, so they show nothing more than a player can see.
 import { z } from "zod";
+import { liveTicketRateLimiter } from "../../middleware/rateLimiter.js";
+import { issueLiveTicket } from "../../services/liveTicket.service.js";
 import * as QuestService from "../../services/quest.service.js";
-import { Problems, sendServiceProblem } from "../problems.js";
+import { Problems, sendProblem, sendServiceProblem } from "../problems.js";
 import {
   spectatorPuzzleSchema,
   spectatorQuestSchema,
@@ -19,7 +21,48 @@ const questPuzzleParams = questParams.extend({
   puzzleName: z.string().meta({ description: "The puzzle's name." }),
 });
 
+const liveTicketSchema = z
+  .object({
+    ticket: z.string().meta({
+      description: "Send this with the subscribe message, once.",
+    }),
+    expiresAt: z.iso.datetime(),
+  })
+  .meta({ id: "LiveTicket" });
+
 export const spectatingRoutes = [
+  defineRoute({
+    method: "post",
+    path: "/quests/{name}/live-tickets",
+    operationId: "createLiveTicket",
+    summary: "Get a ticket to follow a quest's live updates",
+    description:
+      "A ticket lets one connection to the live-update websocket, /api/v1/updates, follow the quest. It expires within a minute and can be used once, so ask for a new one for each connection.",
+    tags: ["Spectating"],
+    access: "public",
+    before: [liveTicketRateLimiter],
+    request: { params: questParams },
+    responses: {
+      201: { description: "The ticket.", body: liveTicketSchema },
+    },
+    problems: [Problems.notFound, Problems.tooManyRequests],
+    async handle(req, res) {
+      const found = await QuestService.getSpectatedQuest(req.params.name);
+      if (found.status === "error") {
+        sendServiceProblem(res, found);
+        return;
+      }
+      const issued = await issueLiveTicket(req.params.name);
+      if (!issued) {
+        sendProblem(res, Problems.notFound, "The quest no longer exists");
+        return;
+      }
+      res.status(201).json({
+        ticket: issued.ticket,
+        expiresAt: issued.expiresAt.toISOString(),
+      });
+    },
+  }),
   defineRoute({
     method: "get",
     path: "/quests/{name}/spectator-view",

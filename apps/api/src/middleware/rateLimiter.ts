@@ -139,6 +139,19 @@ export const emailVerificationRateLimiter = rateLimit({
 });
 
 /**
+ * Limits how many live-update tickets one network address can ask for. Each
+ * connection needs one and a venue shares an address, so it is generous; it
+ * stops a script filling the database with them.
+ */
+export const liveTicketRateLimiter = rateLimit({
+  windowMs: FIFTEEN_MINUTES,
+  limit: 600,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  handler,
+});
+
+/**
  * Limits how often a verification email can be sent for one account, so
  * the button can't be used to flood someone's inbox.
  */

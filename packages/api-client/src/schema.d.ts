@@ -736,6 +736,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/quests/{name}/live-tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get a ticket to follow a quest's live updates
+         * @description A ticket lets one connection to the live-update websocket, /api/v1/updates, follow the quest. It expires within a minute and can be used once, so ask for a new one for each connection.
+         */
+        post: operations["createLiveTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/quests/{name}/spectator-view": {
         parameters: {
             query?: never;
@@ -1159,6 +1179,12 @@ export interface components {
             moreHints: boolean;
             isNextHintSolution: boolean;
         };
+        LiveTicket: {
+            /** @description Send this with the subscribe message, once. */
+            ticket: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
         SpectatorQuest: {
             name: string;
             displayName: string;
@@ -1425,11 +1451,13 @@ export interface components {
             message: "questUpdated";
             questName: string;
         };
-        /** @description The message a client sends to the live-update websocket to follow a quest. Sending another follows that quest instead. */
+        /** @description The message a client sends to the live-update websocket to follow a quest. Sending another follows that quest instead. A ticket that isn't valid for the quest closes the connection. */
         LiveUpdateSubscription: {
             /** @constant */
             message: "subscribe";
             questName: string;
+            /** @description A ticket from POST /quests/{name}/live-tickets, which can be used once. */
+            ticket?: string;
         };
     };
     responses: never;
@@ -5173,6 +5201,65 @@ export interface operations {
             };
             /** @description /problems/body-too-large: Request too large. */
             413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    createLiveTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The quest's name. */
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The ticket. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveTicket"];
+                };
+            };
+            /** @description /problems/cross-site-request: Request from another site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/too-many-requests: Too many requests. */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

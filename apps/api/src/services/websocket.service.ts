@@ -9,8 +9,10 @@ import {
   type LiveUpdate,
   type QuestUpdate,
   liveUpdateSchema,
+  type LiveUpdateSubscription,
   liveUpdateSubscriptionSchema,
 } from "../schemas/liveUpdates.js";
+import { redeemLiveTicket } from "./liveTicket.service.js";
 
 /** A client connected for live updates. */
 interface WebSocketSession {
@@ -53,6 +55,9 @@ const ONE_MINUTE = 60 * 1000;
 /** The websocket close code for breaking the rules of the connection. */
 const POLICY_VIOLATION = 1008;
 
+/** The websocket close code for the server failing to do something. */
+const INTERNAL_ERROR = 1011;
+
 /** Records that a client went over a limit; never says who it was. */
 function logRefused(reason: string): void {
   log().warn({ event: "live-update-refused", reason }, "live update refused");
@@ -81,6 +86,7 @@ export function initialize(
     subscribeDeadline.unref();
     let minuteStarted = Date.now();
     let messagesThisMinute = 0;
+    let latestSubscription = 0;
     socket.on("error", (err) => {
       log().warn({ err }, "live-update connection error");
     });
@@ -108,13 +114,44 @@ export function initialize(
       if (!clientMessage.success) {
         return;
       }
+      subscribe(clientMessage.data).catch((err: unknown) => {
+        log().error({ err }, "live-update subscription failed");
+        socket.close(INTERNAL_ERROR, "Try again");
+      });
+    });
+
+    /** Follows a quest, if the subscription's ticket allows it. */
+    async function subscribe({
+      questName,
+      ticket,
+    }: LiveUpdateSubscription): Promise<void> {
+      const thisSubscription = ++latestSubscription;
+      // A subscription without a ticket is accepted only until quests can be
+      // private: pages cached before tickets arrived still send those.
+      if (
+        ticket !== undefined &&
+        !(await redeemLiveTicket(ticket, questName))
+      ) {
+        if (socket.readyState === socket.OPEN) {
+          logRefused("invalid-ticket");
+          socket.close(POLICY_VIOLATION, "Invalid ticket");
+        }
+        return;
+      }
+      if (
+        thisSubscription !== latestSubscription ||
+        socket.readyState !== socket.OPEN
+      ) {
+        return;
+      }
       clearTimeout(subscribeDeadline);
       send(socket, { message: "connection", connectionId });
       const session = webSocketSessions.get(connectionId);
       if (session) {
-        session.questName = clientMessage.data.questName;
+        session.questName = questName;
       }
-    });
+    }
+
     socket.on("close", () => {
       clearTimeout(subscribeDeadline);
       webSocketSessions.delete(connectionId);

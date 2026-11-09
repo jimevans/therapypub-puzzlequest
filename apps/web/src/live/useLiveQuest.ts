@@ -1,6 +1,7 @@
 import { type QuestFollower, followQuest } from "@puzzlequest/api-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { api, dataOrThrow } from "../api";
 
 /**
  * The start of the query key of everything fetched about a quest, which live
@@ -33,6 +34,12 @@ export function useLiveQuest(questName: string) {
     const current = followQuest({
       url: liveUpdatesAddress(),
       questName,
+      getTicket: async () =>
+        dataOrThrow(
+          await api.POST("/quests/{name}/live-tickets", {
+            params: { path: { name: questName } },
+          })
+        ).ticket,
       onChange: () => {
         void queryClient.invalidateQueries({
           queryKey: questQueryKey(questName),
