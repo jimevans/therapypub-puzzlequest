@@ -17,10 +17,42 @@
   padding-block: 0.5rem;
 }
 
-.created {
-  margin-block: 1rem;
-}
-
 .address {
   margin-block: 0.75rem;
+}
+
+/* The section's heading is its toggle, styled as a link. */
+.heading {
+  font-size: inherit;
+  margin: 0;
+}
+
+.toggle {
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* The arrow is decoration: aria-expanded already says whether it's open. */
+.toggle::before {
+  content: "▸ " / "";
+}
+
+.toggle[aria-expanded="true"]::before {
+  content: "▾ " / "";
+}
+
+.dialogBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dialogBody p {
+  margin: 0;
 }
