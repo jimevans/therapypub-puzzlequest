@@ -1,0 +1,27 @@
+# THROWAWAY, never to be merged: tries the standalone Firefox BiDi repro on Linux.
+name: BiDi repro
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  repro:
+    name: Repro (server delay ${{ matrix.delay }} ms)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        delay: [0, 20, 50]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - run: firefox --version
+      - run: node .github/repro/bidi-missing-navigation-started.mjs "$(command -v firefox)" 1000 ${{ matrix.delay }}
