@@ -278,6 +278,8 @@ function Console({ quest }: { quest: Quest }) {
         )}
       </section>
 
+      <ShareLinksSection questName={quest.name} />
+
       <ActivityLog quest={quest} />
 
       <ConfirmDialog
@@ -341,10 +343,7 @@ export default function QuestConsole() {
             <Link to="/quests">See every quest</Link>
           </>
         ) : quest.data ? (
-          <>
-            <Console quest={quest.data} />
-            <ShareLinksSection questName={name} />
-          </>
+          <Console quest={quest.data} />
         ) : (
           quest.isError && (
             <Banner tone="danger">{messageOf(quest.error)}</Banner>

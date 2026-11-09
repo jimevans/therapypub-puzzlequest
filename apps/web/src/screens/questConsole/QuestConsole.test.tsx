@@ -8,9 +8,9 @@ import { aUser, ok, refusal } from "../../test/fakes";
 import QuestConsole from "./QuestConsole";
 import { describeEvent } from "./describeEvent";
 
-// The share links panel has tests of its own.
+// The share links panel has tests of its own; this stands in for it.
 vi.mock("../../quests/ShareLinksSection", () => ({
-  ShareLinksSection: () => null,
+  ShareLinksSection: () => <p>Share links here</p>,
 }));
 
 vi.mock("../../live/useLiveQuest", async (importOriginal) => ({
@@ -173,6 +173,23 @@ describe("the quest console", () => {
     expect(
       screen.getByRole("link", { name: "Run book (PDF)" })
     ).toHaveAttribute("href", "/api/v1/quests/trail/run-book");
+  });
+
+  it("puts the share links after the stops and before the activity", async () => {
+    apiQuest(RUNNING);
+    show();
+
+    const shareLinks = await screen.findByText("Share links here");
+    const follows = (first: Node, second: Node) =>
+      Boolean(
+        first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING
+      );
+    expect(
+      follows(screen.getByRole("heading", { name: "Stops" }), shareLinks)
+    ).toBe(true);
+    expect(
+      follows(shareLinks, screen.getByRole("heading", { name: "Activity" }))
+    ).toBe(true);
   });
 
   it("offers skipping a puzzle the players are on, and resetting a solved one", async () => {
