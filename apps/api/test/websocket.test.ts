@@ -6,6 +6,11 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import WebSocket from "ws";
 import * as WebSocketService from "../src/services/websocket.service.js";
 
+// Tickets have tests of their own, with a database.
+vi.mock("../src/services/liveTicket.service.js", () => ({
+  redeemLiveTicket: () => Promise.resolve(true),
+}));
+
 let server: http.Server;
 let port: number;
 
@@ -37,7 +42,9 @@ async function connect() {
 /** Connects a client following a quest, once the server has answered. */
 async function follow(questName: string) {
   const client = await connect();
-  client.socket.send(JSON.stringify({ message: "subscribe", questName }));
+  client.socket.send(
+    JSON.stringify({ message: "subscribe", questName, ticket: "ticket" })
+  );
   await vi.waitFor(() =>
     expect(client.messages[0]?.message).toBe("connection")
   );
@@ -55,7 +62,11 @@ describe("websocket server", () => {
     ["a subscription with no quest", JSON.stringify({ message: "subscribe" })],
     [
       "a subscription with an empty quest",
-      JSON.stringify({ message: "subscribe", questName: "" }),
+      JSON.stringify({ message: "subscribe", questName: "", ticket: "t" }),
+    ],
+    [
+      "a subscription with no ticket",
+      JSON.stringify({ message: "subscribe", questName: "q" }),
     ],
     [
       "the old pages' message",
@@ -118,7 +129,11 @@ describe("websocket server", () => {
     it("leaves out the connection an action came from", async () => {
       const acting = await connect();
       acting.socket.send(
-        JSON.stringify({ message: "subscribe", questName: "follow-c" })
+        JSON.stringify({
+          message: "subscribe",
+          questName: "follow-c",
+          ticket: "t",
+        })
       );
       await vi.waitFor(() => expect(acting.messages).toHaveLength(1));
       const { connectionId } = acting.messages[0] as { connectionId: string };
@@ -135,7 +150,11 @@ describe("websocket server", () => {
     it("follows only the quest named last", async () => {
       const client = await follow("follow-d");
       client.socket.send(
-        JSON.stringify({ message: "subscribe", questName: "follow-e" })
+        JSON.stringify({
+          message: "subscribe",
+          questName: "follow-e",
+          ticket: "t",
+        })
       );
       await vi.waitFor(() => expect(client.messages).toHaveLength(1));
       client.messages.length = 0;

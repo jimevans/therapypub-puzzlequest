@@ -747,7 +747,7 @@ export interface paths {
         put?: never;
         /**
          * Get a ticket to follow a quest's live updates
-         * @description A ticket lets one connection to the live-update websocket, /api/v1/updates, follow the quest. It expires within a minute and can be used once, so ask for a new one for each connection.
+         * @description A ticket lets one connection to the live-update websocket, /api/v1/updates, follow the quest. It expires within a minute and can be used once, so ask for a new one for each connection. A private quest gives one only to its players and staff, and is otherwise not found.
          */
         post: operations["createLiveTicket"];
         delete?: never;
@@ -765,7 +765,7 @@ export interface paths {
         };
         /**
          * Follow a quest
-         * @description What anyone may see of a quest: its progress and the puzzles its players have reached. How many puzzles it has is never shown. A quest that hasn't started shows its name and status, with no puzzles.
+         * @description What anyone may see of a quest: its progress and the puzzles its players have reached. How many puzzles it has is never shown. A quest that hasn't started shows its name and status, with no puzzles. A private quest is not found, except by its players and staff.
          */
         get: operations["getSpectatorQuest"];
         put?: never;
@@ -956,6 +956,11 @@ export interface components {
         Quest: {
             name: string;
             displayName: string;
+            /**
+             * @description Who can follow the quest; only for administrators.
+             * @enum {string}
+             */
+            visibility?: "public" | "private";
             assignee: {
                 /** @enum {string} */
                 kind: "user" | "team";
@@ -1457,7 +1462,7 @@ export interface components {
             message: "subscribe";
             questName: string;
             /** @description A ticket from POST /quests/{name}/live-tickets, which can be used once. */
-            ticket?: string;
+            ticket: string;
         };
     };
     responses: never;
@@ -3785,6 +3790,11 @@ export interface operations {
                 "application/json": {
                     name: string;
                     displayName: string;
+                    /**
+                     * @description Who can follow the quest: anyone, or only its players and staff. New quests are public.
+                     * @enum {string}
+                     */
+                    visibility?: "public" | "private";
                     assignee: {
                         /** @enum {string} */
                         kind: "user" | "team";
@@ -3996,6 +4006,11 @@ export interface operations {
             content: {
                 "application/json": {
                     displayName?: string;
+                    /**
+                     * @description Who can follow the quest: anyone, or only its players and staff. New quests are public.
+                     * @enum {string}
+                     */
+                    visibility?: "public" | "private";
                     assignee?: {
                         /** @enum {string} */
                         kind: "user" | "team";

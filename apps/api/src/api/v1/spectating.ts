@@ -1,9 +1,11 @@
-// Following a quest from outside it: what anyone may see, without signing in.
+// Following a quest from outside it: what anyone may see, without signing in,
+// unless the quest is private, when only its players and staff may.
 // Players can open these too, so they show nothing more than a player can see.
 import { z } from "zod";
 import { liveTicketRateLimiter } from "../../middleware/rateLimiter.js";
 import { issueLiveTicket } from "../../services/liveTicket.service.js";
 import * as QuestService from "../../services/quest.service.js";
+import * as UserService from "../../services/user.service.js";
 import { Problems, sendProblem, sendServiceProblem } from "../problems.js";
 import {
   spectatorPuzzleSchema,
@@ -37,7 +39,7 @@ export const spectatingRoutes = [
     operationId: "createLiveTicket",
     summary: "Get a ticket to follow a quest's live updates",
     description:
-      "A ticket lets one connection to the live-update websocket, /api/v1/updates, follow the quest. It expires within a minute and can be used once, so ask for a new one for each connection.",
+      "A ticket lets one connection to the live-update websocket, /api/v1/updates, follow the quest. It expires within a minute and can be used once, so ask for a new one for each connection. A private quest gives one only to its players and staff, and is otherwise not found.",
     tags: ["Spectating"],
     access: "public",
     before: [liveTicketRateLimiter],
@@ -47,7 +49,10 @@ export const spectatingRoutes = [
     },
     problems: [Problems.notFound, Problems.tooManyRequests],
     async handle(req, res) {
-      const found = await QuestService.getSpectatedQuest(req.params.name);
+      const found = await QuestService.getSpectatedQuest(
+        req.params.name,
+        UserService.getLoggedInUser(req.user)
+      );
       if (found.status === "error") {
         sendServiceProblem(res, found);
         return;
@@ -69,7 +74,7 @@ export const spectatingRoutes = [
     operationId: "getSpectatorQuest",
     summary: "Follow a quest",
     description:
-      "What anyone may see of a quest: its progress and the puzzles its players have reached. How many puzzles it has is never shown. A quest that hasn't started shows its name and status, with no puzzles.",
+      "What anyone may see of a quest: its progress and the puzzles its players have reached. How many puzzles it has is never shown. A quest that hasn't started shows its name and status, with no puzzles. A private quest is not found, except by its players and staff.",
     tags: ["Spectating"],
     access: "public",
     request: { params: questParams },
@@ -78,7 +83,10 @@ export const spectatingRoutes = [
     },
     problems: [Problems.notFound],
     async handle(req, res) {
-      const found = await QuestService.getSpectatedQuest(req.params.name);
+      const found = await QuestService.getSpectatedQuest(
+        req.params.name,
+        UserService.getLoggedInUser(req.user)
+      );
       if (found.status === "error") {
         sendServiceProblem(res, found);
         return;
@@ -103,7 +111,8 @@ export const spectatingRoutes = [
     async handle(req, res) {
       const found = await QuestService.getSpectatedQuestPuzzle(
         req.params.name,
-        req.params.puzzleName
+        req.params.puzzleName,
+        UserService.getLoggedInUser(req.user)
       );
       if (found.status === "error") {
         sendServiceProblem(res, found);

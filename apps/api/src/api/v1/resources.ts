@@ -252,6 +252,9 @@ export const questSchema = z
   .object({
     name: z.string(),
     displayName: z.string(),
+    visibility: z.enum(["public", "private"]).optional().meta({
+      description: "Who can follow the quest; only for administrators.",
+    }),
     assignee: z.object({
       kind: z.enum(["user", "team"]),
       id: z.string(),

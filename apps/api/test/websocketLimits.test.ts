@@ -9,6 +9,11 @@ import WebSocket from "ws";
 import * as WebSocketService from "../src/services/websocket.service.js";
 import { recordLogs } from "./logs.js";
 
+// Tickets have tests of their own, with a database.
+vi.mock("../src/services/liveTicket.service.js", () => ({
+  redeemLiveTicket: () => Promise.resolve(true),
+}));
+
 const LIMITS: WebSocketService.LiveUpdateLimits = {
   maxMessageBytes: 64,
   maxConnections: 4,
@@ -18,7 +23,11 @@ const LIMITS: WebSocketService.LiveUpdateLimits = {
 };
 const NOT_BEHIND_A_PROXY = () => false;
 const BEHIND_A_LOCAL_PROXY = proxyaddr.compile("loopback");
-const SUBSCRIBE = JSON.stringify({ message: "subscribe", questName: "q" });
+const SUBSCRIBE = JSON.stringify({
+  message: "subscribe",
+  questName: "q",
+  ticket: "ticket",
+});
 
 let server: http.Server | undefined;
 let port = 0;

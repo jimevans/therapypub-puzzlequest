@@ -182,7 +182,18 @@ describe("subscribing with a ticket", () => {
     expect((await subscribe("quest", "made-up")).answer).toBe(1008);
   });
 
-  it("still accepts no ticket, for pages cached before tickets", async () => {
-    expect((await subscribe("quest")).answer).toBe("connected");
+  it("ignores a subscription with no ticket", async () => {
+    const socket = new WebSocket(
+      `ws://localhost:${String(port)}/api/v1/updates`
+    );
+    clients.push(socket);
+    await new Promise((resolve) => socket.on("open", resolve));
+    const messages: unknown[] = [];
+    socket.on("message", (data) => messages.push(data));
+
+    socket.send(JSON.stringify({ message: "subscribe", questName: "quest" }));
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(messages).toEqual([]);
   });
 });

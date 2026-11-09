@@ -20,6 +20,8 @@ export interface QuestFormValues {
    */
   questName: string;
   displayName: string;
+  /** Whether only its players, staff, and those given a link can follow it. */
+  isPrivate: boolean;
   /** Who it's for, as "user:name" or "team:name", or "" until chosen. */
   assignee: string;
   stops: StopValues[];
@@ -34,6 +36,7 @@ export function formValuesOf(quest?: Quest): QuestFormValues {
   return {
     questName: quest?.name ?? "",
     displayName: quest?.displayName ?? "",
+    isPrivate: quest?.visibility === "private",
     assignee:
       quest?.assignee.name !== undefined
         ? `${quest.assignee.kind}:${quest.assignee.name}`
@@ -80,6 +83,9 @@ export function formFieldOf(field: string): keyof QuestFormValues {
   if (field === "name") {
     return "questName";
   }
+  if (field === "visibility") {
+    return "isPrivate";
+  }
   if (field.startsWith("assignee")) {
     return "assignee";
   }
@@ -103,11 +109,17 @@ export async function saveQuest(
   const [kind, ...rest] = values.assignee.split(":");
   const assignee = { kind: kind as "user" | "team", name: rest.join(":") };
   const puzzles = values.stops.map(({ puzzleName }) => ({ puzzleName }));
+  const visibility = values.isPrivate ? "private" : "public";
   if (existing) {
     dataOrThrow(
       await api.PATCH("/quests/{name}", {
         params: { path: { name: existing.name } },
-        body: { displayName: values.displayName, assignee, puzzles },
+        body: {
+          displayName: values.displayName,
+          visibility,
+          assignee,
+          puzzles,
+        },
       })
     );
     return existing.name;
@@ -115,7 +127,13 @@ export async function saveQuest(
   const name = values.questName.trim();
   dataOrThrow(
     await api.POST("/quests", {
-      body: { name, displayName: values.displayName, assignee, puzzles },
+      body: {
+        name,
+        displayName: values.displayName,
+        visibility,
+        assignee,
+        puzzles,
+      },
     })
   );
   return name;

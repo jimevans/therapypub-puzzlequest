@@ -30,10 +30,12 @@ import {
   type QuestActionOrigin,
   questEventBus,
 } from "../events/questEventBus.js";
+import { disconnectQuestFollowers } from "./websocket.service.js";
 import { PuzzleModel } from "../models/puzzle.model.js";
 import { QuestEventModel } from "../models/questEvent.model.js";
 import {
   type AssigneeKind,
+  type QuestVisibility,
   QuestModel,
   QuestStatus,
   QuestPuzzleStatus,
@@ -89,7 +91,9 @@ export interface QuestAssignee {
 /** The properties a Quest is created from: a stored quest, or a request. */
 export type QuestProperties = Pick<Quest, "name" | "displayName" | "status"> & {
   assignee: Omit<QuestAssignee, "id"> & { id: string | Types.ObjectId };
-} & Partial<Pick<Quest, "textResponse" | "textResponseConfirmation">> & {
+} & Partial<
+    Pick<Quest, "textResponse" | "textResponseConfirmation" | "visibility">
+  > & {
     puzzles?: QuestPuzzleProperties[];
     pauses?: readonly Pause[];
   };
@@ -303,6 +307,8 @@ export class Quest {
 
   /** True if an administrator has paused the quest. */
   paused: boolean;
+  /** Who can follow the quest. */
+  visibility: QuestVisibility;
 
   /**
    * Initializes a new instance of the Quest class.
@@ -311,6 +317,7 @@ export class Quest {
   constructor(questDefinition: QuestProperties) {
     this.name = questDefinition.name;
     this.displayName = questDefinition.displayName;
+    this.visibility = questDefinition.visibility ?? "public";
     this.assignee = {
       ...questDefinition.assignee,
       id: questDefinition.assignee.id.toString(),
@@ -407,6 +414,7 @@ export class Quest {
     return {
       name: this.name,
       displayName: this.displayName,
+      visibility: this.visibility,
       assignee: this.assignee,
       status: this.status,
       statusDescription: this.statusDescription,
@@ -443,6 +451,7 @@ export type QuestJSON = Pick<
   Quest,
   | "name"
   | "displayName"
+  | "visibility"
   | "assignee"
   | "status"
   | "statusDescription"
@@ -492,6 +501,8 @@ export interface QuestDefinition {
   name?: string;
   /** The name of the quest shown to players. */
   displayName?: string;
+  /** Who can follow the quest; new quests are public unless this says not. */
+  visibility?: QuestVisibility;
   /** The user or team the quest is assigned to, by name. */
   assignee?: { kind: AssigneeKind; name: string };
   /**
@@ -644,6 +655,7 @@ function createFindResultProjectionParameter(
   const projectParams: Record<string, unknown> = {
     name: true,
     displayName: true,
+    visibility: true,
     assignee: true,
     status: true,
     textResponse: true,
@@ -978,15 +990,48 @@ export async function getQuestAndPuzzle(
  * @returns a result containing the quest, or an error result if it isn't found
  */
 export async function getSpectatedQuest(
-  questName: string
+  questName: string,
+  viewer: User | null = null
 ): Promise<QuestResult> {
   const found = await findQuests(
     { questName, puzzleStatus: QuestPuzzleStatus.AWAITING_ACTIVATION },
     true
   );
-  return found.status === "error"
-    ? found
-    : { status: "success", statusCode: 200, data: found.data[0] };
+  if (found.status === "error") {
+    return found;
+  }
+  const quest = found.data[0];
+  if (!(await mayFollow(quest, viewer))) {
+    // The same answer as for a quest that doesn't exist, so that a name can't
+    // be tried to learn whether there's a private quest by that name.
+    return {
+      status: "error",
+      statusCode: 404,
+      reason: "not-found",
+      message: `no quests found matching ${createFindErrorMessage({ questName })}`,
+    };
+  }
+  return { status: "success", statusCode: 200, data: quest };
+}
+
+/**
+ * Whether someone may follow a quest from outside it.
+ * @param quest the quest
+ * @param viewer who's asking, or null if they aren't signed in
+ * @returns true if the quest is public, or they're staff or it's assigned to
+ *  them or their team
+ */
+async function mayFollow(quest: Quest, viewer: User | null): Promise<boolean> {
+  if (quest.visibility === "public") {
+    return true;
+  }
+  if (!viewer) {
+    return false;
+  }
+  return (
+    viewer.isStaff() ||
+    (await viewer.getAssigneeIds()).includes(quest.assignee.id)
+  );
 }
 
 /**
@@ -995,12 +1040,14 @@ export async function getSpectatedQuest(
  * quest or hasn't been activated, so a name can't be tried to learn which.
  * @param questName the name of the quest
  * @param puzzleName the name of the puzzle
+ * @param viewer who's asking, or null if they aren't signed in
  * @returns a result containing the quest, the puzzle, and its definition, or
  *  an error result if they aren't found
  */
 export async function getSpectatedQuestPuzzle(
   questName: string,
-  puzzleName: string
+  puzzleName: string,
+  viewer: User | null = null
 ): Promise<
   QuestResult<{
     quest: Quest;
@@ -1008,7 +1055,7 @@ export async function getSpectatedQuestPuzzle(
     detail: PuzzleService.Puzzle;
   }>
 > {
-  const found = await getSpectatedQuest(questName);
+  const found = await getSpectatedQuest(questName, viewer);
   if (found.status === "error") {
     return found;
   }
@@ -1168,6 +1215,7 @@ export async function createQuest(
   const quest = new QuestModel({
     name: questName,
     displayName: questDefinition.displayName || questName,
+    visibility: questDefinition.visibility ?? "public",
     assignee,
     status: QuestStatus.NOT_STARTED,
     puzzles: [],
@@ -1256,6 +1304,15 @@ export async function updateQuest(
         message: `No quest with quest name ${questDefinition.name} found`,
       };
     }
+    const visibility = questDefinition.visibility ?? foundQuest.visibility;
+    // Those following it may no longer be allowed to. A ticket is only checked
+    // on subscribing, so they have to subscribe again to find out.
+    const fewerMayFollow =
+      visibility === "private" &&
+      (foundQuest.visibility !== "private" ||
+        (assignee !== undefined &&
+          !assignee.id.equals(foundQuest.assignee?.id)));
+    foundQuest.visibility = visibility;
     if (questDefinition.displayName) {
       foundQuest.displayName = questDefinition.displayName;
     }
@@ -1305,6 +1362,9 @@ export async function updateQuest(
         continue;
       }
       return unexpectedErrorResult("updateQuest", err);
+    }
+    if (fewerMayFollow) {
+      disconnectQuestFollowers(questDefinition.name);
     }
     return { status: "success", statusCode: 200 };
   }
