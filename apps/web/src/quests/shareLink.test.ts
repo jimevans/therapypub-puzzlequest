@@ -13,6 +13,12 @@ describe("share links", () => {
     );
   });
 
+  it("makes a big screen's address with the same token", () => {
+    expect(shareLinkAddress("old town", "secret", "board")).toBe(
+      `${location.origin}/monitor/quest/old%20town/board#share=secret`
+    );
+  });
+
   it("sends nothing without a link", () => {
     expect(shareLinkRequest("trail")).toEqual({});
   });

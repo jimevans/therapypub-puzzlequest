@@ -10,10 +10,16 @@ const keyOf = (questName: string) => `pq-share:${questName}`;
  * Makes the address to give someone so they can follow a quest.
  * @param questName the quest's name
  * @param token the share link's token
+ * @param view "follow" to follow along, or "board" for a big screen
  * @returns the address
  */
-export function shareLinkAddress(questName: string, token: string): string {
-  return `${location.origin}/monitor/quest/${encodeURIComponent(questName)}#share=${token}`;
+export function shareLinkAddress(
+  questName: string,
+  token: string,
+  view: "follow" | "board" = "follow"
+): string {
+  const page = view === "board" ? "/board" : "";
+  return `${location.origin}/monitor/quest/${encodeURIComponent(questName)}${page}#share=${token}`;
 }
 
 /**

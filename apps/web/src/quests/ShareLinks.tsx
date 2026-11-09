@@ -13,6 +13,33 @@ import styles from "./ShareLinks.module.css";
 
 const dateOf = (when: string) => new Date(when).toLocaleDateString();
 
+type View = "follow" | "board";
+
+// One link opens either page: following along on a phone, or the board on a
+// big screen, such as a TV in a lobby.
+const VIEWS: {
+  view: View;
+  id: string;
+  label: string;
+  description: string;
+  copyLabel: string;
+}[] = [
+  {
+    view: "follow",
+    id: "share-link-address",
+    label: "Send them this link",
+    description: "To follow along on a phone or computer.",
+    copyLabel: "Copy link",
+  },
+  {
+    view: "board",
+    id: "share-link-board-address",
+    label: "Board link",
+    description: "To show the quest on a big screen, read from across a room.",
+    copyLabel: "Copy board link",
+  },
+];
+
 /**
  * Lets a private quest's players and staff give others a link to follow it. It
  * shows nothing for a public quest, which anyone can follow already.
@@ -22,8 +49,8 @@ export function ShareLinks({ questName }: { questName: string }) {
   const links = useQuery(shareLinksQuery(questName));
   const [label, setLabel] = useState("");
   const [expires, setExpires] = useState("");
-  const [address, setAddress] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
+  const [copied, setCopied] = useState<View | null>(null);
   const [revoking, setRevoking] = useState<Schemas["ShareLink"] | null>(null);
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: questQueryKey(questName) });
@@ -41,9 +68,9 @@ export function ShareLinks({ questName }: { questName: string }) {
           },
         })
       ),
-    onSuccess: ({ token }) => {
-      setAddress(shareLinkAddress(questName, token));
-      setCopied(false);
+    onSuccess: (created) => {
+      setToken(created.token);
+      setCopied(null);
       setLabel("");
       setExpires("");
     },
@@ -66,12 +93,12 @@ export function ShareLinks({ questName }: { questName: string }) {
     return null;
   }
 
-  async function copy(text: string) {
+  async function copy(view: View, text: string) {
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
+      setCopied(view);
     } catch {
-      setCopied(false);
+      setCopied(null);
     }
   }
 
@@ -138,18 +165,29 @@ export function ShareLinks({ questName }: { questName: string }) {
           Make a link
         </Button>
       </form>
-      {address && (
+      {token && (
         <div className={styles.created}>
-          <TextField
-            id="share-link-address"
-            label="Send them this link"
-            description="It's shown only now, so copy it before leaving this page."
-            value={address}
-            isReadOnly
-          />
-          <Button onPress={() => void copy(address)}>
-            {copied ? "Copied" : "Copy link"}
-          </Button>
+          <p>
+            These are shown only now, so copy what you need before leaving this
+            page. Both work until the link expires or is revoked.
+          </p>
+          {VIEWS.map(({ view, id, label, description, copyLabel }) => {
+            const address = shareLinkAddress(questName, token, view);
+            return (
+              <div key={view} className={styles.address}>
+                <TextField
+                  id={id}
+                  label={label}
+                  description={description}
+                  value={address}
+                  isReadOnly
+                />
+                <Button onPress={() => void copy(view, address)}>
+                  {copied === view ? "Copied" : copyLabel}
+                </Button>
+              </div>
+            );
+          })}
         </div>
       )}
       <ConfirmDialog

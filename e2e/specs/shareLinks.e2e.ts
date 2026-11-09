@@ -19,6 +19,7 @@ describe("a private quest", () => {
   const questName = `private-${suffix}`;
   const riddle = `shared-riddle-${suffix}`;
   let link = "";
+  let boardLink = "";
 
   before(async () => {
     await recordPolicyViolations();
@@ -65,6 +66,8 @@ describe("a private quest", () => {
     await expect($("#share-link-address")).toBeDisplayed();
     link = await $("#share-link-address").getValue();
     expect(link).toContain("#share=");
+    boardLink = await $("#share-link-board-address").getValue();
+    expect(boardLink).toContain("/board#share=");
     await expect($("#share-link-list")).toHaveText(
       expect.stringContaining("My grandmother")
     );
@@ -79,6 +82,16 @@ describe("a private quest", () => {
     await expect($("h1")).toHaveText(
       expect.stringContaining("A Private Quest")
     );
+    await expect($(LIVE_UPDATES_CONNECTED)).toExist();
+    expect(await blockedByPolicy()).toEqual([]);
+    await expectAccessible();
+  });
+
+  it("shows on a big screen with the board link, signed out", async () => {
+    await browser.url("/login");
+    await browser.url(boardLink);
+
+    await expect($(`[data-quest-name="${questName}"]`)).toBeDisplayed();
     await expect($(LIVE_UPDATES_CONNECTED)).toExist();
     expect(await blockedByPolicy()).toEqual([]);
     await expectAccessible();
