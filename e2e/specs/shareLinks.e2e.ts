@@ -60,14 +60,23 @@ describe("a private quest", () => {
     );
     await browser.url(`/quest/${questName}`);
 
-    await $("#share-link-label").setValue("My grandmother");
+    // Closed at first, so it doesn't crowd the quest.
+    await expect($("button=Make a link")).not.toBeDisplayed();
+    await $("#share-links-toggle").click();
     await $("button=Make a link").click();
+    await expect($("#share-link-dialog")).toBeDisplayed();
+    await $("#share-link-label").setValue("My grandmother");
+    await $("button=Make the link").click();
 
     await expect($("#share-link-address")).toBeDisplayed();
     link = await $("#share-link-address").getValue();
     expect(link).toContain("#share=");
     boardLink = await $("#share-link-board-address").getValue();
     expect(boardLink).toContain("/board#share=");
+    await expectAccessible();
+    await $("button=Done").click();
+
+    await expect($("#share-link-dialog")).not.toBeDisplayed();
     await expect($("#share-link-list")).toHaveText(
       expect.stringContaining("My grandmother")
     );
