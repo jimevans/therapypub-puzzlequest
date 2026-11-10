@@ -418,7 +418,10 @@ export const userRoutes = [
       "Emails a reset link to the account with this user name or email address, if it has a verified address. The response is the same whether or not there is such an account, so it doesn't say which accounts exist.",
     tags: ["Passwords"],
     access: "public",
-    before: [RateLimiter.passwordRateLimiter],
+    before: [
+      RateLimiter.passwordResetRequestAddressRateLimiter,
+      RateLimiter.passwordResetRequestRateLimiter,
+    ],
     request: { body: forgotPasswordBody },
     responses: { 202: { description: "Accepted." } },
     problems: [Problems.tooManyRequests],
@@ -452,7 +455,7 @@ export const userRoutes = [
       "Sets a new password with the token from a reset link, and signs the user out everywhere.",
     tags: ["Passwords"],
     access: "public",
-    before: [RateLimiter.passwordRateLimiter],
+    before: [RateLimiter.passwordResetRateLimiter],
     request: { body: resetPasswordBody },
     responses: { 204: { description: "Reset." } },
     problems: [
