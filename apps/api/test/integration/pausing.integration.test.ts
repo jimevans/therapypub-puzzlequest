@@ -79,7 +79,7 @@ beforeEach(async () => {
   await QuestService.createQuest({
     name: "quest",
     displayName: "Quest",
-    assignee: { kind: "user", name: "player" },
+    entrants: [{ kind: "user", name: "player" }],
     puzzles: [{ puzzleName: "riddle" }, { puzzleName: "finale" }],
   });
   PLAYER = await assigneeIdsOf("player");
@@ -128,7 +128,7 @@ describe("pausing a quest", () => {
     const json = JSON.parse(
       (await asPlayer("get", "/api/v1/quests/quest")).text
     );
-    expect(json).toMatchObject({
+    expect(json.entries[0]).toMatchObject({
       paused: true,
       statusDescription: "Paused",
       progress: { running: false },
@@ -148,7 +148,11 @@ describe("pausing a quest", () => {
       questName: "quest",
       actor: "admin",
       events: [{ type: "QuestPaused", at: expect.any(Date) }],
-      assignee: { kind: "user", id: expect.any(String) },
+      entry: {
+        id: expect.any(String),
+        assignee: { kind: "user", id: expect.any(String) },
+      },
+      racing: false,
     });
   });
 
@@ -273,7 +277,7 @@ describe("the players' time", () => {
       (await asPlayer("get", "/api/v1/quests/quest")).text
     );
 
-    const elapsed = json.progress.puzzles[0].elapsedMs;
+    const elapsed = json.entries[0].progress.puzzles[0].elapsedMs;
     expect(elapsed).toBeGreaterThanOrEqual(20 * MINUTE);
     expect(elapsed).toBeLessThan(21 * MINUTE);
   });
@@ -286,10 +290,11 @@ describe("a paused quest's pages", () => {
 
   it("tell the players it is paused, with the clock stopped", async () => {
     const response = await asPlayer("get", "/api/v1/quests/quest");
+    const [entry] = response.body.entries;
 
-    expect(response.body.paused).toBe(true);
-    expect(response.body.progress.running).toBe(false);
-    expect(response.body.progress.clockStart).toBeUndefined();
+    expect(entry.paused).toBe(true);
+    expect(entry.progress.running).toBe(false);
+    expect(entry.progress.clockStart).toBeUndefined();
   });
 
   it("tell spectators it is paused", async () => {
@@ -297,7 +302,7 @@ describe("a paused quest's pages", () => {
       "/api/v1/quests/quest/spectator-view"
     );
 
-    expect(response.body.paused).toBe(true);
-    expect(response.body.progress.running).toBe(false);
+    expect(response.body.entries[0].paused).toBe(true);
+    expect(response.body.entries[0].progress.running).toBe(false);
   });
 });

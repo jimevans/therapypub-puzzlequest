@@ -18,7 +18,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
 import { startSessions } from "../sessions.js";
-import { userIdsOf } from "../references.js";
+import { entryIdOf, userIdsOf } from "../references.js";
 import Twilio from "twilio";
 
 // The service waits between outgoing messages to respect carrier limits.
@@ -118,7 +118,7 @@ async function createQuest(
 ): Promise<void> {
   const result = await QuestService.createQuest({
     name,
-    assignee: { kind, name: assigneeName },
+    entrants: [{ kind, name: assigneeName }],
     puzzles: [{ puzzleName: "colors" }],
   });
   expect(result.status).toBe("success");
@@ -291,6 +291,28 @@ describe("POST /api/v1/webhooks/twilio/voice", () => {
     });
   });
 
+  it("starts only the caller's own entry in a quest several play", async () => {
+    await QuestService.createQuest({
+      name: "race",
+      entrants: [
+        { kind: "team", name: "team-a" },
+        { kind: "user", name: "player" },
+      ],
+      puzzles: [{ puzzleName: "colors" }],
+    });
+
+    await call("+15551230001");
+
+    await vi.waitFor(async () => {
+      expect((await storedQuest("race")).entries[1]!.status).toBe(
+        QuestStatus.IN_PROGRESS
+      );
+    });
+    expect((await storedQuest("race")).entries[0]!.status).toBe(
+      QuestStatus.NOT_STARTED
+    );
+  });
+
   it("tells a known caller with no waiting quests so", async () => {
     const response = await call("+15551230001");
 
@@ -327,6 +349,7 @@ describe("POST /api/v1/webhooks/twilio/messages", () => {
     await QuestService.startQuest("player-quest");
     await QuestService.setExpectedTextResponse(
       "player-quest",
+      await entryIdOf("player-quest"),
       "Ready",
       "Your next clue is under the mat."
     );
@@ -364,6 +387,34 @@ describe("POST /api/v1/webhooks/twilio/messages", () => {
     );
   });
 
+  it("clears only the sender's own entry's reply in a quest several play", async () => {
+    await QuestService.createQuest({
+      name: "race",
+      entrants: [
+        { kind: "team", name: "team-a" },
+        { kind: "user", name: "player" },
+      ],
+      puzzles: [{ puzzleName: "colors" }],
+    });
+    await QuestService.startQuest("race");
+    for (const index of [0, 1]) {
+      await QuestService.setExpectedTextResponse(
+        "race",
+        await entryIdOf("race", index),
+        "Onward",
+        `Confirmed for entry ${index}`
+      );
+    }
+
+    // From the team's member.
+    const response = await text("+15551230002", "onward");
+
+    expect(response.text).toContain("Confirmed for entry 0");
+    const [team, player] = (await storedQuest("race")).entries;
+    expect(team!.textResponse).toBe("");
+    expect(player!.textResponse).toBe("Onward");
+  });
+
   it("tells unknown numbers they are not registered", async () => {
     const response = await text("+15550000000", "hello");
 
@@ -373,7 +424,7 @@ describe("POST /api/v1/webhooks/twilio/messages", () => {
   });
 });
 
-describe("POST /api/v1/quests/{name}/text-messages", () => {
+describe("POST /api/v1/quests/{name}/{teams|players}/{entrant}/text-messages", () => {
   let twilioRequests: { data?: unknown }[];
 
   let adminToken = "";
@@ -405,12 +456,22 @@ describe("POST /api/v1/quests/{name}/text-messages", () => {
     config.PQ_TWILIO_MESSAGING_SERVICE_ID = undefined;
   });
 
+  /**
+   * Texts an entrant's players.
+   * @param fields the quest, the entrant's address, such as "teams/team-a",
+   *  and the body
+   * @returns the request
+   */
   function send({
     questName,
+    entrant,
     ...body
-  }: { questName: string } & Record<string, string>): request.Test {
+  }: { questName: string; entrant: string } & Record<
+    string,
+    string
+  >): request.Test {
     return request(app)
-      .post(`/api/v1/quests/${questName}/text-messages`)
+      .post(`/api/v1/quests/${questName}/${entrant}/text-messages`)
       .set("Authorization", `Bearer ${adminToken}`)
       .send(body);
   }
@@ -421,6 +482,7 @@ describe("POST /api/v1/quests/{name}/text-messages", () => {
 
     const response = await send({
       questName: "team-quest",
+      entrant: "teams/team-a",
       message: "Check the garden.",
       expectedResponse: "Found it",
       responseConfirmation: "Well done!",
@@ -454,6 +516,7 @@ describe("POST /api/v1/quests/{name}/text-messages", () => {
 
     const response = await send({
       questName: "team-quest",
+      entrant: "teams/team-a",
       message: "Check the garden.",
       expectedResponse: "Found it",
       responseConfirmation: "Well done!",
@@ -465,13 +528,14 @@ describe("POST /api/v1/quests/{name}/text-messages", () => {
     ).toEqual(["+15551230002"]);
   });
 
-  it("reports that the team a quest is assigned to no longer exists", async () => {
+  it("reports that a deleted team isn't playing the quest", async () => {
     await createQuest("team-quest", "team-a");
     await QuestService.startQuest("team-quest");
     await TeamModel.deleteMany({});
 
     const response = await send({
       questName: "team-quest",
+      entrant: "teams/team-a",
       message: "Check the garden.",
       expectedResponse: "Found it",
       responseConfirmation: "Well done!",
@@ -479,7 +543,7 @@ describe("POST /api/v1/quests/{name}/text-messages", () => {
 
     expect(response.status).toBe(404);
     expect(JSON.parse(response.text).detail).toBe(
-      "The team this quest is assigned to no longer exists"
+      "team team-a isn't playing quest team-quest"
     );
     expect(twilioRequests).toHaveLength(0);
   });
@@ -498,7 +562,11 @@ describe("POST /api/v1/quests/{name}/text-messages", () => {
       headers: {},
     });
 
-    const response = await send({ questName: "player-quest", message: "Hi" });
+    const response = await send({
+      questName: "player-quest",
+      entrant: "players/player",
+      message: "Hi",
+    });
 
     expect(response.status).toBe(502);
     expect(JSON.parse(response.text)).toMatchObject({
@@ -522,6 +590,7 @@ describe("POST /api/v1/quests/{name}/text-messages", () => {
 
     const response = await send({
       questName: "quiet-quest",
+      entrant: "players/quiet",
       message: "Hi",
       expectedResponse: "Found it",
       responseConfirmation: "Well done!",
@@ -539,10 +608,59 @@ describe("POST /api/v1/quests/{name}/text-messages", () => {
     );
   });
 
+  it("waits for the reply from only the entrant texted", async () => {
+    await QuestService.createQuest({
+      name: "race",
+      entrants: [
+        { kind: "team", name: "team-a" },
+        { kind: "user", name: "player" },
+      ],
+      puzzles: [{ puzzleName: "colors" }],
+    });
+    await QuestService.startQuest("race");
+
+    const response = await send({
+      questName: "race",
+      entrant: "players/player",
+      message: "Check the garden.",
+      expectedResponse: "Found it",
+      responseConfirmation: "Well done!",
+    });
+
+    expect(response.status).toBe(204);
+    expect(
+      twilioRequests.map((sent) => (sent.data as { To: string }).To)
+    ).toEqual(["+15551230001"]);
+    const [team, player] = (await storedQuest("race")).entries;
+    expect(team!.textResponse).toBe("");
+    expect(player!.textResponse).toBe("Found it");
+  });
+
+  it("isn't found for a user or team not playing the quest", async () => {
+    await createQuest("player-quest", "player");
+    await QuestService.startQuest("player-quest");
+
+    for (const entrant of ["teams/team-a", "players/teammate"]) {
+      const response = await send({
+        questName: "player-quest",
+        entrant,
+        message: "Hi",
+      });
+
+      expect(response.status).toBe(404);
+      expect(JSON.parse(response.text).type).toBe("/problems/not-found");
+    }
+    expect(twilioRequests).toHaveLength(0);
+  });
+
   it("refuses a quest that is not in progress", async () => {
     await createQuest("player-quest", "player");
 
-    const response = await send({ questName: "player-quest", message: "Hi" });
+    const response = await send({
+      questName: "player-quest",
+      entrant: "players/player",
+      message: "Hi",
+    });
 
     expect(response.status).toBe(409);
     expect(JSON.parse(response.text).type).toBe("/problems/wrong-state");
@@ -555,6 +673,7 @@ describe("POST /api/v1/quests/{name}/text-messages", () => {
 
     const response = await send({
       questName: "player-quest",
+      entrant: "players/player",
       message: "Hi",
       expectedResponse: "Found it",
     });

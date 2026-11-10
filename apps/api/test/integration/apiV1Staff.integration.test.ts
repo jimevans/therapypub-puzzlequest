@@ -6,7 +6,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
-import { userIdsOf } from "../references.js";
+import { assigneeIdsOf, entryIdOf, userIdsOf } from "../references.js";
 import { startSessions } from "../sessions.js";
 
 const { createApp } = await import("../../src/createApp.js");
@@ -86,7 +86,7 @@ beforeEach(async () => {
   await QuestService.createQuest({
     name: "quest",
     displayName: "Quest",
-    assignee: { kind: "team", name: "the-team" },
+    entrants: [{ kind: "team", name: "the-team" }],
     puzzles: [
       { puzzleName: "riddle", activationCode: "riddle-code" },
       { puzzleName: "lantern", activationCode: "lantern-code" },
@@ -122,8 +122,21 @@ const NEVER_SHOWN = [
   /secret/,
   /textResponse/,
   /penaltyFreeHints/,
-  /"id"/,
+  /assignee/,
 ];
+
+/**
+ * Checks that a staff answer has nothing about how to solve, and no user's or
+ * team's own ID.
+ * @param text the answer
+ */
+async function expectNothingHidden(text: string) {
+  for (const pattern of NEVER_SHOWN) {
+    expect(text).not.toMatch(pattern);
+  }
+  const [teamId] = await assigneeIdsOf("the-team");
+  expect(text).not.toContain(teamId);
+}
 
 function asStaff(path: string) {
   return request(app)
@@ -140,7 +153,11 @@ describe("a quest, as staff see it", () => {
     expect(response.body).toMatchObject({
       name: "quest",
       displayName: "Quest",
-      assignee: { kind: "team", name: "the-team", displayName: "Team Display" },
+    });
+    expect(response.body.entries).toHaveLength(1);
+    expect(response.body.entries[0]).toMatchObject({
+      id: await entryIdOf("quest"),
+      entrant: { kind: "team", name: "the-team", displayName: "Team Display" },
       status: 1,
       paused: false,
       puzzles: [
@@ -164,15 +181,15 @@ describe("a quest, as staff see it", () => {
         },
       ],
     });
-    expect(response.body.puzzles[0].endTime).toEqual(expect.any(String));
+    expect(response.body.entries[0].puzzles[0].endTime).toEqual(
+      expect.any(String)
+    );
   });
 
   it("tells nothing about how to solve it", async () => {
     const response = await asStaff("/api/v1/quests/quest/staff-view");
 
-    for (const pattern of NEVER_SHOWN) {
-      expect(response.text).not.toMatch(pattern);
-    }
+    await expectNothingHidden(response.text);
   });
 
   it("is a problem for a quest that doesn't exist", async () => {
@@ -201,17 +218,72 @@ describe("the quests, as staff see them", () => {
     expect(staffQuestSummarySchema.parse(quest)).toEqual(quest);
     expect(quest).toMatchObject({
       name: "quest",
-      assignee: { kind: "team", name: "the-team" },
-      statusDescription: "In progress",
+      entries: [
+        {
+          entrant: { kind: "team", name: "the-team" },
+          statusDescription: "In progress",
+        },
+      ],
     });
-    for (const pattern of [
-      ...NEVER_SHOWN,
-      /activationCode/,
-      /-code/,
-      /riddle/i,
-      /lantern/i,
-    ]) {
+    await expectNothingHidden(response.text);
+    for (const pattern of [/activationCode/, /-code/, /riddle/i, /lantern/i]) {
       expect(response.text).not.toMatch(pattern);
     }
+  });
+});
+
+describe("a quest several teams race, as staff see it", () => {
+  beforeEach(async () => {
+    await TeamModel.create({
+      teamName: "rivals",
+      displayName: "Rival Crew",
+      joinCode: "rival-code",
+      memberIds: [],
+    });
+    await QuestService.updateQuest({
+      name: "quest",
+      entrants: [
+        { kind: "team", name: "the-team" },
+        { kind: "team", name: "rivals" },
+      ],
+    });
+  });
+
+  it("shows every entry, each with every stop and its own progress", async () => {
+    const response = await asStaff("/api/v1/quests/quest/staff-view");
+
+    expect(response.status).toBe(200);
+    const status = (entry: { puzzles: { status: number }[] }) =>
+      entry.puzzles.map((puzzle) => puzzle.status);
+    const [leaders, rivals] = response.body.entries;
+    expect(leaders.entrant.name).toBe("the-team");
+    expect(status(leaders)).toEqual([3, 0]);
+    expect(rivals).toMatchObject({
+      id: await entryIdOf("quest", 1),
+      entrant: { kind: "team", name: "rivals", displayName: "Rival Crew" },
+      status: 0,
+      statusDescription: "Not yet started",
+    });
+    expect(status(rivals)).toEqual([0, 0]);
+    expect(
+      rivals.puzzles.map((p: { activationCode: string }) => p.activationCode)
+    ).toEqual(["riddle-code", "lantern-code"]);
+    await expectNothingHidden(response.text);
+  });
+
+  it("lists every entry with how it's going", async () => {
+    const response = await asStaff("/api/v1/staff/quests");
+
+    expect(
+      response.body.items[0].entries.map(
+        (entry: { entrant: { name: string }; status: number }) => [
+          entry.entrant.name,
+          entry.status,
+        ]
+      )
+    ).toEqual([
+      ["the-team", 1],
+      ["rivals", 0],
+    ]);
   });
 });

@@ -8,14 +8,23 @@ import type { QuestActivity } from "./questEventBus.js";
  * action came from, so every player and spectator sees progress as it happens.
  * Starting and resetting quests send nothing: clients see those when they next
  * refresh. An administrator's rescues (pausing, resuming, skipping, and
- * resetting) go to everyone, since they can change much of the quest.
+ * resetting) go to everyone, since they can change much of the quest. Each
+ * update names the entry whose progress changed; while teams race, only staff
+ * and the entry's own players are sent what changed, and everyone else only
+ * that it did.
  * @param activity the activity
  */
 export function sendLiveUpdates(activity: QuestActivity): void {
   const { questName } = activity;
+  const entryId = activity.entry.id;
   const exclude = activity.connectionId ? [activity.connectionId] : [];
+  // While teams race, rivals are told only that the entry changed.
+  const audience = {
+    racing: activity.racing,
+    assigneeId: activity.entry.assignee.id.toString(),
+  };
   const notify = (update: QuestUpdate) =>
-    WebSocketService.notifyQuestFollowers(update, exclude);
+    WebSocketService.notifyQuestFollowers(update, exclude, audience);
 
   const solved = activity.events.find((event) => event.type === "PuzzleSolved");
   const questComplete = activity.events.some(
@@ -27,6 +36,7 @@ export function sendLiveUpdates(activity: QuestActivity): void {
         notify({
           message: "puzzleActivated",
           questName,
+          entryId,
           puzzleName: event.puzzleName,
           activationTime: event.at.toISOString(),
         });
@@ -35,6 +45,7 @@ export function sendLiveUpdates(activity: QuestActivity): void {
         notify({
           message: "puzzleSolved",
           questName,
+          entryId,
           puzzleName: event.puzzleName,
           solutionText: event.solutionText,
           endTime: event.at.toISOString(),
@@ -48,6 +59,7 @@ export function sendLiveUpdates(activity: QuestActivity): void {
           notify({
             message: "puzzleStarted",
             questName,
+            entryId,
             puzzleName: event.puzzleName,
             displayName: event.displayName,
             startTime: event.at.toISOString(),
@@ -61,12 +73,14 @@ export function sendLiveUpdates(activity: QuestActivity): void {
         WebSocketService.notifyQuestFollowers({
           message: "questUpdated",
           questName,
+          entryId,
         });
         break;
       case "HintRevealed":
         notify({
           message: "hintRequested",
           questName,
+          entryId,
           puzzleName: event.puzzleName,
           hintText: event.hintText,
           moreHints: event.moreHints,
@@ -79,12 +93,12 @@ export function sendLiveUpdates(activity: QuestActivity): void {
 }
 
 /**
- * Tells the quest's players that their list of quests changed: every action
+ * Tells the entry's players that their list of quests changed: every action
  * changes how far along a quest is, and starting one adds it to the list.
  * @param activity the activity
  */
 export async function sendPlayerUpdates(
   activity: QuestActivity
 ): Promise<void> {
-  await notifyPlayersOf([activity.assignee]);
+  await notifyPlayersOf([activity.entry.assignee]);
 }

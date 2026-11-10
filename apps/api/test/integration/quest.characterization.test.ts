@@ -15,7 +15,12 @@ import {
 } from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
-import { assigneeIdsOf, puzzleIdsOf, withPuzzleNames } from "../references.js";
+import {
+  assigneeIdsOf,
+  entryIdOf,
+  puzzleIdsOf,
+  withPuzzleNames,
+} from "../references.js";
 
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
 const { QuestModel, QuestPuzzleStatus, QuestStatus } =
@@ -38,6 +43,22 @@ afterAll(async () => {
   await mongoose.disconnect();
   await mongoServer?.stop();
 });
+
+/**
+ * Gets a quest as seen through its first entry, or the user's own.
+ * @param questName the quest
+ * @param user who's asking; omit for no filtering
+ * @returns the result, with the quest as seen through the entry
+ */
+async function getQuest(
+  questName: string,
+  user?: InstanceType<typeof User> | null
+) {
+  const result = await QuestService.getQuestEntries(questName, user);
+  return result.status === "error"
+    ? result
+    : { ...result, data: result.data[0] };
+}
 
 let PLAYER: string[] = [];
 
@@ -105,7 +126,7 @@ async function createQuest(
   const result = await QuestService.createQuest({
     name,
     displayName: "Test Quest",
-    assignee: { kind: "user", name: "player" },
+    entrants: [{ kind: "user", name: "player" }],
     puzzles: puzzleNames.map((puzzleName) => ({ puzzleName })),
   });
   expect(result).toEqual({ status: "success", statusCode: 200 });
@@ -234,7 +255,7 @@ describe("createQuest", () => {
   it("uses the name as the display name when none is given", async () => {
     await QuestService.createQuest({
       name: "plain",
-      assignee: { kind: "user", name: "player" },
+      entrants: [{ kind: "user", name: "player" }],
     });
 
     expect((await storedQuest("plain")).displayName).toBe("plain");
@@ -243,7 +264,7 @@ describe("createQuest", () => {
   it("creates a quest with no puzzles when none are given", async () => {
     await QuestService.createQuest({
       name: "empty",
-      assignee: { kind: "user", name: "player" },
+      entrants: [{ kind: "user", name: "player" }],
     });
 
     expect((await storedQuest("empty")).puzzles).toEqual([]);
@@ -258,7 +279,7 @@ describe("createQuest", () => {
     async (displayName, expectedName) => {
       await QuestService.createQuest({
         displayName,
-        assignee: { kind: "user", name: "player" },
+        entrants: [{ kind: "user", name: "player" }],
       });
 
       const quests = await QuestModel.find({}).lean();
@@ -269,7 +290,7 @@ describe("createQuest", () => {
   it("rejects a definition with neither a name nor a display name", async () => {
     expect(
       await QuestService.createQuest({
-        assignee: { kind: "user", name: "player" },
+        entrants: [{ kind: "user", name: "player" }],
       })
     ).toEqual({
       status: "error",
@@ -282,7 +303,7 @@ describe("createQuest", () => {
   it("uses an activation code given for a puzzle, and generates the others", async () => {
     await QuestService.createQuest({
       name: "coded",
-      assignee: { kind: "user", name: "player" },
+      entrants: [{ kind: "user", name: "player" }],
       puzzles: [
         { puzzleName: "colors", activationCode: "printed-code" },
         { puzzleName: "fruit" },
@@ -299,7 +320,8 @@ describe("createQuest", () => {
       status: "error",
       statusCode: 400,
       reason: "invalid-quest",
-      message: "Quest definition must contain a user or team to assign it to",
+      message:
+        "Quest definition must contain at least one user or team to play it",
     });
   });
 
@@ -313,7 +335,7 @@ describe("createQuest", () => {
       expect(
         await QuestService.createQuest({
           name: "orphan",
-          assignee: { kind, name },
+          entrants: [{ kind, name }],
         })
       ).toEqual({
         status: "error",
@@ -331,7 +353,7 @@ describe("createQuest", () => {
     expect(
       await QuestService.createQuest({
         name: "test-quest",
-        assignee: { kind: "user", name: "other" },
+        entrants: [{ kind: "user", name: "other" }],
       })
     ).toEqual({
       status: "error",
@@ -345,7 +367,7 @@ describe("createQuest", () => {
     expect(
       await QuestService.createQuest({
         name: "bad",
-        assignee: { kind: "user", name: "player" },
+        entrants: [{ kind: "user", name: "player" }],
         puzzles: [
           { puzzleName: "fruit" },
           { puzzleName: "nope" },
@@ -365,7 +387,7 @@ describe("createQuest", () => {
     expect(
       await QuestService.createQuest({
         name: "bad",
-        assignee: { kind: "user", name: "player" },
+        entrants: [{ kind: "user", name: "player" }],
         puzzles: [{ puzzleName: "fruit" }, { puzzleName: "fruit" }],
       })
     ).toEqual({
@@ -409,7 +431,7 @@ describe("startQuest", () => {
   it("refuses to start a quest with no puzzles", async () => {
     await QuestService.createQuest({
       name: "empty",
-      assignee: { kind: "user", name: "player" },
+      entrants: [{ kind: "user", name: "player" }],
     });
 
     expect(await QuestService.startQuest("empty")).toEqual({
@@ -1034,7 +1056,7 @@ describe("updateQuest", () => {
     const result = await QuestService.updateQuest({
       name: "test-quest",
       displayName: "Renamed",
-      assignee: { kind: "team", name: "team-a" },
+      entrants: [{ kind: "team", name: "team-a" }],
       puzzles: [
         { puzzleName: "finale", activationCode: "keep-this-code" },
         { puzzleName: "colors" },
@@ -1208,7 +1230,7 @@ describe("updateQuest", () => {
         statusCode: 400,
         reason: "wrong-state",
         message:
-          "Puzzle colors has already been reached by the players, so it must stay in its place at the start of the quest",
+          "Puzzle colors has already been reached by user player, so it must stay in its place at the start of the quest",
       });
       expect(await storedQuest()).toEqual(before);
     }
@@ -1234,7 +1256,7 @@ describe("updateQuest", () => {
       statusCode: 400,
       reason: "wrong-state",
       message:
-        "Quest test-quest is completed, so its puzzles can't change until it is reset",
+        "Quest test-quest is completed by user player, so its puzzles can't change until that entry is reset",
     });
     expect(
       await QuestService.updateQuest({
@@ -1278,7 +1300,7 @@ describe("updateQuest", () => {
       statusCode: 400,
       reason: "wrong-state",
       message:
-        "Puzzle fruit has already been reached by the players, so it must stay in its place at the start of the quest",
+        "Puzzle fruit has already been reached by user player, so it must stay in its place at the start of the quest",
     });
     expect(
       (await storedQuest()).entries[0]!.puzzles.map((p) => p.status)
@@ -1322,11 +1344,11 @@ describe("deleteQuest", () => {
   });
 });
 
-describe("getQuestByQuestName", () => {
+describe("getQuestEntries", () => {
   it("returns every puzzle, with details and activation codes, to an admin", async () => {
     const created = await createQuest();
 
-    const result = await QuestService.getQuestByQuestName(
+    const result = await getQuest(
       "test-quest",
       await createUser("admin", AuthorizationLevel.ADMIN)
     );
@@ -1350,7 +1372,7 @@ describe("getQuestByQuestName", () => {
   it("applies no player filtering when there is no user", async () => {
     await createQuest();
 
-    const result = await QuestService.getQuestByQuestName("test-quest", null);
+    const result = await getQuest("test-quest", null);
 
     expect(result.data!.puzzles).toHaveLength(3);
   });
@@ -1359,7 +1381,7 @@ describe("getQuestByQuestName", () => {
     await createQuest();
 
     expect(
-      await QuestService.getQuestByQuestName(
+      await getQuest(
         "test-quest",
         await createUser("player", AuthorizationLevel.USER)
       )
@@ -1376,7 +1398,7 @@ describe("getQuestByQuestName", () => {
     await createQuestWithFirstPuzzleInProgress();
     await QuestService.finishPuzzle("test-quest", "colors", PLAYER, "red blue");
 
-    const result = await QuestService.getQuestByQuestName(
+    const result = await getQuest(
       "test-quest",
       await createUser("player", AuthorizationLevel.USER)
     );
@@ -1394,7 +1416,7 @@ describe("getQuestByQuestName", () => {
     await assignToTeamA();
     await QuestService.startQuest("test-quest");
 
-    const result = await QuestService.getQuestByQuestName(
+    const result = await getQuest(
       "test-quest",
       await createUser("someone", AuthorizationLevel.USER, ["team-a"])
     );
@@ -1406,7 +1428,7 @@ describe("getQuestByQuestName", () => {
     await createQuest();
     await QuestService.startQuest("test-quest");
 
-    const result = await QuestService.getQuestByQuestName(
+    const result = await getQuest(
       "test-quest",
       await createUser("other", AuthorizationLevel.USER)
     );
@@ -1455,7 +1477,7 @@ describe("quests whose puzzles were deleted", () => {
     const [fruitId] = await puzzleIdsOf("fruit");
     await PuzzleModel.deleteOne({ name: "fruit" });
 
-    const result = await QuestService.getQuestByQuestName("test-quest", null);
+    const result = await getQuest("test-quest", null);
 
     expect(result.status).toBe("success");
     expect(result.data!.puzzles.map((p) => p.puzzleName)).toEqual([
@@ -1552,17 +1574,27 @@ describe("getPuzzleActivationQrCode", () => {
 describe("text responses", () => {
   it("accepts the expected response case-insensitively, once", async () => {
     await createQuest();
+    const entryId = await entryIdOf("test-quest");
     await QuestService.setExpectedTextResponse(
       "test-quest",
+      entryId,
       "Ready",
       "Let's go!"
     );
 
     expect(
-      await QuestService.validateExpectedTextResponse("test-quest", "READY")
+      await QuestService.validateExpectedTextResponse(
+        "test-quest",
+        entryId,
+        "READY"
+      )
     ).toEqual({ status: "success", statusCode: 200, data: "Let's go!" });
     expect(
-      await QuestService.validateExpectedTextResponse("test-quest", "ready")
+      await QuestService.validateExpectedTextResponse(
+        "test-quest",
+        entryId,
+        "ready"
+      )
     ).toEqual({
       status: "error",
       statusCode: 418,
@@ -1572,10 +1604,20 @@ describe("text responses", () => {
 
   it("rejects a response that does not match, leaving it expected", async () => {
     await createQuest();
-    await QuestService.setExpectedTextResponse("test-quest", "Ready", "Go");
+    const entryId = await entryIdOf("test-quest");
+    await QuestService.setExpectedTextResponse(
+      "test-quest",
+      entryId,
+      "Ready",
+      "Go"
+    );
 
     expect(
-      await QuestService.validateExpectedTextResponse("test-quest", "nope")
+      await QuestService.validateExpectedTextResponse(
+        "test-quest",
+        entryId,
+        "nope"
+      )
     ).toEqual({
       status: "error",
       statusCode: 400,

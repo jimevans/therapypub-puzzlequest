@@ -18,8 +18,8 @@ export async function receiveVoiceCall(
   res.type("text/xml").send(voice.data.response);
 
   if (voice.data.questsToActivate) {
-    for (const questName of voice.data.questsToActivate) {
-      await QuestService.startQuest(questName);
+    for (const { questName, entryId } of voice.data.questsToActivate) {
+      await QuestService.startQuest(questName, {}, { entryId });
     }
   }
 }

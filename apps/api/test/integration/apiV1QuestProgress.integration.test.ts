@@ -102,8 +102,8 @@ describe("a finished quest's times", () => {
       .get("/api/v1/quests/finished")
       .set("Authorization", `Bearer ${sessions.player}`);
 
-    expect(response.body.progress).toMatchObject(EXPECTED);
-    expect(response.body.progress.puzzles[0]).toMatchObject({
+    expect(response.body.entries[0].progress).toMatchObject(EXPECTED);
+    expect(response.body.entries[0].progress.puzzles[0]).toMatchObject({
       puzzleName: "first",
       penaltyMs: MINUTE,
     });
@@ -122,8 +122,8 @@ describe("a finished quest's times", () => {
       "/api/v1/quests/finished/spectator-view"
     );
 
-    expect(response.body.progress).toMatchObject(EXPECTED);
-    expect(response.body.progress.puzzles[0]).toMatchObject({
+    expect(response.body.entries[0].progress).toMatchObject(EXPECTED);
+    expect(response.body.entries[0].progress.puzzles[0]).toMatchObject({
       puzzleName: "first",
       penaltyMs: MINUTE,
     });

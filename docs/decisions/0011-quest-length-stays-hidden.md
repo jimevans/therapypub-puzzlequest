@@ -20,8 +20,14 @@ anything that would reveal it, such as per-puzzle progress.
 - Tests check raw responses for unreached puzzles' names and counts.
 - A web app's test once faked staff's quest list with puzzle lists the real
   API leaves out; contract tests now catch fakes like that.
-- Competitive quests with a leaderboard must be designed so a rival's finish
-  doesn't reveal the length.
+- Races: while a quest has several entries and not every one has finished,
+  everyone but staff and administrators sees only the standings (who plays,
+  their status, and their total time), with no stops: not in the public
+  view, its puzzle pages, or its live updates, which tell rivals only that
+  an entry changed. Otherwise a rival could read the leaders' puzzles,
+  hints, and answers, or learn the quest's length from a team that has
+  finished. Once every entry has finished, the views show each entry's
+  reached stops as before.
 
 ## Alternatives considered
 

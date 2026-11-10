@@ -8,18 +8,24 @@ import * as UserService from "../services/user.service.js";
 import type { ServiceResult } from "../types.js";
 import { unexpectedErrorResult } from "../errors.js";
 
-/** The reply to an incoming call, and the quests the call starts. */
+/** A quest's entry, by the quest's name and the entry's ID. */
+export interface QuestEntryRef {
+  questName: string;
+  entryId: string;
+}
+
+/** The reply to an incoming call, and the quests' entries the call starts. */
 export interface VoiceCallResponse {
   /** The TwiML that tells Twilio what to say to the caller. */
   response: string;
-  /** The quests to start, now that the caller has phoned in. */
-  questsToActivate?: string[];
+  /** The entries to start, now that the caller has phoned in. */
+  questsToActivate?: QuestEntryRef[];
 }
 
 /**
- * Builds the reply to an incoming phone call. A known caller with quests that
- * haven't started is told they are starting; the quests are returned so the
- * caller can start them.
+ * Builds the reply to an incoming phone call. A known caller whose entries in
+ * quests (their own, or their team's) haven't started is told they are
+ * starting; the entries are returned so the caller can start them.
  * @param initiatingPhoneNumber the caller's number in E.164 format, from Twilio, if not hidden
  * @returns the TwiML reply and the quests to start
  */
@@ -55,18 +61,18 @@ export async function respondToVoiceCall(
       data: { response: voiceResponse.toString() },
     };
   }
-  const questNames = [];
+  const questNames: QuestEntryRef[] = [];
   for (const user of getUserResponse.data) {
-    // Gets all quests for user and any teams the user is a member of.
+    // Gets the entries of the user and any teams the user is a member of.
     const assigneeIds = await user.getAssigneeIds();
     const findOptions = { assigneeIds };
     const getQuestsResponse = await QuestService.findQuests(findOptions);
     if (getQuestsResponse.status === "success") {
-      // Filter the quests so only those awaiting activation are selected.
-      const userQuestNames = getQuestsResponse.data
-        .filter((quest) => quest.status === 0)
-        .map((quest) => quest.name);
-      questNames.push(...userQuestNames);
+      // Only the entries not yet started are started.
+      const userEntries = getQuestsResponse.data
+        .filter((quest) => quest.status === QuestStatus.NOT_STARTED)
+        .map((quest) => ({ questName: quest.name, entryId: quest.entryId }));
+      questNames.push(...userEntries);
     }
   }
   const responseMessage = questNames.length
@@ -88,7 +94,8 @@ export async function respondToVoiceCall(
 
 /**
  * Builds the reply to an incoming text message, checking it against any reply
- * the sender's in-progress quests are expecting.
+ * the sender's entries in quests in progress (their own, or their team's) are
+ * expecting.
  * @param initiatingPhoneNumber the sender's number in E.164 format, from Twilio
  * @param incomingMessage the text of the message
  * @returns the TwiML reply
@@ -113,28 +120,32 @@ export async function respondToTextMessage(
     };
   }
 
-  const questsToValidate = [];
+  const questsToValidate: QuestEntryRef[] = [];
   const users = getUserResult.data;
   for (const user of users) {
-    // Gets all quests for user and any teams the user is a member of.
+    // Gets the entries of the user and any teams the user is a member of.
     const assigneeIds = await user.getAssigneeIds();
     const findOptions = { assigneeIds };
     const getQuestsResult = await QuestService.findQuests(findOptions);
     if (getQuestsResult.status === "success") {
-      // Filter the quests so only those in progress and expecting an incoming
-      // text message are selected.
-      const questNames = getQuestsResult.data
-        .filter((quest) => quest.status === 1 && quest.textResponse)
-        .map((quest) => quest.name);
-      questsToValidate.push(...questNames);
+      // Only the entries in progress and expecting an incoming text message
+      // are checked; other entries of the same quests are left alone.
+      const entries = getQuestsResult.data
+        .filter(
+          (quest) =>
+            quest.status === QuestStatus.IN_PROGRESS && quest.textResponse
+        )
+        .map((quest) => ({ questName: quest.name, entryId: quest.entryId }));
+      questsToValidate.push(...entries);
     }
   }
   let responseBody =
     "From the PuzzleQuest Game\n\nThe PuzzleMaster is not expecting to hear from you at this time.\n\nReply 'STOP' to unsubscribe";
   if (questsToValidate.length) {
-    for (const questName of questsToValidate) {
+    for (const { questName, entryId } of questsToValidate) {
       const validationResult = await QuestService.validateExpectedTextResponse(
         questName,
+        entryId,
         messageBody
       );
       if (validationResult.status === "success") {
@@ -156,15 +167,17 @@ export async function respondToTextMessage(
 }
 
 /**
- * Records the reply a quest expects by text message, and the confirmation to
- * send when it arrives. Does nothing if no reply is expected.
+ * Records the reply one of a quest's entries expects by text message, and the
+ * confirmation to send when it arrives. Does nothing if no reply is expected.
  * @param questName the name of the quest
+ * @param entryId the ID of the entry
  * @param expectedIncomingMessage the expected reply, if any
  * @param confirmation the confirmation to send when the reply arrives
  * @returns a success result, or an error result
  */
 export async function setupExpectedTextMessage(
   questName: string,
+  entryId: string,
   expectedIncomingMessage: string | undefined,
   confirmation: string | undefined
 ): Promise<ServiceResult<undefined>> {
@@ -179,6 +192,7 @@ export async function setupExpectedTextMessage(
 
     const setExpectationResult = await QuestService.setExpectedTextResponse(
       questName,
+      entryId,
       expectedIncomingMessage,
       confirmation
     );
@@ -190,9 +204,9 @@ export async function setupExpectedTextMessage(
 }
 
 /**
- * Gets the phone numbers to text for a quest: the user's number, or those of
- * the team's members, for whoever accepts text messages.
- * @param assignee the user or team the quest is assigned to
+ * Gets the phone numbers to text for a quest's entry: the user's number, or
+ * those of the team's members, for whoever accepts text messages.
+ * @param assignee the user or team playing the entry
  * @returns the phone numbers to text, in international format
  */
 export async function getPhoneNumbersToMessage(
@@ -267,9 +281,11 @@ export async function sendOutgoingTextMessage(
 }
 
 /**
- * Texts a message to the players of an in-progress quest who accept text
- * messages, and optionally sets the reply the quest then waits for.
+ * Texts a message to the players of one of a quest's entries, once it is in
+ * progress, who accept text messages, and optionally sets the reply the entry
+ * then waits for.
  * @param questName the quest
+ * @param entrant the user or team playing the entry
  * @param message the message
  * @param reply the reply to wait for, and the confirmation to send back
  *  when it arrives; omit to wait for none
@@ -277,14 +293,26 @@ export async function sendOutgoingTextMessage(
  */
 export async function sendQuestTextMessage(
   questName: string,
+  entrant: QuestService.EntrantRef,
   message: string,
   reply?: { expectedResponse: string; responseConfirmation: string }
 ): Promise<ServiceResult<undefined>> {
-  const found = await QuestService.getQuestByQuestName(questName);
+  const found = await QuestService.getQuestEntries(questName);
   if (found.status === "error") {
     return found;
   }
-  const quest = found.data;
+  const quest = found.data.find(
+    ({ assignee }) =>
+      assignee.kind === entrant.kind && assignee.name === entrant.name
+  );
+  if (!quest) {
+    return {
+      status: "error",
+      statusCode: 404,
+      reason: "not-found",
+      message: `${entrant.kind} ${entrant.name} isn't playing quest ${questName}`,
+    };
+  }
   if (quest.status !== QuestStatus.IN_PROGRESS) {
     return {
       status: "error",
@@ -308,6 +336,7 @@ export async function sendQuestTextMessage(
   if (reply) {
     const expectation = await setupExpectedTextMessage(
       quest.name,
+      quest.entryId,
       reply.expectedResponse,
       reply.responseConfirmation
     );

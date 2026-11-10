@@ -97,3 +97,23 @@ export async function puzzleIdsOf(
   }
   return ids;
 }
+
+/**
+ * Gets the ID of one of a stored quest's entries, for acting on an entry by
+ * its ID. The quest must exist and have the entry.
+ * @param questName the quest
+ * @param index the entry's place in the quest's entries; the first if left
+ *  out
+ * @returns the entry's ID
+ */
+export async function entryIdOf(questName: string, index = 0): Promise<string> {
+  const { QuestModel } = await import("../src/models/quest.model.js");
+  const quest = await QuestModel.findOne({ name: questName }, { entries: 1 })
+    .lean()
+    .exec();
+  const entry = quest?.entries[index];
+  if (!entry) {
+    throw new Error(`entryIdOf: quest ${questName} has no entry ${index}`);
+  }
+  return entry._id.toString();
+}

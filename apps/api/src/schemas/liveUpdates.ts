@@ -7,9 +7,16 @@ import { z } from "zod";
 /** A moment, in ISO 8601 format. */
 const time = z.iso.datetime();
 
-/** The names of the quest and puzzle a message is about. */
+/** The entry of a quest whose progress a message is about. */
+const entryId = z.string().meta({
+  description:
+    "The ID of the quest's entry whose progress changed: a quest can have several users or teams playing it, each with its own progress.",
+});
+
+/** The quest, entry, and puzzle a message is about. */
 const aboutPuzzle = {
   questName: z.string(),
+  entryId,
   puzzleName: z.string(),
 };
 
@@ -63,17 +70,18 @@ const hintRequested = z.object({
 });
 
 /**
- * The puzzle master changed the quest, such as pausing it or skipping a
- * puzzle; the page reloads to show it.
+ * The puzzle master changed an entry's progress, such as pausing it or
+ * skipping a puzzle; the page reloads to show it.
  */
 const questUpdated = z.object({
   message: z.literal("questUpdated"),
   questName: z.string(),
+  entryId,
 });
 
 /**
- * The quests assigned to the user, or to their teams, changed: one started,
- * moved on, or ended, was paused, reset, reassigned, or deleted, or the user
+ * The quests the user, or their teams, play changed: one started, moved on,
+ * or ended, was paused, reset, given other entrants, or deleted, or the user
  * joined or left a team. Sent to clients following the user's quests, which
  * fetch the list again; it says nothing about which quest it was.
  */

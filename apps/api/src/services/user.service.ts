@@ -329,6 +329,10 @@ export async function deleteUser(name: string): Promise<UserResult<undefined>> {
     { actor: name },
     { $unset: { actor: 1 }, $set: { actorDeleted: true } }
   );
+  await QuestEventModel.updateMany(
+    { "entrant.kind": "user", "entrant.name": name },
+    { $unset: { "entrant.name": 1 } }
+  );
   return { status: "success", statusCode: 200 };
 }
 

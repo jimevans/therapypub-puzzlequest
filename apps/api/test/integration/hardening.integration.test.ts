@@ -193,7 +193,7 @@ describe("guessing solutions", () => {
     await QuestService.createQuest({
       name: "quest",
       displayName: "Quest",
-      assignee: { kind: "user", name: "guesser" },
+      entrants: [{ kind: "user", name: "guesser" }],
       puzzles: [{ puzzleName: "riddle" }],
     });
     await QuestService.startQuest("quest");

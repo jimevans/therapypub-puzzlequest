@@ -114,19 +114,19 @@ describe("invalid input", () => {
     const response = await send("post", "/api/v1/quests").send({
       name: "quest",
       displayName: "Quest",
-      assignee: { kind: "group", name: "player" },
+      entrants: [{ kind: "group", name: "player" }],
     });
 
     expect(response.status).toBe(400);
     expect(JSON.parse(response.text).errors).toEqual([
-      { path: "body.assignee.kind", message: expect.any(String) },
+      { path: "body.entrants.0.kind", message: expect.any(String) },
     ]);
   });
 
   it("reports a missing field", async () => {
     const response = await send("post", "/api/v1/quests").send({
       name: "quest",
-      assignee: { kind: "user", name: "player" },
+      entrants: [{ kind: "user", name: "player" }],
     });
 
     expect(response.status).toBe(400);
@@ -141,7 +141,7 @@ describe("invalid input", () => {
       await QuestService.createQuest({
         name: "quest",
         displayName: "Quest",
-        assignee: { kind: "user", name: "player" },
+        entrants: [{ kind: "user", name: "player" }],
         puzzles: [],
       });
 
@@ -272,7 +272,7 @@ describe("fields a request adds", () => {
       await QuestService.createQuest({
         name,
         displayName: name,
-        assignee: { kind: "user", name: "player" },
+        entrants: [{ kind: "user", name: "player" }],
         puzzles: [],
       });
     }

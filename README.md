@@ -374,9 +374,7 @@ connection string, from the **Setup Node.js App** page:
 
 3. The command says which commit made the backup. If the code has changed the
    data's shape since then, deploy that commit, or run the later migrations
-   on the restored data. Some changes are made when the app starts, so the
-   restart in the next step makes them: quests stored before entries
-   ([decision 0022](docs/decisions/0022-quest-entries.md)) are given theirs.
+   on the restored data.
 4. Restart the app, with **Restart** on the **Setup Node.js App** page.
 
 **Practice.** To check a backup restores, without touching production,

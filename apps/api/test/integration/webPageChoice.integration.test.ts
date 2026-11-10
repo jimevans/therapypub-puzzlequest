@@ -63,7 +63,7 @@ beforeAll(async () => {
   await QuestService.createQuest({
     name: "trail",
     displayName: "The Trail",
-    assignee: { kind: "user", name: "player" },
+    entrants: [{ kind: "user", name: "player" }],
     puzzles: [{ puzzleName: "riddle" }],
   });
   await QuestService.startQuest("trail");

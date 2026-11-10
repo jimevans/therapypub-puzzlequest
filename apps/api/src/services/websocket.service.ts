@@ -12,7 +12,7 @@ import {
   type LiveUpdateSubscription,
   liveUpdateSubscriptionSchema,
 } from "../schemas/liveUpdates.js";
-import { redeemLiveTicket } from "./liveTicket.service.js";
+import { type LiveViewer, redeemLiveTicket } from "./liveTicket.service.js";
 
 /** A client connected for live updates. */
 interface WebSocketSession {
@@ -23,6 +23,11 @@ interface WebSocketSession {
   questName?: string;
   /** The share link it follows through, if any. */
   shareLinkId?: string;
+  /**
+   * Who follows the quest, if they were signed in when they got the ticket;
+   * while teams race, it decides what they are sent.
+   */
+  viewer?: LiveViewer;
   /** The user whose list of quests the client follows, instead of a quest. */
   userId?: string;
 }
@@ -159,10 +164,12 @@ export function initialize(
         if ("userId" in admitted) {
           session.questName = undefined;
           session.shareLinkId = undefined;
+          session.viewer = undefined;
           session.userId = admitted.userId;
         } else {
           session.questName = admitted.questName;
           session.shareLinkId = admitted.shareLinkId;
+          session.viewer = admitted.viewer;
           session.userId = undefined;
         }
       }
@@ -276,21 +283,62 @@ export function disconnectShareLinkFollowers(shareLinkId: string): void {
 }
 
 /**
+ * Who may be sent the content of a quest's update: while the quest is a race,
+ * only staff and the players of the entry it's about. Everyone else is told
+ * only that the entry changed, so rivals never learn each other's puzzles,
+ * hints, or answers.
+ */
+export interface QuestUpdateAudience {
+  /** True while the quest is a race that not every entry has finished. */
+  racing: boolean;
+  /** The ID of the user or team playing the entry the update is about. */
+  assigneeId: string;
+}
+
+/**
+ * Gets what a session may be sent of a quest's update.
+ * @param session the session
+ * @param update the update
+ * @param audience who may see its content; everyone, if left out
+ * @returns the update, or one saying only that its entry changed
+ */
+function updateFor(
+  session: WebSocketSession,
+  update: QuestUpdate,
+  audience?: QuestUpdateAudience
+): QuestUpdate {
+  const mayKnow =
+    !audience?.racing ||
+    session.viewer?.staff === true ||
+    session.viewer?.assigneeIds.includes(audience.assigneeId) === true;
+  return mayKnow || update.message === "questUpdated"
+    ? update
+    : {
+        message: "questUpdated",
+        questName: update.questName,
+        entryId: update.entryId,
+      };
+}
+
+/**
  * Notifies the clients following a quest.
  * @param update the update to send, about the quest it names
  * @param excludeConnections the connections to leave out, such as the one an
  *  action came from
+ * @param audience who may see the update's content (see QuestUpdateAudience);
+ *  everyone, if left out
  */
 export function notifyQuestFollowers(
   update: QuestUpdate,
-  excludeConnections: string[] = []
+  excludeConnections: string[] = [],
+  audience?: QuestUpdateAudience
 ): void {
   webSocketSessions.forEach((session) => {
     if (
       session.questName === update.questName &&
       !excludeConnections.includes(session.id)
     ) {
-      send(session.socket, update);
+      send(session.socket, updateFor(session, update, audience));
     }
   });
 }

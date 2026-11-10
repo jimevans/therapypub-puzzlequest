@@ -21,6 +21,14 @@ const liveTicketSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: "User",
   },
+  /**
+   * The signed-in user it was issued to, if any, for a quest: while teams
+   * race, what a connection is sent depends on who is watching.
+   */
+  viewerId: {
+    type: Schema.Types.ObjectId,
+    ref: "User",
+  },
   /** The share link it came through, if any, so revoking can cut it off. */
   shareLinkId: {
     type: Schema.Types.ObjectId,

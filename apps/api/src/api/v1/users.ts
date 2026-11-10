@@ -159,7 +159,7 @@ export const userRoutes = [
     operationId: "listUserQuests",
     summary: "List a user's quests",
     description:
-      "The quests assigned to the user or their teams, once they have started: what a player sees on signing in. It has no puzzles in it, so it says nothing about how long a quest is.",
+      "The quests the user plays, on their own or in a team, once their entry has started: what a player sees on signing in. Each shows the user's own entry, and no one else's. It has no puzzles in it, so it says nothing about how long a quest is.",
     tags: ["Users"],
     access: "selfOrAdmin",
     request: { params: userParams, query: pageQuery },

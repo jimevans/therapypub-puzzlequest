@@ -21,7 +21,7 @@ const { createApp } = await import("../../src/createApp.js");
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
 const { QuestModel, QuestPuzzleStatus, QuestStatus } =
   await import("../../src/models/quest.model.js");
-const { AuthorizationLevel, UserModel } =
+const { AuthorizationLevel, TeamModel, UserModel } =
   await import("../../src/models/user.model.js");
 const QuestService = await import("../../src/services/quest.service.js");
 const { questEventBus } = await import("../../src/events/questEventBus.js");
@@ -45,6 +45,7 @@ afterAll(async () => {
 beforeEach(async () => {
   await Promise.all([
     UserModel.deleteMany({}),
+    TeamModel.deleteMany({}),
     PuzzleModel.deleteMany({}),
     QuestModel.deleteMany({}),
   ]);
@@ -79,7 +80,7 @@ beforeEach(async () => {
   await QuestService.createQuest({
     name: "quest",
     displayName: "Quest",
-    assignee: { kind: "user", name: "player" },
+    entrants: [{ kind: "user", name: "player" }],
     puzzles: [{ puzzleName: "riddle" }, { puzzleName: "finale" }],
   });
   PLAYER = await assigneeIdsOf("player");
@@ -105,10 +106,11 @@ async function activate(puzzleName: string) {
 function rescue(
   action: "skip" | "reset",
   puzzleName: string,
-  body: object = {}
+  body: object = {},
+  entrant = "players/player"
 ) {
   return request(app)
-    .post(`/api/v1/quests/quest/puzzles/${puzzleName}/${action}`)
+    .post(`/api/v1/quests/quest/${entrant}/puzzles/${puzzleName}/${action}`)
     .set("Authorization", `Bearer ${sessions.admin}`)
     .send(body);
 }
@@ -121,7 +123,7 @@ async function playerView() {
   const response = await request(app)
     .get("/api/v1/quests/quest")
     .set("Authorization", `Bearer ${sessions.player}`);
-  return JSON.parse(response.text);
+  return JSON.parse(response.text).entries[0];
 }
 
 describe("skipping a puzzle", () => {
@@ -335,9 +337,55 @@ describe("a skipped puzzle, as the players see the quest", () => {
       .get("/api/v1/quests/quest")
       .set("Authorization", `Bearer ${sessions.player}`);
 
-    expect(response.body.puzzles[0]).toMatchObject({
+    expect(response.body.entries[0].puzzles[0]).toMatchObject({
       statusDescription: "Skipped",
       solutionDisplayText: "A piano",
     });
+  });
+});
+
+describe("rescuing one entrant in a quest several play", () => {
+  beforeEach(async () => {
+    await TeamModel.create({
+      teamName: "crew",
+      displayName: "Crew",
+      joinCode: "crew-code",
+      memberIds: [],
+    });
+    await QuestService.updateQuest({
+      name: "quest",
+      entrants: [
+        { kind: "user", name: "player" },
+        { kind: "team", name: "crew" },
+      ],
+    });
+    await QuestService.startQuest("quest");
+  });
+
+  it("changes only that entrant's progress", async () => {
+    const response = await rescue("skip", "riddle", {}, "teams/crew");
+
+    expect(response.status).toBe(200);
+    const [player, crew] = (await storedQuest()).entries;
+    expect(crew!.puzzles[0]).toMatchObject({
+      status: QuestPuzzleStatus.COMPLETED,
+      skipped: true,
+    });
+    expect(player!.puzzles[0].status).toBe(QuestPuzzleStatus.IN_PROGRESS);
+    // The answer is the whole quest, every entry.
+    expect(
+      JSON.parse(response.text).entries.map(
+        (entry: { entrant: { name: string } }) => entry.entrant.name
+      )
+    ).toEqual(["player", "crew"]);
+  });
+
+  it("isn't found for a user or team not playing the quest", async () => {
+    for (const entrant of ["teams/nobody", "players/admin"]) {
+      const response = await rescue("skip", "riddle", {}, entrant);
+
+      expect(response.status).toBe(404);
+      expect(JSON.parse(response.text).type).toBe("/problems/not-found");
+    }
   });
 });

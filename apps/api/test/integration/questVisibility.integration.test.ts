@@ -16,6 +16,7 @@ import {
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
+import { entryIdOf } from "../references.js";
 import WebSocket from "ws";
 import { QuestPuzzleStatus } from "../../src/domain/quest/state.js";
 import { startSessions } from "../sessions.js";
@@ -38,6 +39,9 @@ let clients: WebSocket[] = [];
 
 const QUEST = "/api/v1/quests/secret/spectator-view";
 const PUZZLE = "/api/v1/quests/secret/puzzles/riddle/spectator-view";
+
+/** The path of the puzzle as the quest's entry has it. */
+const puzzlePath = async () => `${PUZZLE}?entry=${await entryIdOf("secret")}`;
 const TICKET = "/api/v1/quests/secret/live-tickets";
 
 beforeAll(async () => {
@@ -98,7 +102,7 @@ beforeEach(async () => {
     name: "secret",
     displayName: "Secret",
     visibility: "private",
-    assignee: { kind: "user", name: "player" },
+    entrants: [{ kind: "user", name: "player" }],
     puzzles: [{ puzzleName: "riddle", activationCode: "code" }],
   });
   await QuestModel.updateOne(
@@ -108,7 +112,7 @@ beforeEach(async () => {
   await QuestService.createQuest({
     name: "open",
     displayName: "Open",
-    assignee: { kind: "user", name: "player" },
+    entrants: [{ kind: "user", name: "player" }],
     puzzles: [],
   });
   sessions = await startSessions(
@@ -141,7 +145,7 @@ describe("a private quest", () => {
     "is not found by %s, over any route",
     async (userName) => {
       expect((await view(QUEST, userName)).status).toBe(404);
-      expect((await view(PUZZLE, userName)).status).toBe(404);
+      expect((await view(await puzzlePath(), userName)).status).toBe(404);
       expect((await ticket(TICKET, userName)).status).toBe(404);
     }
   );
@@ -157,7 +161,7 @@ describe("a private quest", () => {
     "can be followed by %s",
     async (userName) => {
       expect((await view(QUEST, userName)).status).toBe(200);
-      expect((await view(PUZZLE, userName)).status).toBe(200);
+      expect((await view(await puzzlePath(), userName)).status).toBe(200);
       expect((await ticket(TICKET, userName)).status).toBe(201);
     }
   );
@@ -166,11 +170,30 @@ describe("a private quest", () => {
     await request(app)
       .patch("/api/v1/quests/secret")
       .set("Authorization", `Bearer ${sessions.boss}`)
-      .send({ assignee: { kind: "team", name: "reds" } })
+      .send({ entrants: [{ kind: "team", name: "reds" }] })
       .expect(200);
 
     expect((await view(QUEST, "teammate")).status).toBe(200);
     expect((await view(QUEST, "player")).status).toBe(404);
+  });
+
+  it("can be followed by the players of any of its entries", async () => {
+    await request(app)
+      .patch("/api/v1/quests/secret")
+      .set("Authorization", `Bearer ${sessions.boss}`)
+      .send({
+        entrants: [
+          { kind: "user", name: "player" },
+          { kind: "team", name: "reds" },
+        ],
+      })
+      .expect(200);
+
+    for (const userName of ["player", "teammate"]) {
+      expect((await view(QUEST, userName)).status).toBe(200);
+      expect((await ticket(TICKET, userName)).status).toBe(201);
+    }
+    expect((await view(QUEST, "stranger")).status).toBe(404);
   });
 });
 
@@ -287,7 +310,7 @@ describe("those following it", () => {
     await answered;
     const whenClosed = closed(socket);
 
-    await update({ assignee: { kind: "user", name: "stranger" } });
+    await update({ entrants: [{ kind: "user", name: "stranger" }] });
 
     expect(await whenClosed).toBe(4001);
   });

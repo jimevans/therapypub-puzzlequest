@@ -123,7 +123,7 @@ export interface paths {
         };
         /**
          * List a user's quests
-         * @description The quests assigned to the user or their teams, once they have started: what a player sees on signing in. It has no puzzles in it, so it says nothing about how long a quest is.
+         * @description The quests the user plays, on their own or in a team, once their entry has started: what a player sees on signing in. Each shows the user's own entry, and no one else's. It has no puzzles in it, so it says nothing about how long a quest is.
          */
         get: operations["listUserQuests"];
         put?: never;
@@ -439,7 +439,7 @@ export interface paths {
         put?: never;
         /**
          * Create a quest
-         * @description Assigns it to a user or team, with its puzzles in order; each puzzle gets an activation code unless one is given.
+         * @description With the users and teams playing it (at least one; a player may be in only one of them), and its puzzles in order; each puzzle gets an activation code unless one is given, the same for every entrant.
          */
         post: operations["createQuest"];
         delete?: never;
@@ -457,7 +457,7 @@ export interface paths {
         };
         /**
          * Get a quest
-         * @description An administrator sees all of it. A player sees a quest assigned to them or their team once it has started, with only the puzzles they have reached; any other quest is not found.
+         * @description An administrator sees all of it, with every entry. A player sees only their own entry (theirs or their team's) once it has started, with only the puzzles they have reached; a quest they don't play is not found.
          */
         get: operations["getQuest"];
         put?: never;
@@ -471,7 +471,7 @@ export interface paths {
         head?: never;
         /**
          * Change a quest
-         * @description Changes the fields given. Once the quest has started, the puzzles the players have reached stay in place at the start of the list; a completed quest's puzzles can't change until it is reset. Progress changes only through the actions.
+         * @description Changes the fields given. Once an entry has started, the puzzles it has reached stay in place at the start of the list; once any entry has completed the quest, its puzzles can't change until that entry is reset. Entrants already playing keep their progress; new ones start out not started; one left out is removed, but only before it starts (reset it first). Progress changes only through the actions.
          */
         patch: operations["updateQuest"];
         trace?: never;
@@ -486,8 +486,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Start a quest
-         * @description Makes its first puzzle available to activate. A player's phone call to the quest's number does the same.
+         * Start a quest, for every entrant
+         * @description Starts every entry not yet started, making the first puzzle available to activate; entries already started are left as they are. Answers wrong-state only if no entry could be changed. A player's phone call to the quest's number starts their own entry.
          */
         post: operations["startQuest"];
         delete?: never;
@@ -506,8 +506,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Reset a quest
-         * @description Returns it to not started, clearing the players' progress and pauses. The event log keeps what happened.
+         * Reset a quest, for every entrant
+         * @description Returns every entry to not started, clearing the players' progress and pauses. Answers wrong-state only if no entry could be changed. The event log keeps what happened.
          */
         post: operations["resetQuest"];
         delete?: never;
@@ -526,8 +526,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Pause a quest
-         * @description Stops its clocks; the players can't activate, guess, or reveal hints until it resumes, and the paused time doesn't count.
+         * Pause a quest, for every entrant
+         * @description Pauses every entry in progress and not already paused, stopping its clocks; its players can't activate, guess, or reveal hints until it resumes, and the paused time doesn't count. Answers wrong-state only if no entry could be changed.
          */
         post: operations["pauseQuest"];
         delete?: never;
@@ -546,8 +546,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Resume a paused quest
-         * @description Starts its clocks again.
+         * Resume a quest, for every entrant
+         * @description Resumes every paused entry, starting its clocks again. Answers wrong-state only if no entry could be changed.
          */
         post: operations["resumeQuest"];
         delete?: never;
@@ -556,7 +556,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/puzzles/{puzzleName}/skip": {
+    "/quests/{name}/teams/{teamName}/start": {
         parameters: {
             query?: never;
             header?: never;
@@ -566,17 +566,17 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Skip a puzzle for the players
-         * @description Completes a puzzle the players have reached, with no penalty; they see its solution, and the next puzzle becomes available. Allowed while the quest is paused.
+         * Start a team's entry in a quest
+         * @description Makes the first puzzle available to activate, for this entrant only. A player's phone call to the quest's number starts their own entry. Not found if the team isn't one of the quest's entrants.
          */
-        post: operations["skipQuestPuzzle"];
+        post: operations["startTeamEntry"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/puzzles/{puzzleName}/reset": {
+    "/quests/{name}/teams/{teamName}/reset": {
         parameters: {
             query?: never;
             header?: never;
@@ -586,10 +586,250 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Reset a solved puzzle
-         * @description Returns a completed puzzle to in progress, so the players solve it again, and every later puzzle to not reached. For a puzzle that accepted a wrong answer: pause the quest, correct the puzzle, reset it here, and resume. Allowed while the quest is paused.
+         * Reset a team's entry in a quest
+         * @description Returns the entrant's entry to not started, clearing its progress and pauses; other entries are left as they are. The event log keeps what happened. Not found if the team isn't one of the quest's entrants.
          */
-        post: operations["resetQuestPuzzle"];
+        post: operations["resetTeamEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quests/{name}/teams/{teamName}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pause a team's entry in a quest
+         * @description Stops the entrant's clocks; its players can't activate, guess, or reveal hints until it resumes, and the paused time doesn't count. Not found if the team isn't one of the quest's entrants.
+         */
+        post: operations["pauseTeamEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quests/{name}/teams/{teamName}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resume a team's entry in a quest
+         * @description Starts the entrant's clocks again. Not found if the team isn't one of the quest's entrants.
+         */
+        post: operations["resumeTeamEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quests/{name}/teams/{teamName}/puzzles/{puzzleName}/skip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Skip a puzzle for a team
+         * @description Completes a puzzle the entrant has reached, with no penalty; they see its solution, and the next puzzle becomes available. Allowed while the entry is paused. Not found if the team isn't one of the quest's entrants.
+         */
+        post: operations["skipTeamPuzzle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quests/{name}/teams/{teamName}/puzzles/{puzzleName}/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset a team's solved puzzle
+         * @description Returns a completed puzzle to in progress for the entrant, so they solve it again, and every later puzzle to not reached. For a puzzle that accepted a wrong answer: pause the entry, correct the puzzle, reset it here, and resume. Allowed while the entry is paused. Not found if the team isn't one of the quest's entrants.
+         */
+        post: operations["resetTeamPuzzle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quests/{name}/teams/{teamName}/text-messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Text a team's members
+         * @description Texts the message to the entrant's players who accept text messages, a few seconds apart, as carriers require; the entry must be in progress. With an expected response, the entry waits for that reply and texts the confirmation back when it arrives. Not found if the team isn't one of the quest's entrants.
+         */
+        post: operations["sendTeamTextMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quests/{name}/players/{userName}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start a player's entry in a quest
+         * @description Makes the first puzzle available to activate, for this entrant only. A player's phone call to the quest's number starts their own entry. Not found if the user isn't one of the quest's entrants.
+         */
+        post: operations["startPlayerEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quests/{name}/players/{userName}/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset a player's entry in a quest
+         * @description Returns the entrant's entry to not started, clearing its progress and pauses; other entries are left as they are. The event log keeps what happened. Not found if the user isn't one of the quest's entrants.
+         */
+        post: operations["resetPlayerEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quests/{name}/players/{userName}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pause a player's entry in a quest
+         * @description Stops the entrant's clocks; its players can't activate, guess, or reveal hints until it resumes, and the paused time doesn't count. Not found if the user isn't one of the quest's entrants.
+         */
+        post: operations["pausePlayerEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quests/{name}/players/{userName}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resume a player's entry in a quest
+         * @description Starts the entrant's clocks again. Not found if the user isn't one of the quest's entrants.
+         */
+        post: operations["resumePlayerEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quests/{name}/players/{userName}/puzzles/{puzzleName}/skip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Skip a puzzle for a player
+         * @description Completes a puzzle the entrant has reached, with no penalty; they see its solution, and the next puzzle becomes available. Allowed while the entry is paused. Not found if the user isn't one of the quest's entrants.
+         */
+        post: operations["skipPlayerPuzzle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quests/{name}/players/{userName}/puzzles/{puzzleName}/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset a player's solved puzzle
+         * @description Returns a completed puzzle to in progress for the entrant, so they solve it again, and every later puzzle to not reached. For a puzzle that accepted a wrong answer: pause the entry, correct the puzzle, reset it here, and resume. Allowed while the entry is paused. Not found if the user isn't one of the quest's entrants.
+         */
+        post: operations["resetPlayerPuzzle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quests/{name}/players/{userName}/text-messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Text a player
+         * @description Texts the message to the entrant's players who accept text messages, a few seconds apart, as carriers require; the entry must be in progress. With an expected response, the entry waits for that reply and texts the confirmation back when it arrives. Not found if the user isn't one of the quest's entrants.
+         */
+        post: operations["sendPlayerTextMessage"];
         delete?: never;
         options?: never;
         head?: never;
@@ -665,31 +905,11 @@ export interface paths {
         };
         /**
          * List what happened in a quest
-         * @description The quest's event log, oldest first. It keeps names as they were at the time, and survives resetting the quest.
+         * @description The quest's event log, oldest first, for every entry: each event says whose entry it happened in. It keeps names as they were at the time, and survives resetting the quest.
          */
         get: operations["listQuestEvents"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/quests/{name}/text-messages": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Text the players
-         * @description Texts the message to the quest's players who accept text messages, a few seconds apart, as carriers require. With an expected response, the quest waits for that reply and texts the confirmation back when it arrives.
-         */
-        post: operations["sendQuestTextMessage"];
         delete?: never;
         options?: never;
         head?: never;
@@ -705,7 +925,7 @@ export interface paths {
         };
         /**
          * See a puzzle as its players do
-         * @description For a puzzle the players have reached: what it asks, once activated, the hints revealed, what the next hint would cost, and the solution, once solved. A puzzle not yet reached is not found, even by an administrator, who can see the whole quest with getQuest. Players never learn how many puzzles a quest has.
+         * @description For a puzzle the caller's entry has reached: what it asks, once activated, the hints revealed, what the next hint would cost, and the solution, once solved. A puzzle not yet reached is not found, even by an administrator, who can see the whole quest with getQuest; an administrator who doesn't play the quest sees its first entry. Players never learn how many puzzles a quest has.
          */
         get: operations["getPlayerPuzzle"];
         put?: never;
@@ -787,7 +1007,7 @@ export interface paths {
         put?: never;
         /**
          * Get a ticket to follow a quest's live updates
-         * @description A ticket lets one connection to the live-update websocket, /api/v1/updates, follow the quest. It expires within a minute and can be used once, so ask for a new one for each connection. A private quest gives one only to its players, its staff, and holders of a share link, and is otherwise not found.
+         * @description A ticket lets one connection to the live-update websocket, /api/v1/updates, follow the quest, every entry of it. It expires within a minute and can be used once, so ask for a new one for each connection. A private quest gives one only to its players (in any of its entries), its staff, and holders of a share link, and is otherwise not found.
          */
         post: operations["createLiveTicket"];
         delete?: never;
@@ -805,7 +1025,7 @@ export interface paths {
         };
         /**
          * Follow a quest
-         * @description What anyone may see of a quest: its progress and the puzzles its players have reached. How many puzzles it has is never shown. A quest that hasn't started shows its name and status, with no puzzles. A private quest is not found, except by its players, its staff, and holders of a share link.
+         * @description What anyone may see of a quest: each entry's progress and the puzzles it has reached, with who plays it by display name only. How many puzzles it has is never shown. An entry that hasn't started shows its status, with no puzzles. While the quest is a race that not every entry has finished (racing), anyone but staff and administrators sees only the standings, with no stops (stopsHidden), so rivals can't read each other's puzzles and answers. A private quest is not found, except by its players (in any of its entries), its staff, and holders of a share link.
          */
         get: operations["getSpectatorQuest"];
         put?: never;
@@ -825,7 +1045,7 @@ export interface paths {
         };
         /**
          * Follow a puzzle
-         * @description What anyone may see of a puzzle once its players have activated it: what it asks, the hints revealed, and the solution, once solved. A puzzle not yet activated is not found.
+         * @description What anyone may see of a puzzle once an entry's players have activated it: what it asks, the hints that entry revealed, and the solution, once that entry solved it. A puzzle the entry hasn't activated, or an entry the quest doesn't have, is not found; so is every puzzle while the quest is a race that not every entry has finished, except for staff and administrators.
          */
         get: operations["getSpectatorPuzzle"];
         put?: never;
@@ -889,7 +1109,7 @@ export interface paths {
         };
         /**
          * List quests for staff
-         * @description Every quest, with who it's for and how it's going, for staff to choose one to follow.
+         * @description Every quest, with who plays it and how each entry is going, for staff to choose one to follow.
          */
         get: operations["listStaffQuests"];
         put?: never;
@@ -909,7 +1129,7 @@ export interface paths {
         };
         /**
          * Follow a quest as staff
-         * @description Every stop of the quest, in order, whether or not the players have reached it, with its live status, times, and activation code. No solutions or hint text.
+         * @description Every entry of the quest, each with every stop, in order, whether or not its players have reached it, with its live status, times, and activation code. No solutions or hint text.
          */
         get: operations["getStaffQuest"];
         put?: never;
@@ -1051,19 +1271,18 @@ export interface components {
              * @enum {string}
              */
             visibility?: "public" | "private";
-            assignee: {
-                /** @enum {string} */
-                kind: "user" | "team";
-                id: string;
-                /** @description Missing if the user or team has been deleted. */
-                name?: string;
-                displayName?: string;
-            };
+            /** @description The users and teams playing the quest, in order, each with its own progress. A player sees only their own entry. */
+            entries: components["schemas"]["QuestEntry"][];
+        };
+        QuestEntry: {
+            /** @description The entry's ID. */
+            id: string;
+            entrant: components["schemas"]["QuestEntrant"];
             /** @description 0 not started, 1 in progress, 2 completed. */
             status: number;
             statusDescription: string;
             paused: boolean;
-            /** @description The text message reply the quest is waiting for; only for administrators. */
+            /** @description The text message reply the entry is waiting for; only for administrators. */
             textResponse?: string;
             /** @description What is sent back when the reply arrives; only for administrators. */
             textResponseConfirmation?: string;
@@ -1120,6 +1339,13 @@ export interface components {
                 }[];
             };
         };
+        QuestEntrant: {
+            /** @enum {string} */
+            kind: "user" | "team";
+            /** @description The user name or team name; missing if the user or team has been deleted. */
+            name?: string;
+            displayName?: string;
+        };
         QuestPuzzle: {
             puzzleName: string;
             displayName?: string;
@@ -1155,6 +1381,13 @@ export interface components {
             actor?: string;
             /** @description True when whoever acted has since deleted their account, which took their name out of the log. */
             actorDeleted?: boolean;
+            /** @description The user or team whose entry it happened in; null for events logged before quests had several entries. */
+            entrant: {
+                /** @enum {string} */
+                kind: "user" | "team";
+                /** @description The user name or team name as it was at the time; missing if the user has since deleted their account, or the team was already deleted. */
+                name?: string;
+            } | null;
             /** @description Details particular to the type. */
             data?: {
                 [key: string]: unknown;
@@ -1279,10 +1512,27 @@ export interface components {
         SpectatorQuest: {
             name: string;
             displayName: string;
+            /** @description True while the quest is a race that not every entry has finished: it has several entries, and not all have completed it. The same for every viewer. */
+            racing: boolean;
+            /** @description True if this view is the standings alone: while racing, for anyone but staff and administrators, every entry's puzzles and progress.puzzles are empty, so rivals can't read each other's puzzles and answers. Each entry's entrant, status, pause, and progress totals are still shown. */
+            stopsHidden: boolean;
+            /** @description The users and teams playing the quest, in order, each with its own progress. */
+            entries: components["schemas"]["SpectatorQuestEntry"][];
+        };
+        SpectatorQuestEntry: {
+            /** @description The entry's ID, for following one of its puzzles with getSpectatorPuzzle. */
+            id: string;
+            entrant: {
+                /** @enum {string} */
+                kind: "user" | "team";
+                /** @description Missing if the user or team has been deleted. */
+                displayName?: string;
+            };
             /** @description 0 not started, 1 in progress, 2 completed. */
             status: number;
             statusDescription: string;
             paused: boolean;
+            /** @description The entry's time; its puzzles are empty when the quest's stopsHidden is true, leaving the totals: the standings. */
             progress: {
                 /**
                  * Format: date-time
@@ -1335,7 +1585,7 @@ export interface components {
                     totalMs: number;
                 }[];
             };
-            /** @description The puzzles reached so far, in order. */
+            /** @description The puzzles the entry has reached, in order; empty when the quest's stopsHidden is true. */
             puzzles: {
                 name: string;
                 displayName: string;
@@ -1406,13 +1656,12 @@ export interface components {
         StaffQuestSummary: {
             name: string;
             displayName: string;
-            assignee: {
-                /** @enum {string} */
-                kind: "user" | "team";
-                /** @description Missing if the user or team has been deleted. */
-                name?: string;
-                displayName?: string;
-            };
+            entries: components["schemas"]["StaffQuestEntrySummary"][];
+        };
+        StaffQuestEntrySummary: {
+            /** @description The entry's ID. */
+            id: string;
+            entrant: components["schemas"]["QuestEntrant"];
             /** @description 0 not started, 1 in progress, 2 completed. */
             status: number;
             statusDescription: string;
@@ -1446,13 +1695,12 @@ export interface components {
         StaffQuest: {
             name: string;
             displayName: string;
-            assignee: {
-                /** @enum {string} */
-                kind: "user" | "team";
-                /** @description Missing if the user or team has been deleted. */
-                name?: string;
-                displayName?: string;
-            };
+            entries: components["schemas"]["StaffQuestEntry"][];
+        };
+        StaffQuestEntry: {
+            /** @description The entry's ID. */
+            id: string;
+            entrant: components["schemas"]["QuestEntrant"];
             /** @description 0 not started, 1 in progress, 2 completed. */
             status: number;
             statusDescription: string;
@@ -1533,6 +1781,8 @@ export interface components {
             /** @constant */
             message: "puzzleActivated";
             questName: string;
+            /** @description The ID of the quest's entry whose progress changed: a quest can have several users or teams playing it, each with its own progress. */
+            entryId: string;
             puzzleName: string;
             /** Format: date-time */
             activationTime: string;
@@ -1540,6 +1790,8 @@ export interface components {
             /** @constant */
             message: "puzzleSolved";
             questName: string;
+            /** @description The ID of the quest's entry whose progress changed: a quest can have several users or teams playing it, each with its own progress. */
+            entryId: string;
             puzzleName: string;
             solutionText: string;
             /** Format: date-time */
@@ -1553,6 +1805,8 @@ export interface components {
             /** @constant */
             message: "puzzleStarted";
             questName: string;
+            /** @description The ID of the quest's entry whose progress changed: a quest can have several users or teams playing it, each with its own progress. */
+            entryId: string;
             puzzleName: string;
             displayName: string;
             /** Format: date-time */
@@ -1561,6 +1815,8 @@ export interface components {
             /** @constant */
             message: "hintRequested";
             questName: string;
+            /** @description The ID of the quest's entry whose progress changed: a quest can have several users or teams playing it, each with its own progress. */
+            entryId: string;
             puzzleName: string;
             hintText: string;
             moreHints: boolean;
@@ -1571,6 +1827,8 @@ export interface components {
             /** @constant */
             message: "questUpdated";
             questName: string;
+            /** @description The ID of the quest's entry whose progress changed: a quest can have several users or teams playing it, each with its own progress. */
+            entryId: string;
         } | {
             /** @constant */
             message: "questsChanged";
@@ -3984,15 +4242,17 @@ export interface operations {
                     name: string;
                     displayName: string;
                     /**
-                     * @description Who can follow the quest: anyone, or only its players and staff. New quests are public.
+                     * @description Who can follow the quest: anyone, or only its players (in any of its entries) and staff. New quests are public.
                      * @enum {string}
                      */
                     visibility?: "public" | "private";
-                    assignee: {
+                    /** @description The users and teams playing the quest, in order; at least one. Each has its own progress through the same stops. A player may be in only one of them, as a user or in a team. On a change, those already playing keep their progress, new ones start out not started, and those left out are removed, which is allowed only before they start. */
+                    entrants: {
                         /** @enum {string} */
                         kind: "user" | "team";
+                        /** @description The user name or team name. */
                         name: string;
-                    };
+                    }[];
                     /** @default [] */
                     puzzles?: {
                         puzzleName: string;
@@ -4202,15 +4462,17 @@ export interface operations {
                 "application/json": {
                     displayName?: string;
                     /**
-                     * @description Who can follow the quest: anyone, or only its players and staff. New quests are public.
+                     * @description Who can follow the quest: anyone, or only its players (in any of its entries) and staff. New quests are public.
                      * @enum {string}
                      */
                     visibility?: "public" | "private";
-                    assignee?: {
+                    /** @description The users and teams playing the quest, in order; at least one. Each has its own progress through the same stops. A player may be in only one of them, as a user or in a team. On a change, those already playing keep their progress, new ones start out not started, and those left out are removed, which is allowed only before they start. */
+                    entrants?: {
                         /** @enum {string} */
                         kind: "user" | "team";
+                        /** @description The user name or team name. */
                         name: string;
-                    };
+                    }[];
                     puzzles?: {
                         puzzleName: string;
                         activationCode?: string;
@@ -4576,13 +4838,295 @@ export interface operations {
             };
         };
     };
-    skipQuestPuzzle: {
+    startTeamEntry: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 /** @description The quest's name. */
                 name: string;
+                /** @description The team's name. */
+                teamName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The quest. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quest"];
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/wrong-state: Not possible now. /problems/try-again: Changed at the same time. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    resetTeamEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The quest's name. */
+                name: string;
+                /** @description The team's name. */
+                teamName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The quest. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quest"];
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/wrong-state: Not possible now. /problems/try-again: Changed at the same time. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    pauseTeamEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The quest's name. */
+                name: string;
+                /** @description The team's name. */
+                teamName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The quest. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quest"];
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/wrong-state: Not possible now. /problems/try-again: Changed at the same time. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    resumeTeamEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The quest's name. */
+                name: string;
+                /** @description The team's name. */
+                teamName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The quest. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quest"];
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/wrong-state: Not possible now. /problems/try-again: Changed at the same time. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    skipTeamPuzzle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The quest's name. */
+                name: string;
+                /** @description The team's name. */
+                teamName: string;
                 /** @description The puzzle's name. */
                 puzzleName: string;
             };
@@ -4646,13 +5190,15 @@ export interface operations {
             };
         };
     };
-    resetQuestPuzzle: {
+    resetTeamPuzzle: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 /** @description The quest's name. */
                 name: string;
+                /** @description The team's name. */
+                teamName: string;
                 /** @description The puzzle's name. */
                 puzzleName: string;
             };
@@ -4732,6 +5278,665 @@ export interface operations {
             };
             /** @description /problems/unexpected: An unexpected error occurred. */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    sendTeamTextMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The quest's name. */
+                name: string;
+                /** @description The team's name. */
+                teamName: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    message: string;
+                    /** @description A reply for the quest to wait for; letter case doesn't matter. */
+                    expectedResponse?: string;
+                    /** @description What is texted back when the reply arrives. */
+                    responseConfirmation?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Sent. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description /problems/invalid-request: The request isn't valid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/wrong-state: Not possible now. /problems/no-recipients: Nobody to text. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/messaging-failed: Text message not sent. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    startPlayerEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The quest's name. */
+                name: string;
+                /** @description The user name of the player playing on their own. */
+                userName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The quest. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quest"];
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/wrong-state: Not possible now. /problems/try-again: Changed at the same time. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    resetPlayerEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The quest's name. */
+                name: string;
+                /** @description The user name of the player playing on their own. */
+                userName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The quest. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quest"];
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/wrong-state: Not possible now. /problems/try-again: Changed at the same time. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    pausePlayerEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The quest's name. */
+                name: string;
+                /** @description The user name of the player playing on their own. */
+                userName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The quest. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quest"];
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/wrong-state: Not possible now. /problems/try-again: Changed at the same time. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    resumePlayerEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The quest's name. */
+                name: string;
+                /** @description The user name of the player playing on their own. */
+                userName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The quest. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quest"];
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/wrong-state: Not possible now. /problems/try-again: Changed at the same time. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    skipPlayerPuzzle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The quest's name. */
+                name: string;
+                /** @description The user name of the player playing on their own. */
+                userName: string;
+                /** @description The puzzle's name. */
+                puzzleName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The quest. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quest"];
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/wrong-state: Not possible now. /problems/try-again: Changed at the same time. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    resetPlayerPuzzle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The quest's name. */
+                name: string;
+                /** @description The user name of the player playing on their own. */
+                userName: string;
+                /** @description The puzzle's name. */
+                puzzleName: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @default false */
+                    refundHints?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The quest. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quest"];
+                };
+            };
+            /** @description /problems/invalid-request: The request isn't valid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/wrong-state: Not possible now. /problems/try-again: Changed at the same time. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    sendPlayerTextMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The quest's name. */
+                name: string;
+                /** @description The user name of the player playing on their own. */
+                userName: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    message: string;
+                    /** @description A reply for the quest to wait for; letter case doesn't matter. */
+                    expectedResponse?: string;
+                    /** @description What is texted back when the reply arrives. */
+                    responseConfirmation?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Sent. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description /problems/invalid-request: The request isn't valid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/wrong-state: Not possible now. /problems/no-recipients: Nobody to text. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/messaging-failed: Text message not sent. */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4998,109 +6203,6 @@ export interface operations {
             };
         };
     };
-    sendQuestTextMessage: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The quest's name. */
-                name: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    message: string;
-                    /** @description A reply for the quest to wait for; letter case doesn't matter. */
-                    expectedResponse?: string;
-                    /** @description What is texted back when the reply arrives. */
-                    responseConfirmation?: string;
-                };
-            };
-        };
-        responses: {
-            /** @description Sent. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description /problems/invalid-request: The request isn't valid. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description /problems/sign-in-required: Sign in to do this. */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description /problems/forbidden: Not allowed. /problems/cross-site-request: Request from another site. */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description /problems/not-found: Not found. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description /problems/wrong-state: Not possible now. /problems/no-recipients: Nobody to text. */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description /problems/body-too-large: Request too large. */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description /problems/unexpected: An unexpected error occurred. */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description /problems/messaging-failed: Text message not sent. */
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
     getPlayerPuzzle: {
         parameters: {
             query?: never;
@@ -5135,6 +6237,15 @@ export interface operations {
             };
             /** @description /problems/not-found: Not found. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/wrong-state: Not possible now. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5592,7 +6703,10 @@ export interface operations {
     };
     getSpectatorPuzzle: {
         parameters: {
-            query?: never;
+            query: {
+                /** @description The ID of the entry whose progress to show, from the quest's spectator view. */
+                entry: string;
+            };
             header?: never;
             path: {
                 /** @description The quest's name. */
@@ -5611,6 +6725,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SpectatorPuzzle"];
+                };
+            };
+            /** @description /problems/invalid-request: The request isn't valid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description /problems/not-found: Not found. */

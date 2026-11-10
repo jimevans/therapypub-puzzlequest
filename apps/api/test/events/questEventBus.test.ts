@@ -8,6 +8,11 @@ import { recordLogs } from "../logs.js";
 const activity: QuestActivity = {
   questName: "quest1",
   actor: "player",
+  entry: {
+    id: "entry-1",
+    assignee: { kind: "user", id: "000000000000000000000001" },
+  },
+  racing: false,
   events: [{ type: "QuestStarted", at: new Date("2026-11-03T20:00:00Z") }],
 };
 

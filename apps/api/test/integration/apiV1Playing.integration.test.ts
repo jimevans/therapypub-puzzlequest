@@ -109,7 +109,7 @@ beforeEach(async () => {
   await QuestService.createQuest({
     name: "quest",
     displayName: "Quest",
-    assignee: { kind: "team", name: "team" },
+    entrants: [{ kind: "team", name: "team" }],
     puzzles: [
       { puzzleName: "riddle", activationCode: "riddle-code" },
       { puzzleName: "finale", activationCode: "finale-code" },

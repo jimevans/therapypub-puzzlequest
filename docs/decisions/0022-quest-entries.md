@@ -28,8 +28,9 @@ one entry, so there is one shape, not two kinds of quest.
 - Every entry plays the same stops with the same activation codes: one QR
   code per stop, whichever team scans it.
 - An entry's progress is kept by puzzle, in the order of the quest's stops.
-- Quests stored before entries are converted when the server starts, which
-  changes only quests still in the old shape.
+- Quests stored before entries were converted by a one-off upgrade that ran
+  when the server started, in the release that introduced entries; it has
+  since been removed.
 
 ## Consequences
 
