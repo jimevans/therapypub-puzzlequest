@@ -298,13 +298,15 @@ describe("authoring", () => {
     await $("#text-dialog").$("button=Cancel").click();
   });
 
-  it("downloads the run book and the QR codes", async () => {
+  it("downloads the run book, the QR cards and a QR code", async () => {
+    await $(`button[aria-label="QR code for A Text Puzzle"]`).click();
+    const dialog = $("#qr-code-dialog");
     const links = [
       (await $("#run-book").getAttribute("href")) ?? "",
-      (await $(`a[aria-label="QR code for A Text Puzzle"]`).getAttribute(
-        "href"
-      )) ?? "",
+      (await $("#qr-cards").getAttribute("href")) ?? "",
+      (await dialog.$("a=Download PNG").getAttribute("href")) ?? "",
     ];
+    await dialog.$("button=Done").click();
     const types = await browser.execute(
       async (hrefs: string[]) =>
         Promise.all(
@@ -316,7 +318,7 @@ describe("authoring", () => {
       links
     );
 
-    expect(types).toEqual(["application/pdf", "image/png"]);
+    expect(types).toEqual(["application/pdf", "application/pdf", "image/png"]);
   });
 
   it("resets the quest after asking", async () => {

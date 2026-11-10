@@ -2137,7 +2137,10 @@ export async function getPuzzleActivationQrCode(
   }
   const puzzle = quest.puzzles[index];
   try {
-    const qrCodeData = await QRCode.toBuffer(puzzle.activationCode);
+    // Large enough to stay sharp on a tablet's screen or printed.
+    const qrCodeData = await QRCode.toBuffer(puzzle.activationCode, {
+      width: 600,
+    });
     return { status: "success", statusCode: 200, data: qrCodeData };
   } catch (err) {
     return unexpectedErrorResult("getPuzzleActivationQrCode", err);

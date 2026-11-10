@@ -1,6 +1,9 @@
 import type { Schemas } from "@puzzlequest/api-client";
+import { useState } from "react";
 import { Link } from "react-router";
 import { ClockTime } from "../../quests/ClockTime";
+import type { QrCodeStop } from "../../quests/QrCodeDialog";
+import { QrCodeDialogWhenShown } from "../../quests/QrCodeDialogWhenShown";
 import {
   QUEST_COMPLETED,
   QUEST_NOT_STARTED,
@@ -31,7 +34,7 @@ export function puzzleLabel(puzzle: QuestPuzzle): string {
  * it, with what the puzzle master needs to run it.
  */
 export function StopsTable({ quest, onSkip, onReset }: StopsTableProps) {
-  const questPath = `/api/v1/quests/${encodeURIComponent(quest.name)}`;
+  const [shown, setShown] = useState<QrCodeStop | null>(null);
   const running = quest.status !== QUEST_NOT_STARTED;
   const clockOf = (puzzleName: string) =>
     quest.progress.puzzles.find((clock) => clock.puzzleName === puzzleName);
@@ -92,13 +95,19 @@ export function StopsTable({ quest, onSkip, onReset }: StopsTableProps) {
                   {puzzle.solutionDisplayText}
                 </td>
                 <td className={adminStyles.rowActions}>
-                  <a
-                    href={`${questPath}/puzzles/${encodeURIComponent(puzzle.puzzleName)}/qr-code`}
-                    download={`${quest.name}-${puzzle.puzzleName}-qr-code.png`}
+                  <Button
                     aria-label={`QR code for ${label}`}
+                    onPress={() =>
+                      setShown({
+                        number: index + 1,
+                        puzzleName: puzzle.puzzleName,
+                        label,
+                        activationCode: puzzle.activationCode ?? "",
+                      })
+                    }
                   >
                     QR code
-                  </a>
+                  </Button>
                   {canSkip && (
                     <Button
                       aria-label={`Skip ${label}`}
@@ -121,6 +130,11 @@ export function StopsTable({ quest, onSkip, onReset }: StopsTableProps) {
           })}
         </tbody>
       </table>
+      <QrCodeDialogWhenShown
+        questName={quest.name}
+        stop={shown}
+        onClose={() => setShown(null)}
+      />
     </div>
   );
 }

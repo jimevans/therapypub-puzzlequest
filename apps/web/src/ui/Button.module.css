@@ -12,8 +12,12 @@
   color: var(--ink);
 }
 
+/* React Aria's buttons say when they're hovered, pressed or focused by data
+   attributes; a plain <button> with these classes (data-rac marks React
+   Aria's) uses the browser's own states. */
 .secondary[data-hovered],
-.secondary[data-pressed] {
+.secondary[data-pressed],
+.secondary:not([data-rac]):is(:hover, :active) {
   background: var(--paper-soft);
 }
 
@@ -25,11 +29,13 @@
 }
 
 .primary[data-hovered],
-.primary[data-pressed] {
+.primary[data-pressed],
+.primary:not([data-rac]):is(:hover, :active) {
   filter: brightness(0.9);
 }
 
-.button[data-focus-visible] {
+.button[data-focus-visible],
+.button:not([data-rac]):focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
 }

@@ -1,5 +1,6 @@
 // Staff following a quest from a stop: every stop in order, kept up to date as
-// a player gets on, and nothing about how to solve any of it.
+// a player gets on, each stop's QR code to show the players, and nothing about
+// how to solve any of it.
 import {
   ADMIN,
   api,
@@ -110,8 +111,6 @@ describe("staff", () => {
     const page = await $("body").getText();
 
     for (const secret of [
-      "staffed-riddle-code",
-      "staffed-finale-code",
       "A grand piano",
       "All done",
       "It makes music",
@@ -120,6 +119,28 @@ describe("staff", () => {
       expect(page).not.toContain(secret);
     }
     expect(await blockedByPolicy()).toEqual([]);
+  });
+
+  it("show the players a stop's QR code to scan", async () => {
+    await $('button[aria-label="QR code for The Staffed Finale"]').click();
+
+    const dialog = $("#qr-code-dialog");
+    await expect(dialog).toBeDisplayed();
+    await expect(dialog.$("h2")).toHaveText("Stop 2: The Staffed Finale");
+    await expect(dialog).toHaveText(
+      expect.stringContaining("staffed-finale-code")
+    );
+    const image = await dialog.$("img");
+    await browser.waitUntil(async () =>
+      browser.execute(
+        (element) => (element as HTMLImageElement).naturalWidth > 0,
+        image
+      )
+    );
+    await expectAccessible();
+
+    await dialog.$("button=Done").click();
+    await expect(dialog).not.toBeDisplayed();
   });
 
   it("can't open the administrators' screens", async () => {

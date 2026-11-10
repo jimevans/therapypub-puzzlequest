@@ -605,7 +605,7 @@ export interface paths {
         };
         /**
          * Get a puzzle's activation QR code
-         * @description A PNG image of the QR code holding the puzzle's activation code, to print and place where the players will find it.
+         * @description A PNG image of the QR code holding the puzzle's activation code, for staff to show the players or to print.
          */
         get: operations["getActivationQrCode"];
         put?: never;
@@ -628,6 +628,26 @@ export interface paths {
          * @description A PDF with a page for each of the quest's puzzles, in order: its content and solution, for whoever runs the quest.
          */
         get: operations["getQuestRunBook"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quests/{name}/qr-cards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a quest's activation cards
+         * @description A PDF of cards to print, one for each of the quest's stops in order, each with the stop's activation QR code and code, its puzzle's name, the stop's number, and the quest's name. Ten 3.5 × 2 inch cards to a US Letter sheet, laid out for perforated business-card sheets (Avery 8371 and compatibles).
+         */
+        get: operations["getQuestQrCards"];
         put?: never;
         post?: never;
         delete?: never;
@@ -889,7 +909,7 @@ export interface paths {
         };
         /**
          * Follow a quest as staff
-         * @description Every stop of the quest, in order, whether or not the players have reached it, with its live status and times. No solutions, activation codes, or hint text.
+         * @description Every stop of the quest, in order, whether or not the players have reached it, with its live status, times, and activation code. No solutions or hint text.
          */
         get: operations["getStaffQuest"];
         put?: never;
@@ -1492,6 +1512,8 @@ export interface components {
                 /** @description 0 not reached, 1 awaiting activation, 2 in progress, 3 completed. */
                 status: number;
                 statusDescription: string;
+                /** @description The code that unlocks the stop, which staff show the players as a QR code. */
+                activationCode: string;
                 skipped: boolean;
                 hintsRevealed: number;
                 hintCount: number;
@@ -4787,6 +4809,65 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description The run book. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/forbidden: Not allowed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getQuestQrCards: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The quest's name. */
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The cards. */
             200: {
                 headers: {
                     [name: string]: unknown;

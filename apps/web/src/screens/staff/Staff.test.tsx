@@ -1,7 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
 import { ok, refusal } from "../../test/fakes";
 import StaffHome from "./StaffHome";
@@ -26,6 +27,7 @@ function step(name: string, status: number, statusDescription: string) {
     displayName: `The ${name}`,
     status,
     statusDescription,
+    activationCode: name.toUpperCase(),
     skipped: false,
     hintsRevealed: status === 3 ? 1 : 0,
     hintCount: 2,
@@ -92,6 +94,18 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+beforeEach(() => {
+  // jsdom has no modal dialogs.
+  HTMLDialogElement.prototype.showModal = vi.fn(function (
+    this: HTMLDialogElement
+  ) {
+    this.open = true;
+  });
+  HTMLDialogElement.prototype.close = vi.fn(function (this: HTMLDialogElement) {
+    this.open = false;
+  });
+});
+
 describe("staff's home", () => {
   it("lists every quest, those under way first", async () => {
     vi.spyOn(api, "GET").mockResolvedValue(
@@ -142,6 +156,29 @@ describe("a quest, as staff follow it", () => {
     expect(steps[2]).toHaveTextContent("Stop 3The finaleUnavailable");
     expect(steps[2]).not.toHaveTextContent("Hints");
     expect(screen.getByText(/The Reds \(team\) · In progress/)).toBeVisible();
+  });
+
+  it("shows any stop's QR code for the players to scan", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(api, "GET").mockResolvedValue(ok(QUEST) as never);
+    show(<StaffQuest />, "/quest/trail", "/quest/:name");
+
+    await user.click(
+      await screen.findByRole("button", { name: "QR code for The cipher" })
+    );
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Stop 2: The cipher",
+    });
+    expect(
+      within(dialog).getByRole("img", {
+        name: "QR code for activating The cipher",
+      })
+    ).toHaveAttribute("src", "/api/v1/quests/trail/puzzles/cipher/qr-code");
+    expect(dialog).toHaveTextContent("Or type CIPHER");
+    expect(
+      screen.getByRole("button", { name: "QR code for The finale" })
+    ).toBeInTheDocument();
   });
 
   it("says when the quest is paused", async () => {

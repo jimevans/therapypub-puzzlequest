@@ -167,12 +167,15 @@ describe("the quest console", () => {
       within(rows[1]!).getByRole("link", { name: "The riddle" })
     ).toHaveAttribute("href", "/puzzle/riddle");
     expect(
-      within(rows[3]!).getByRole("link", { name: "QR code for The finale" })
-    ).toHaveAttribute("href", "/api/v1/quests/trail/puzzles/finale/qr-code");
+      within(rows[3]!).getByRole("button", { name: "QR code for The finale" })
+    ).toBeVisible();
     expect(screen.getByText("The Reds (team)")).toBeVisible();
     expect(
       screen.getByRole("link", { name: "Run book (PDF)" })
     ).toHaveAttribute("href", "/api/v1/quests/trail/run-book");
+    expect(
+      screen.getByRole("link", { name: "QR cards to print (PDF)" })
+    ).toHaveAttribute("href", "/api/v1/quests/trail/qr-cards");
   });
 
   it("puts the share links after the stops and before the activity", async () => {
@@ -204,7 +207,38 @@ describe("the quest console", () => {
       screen.getByRole("button", { name: "Skip The cipher" })
     ).toBeVisible();
     expect(
-      screen.queryByRole("button", { name: /The finale/ })
+      screen.queryByRole("button", { name: /^(Skip|Reset) The finale/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a stop's QR code to scan, with its code and a download", async () => {
+    const user = userEvent.setup();
+    apiQuest(RUNNING);
+    show();
+
+    await user.click(
+      await screen.findByRole("button", { name: "QR code for The finale" })
+    );
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Stop 3: The finale",
+    });
+    expect(
+      within(dialog).getByRole("img", {
+        name: "QR code for activating The finale",
+      })
+    ).toHaveAttribute("src", "/api/v1/quests/trail/puzzles/finale/qr-code");
+    expect(dialog).toHaveTextContent("Or type FINALE1");
+    const download = within(dialog).getByRole("link", { name: "Download PNG" });
+    expect(download).toHaveAttribute(
+      "href",
+      "/api/v1/quests/trail/puzzles/finale/qr-code"
+    );
+    expect(download).toHaveAttribute("download", "trail-finale-qr-code.png");
+
+    await user.click(within(dialog).getByRole("button", { name: "Done" }));
+    expect(
+      screen.queryByRole("dialog", { name: "Stop 3: The finale" })
     ).not.toBeInTheDocument();
   });
 

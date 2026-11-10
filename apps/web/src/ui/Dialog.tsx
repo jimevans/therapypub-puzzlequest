@@ -3,6 +3,8 @@ import styles from "./Dialog.module.css";
 
 interface DialogProps {
   id?: string;
+  /** Styles of its own, such as a larger size, added to the dialog's. */
+  className?: string;
   isOpen: boolean;
   title: string;
   /** Called when the visitor dismisses it, such as with the Escape key. */
@@ -16,6 +18,7 @@ interface DialogProps {
  */
 export function Dialog({
   id,
+  className,
   isOpen,
   title,
   onDismiss,
@@ -37,7 +40,7 @@ export function Dialog({
     <dialog
       id={id}
       ref={dialog}
-      className={styles.dialog}
+      className={className ? `${styles.dialog} ${className}` : styles.dialog}
       aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault();
