@@ -79,7 +79,7 @@ describe("the default organization", () => {
     });
     await QuestModel.create({
       name: "quest",
-      assignee: { kind: "user", id: new Types.ObjectId() },
+      entries: [{ assignee: { kind: "user", id: new Types.ObjectId() } }],
     });
 
     for (const model of [UserModel, TeamModel, PuzzleModel, QuestModel]) {

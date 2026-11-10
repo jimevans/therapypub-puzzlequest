@@ -136,7 +136,7 @@ async function assignToTeamA() {
   const [teamId] = await assigneeIdsOf("team-a");
   await QuestModel.updateOne(
     { name: "test-quest" },
-    { assignee: { kind: "team", id: teamId } }
+    { "entries.0.assignee": { kind: "team", id: teamId } }
   );
 }
 
@@ -198,6 +198,9 @@ describe("createQuest", () => {
     expect(quest).toMatchObject({
       name: "test-quest",
       displayName: "Test Quest",
+    });
+    expect(quest.entries).toHaveLength(1);
+    expect(quest.entries[0]).toMatchObject({
       assignee: {
         kind: "user",
         id: (await UserModel.findOne({ userName: "player" }).lean())!._id,
@@ -212,9 +215,14 @@ describe("createQuest", () => {
       "finale",
     ]);
     for (const puzzle of quest.puzzles) {
+      expect(puzzle.activationCode).toMatch(/^[0-9a-f]{32}$/);
+    }
+    expect(quest.entries[0]!.puzzles.map((puzzle) => puzzle.puzzleId)).toEqual(
+      quest.puzzles.map((puzzle) => puzzle.puzzleId)
+    );
+    for (const puzzle of quest.entries[0]!.puzzles) {
       expect(puzzle.status).toBe(QuestPuzzleStatus.UNAVAILABLE);
       expect(puzzle.nextHintToDisplay).toBe(0);
-      expect(puzzle.activationCode).toMatch(/^[0-9a-f]{32}$/);
       expect(puzzle.startTime).toBeUndefined();
       expect(puzzle.activationTime).toBeUndefined();
       expect(puzzle.endTime).toBeUndefined();
@@ -379,14 +387,14 @@ describe("startQuest", () => {
 
     expect(result).toEqual({ status: "success", statusCode: 200 });
     const quest = await storedQuest();
-    expect(quest.status).toBe(QuestStatus.IN_PROGRESS);
-    expect(quest.puzzles.map((puzzle) => puzzle.status)).toEqual([
+    expect(quest.entries[0]!.status).toBe(QuestStatus.IN_PROGRESS);
+    expect(quest.entries[0]!.puzzles.map((puzzle) => puzzle.status)).toEqual([
       QuestPuzzleStatus.AWAITING_ACTIVATION,
       QuestPuzzleStatus.UNAVAILABLE,
       QuestPuzzleStatus.UNAVAILABLE,
     ]);
-    expectBetween(quest.puzzles[0].startTime, before, after);
-    expect(quest.puzzles[1].startTime).toBeUndefined();
+    expectBetween(quest.entries[0]!.puzzles[0].startTime, before, after);
+    expect(quest.entries[0]!.puzzles[1].startTime).toBeUndefined();
   });
 
   it("returns 404 for an unknown quest", async () => {
@@ -443,11 +451,15 @@ describe("activatePuzzle", () => {
     expect(result.statusCode).toBe(200);
     expectBetween(result.data!.activationTime, before, after);
     const quest = await storedQuest();
-    expect(quest.puzzles[0].status).toBe(QuestPuzzleStatus.IN_PROGRESS);
-    expect(quest.puzzles[0].activationTime).toEqual(
+    expect(quest.entries[0]!.puzzles[0].status).toBe(
+      QuestPuzzleStatus.IN_PROGRESS
+    );
+    expect(quest.entries[0]!.puzzles[0].activationTime).toEqual(
       result.data!.activationTime
     );
-    expect(quest.puzzles[1].status).toBe(QuestPuzzleStatus.UNAVAILABLE);
+    expect(quest.entries[0]!.puzzles[1].status).toBe(
+      QuestPuzzleStatus.UNAVAILABLE
+    );
   });
 
   it("allows a member of the team the quest is assigned to", async () => {
@@ -477,7 +489,7 @@ describe("activatePuzzle", () => {
       reason: "wrong-activation-code",
       message: "Incorrect activation code for puzzle",
     });
-    expect((await storedQuest()).puzzles[0].status).toBe(
+    expect((await storedQuest()).entries[0]!.puzzles[0].status).toBe(
       QuestPuzzleStatus.AWAITING_ACTIVATION
     );
   });
@@ -589,12 +601,20 @@ describe("finishPuzzle", () => {
     });
     expectBetween(result.data!.endTime, before, after);
     const quest = await storedQuest();
-    expect(quest.status).toBe(QuestStatus.IN_PROGRESS);
-    expect(quest.puzzles[0].status).toBe(QuestPuzzleStatus.COMPLETED);
-    expect(quest.puzzles[0].endTime).toEqual(result.data!.endTime);
-    expect(quest.puzzles[1].status).toBe(QuestPuzzleStatus.AWAITING_ACTIVATION);
-    expect(quest.puzzles[1].startTime).toEqual(result.data!.endTime);
-    expect(quest.puzzles[2].status).toBe(QuestPuzzleStatus.UNAVAILABLE);
+    expect(quest.entries[0]!.status).toBe(QuestStatus.IN_PROGRESS);
+    expect(quest.entries[0]!.puzzles[0].status).toBe(
+      QuestPuzzleStatus.COMPLETED
+    );
+    expect(quest.entries[0]!.puzzles[0].endTime).toEqual(result.data!.endTime);
+    expect(quest.entries[0]!.puzzles[1].status).toBe(
+      QuestPuzzleStatus.AWAITING_ACTIVATION
+    );
+    expect(quest.entries[0]!.puzzles[1].startTime).toEqual(
+      result.data!.endTime
+    );
+    expect(quest.entries[0]!.puzzles[2].status).toBe(
+      QuestPuzzleStatus.UNAVAILABLE
+    );
   });
 
   it("completes the quest when the last puzzle is solved", async () => {
@@ -621,8 +641,10 @@ describe("finishPuzzle", () => {
       questComplete: true,
     });
     const quest = await storedQuest();
-    expect(quest.status).toBe(QuestStatus.COMPLETED);
-    expect(quest.puzzles[0].status).toBe(QuestPuzzleStatus.COMPLETED);
+    expect(quest.entries[0]!.status).toBe(QuestStatus.COMPLETED);
+    expect(quest.entries[0]!.puzzles[0].status).toBe(
+      QuestPuzzleStatus.COMPLETED
+    );
   });
 
   it("plays a whole quest from start to completion", async () => {
@@ -655,9 +677,11 @@ describe("finishPuzzle", () => {
     }
 
     const quest = await storedQuest();
-    expect(quest.status).toBe(QuestStatus.COMPLETED);
+    expect(quest.entries[0]!.status).toBe(QuestStatus.COMPLETED);
     expect(
-      quest.puzzles.every((p) => p.status === QuestPuzzleStatus.COMPLETED)
+      quest.entries[0]!.puzzles.every(
+        (p) => p.status === QuestPuzzleStatus.COMPLETED
+      )
     ).toBe(true);
   });
 
@@ -672,7 +696,7 @@ describe("finishPuzzle", () => {
       reason: "wrong-answer",
       message: "Incorrect guess for puzzle solution",
     });
-    expect((await storedQuest()).puzzles[0].status).toBe(
+    expect((await storedQuest()).entries[0]!.puzzles[0].status).toBe(
       QuestPuzzleStatus.IN_PROGRESS
     );
   });
@@ -773,7 +797,7 @@ describe("finishPuzzle", () => {
     await createQuestWithFirstPuzzleInProgress();
     await QuestModel.updateOne(
       { name: "test-quest" },
-      { status: QuestStatus.COMPLETED }
+      { "entries.0.status": QuestStatus.COMPLETED }
     );
 
     expect(
@@ -847,8 +871,12 @@ describe("finishPuzzle", () => {
       nextPuzzleDisplayName: `deleted-puzzle-${fruitId.toString()}`,
     });
     const quest = await storedQuest();
-    expect(quest.puzzles[0].status).toBe(QuestPuzzleStatus.COMPLETED);
-    expect(quest.puzzles[1].status).toBe(QuestPuzzleStatus.AWAITING_ACTIVATION);
+    expect(quest.entries[0]!.puzzles[0].status).toBe(
+      QuestPuzzleStatus.COMPLETED
+    );
+    expect(quest.entries[0]!.puzzles[1].status).toBe(
+      QuestPuzzleStatus.AWAITING_ACTIVATION
+    );
   });
 
   it.each([
@@ -904,7 +932,9 @@ describe("getPuzzleHint", () => {
       timePenalty: 300,
       isNextHintSolution: false,
     });
-    expect((await storedQuest()).puzzles[0].nextHintToDisplay).toBe(2);
+    expect((await storedQuest()).entries[0]!.puzzles[0].nextHintToDisplay).toBe(
+      2
+    );
   });
 
   it("returns false once every hint has been shown", async () => {
@@ -915,7 +945,9 @@ describe("getPuzzleHint", () => {
     expect(
       await QuestService.getPuzzleHint("test-quest", "colors", PLAYER)
     ).toEqual({ status: "success", statusCode: 200, data: false });
-    expect((await storedQuest()).puzzles[0].nextHintToDisplay).toBe(2);
+    expect((await storedQuest()).entries[0]!.puzzles[0].nextHintToDisplay).toBe(
+      2
+    );
   });
 
   it("records only the hint position, not the time penalty (current behavior)", async () => {
@@ -924,11 +956,12 @@ describe("getPuzzleHint", () => {
     await QuestService.getPuzzleHint("test-quest", "colors", PLAYER);
 
     const after = await storedQuest();
-    expect(after.puzzles[0]).toEqual({
-      ...before.puzzles[0],
+    expect(after.puzzles).toEqual(before.puzzles);
+    expect(after.entries[0]!.puzzles[0]).toEqual({
+      ...before.entries[0]!.puzzles[0],
       nextHintToDisplay: 1,
     });
-    expect(after.status).toBe(before.status);
+    expect(after.entries[0]!.status).toBe(before.entries[0]!.status);
   });
 
   it("rejects hints for a puzzle that is not in progress", async () => {
@@ -976,13 +1009,15 @@ describe("resetQuest", () => {
     });
 
     const quest = await storedQuest();
-    expect(quest.status).toBe(QuestStatus.NOT_STARTED);
-    for (const [index, puzzle] of quest.puzzles.entries()) {
+    expect(quest.entries[0]!.status).toBe(QuestStatus.NOT_STARTED);
+    for (const puzzle of quest.entries[0]!.puzzles) {
       expect(puzzle.status).toBe(QuestPuzzleStatus.UNAVAILABLE);
       expect(puzzle.nextHintToDisplay).toBe(0);
       expect(puzzle.startTime).toBeUndefined();
       expect(puzzle.activationTime).toBeUndefined();
       expect(puzzle.endTime).toBeUndefined();
+    }
+    for (const [index, puzzle] of quest.puzzles.entries()) {
       expect(puzzle.activationCode).toBe(before.puzzles[index].activationCode);
     }
   });
@@ -1009,11 +1044,16 @@ describe("updateQuest", () => {
     expect(result).toEqual({ status: "success", statusCode: 200 });
     const quest = await storedQuest();
     expect(quest.displayName).toBe("Renamed");
-    expect(quest.assignee).toEqual({
+    expect(quest.entries[0]!.assignee).toEqual({
       kind: "team",
       id: (await TeamModel.findOne({ teamName: "team-a" }).lean())!._id,
     });
-    expect(quest.puzzles.map((p) => [p.puzzleName, p.status])).toEqual([
+    expect(
+      quest.puzzles.map((p, index) => [
+        p.puzzleName,
+        quest.entries[0]!.puzzles[index].status,
+      ])
+    ).toEqual([
       ["finale", QuestPuzzleStatus.UNAVAILABLE],
       ["colors", QuestPuzzleStatus.UNAVAILABLE],
     ]);
@@ -1031,7 +1071,7 @@ describe("updateQuest", () => {
 
     const quest = await storedQuest();
     expect(quest.displayName).toBe("Test Quest");
-    expect(quest.assignee).toEqual({
+    expect(quest.entries[0]!.assignee).toEqual({
       kind: "user",
       id: (await UserModel.findOne({ userName: "player" }).lean())!._id,
     });
@@ -1045,21 +1085,22 @@ describe("updateQuest", () => {
     await QuestService.updateQuest({
       name: "test-quest",
       displayName: "Renamed",
-      puzzles: before.puzzles.map(({ puzzleName, status, activationCode }) => ({
+      puzzles: before.puzzles.map(({ puzzleName, activationCode }, index) => ({
         puzzleName,
-        status,
+        status: before.entries[0]!.puzzles[index].status,
         activationCode,
       })),
     });
 
     const quest = await storedQuest();
     expect(quest.displayName).toBe("Renamed");
-    expect(quest.puzzles[0]).toEqual({
-      ...before.puzzles[0],
+    expect(quest.puzzles[0]).toEqual(before.puzzles[0]);
+    expect(quest.entries[0]!.puzzles[0]).toEqual({
+      ...before.entries[0]!.puzzles[0],
       nextHintToDisplay: 1,
     });
-    expect(quest.puzzles[0].startTime).toBeInstanceOf(Date);
-    expect(quest.puzzles[0].activationTime).toBeInstanceOf(Date);
+    expect(quest.entries[0]!.puzzles[0].startTime).toBeInstanceOf(Date);
+    expect(quest.entries[0]!.puzzles[0].activationTime).toBeInstanceOf(Date);
   });
 
   it("leaves the puzzles unchanged when the definition has no puzzle list", async () => {
@@ -1072,6 +1113,7 @@ describe("updateQuest", () => {
     const quest = await storedQuest();
     expect(quest.displayName).toBe("x");
     expect(quest.puzzles).toEqual(before.puzzles);
+    expect(quest.entries[0]!.puzzles).toEqual(before.entries[0]!.puzzles);
   });
 
   it("rejects puzzle names that do not exist, changing nothing", async () => {
@@ -1126,8 +1168,9 @@ describe("updateQuest", () => {
     ).toEqual({ status: "success", statusCode: 200 });
 
     const quest = await storedQuest();
-    expect(quest.status).toBe(QuestStatus.IN_PROGRESS);
+    expect(quest.entries[0]!.status).toBe(QuestStatus.IN_PROGRESS);
     expect(quest.puzzles).toEqual(before.puzzles);
+    expect(quest.entries[0]!.puzzles).toEqual(before.entries[0]!.puzzles);
   });
 
   it("lets puzzles after the ones the players have reached change", async () => {
@@ -1237,7 +1280,9 @@ describe("updateQuest", () => {
       message:
         "Puzzle fruit has already been reached by the players, so it must stay in its place at the start of the quest",
     });
-    expect((await storedQuest()).puzzles.map((p) => p.status)).toEqual([
+    expect(
+      (await storedQuest()).entries[0]!.puzzles.map((p) => p.status)
+    ).toEqual([
       QuestPuzzleStatus.COMPLETED,
       QuestPuzzleStatus.AWAITING_ACTIVATION,
       QuestPuzzleStatus.UNAVAILABLE,
@@ -1536,7 +1581,7 @@ describe("text responses", () => {
       statusCode: 400,
       message: "Expected response does not match",
     });
-    expect((await storedQuest()).textResponse).toBe("Ready");
+    expect((await storedQuest()).entries[0]!.textResponse).toBe("Ready");
   });
 });
 

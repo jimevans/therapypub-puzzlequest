@@ -191,7 +191,7 @@ describe("Twilio webhook signatures", () => {
     // A bare refusal, which tells the sender nothing.
     expect(response.text).toBe("Forbidden");
     // A forged call must not start the caller's quests.
-    expect((await storedQuest("player-quest")).status).toBe(
+    expect((await storedQuest("player-quest")).entries[0]!.status).toBe(
       QuestStatus.NOT_STARTED
     );
   });
@@ -270,11 +270,11 @@ describe("POST /api/v1/webhooks/twilio/voice", () => {
     );
     // Quests are started after the response is sent.
     await vi.waitFor(async () => {
-      expect((await storedQuest("player-quest")).status).toBe(
+      expect((await storedQuest("player-quest")).entries[0]!.status).toBe(
         QuestStatus.IN_PROGRESS
       );
     });
-    expect((await storedQuest("team-quest")).status).toBe(
+    expect((await storedQuest("team-quest")).entries[0]!.status).toBe(
       QuestStatus.NOT_STARTED
     );
   });
@@ -285,7 +285,7 @@ describe("POST /api/v1/webhooks/twilio/voice", () => {
     await call("+15551230002");
 
     await vi.waitFor(async () => {
-      expect((await storedQuest("team-quest")).status).toBe(
+      expect((await storedQuest("team-quest")).entries[0]!.status).toBe(
         QuestStatus.IN_PROGRESS
       );
     });
@@ -340,14 +340,18 @@ describe("POST /api/v1/webhooks/twilio/messages", () => {
     expect(response.text).toBe(
       '<?xml version="1.0" encoding="UTF-8"?><Response><Message>From the PuzzleQuest Game\n\nYour next clue is under the mat.\n\nReply \'STOP\' to unsubscribe</Message></Response>'
     );
-    expect((await storedQuest("player-quest")).textResponse).toBe("");
+    expect((await storedQuest("player-quest")).entries[0]!.textResponse).toBe(
+      ""
+    );
   });
 
   it("tells the player when the reply is wrong, and keeps waiting", async () => {
     const response = await text("+15551230001", "not yet");
 
     expect(response.text).toContain("Your response was incorrect.");
-    expect((await storedQuest("player-quest")).textResponse).toBe("Ready");
+    expect((await storedQuest("player-quest")).entries[0]!.textResponse).toBe(
+      "Ready"
+    );
   });
 
   it("tells a player with no expected reply that none is expected", async () => {
@@ -436,7 +440,7 @@ describe("POST /api/v1/quests/{name}/text-messages", () => {
       },
     });
     expect(throttle).toHaveBeenCalledWith(5000);
-    expect(await storedQuest("team-quest")).toMatchObject({
+    expect((await storedQuest("team-quest")).entries[0]).toMatchObject({
       textResponse: "Found it",
       textResponseConfirmation: "Well done!",
     });
@@ -530,7 +534,9 @@ describe("POST /api/v1/quests/{name}/text-messages", () => {
     });
     expect(twilioRequests).toHaveLength(0);
     // Nothing was sent, so the quest isn't waiting for a reply to it.
-    expect((await storedQuest("quiet-quest")).textResponse).toBe("");
+    expect((await storedQuest("quiet-quest")).entries[0]!.textResponse).toBe(
+      ""
+    );
   });
 
   it("refuses a quest that is not in progress", async () => {

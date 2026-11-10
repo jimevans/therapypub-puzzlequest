@@ -129,11 +129,13 @@ describe("skipping a puzzle", () => {
     expect((await rescue("skip", "riddle")).status).toBe(200);
 
     const quest = await storedQuest();
-    expect(quest.puzzles[0]).toMatchObject({
+    expect(quest.entries[0]!.puzzles[0]).toMatchObject({
       status: QuestPuzzleStatus.COMPLETED,
       skipped: true,
     });
-    expect(quest.puzzles[1].status).toBe(QuestPuzzleStatus.AWAITING_ACTIVATION);
+    expect(quest.entries[0]!.puzzles[1].status).toBe(
+      QuestPuzzleStatus.AWAITING_ACTIVATION
+    );
     const view = await playerView();
     expect(view.puzzles[0]).toMatchObject({
       statusDescription: "Skipped",
@@ -147,7 +149,9 @@ describe("skipping a puzzle", () => {
 
     await rescue("skip", "finale");
 
-    expect((await storedQuest()).status).toBe(QuestStatus.COMPLETED);
+    expect((await storedQuest()).entries[0]!.status).toBe(
+      QuestStatus.COMPLETED
+    );
   });
 
   it("works while the quest is paused", async () => {
@@ -230,13 +234,13 @@ describe("resetting a puzzle", () => {
     await QuestService.resumeQuest("quest");
 
     const quest = await storedQuest();
-    expect(quest.puzzles[0]).toMatchObject({
+    expect(quest.entries[0]!.puzzles[0]).toMatchObject({
       status: QuestPuzzleStatus.IN_PROGRESS,
       nextHintToDisplay: 1,
       penaltyFreeHints: 1,
     });
-    expect(quest.puzzles[0].endTime).toBeUndefined();
-    expect(quest.puzzles[1]).toMatchObject({
+    expect(quest.entries[0]!.puzzles[0].endTime).toBeUndefined();
+    expect(quest.entries[0]!.puzzles[1]).toMatchObject({
       status: QuestPuzzleStatus.UNAVAILABLE,
     });
     const view = await playerView();
@@ -266,7 +270,9 @@ describe("resetting a puzzle", () => {
 
     await rescue("reset", "riddle");
 
-    expect((await storedQuest()).puzzles[0].penaltyFreeHints).toBe(0);
+    expect((await storedQuest()).entries[0]!.puzzles[0].penaltyFreeHints).toBe(
+      0
+    );
     expect((await playerView()).progress.penaltyMs).toBe(60 * 1000);
   });
 
@@ -274,13 +280,17 @@ describe("resetting a puzzle", () => {
     await acceptWrongAnswer();
     await activate("finale");
     await QuestService.finishPuzzle("quest", "finale", PLAYER, "done");
-    expect((await storedQuest()).status).toBe(QuestStatus.COMPLETED);
+    expect((await storedQuest()).entries[0]!.status).toBe(
+      QuestStatus.COMPLETED
+    );
 
     await rescue("reset", "finale");
 
     const quest = await storedQuest();
-    expect(quest.status).toBe(QuestStatus.IN_PROGRESS);
-    expect(quest.puzzles[1].status).toBe(QuestPuzzleStatus.IN_PROGRESS);
+    expect(quest.entries[0]!.status).toBe(QuestStatus.IN_PROGRESS);
+    expect(quest.entries[0]!.puzzles[1].status).toBe(
+      QuestPuzzleStatus.IN_PROGRESS
+    );
   });
 
   it("is refused for a puzzle still in progress", async () => {

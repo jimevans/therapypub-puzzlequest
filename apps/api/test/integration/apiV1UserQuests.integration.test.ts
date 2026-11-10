@@ -147,7 +147,7 @@ describe("listing a user's quests", () => {
   it("includes completed quests", async () => {
     await createQuest("done", TO_PLAYER);
     await QuestService.startQuest("done");
-    await QuestModel.updateOne({ name: "done" }, { status: 2 });
+    await QuestModel.updateOne({ name: "done" }, { "entries.0.status": 2 });
 
     const { items } = await listed("player", "player");
 
