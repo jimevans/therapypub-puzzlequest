@@ -7,6 +7,7 @@ import { Problems, sendProblem } from "../api/problems.js";
 import { log } from "../logger.js";
 
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
+const ONE_HOUR = 60 * 60 * 1000;
 
 /**
  * Answers a request over its limit. The RateLimit headers say when to try
@@ -68,12 +69,47 @@ export const passwordChangeRateLimiter = rateLimit({
 });
 
 /**
- * Limits password reset and reset request attempts from a single client. Whoever
- * makes these isn't signed in, so the address is all there is to go on.
+ * Limits requests for a reset link for one account, named by user name or
+ * email address, from anywhere, so the form can't be used to flood
+ * someone's inbox. The answer is the same whether or not the account
+ * exists, so counting by account reveals nothing. The cost: someone could
+ * keep an account from getting a link for up to an hour.
  */
-export const passwordRateLimiter = rateLimit({
+export const passwordResetRequestRateLimiter = rateLimit({
+  windowMs: ONE_HOUR,
+  limit: 3,
+  keyGenerator: (req) =>
+    String(req.body?.identifier ?? "")
+      .trim()
+      .toLowerCase(),
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  handler,
+});
+
+/**
+ * Limits requests for reset links from one network address across all
+ * accounts, which stops one address working through a list of them. It is
+ * high enough for a venue full of players sharing an address.
+ */
+export const passwordResetRequestAddressRateLimiter = rateLimit({
   windowMs: FIFTEEN_MINUTES,
-  limit: 5,
+  limit: 50,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  handler,
+});
+
+/**
+ * Limits failed password resets from one network address: expired or used
+ * links, and passwords that aren't allowed. Successes don't count, so a venue
+ * full of players can all reset. The token is too random to guess, so this
+ * only stops abuse.
+ */
+export const passwordResetRateLimiter = rateLimit({
+  windowMs: FIFTEEN_MINUTES,
+  limit: 30,
+  skipSuccessfulRequests: true,
   standardHeaders: "draft-8",
   legacyHeaders: false,
   handler,
