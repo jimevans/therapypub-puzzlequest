@@ -45,14 +45,41 @@
   margin: 0;
 }
 
-.stops .code {
-  font-family: ui-monospace, monospace;
+/* Words wrap only between themselves: nothing breaks mid-word, at any
+   width. */
+table.stops th,
+table.stops td {
   overflow-wrap: normal;
+}
+
+/* Headers, numbers, hints and times read at a glance on one line; and
+   statuses, where there's room. */
+.stops th,
+.stops td:nth-child(1),
+.stops td:nth-child(5),
+.stops .time {
   white-space: nowrap;
 }
 
-.stops .time {
+@media (min-width: 40rem) {
+  .stops td:nth-child(3) {
+    white-space: nowrap;
+  }
+}
+
+.stops .code {
+  font-family: ui-monospace, monospace;
   white-space: nowrap;
+}
+
+/* A generated code is 32 characters: its first few, like a short commit ID,
+   are enough to tell stops apart. */
+.shortCode {
+  display: inline-block;
+  max-width: 10ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
 }
 
 .phoneCode {
@@ -115,12 +142,6 @@
 }
 
 @media (max-width: 40rem) {
-  /* Words wrap between themselves; only the codes break anywhere. */
-  table.stops th,
-  table.stops td {
-    overflow-wrap: normal;
-  }
-
   /* The row's actions stack, rather than widening the table. */
   table.stops td:last-child {
     white-space: normal;
@@ -129,6 +150,7 @@
   table.stops td:last-child > * {
     display: block;
     width: fit-content;
+    white-space: nowrap;
     margin: 0 0 0 auto;
   }
 
