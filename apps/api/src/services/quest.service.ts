@@ -106,12 +106,59 @@ export type QuestProperties = Pick<Quest, "name" | "displayName" | "status"> & {
   };
 
 /**
- * A quest's progress on a puzzle as stored: the puzzle is referred to by its
- * ID, and its name is looked up when the quest is loaded.
+ * A quest's progress on a puzzle as the find pipeline returns it: a stop and
+ * the entry's progress on it, merged. The puzzle is referred to by its ID,
+ * and its name is looked up when the quest is loaded.
  */
 type StoredQuestPuzzle = Omit<QuestPuzzleProperties, "puzzleName"> & {
   puzzleId: Types.ObjectId;
 };
+
+/** A quest document loaded from the data store. */
+type QuestDocument = InstanceType<typeof QuestModel>;
+
+/** One of a quest document's entries. */
+type EntryDocument = QuestDocument["entries"][number];
+
+/**
+ * Gets a quest's entry. Every quest has exactly one for now: competitive
+ * quests, with several, are being built.
+ * @param quest the quest document
+ * @returns the entry
+ */
+function entryOf(quest: QuestDocument): EntryDocument {
+  const [entry] = quest.entries;
+  if (!entry) {
+    throw new Error(`Quest ${quest.name} has no entry`);
+  }
+  return entry;
+}
+
+/**
+ * A new stop: a puzzle, with a generated activation code.
+ * @param puzzleId the ID of the puzzle
+ * @returns the stop
+ */
+function createStop(puzzleId: Types.ObjectId): {
+  puzzleId: Types.ObjectId;
+  activationCode: string;
+  cardWord?: string;
+} {
+  return { puzzleId, activationCode: randomUUID().replaceAll("-", "") };
+}
+
+/**
+ * An entry's progress on a puzzle it hasn't reached.
+ * @param puzzleId the ID of the puzzle
+ * @returns the progress
+ */
+function freshProgress(puzzleId: Types.ObjectId) {
+  return {
+    puzzleId,
+    nextHintToDisplay: 0,
+    status: QuestPuzzleStatus.UNAVAILABLE,
+  };
+}
 
 /** A quest as returned by the findQuests aggregation, with puzzle details. */
 type AggregatedQuest = Omit<QuestProperties, "puzzles"> & {
@@ -601,6 +648,19 @@ function createFindMatchParameter(queryOptions?: QuestQueryOptions): object {
   if (queryOptions?.questIds) {
     matchParam._id = { $in: queryOptions.questIds };
   }
+  return matchParam;
+}
+
+/**
+ * Generates the match parameter for an entry's progress, applied once each
+ * quest's entry is merged into it.
+ * @param queryOptions the query options for the quest
+ * @returns an object representing the match criteria
+ */
+function createFindProgressMatchParameter(
+  queryOptions?: QuestQueryOptions
+): object {
+  const matchParam: Record<string, unknown> = {};
   if (queryOptions?.assigneeIds) {
     // Limit results to only quests assigned to one of the specified users
     // or teams.
@@ -711,7 +771,53 @@ export async function findQuests(
 ): Promise<QuestResult<Quest[]>> {
   const pipelineStages: PipelineStage[] = [];
   const matchParam = createFindMatchParameter(queryOptions);
-  pipelineStages.push({ $match: matchParam }, { $sort: { _id: 1 } });
+  pipelineStages.push({ $match: matchParam });
+  // Each entry's progress is merged into the quest's own shape: who plays it,
+  // its status, and each stop with the entry's progress on it.
+  pipelineStages.push(
+    { $unwind: "$entries" },
+    {
+      $addFields: {
+        assignee: "$entries.assignee",
+        status: "$entries.status",
+        textResponse: "$entries.textResponse",
+        textResponseConfirmation: "$entries.textResponseConfirmation",
+        pauses: "$entries.pauses",
+        puzzles: {
+          $map: {
+            input: "$puzzles",
+            as: "stop",
+            in: {
+              $mergeObjects: [
+                {
+                  nextHintToDisplay: 0,
+                  status: QuestPuzzleStatus.UNAVAILABLE,
+                  skipped: false,
+                  penaltyFreeHints: 0,
+                },
+                {
+                  $ifNull: [
+                    {
+                      $first: {
+                        $filter: {
+                          input: "$entries.puzzles",
+                          cond: { $eq: ["$$this.puzzleId", "$$stop.puzzleId"] },
+                        },
+                      },
+                    },
+                    {},
+                  ],
+                },
+                "$$stop",
+              ],
+            },
+          },
+        },
+      },
+    },
+    { $match: createFindProgressMatchParameter(queryOptions) },
+    { $sort: { _id: 1 } }
+  );
   // Quests refer to their puzzles by ID; the puzzles' details, including
   // their names, are looked up.
   const puzzleDetailsParams = createFindPuzzleDetailsParameters();
@@ -871,10 +977,14 @@ export async function listAssignedQuestsPage(
       QuestModel.find(
         {
           ...conditions,
-          "assignee.id": {
-            $in: assigneeIds.map((id) => new mongoose.Types.ObjectId(id)),
+          entries: {
+            $elemMatch: {
+              "assignee.id": {
+                $in: assigneeIds.map((id) => new mongoose.Types.ObjectId(id)),
+              },
+              status: { $gte: QuestStatus.IN_PROGRESS },
+            },
           },
-          status: { $gte: QuestStatus.IN_PROGRESS },
         },
         { _id: 1 }
       ).lean(),
@@ -1178,20 +1288,6 @@ function puzzleIdOf(
 }
 
 /**
- * Creates a new quest puzzle entry that has not yet been made available.
- * @param puzzleId the ID of the puzzle
- * @returns the quest puzzle data
- */
-function createQuestPuzzleEntry(puzzleId: Types.ObjectId): StoredQuestPuzzle {
-  return {
-    puzzleId,
-    nextHintToDisplay: 0,
-    status: QuestPuzzleStatus.UNAVAILABLE,
-    activationCode: randomUUID().replaceAll("-", ""),
-  };
-}
-
-/**
  * Creates a quest in the data store.
  * @param questDefinition the definition of the quest to create.
  * @returns a response object containing a status, status code, and data
@@ -1240,9 +1336,8 @@ export async function createQuest(
     name: questName,
     displayName: questDefinition.displayName || questName,
     visibility: questDefinition.visibility ?? "public",
-    assignee,
-    status: QuestStatus.NOT_STARTED,
     puzzles: [],
+    entries: [{ assignee, status: QuestStatus.NOT_STARTED, puzzles: [] }],
   });
 
   if (questDefinition.puzzles) {
@@ -1256,12 +1351,16 @@ export async function createQuest(
     quest.puzzles.push(
       ...questDefinition.puzzles.map(
         ({ puzzleName, activationCode, cardWord }) => ({
-          ...createQuestPuzzleEntry(puzzleIdOf(ids, puzzleName)),
+          ...createStop(puzzleIdOf(ids, puzzleName)),
           // A code given for the puzzle replaces the generated one.
           ...(activationCode ? { activationCode } : {}),
           ...(cardWord ? { cardWord } : {}),
         })
       )
+    );
+    entryOf(quest).set(
+      "puzzles",
+      quest.puzzles.map((stop) => freshProgress(stop.puzzleId))
     );
   }
   try {
@@ -1290,7 +1389,7 @@ export async function deleteQuest(
     };
   }
   await deleteShareLinksOfQuest(result._id);
-  await notifyPlayersOf([result.assignee]);
+  await notifyPlayersOf(result.entries.map((entry) => entry.assignee));
   return { status: "success", statusCode: 200 };
 }
 
@@ -1333,27 +1432,27 @@ export async function updateQuest(
         message: `No quest with quest name ${questDefinition.name} found`,
       };
     }
+    const entry = entryOf(foundQuest);
     const visibility = questDefinition.visibility ?? foundQuest.visibility;
     // Those following it may no longer be allowed to. A ticket is only checked
     // on subscribing, so they have to subscribe again to find out.
     const fewerMayFollow =
       visibility === "private" &&
       (foundQuest.visibility !== "private" ||
-        (assignee !== undefined &&
-          !assignee.id.equals(foundQuest.assignee?.id)));
-    const formerAssignee = foundQuest.assignee
-      ? { kind: foundQuest.assignee.kind, id: foundQuest.assignee.id }
+        (assignee !== undefined && !assignee.id.equals(entry.assignee?.id)));
+    const formerAssignee = entry.assignee
+      ? { kind: entry.assignee.kind, id: entry.assignee.id }
       : undefined;
     foundQuest.visibility = visibility;
     if (questDefinition.displayName) {
       foundQuest.displayName = questDefinition.displayName;
     }
     if (assignee) {
-      foundQuest.assignee = assignee;
+      entry.assignee = assignee;
     }
     if (questDefinition.puzzles && puzzleNames && puzzleIds) {
       const check = checkPuzzleListChange(
-        toQuestState(foundQuest, await puzzleNamesOf(foundQuest)),
+        toQuestState(foundQuest, entry, await puzzleNamesOf(foundQuest)),
         puzzleNames
       );
       if (!check.ok) {
@@ -1373,13 +1472,29 @@ export async function updateQuest(
           puzzle.toObject(),
         ])
       );
+      const newIds = questDefinition.puzzles.map((puzzleDefinition) =>
+        puzzleIdOf(puzzleIds, puzzleDefinition.puzzleName)
+      );
+      // Every entry's progress follows the new order; puzzles new to the
+      // quest start out unavailable.
+      for (const each of foundQuest.entries) {
+        const progress = new Map(
+          each.puzzles.map((puzzle) => [
+            puzzle.puzzleId.toString(),
+            puzzle.toObject(),
+          ])
+        );
+        each.set(
+          "puzzles",
+          newIds.map((id) => progress.get(id.toString()) ?? freshProgress(id))
+        );
+      }
       foundQuest.set(
         "puzzles",
-        questDefinition.puzzles.map((puzzleDefinition) => {
-          const puzzleId = puzzleIdOf(puzzleIds, puzzleDefinition.puzzleName);
+        questDefinition.puzzles.map((puzzleDefinition, index) => {
+          const puzzleId = newIds[index];
           const puzzle: Record<string, unknown> =
-            existingPuzzles.get(puzzleId.toString()) ??
-            createQuestPuzzleEntry(puzzleId);
+            existingPuzzles.get(puzzleId.toString()) ?? createStop(puzzleId);
           if (puzzleDefinition.activationCode) {
             puzzle.activationCode = puzzleDefinition.activationCode;
           }
@@ -1406,7 +1521,7 @@ export async function updateQuest(
       disconnectQuestFollowers(questDefinition.name);
     }
     // Its name or its players may have changed.
-    await notifyPlayersOf([formerAssignee, foundQuest.assignee]);
+    await notifyPlayersOf([formerAssignee, entry.assignee]);
     return { status: "success", statusCode: 200 };
   }
   return questChangingError(questDefinition.name);
@@ -1414,9 +1529,6 @@ export async function updateQuest(
 
 /** The error branch of a quest service result. */
 type QuestErrorResult = Extract<QuestResult<never>, { status: "error" }>;
-
-/** A quest document loaded from the data store. */
-type QuestDocument = InstanceType<typeof QuestModel>;
 
 /**
  * How many times an action is tried when another change to the same quest
@@ -1487,54 +1599,72 @@ async function puzzleNamesOf(quest: QuestDocument): Promise<string[]> {
 }
 
 /**
- * Gets a quest's progress in the form the rules work with.
+ * Gets an entry's progress through a quest in the form the rules work with:
+ * the quest's stops, in order, with the entry's progress on each.
  * @param quest the quest document
+ * @param entry the entry
  * @param puzzleNames the names of the quest's puzzles, from puzzleNamesOf
- * @returns the quest's state
+ * @returns the entry's state
  */
 function toQuestState(
   quest: QuestDocument,
+  entry: EntryDocument,
   puzzleNames: readonly string[]
 ): QuestState {
+  const progress = new Map(
+    entry.puzzles.map((puzzle) => [puzzle.puzzleId.toString(), puzzle])
+  );
   return {
-    status: quest.status as QuestStatus,
-    pauses: quest.pauses.map(({ startTime, endTime }) => ({
+    status: entry.status as QuestStatus,
+    pauses: entry.pauses.map(({ startTime, endTime }) => ({
       startTime,
       endTime,
     })),
-    puzzles: quest.puzzles.map((puzzle, index) => ({
-      puzzleName: puzzleNames[index],
-      status: puzzle.status as QuestPuzzleStatus,
-      nextHintToDisplay: puzzle.nextHintToDisplay,
-      activationCode: puzzle.activationCode,
-      startTime: puzzle.startTime,
-      activationTime: puzzle.activationTime,
-      endTime: puzzle.endTime,
-      skipped: puzzle.skipped,
-      penaltyFreeHints: puzzle.penaltyFreeHints,
-    })),
+    puzzles: quest.puzzles.map((stop, index) => {
+      const puzzle = progress.get(stop.puzzleId.toString());
+      return {
+        puzzleName: puzzleNames[index],
+        status: (puzzle?.status ??
+          QuestPuzzleStatus.UNAVAILABLE) as QuestPuzzleStatus,
+        nextHintToDisplay: puzzle?.nextHintToDisplay ?? 0,
+        activationCode: stop.activationCode,
+        startTime: puzzle?.startTime,
+        activationTime: puzzle?.activationTime,
+        endTime: puzzle?.endTime,
+        skipped: puzzle?.skipped ?? false,
+        penaltyFreeHints: puzzle?.penaltyFreeHints ?? 0,
+      };
+    }),
   };
 }
 
 /**
- * Copies a quest's new progress onto its document. The rules never add,
- * remove, or reorder puzzles, so they line up by index.
+ * Copies an entry's new progress onto it. The rules never add, remove, or
+ * reorder puzzles, so the state's puzzles line up with the quest's stops.
  * @param quest the quest document
- * @param state the quest's new state
+ * @param entry the entry
+ * @param state the entry's new state
  */
-function applyQuestState(quest: QuestDocument, state: QuestState): void {
-  quest.status = state.status;
-  quest.set("pauses", state.pauses ?? []);
-  state.puzzles.forEach((puzzle, index) => {
-    const stored = quest.puzzles[index];
-    stored.status = puzzle.status;
-    stored.nextHintToDisplay = puzzle.nextHintToDisplay;
-    stored.startTime = puzzle.startTime;
-    stored.activationTime = puzzle.activationTime;
-    stored.endTime = puzzle.endTime;
-    stored.skipped = puzzle.skipped ?? false;
-    stored.penaltyFreeHints = puzzle.penaltyFreeHints ?? 0;
-  });
+function applyQuestState(
+  quest: QuestDocument,
+  entry: EntryDocument,
+  state: QuestState
+): void {
+  entry.status = state.status;
+  entry.set("pauses", state.pauses ?? []);
+  entry.set(
+    "puzzles",
+    state.puzzles.map((puzzle, index) => ({
+      puzzleId: quest.puzzles[index].puzzleId,
+      status: puzzle.status,
+      nextHintToDisplay: puzzle.nextHintToDisplay,
+      startTime: puzzle.startTime,
+      activationTime: puzzle.activationTime,
+      endTime: puzzle.endTime,
+      skipped: puzzle.skipped ?? false,
+      penaltyFreeHints: puzzle.penaltyFreeHints ?? 0,
+    }))
+  );
 }
 
 /**
@@ -1594,7 +1724,8 @@ async function applyQuestAction<R>(
         message: `No quest with quest name ${questName} found`,
       };
     }
-    const assigneeId = quest.assignee?.id.toString();
+    const entry = entryOf(quest);
+    const assigneeId = entry.assignee?.id.toString();
     if (actor && !(assigneeId && actor.assigneeIds.includes(assigneeId))) {
       return {
         status: "error",
@@ -1611,12 +1742,12 @@ async function applyQuestAction<R>(
       loaded = rulesResult;
     }
     const now = new Date(Date.now());
-    const state = toQuestState(quest, await puzzleNamesOf(quest));
+    const state = toQuestState(quest, entry, await puzzleNamesOf(quest));
     const result = transition(state, now, loaded.rules);
     if (!result.ok) {
       return { status: "refused", error: result.error, state };
     }
-    applyQuestState(quest, result.state);
+    applyQuestState(quest, entry, result.state);
     try {
       await quest.save();
     } catch (err) {
@@ -1631,11 +1762,11 @@ async function applyQuestAction<R>(
       events: result.events,
       now,
       rules: loaded.rules,
-      ...(quest.assignee
+      ...(entry.assignee
         ? {
             assignee: {
-              kind: quest.assignee.kind,
-              id: quest.assignee.id.toString(),
+              kind: entry.assignee.kind,
+              id: entry.assignee.id.toString(),
             },
           }
         : {}),
@@ -2292,8 +2423,8 @@ export async function setExpectedTextResponse(
       { name: questName },
       {
         $set: {
-          textResponse: expectedResponse,
-          textResponseConfirmation: responseConfirmation,
+          "entries.0.textResponse": expectedResponse,
+          "entries.0.textResponseConfirmation": responseConfirmation,
         },
       }
     );
@@ -2330,22 +2461,23 @@ export async function validateExpectedTextResponse(
       message: `No quest with quest name ${questName} found`,
     };
   }
-  if (!quest.textResponse) {
+  const entry = entryOf(quest);
+  if (!entry.textResponse) {
     return {
       status: "error",
       statusCode: 418,
       message: `Quest is not expecting a text response`,
     };
   }
-  if (!quest.textResponseConfirmation) {
+  if (!entry.textResponseConfirmation) {
     return {
       status: "error",
       statusCode: 418,
       message: `Quest is not expecting a text response`,
     };
   }
-  const questTextResponse = quest.textResponse.toLowerCase();
-  const questTextResponseConfirmation = quest.textResponseConfirmation;
+  const questTextResponse = entry.textResponse.toLowerCase();
+  const questTextResponseConfirmation = entry.textResponseConfirmation;
   if (questTextResponse !== textResponse.toLowerCase()) {
     return {
       status: "error",
@@ -2356,8 +2488,13 @@ export async function validateExpectedTextResponse(
   // Clear the expected response, unless it has changed since it was read;
   // a single update, so it can't conflict with players' progress.
   const cleared = await QuestModel.updateOne(
-    { _id: quest._id, textResponse: quest.textResponse },
-    { $set: { textResponse: "", textResponseConfirmation: "" } }
+    { _id: quest._id, "entries.0.textResponse": entry.textResponse },
+    {
+      $set: {
+        "entries.0.textResponse": "",
+        "entries.0.textResponseConfirmation": "",
+      },
+    }
   );
   if (cleared.modifiedCount === 0) {
     return {

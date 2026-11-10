@@ -121,9 +121,10 @@ describe("pausing a quest", () => {
     expect((await asAdmin("pause")).status).toBe(200);
 
     const quest = await storedQuest();
-    expect(quest.pauses).toHaveLength(1);
-    expect(quest.pauses[0].startTime.getTime()).toBeGreaterThanOrEqual(before);
-    expect(quest.pauses[0].endTime).toBeUndefined();
+    const { pauses } = quest.entries[0]!;
+    expect(pauses).toHaveLength(1);
+    expect(pauses[0].startTime.getTime()).toBeGreaterThanOrEqual(before);
+    expect(pauses[0].endTime).toBeUndefined();
     const json = JSON.parse(
       (await asPlayer("get", "/api/v1/quests/quest")).text
     );
@@ -171,7 +172,7 @@ describe("pausing a quest", () => {
         "Quest quest is paused by the puzzle master; please wait until it resumes"
       );
       const quest = await storedQuest();
-      expect(quest.puzzles[0]).toMatchObject({
+      expect(quest.entries[0]!.puzzles[0]).toMatchObject({
         status: 2,
         nextHintToDisplay: 0,
       });
@@ -197,7 +198,7 @@ describe("pausing a quest", () => {
     );
 
     expect(result.statusCode).toBe(409);
-    expect((await storedQuest()).puzzles[0].status).toBe(2);
+    expect((await storedQuest()).entries[0]!.puzzles[0].status).toBe(2);
   });
 
   it.each([
@@ -207,7 +208,7 @@ describe("pausing a quest", () => {
       async () =>
         QuestModel.updateOne(
           { name: "quest" },
-          { status: QuestStatus.COMPLETED }
+          { "entries.0.status": QuestStatus.COMPLETED }
         ),
       "Quest quest can be paused only while it is in progress",
     ],
@@ -231,7 +232,7 @@ describe("resuming a quest", () => {
     expect((await asAdmin("resume")).status).toBe(200);
 
     const quest = await storedQuest();
-    expect(quest.pauses[0].endTime).toBeInstanceOf(Date);
+    expect(quest.entries[0]!.pauses[0].endTime).toBeInstanceOf(Date);
     const solve = await asPlayer(
       "post",
       "/api/v1/quests/quest/puzzles/riddle/solution-attempts"
@@ -257,8 +258,8 @@ describe("the players' time", () => {
       { name: "quest" },
       {
         $set: {
-          "puzzles.0.startTime": new Date(now - 30 * MINUTE),
-          pauses: [
+          "entries.0.puzzles.0.startTime": new Date(now - 30 * MINUTE),
+          "entries.0.pauses": [
             {
               startTime: new Date(now - 20 * MINUTE),
               endTime: new Date(now - 10 * MINUTE),

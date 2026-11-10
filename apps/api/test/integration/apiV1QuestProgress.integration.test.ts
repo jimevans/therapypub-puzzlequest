@@ -52,26 +52,32 @@ beforeAll(async () => {
   await QuestModel.create({
     name: "finished",
     displayName: "Finished",
-    status: 2,
-    assignee: { kind: "user", id: playerId },
     puzzles: [
+      { puzzleId: firstId, activationCode: "code1" },
+      { puzzleId: secondId, activationCode: "code2" },
+    ],
+    entries: [
       {
-        puzzleId: firstId,
-        status: 3,
-        nextHintToDisplay: 1,
-        activationCode: "code1",
-        startTime: new Date("2026-11-03T19:00:00Z"),
-        activationTime: new Date("2026-11-03T19:05:00Z"),
-        endTime: new Date("2026-11-03T19:30:00Z"),
-      },
-      {
-        puzzleId: secondId,
-        status: 3,
-        nextHintToDisplay: 0,
-        activationCode: "code2",
-        startTime: new Date("2026-11-03T19:30:00Z"),
-        activationTime: new Date("2026-11-03T19:35:00Z"),
-        endTime: new Date("2026-11-03T19:45:00Z"),
+        assignee: { kind: "user", id: playerId },
+        status: 2,
+        puzzles: [
+          {
+            puzzleId: firstId,
+            status: 3,
+            nextHintToDisplay: 1,
+            startTime: new Date("2026-11-03T19:00:00Z"),
+            activationTime: new Date("2026-11-03T19:05:00Z"),
+            endTime: new Date("2026-11-03T19:30:00Z"),
+          },
+          {
+            puzzleId: secondId,
+            status: 3,
+            nextHintToDisplay: 0,
+            startTime: new Date("2026-11-03T19:30:00Z"),
+            activationTime: new Date("2026-11-03T19:35:00Z"),
+            endTime: new Date("2026-11-03T19:45:00Z"),
+          },
+        ],
       },
     ],
   });

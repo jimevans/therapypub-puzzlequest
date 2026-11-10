@@ -89,8 +89,8 @@ beforeEach(async () => {
   await QuestModel.updateOne(
     { name: "quest" },
     {
-      textResponse: "secret reply",
-      textResponseConfirmation: "secret confirmation",
+      "entries.0.textResponse": "secret reply",
+      "entries.0.textResponseConfirmation": "secret confirmation",
     }
   );
 });
@@ -101,9 +101,9 @@ async function startAndActivateFirst() {
   await QuestModel.updateOne(
     { name: "quest" },
     {
-      "puzzles.0.status": 2,
-      "puzzles.0.activationTime": new Date(),
-      "puzzles.0.nextHintToDisplay": 1,
+      "entries.0.puzzles.0.status": 2,
+      "entries.0.puzzles.0.activationTime": new Date(),
+      "entries.0.puzzles.0.nextHintToDisplay": 1,
     }
   );
 }

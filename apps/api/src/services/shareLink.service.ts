@@ -51,12 +51,20 @@ export async function findManagedQuest(
 ): Promise<ManagedQuest | undefined> {
   const quest = await QuestModel.findOne(
     { name: questName },
-    { visibility: 1, assignee: 1 }
+    { visibility: 1, entries: 1 }
   ).lean();
-  if (!quest?.assignee) {
+  if (!quest) {
     return undefined;
   }
-  if (!(await isQuestMember(quest.assignee.id.toString(), user))) {
+  // Staff, or anyone playing it in any of its entries.
+  const members = await Promise.all(
+    quest.entries.map(async (entry) =>
+      entry.assignee
+        ? isQuestMember(entry.assignee.id.toString(), user)
+        : user.isStaff()
+    )
+  );
+  if (!members.includes(true)) {
     return undefined;
   }
   return { id: quest._id, visibility: quest.visibility ?? "public" };

@@ -105,7 +105,7 @@ beforeEach(async () => {
   }
   await QuestModel.updateOne(
     { name: "secret" },
-    { "puzzles.0.status": QuestPuzzleStatus.IN_PROGRESS }
+    { "entries.0.puzzles.0.status": QuestPuzzleStatus.IN_PROGRESS }
   );
   sessions = await startSessions("one", "two", "stranger", "helper");
 });

@@ -96,12 +96,12 @@ beforeEach(async () => {
   await QuestModel.updateOne(
     { name: "quest" },
     {
-      "puzzles.0.status": 3,
-      "puzzles.0.activationTime": new Date(),
-      "puzzles.0.endTime": new Date(),
-      "puzzles.0.nextHintToDisplay": 1,
-      textResponse: "secret reply",
-      textResponseConfirmation: "secret confirmation",
+      "entries.0.puzzles.0.status": 3,
+      "entries.0.puzzles.0.activationTime": new Date(),
+      "entries.0.puzzles.0.endTime": new Date(),
+      "entries.0.puzzles.0.nextHintToDisplay": 1,
+      "entries.0.textResponse": "secret reply",
+      "entries.0.textResponseConfirmation": "secret confirmation",
     }
   );
   sessions = await startSessions("helper", "player");

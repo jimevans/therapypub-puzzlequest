@@ -198,7 +198,9 @@ describe("POST /api/v1/quests/{name}/puzzles/{puzzleName}/activation", () => {
       activationTime: expect.any(String),
     });
     const quest = await QuestModel.findOne({ name: "test-quest" }).lean();
-    expect(quest!.puzzles[0].status).toBe(QuestPuzzleStatus.IN_PROGRESS);
+    expect(quest!.entries[0]!.puzzles[0].status).toBe(
+      QuestPuzzleStatus.IN_PROGRESS
+    );
   });
 
   it("rejects a QR code for a different activation code", async () => {
@@ -263,7 +265,7 @@ describe("POST /api/v1/quests/{name}/puzzles/{puzzleName}/activation", () => {
 
     expect(response.status).toBe(413);
     const quest = await QuestModel.findOne({ name: "test-quest" }).lean();
-    expect(quest!.puzzles[0].status).toBe(
+    expect(quest!.entries[0]!.puzzles[0].status).toBe(
       QuestPuzzleStatus.AWAITING_ACTIVATION
     );
   });

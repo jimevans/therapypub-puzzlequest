@@ -164,17 +164,21 @@ describe("the sample data", () => {
     const quests = Object.fromEntries(
       (await QuestModel.find().lean()).map((quest) => [quest.name, quest])
     );
-    expect(quests["old-town"].status).toBe(QuestStatus.NOT_STARTED);
-    expect(quests["first-steps"].status).toBe(QuestStatus.COMPLETED);
-    expect(quests["museum-mile"].pauses.at(-1)?.endTime).toBeFalsy();
+    expect(quests["old-town"].entries[0]!.status).toBe(QuestStatus.NOT_STARTED);
+    expect(quests["first-steps"].entries[0]!.status).toBe(
+      QuestStatus.COMPLETED
+    );
+    expect(
+      quests["museum-mile"].entries[0]!.pauses.at(-1)?.endTime
+    ).toBeFalsy();
     const harbor = quests["harbor-walk"];
-    expect(harbor.status).toBe(QuestStatus.IN_PROGRESS);
-    expect(harbor.puzzles.map((puzzle) => puzzle.status)).toEqual([
+    expect(harbor.entries[0]!.status).toBe(QuestStatus.IN_PROGRESS);
+    expect(harbor.entries[0]!.puzzles.map((puzzle) => puzzle.status)).toEqual([
       QuestPuzzleStatus.COMPLETED,
       QuestPuzzleStatus.IN_PROGRESS,
       QuestPuzzleStatus.UNAVAILABLE,
     ]);
-    expect(harbor.puzzles[1].nextHintToDisplay).toBe(1);
+    expect(harbor.entries[0]!.puzzles[1].nextHintToDisplay).toBe(1);
   });
 
   it("won't fill a database that has data, unless told to reset it", async () => {

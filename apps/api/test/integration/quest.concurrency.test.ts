@@ -142,7 +142,7 @@ describe("simultaneous actions on a quest", () => {
       message: "Puzzle colors in quest test-quest is not in progress",
     });
     const quest = await storedQuest();
-    expect(quest.puzzles.map((p) => p.status)).toEqual([
+    expect(quest.entries[0]!.puzzles.map((p) => p.status)).toEqual([
       QuestPuzzleStatus.COMPLETED,
       QuestPuzzleStatus.AWAITING_ACTIVATION,
     ]);
@@ -165,7 +165,7 @@ describe("simultaneous actions on a quest", () => {
     });
     expect(result.status).toBe("success");
     const quest = await storedQuest();
-    expect(quest.puzzles[0]).toMatchObject({
+    expect(quest.entries[0]!.puzzles[0]).toMatchObject({
       status: QuestPuzzleStatus.COMPLETED,
       nextHintToDisplay: 1,
     });
@@ -189,7 +189,9 @@ describe("simultaneous actions on a quest", () => {
       reason: "wrong-state",
       message: "Puzzle colors in quest test-quest is not in progress",
     });
-    expect((await storedQuest()).puzzles[0].nextHintToDisplay).toBe(0);
+    expect((await storedQuest()).entries[0]!.puzzles[0].nextHintToDisplay).toBe(
+      0
+    );
   });
 
   it("reveals each hint once when two are requested at once", async () => {
@@ -207,7 +209,9 @@ describe("simultaneous actions on a quest", () => {
       hintText: "Think of the flag",
     });
     expect(result.data).toMatchObject({ hintText: "It is red and blue" });
-    expect((await storedQuest()).puzzles[0].nextHintToDisplay).toBe(2);
+    expect((await storedQuest()).entries[0]!.puzzles[0].nextHintToDisplay).toBe(
+      2
+    );
   });
 
   it("gives up after three attempts if the quest keeps changing", async () => {
@@ -240,7 +244,7 @@ describe("simultaneous actions on a quest", () => {
         "Quest test-quest is being changed by someone else; please try again",
     });
     expect(save).toHaveBeenCalledTimes(3);
-    expect((await storedQuest()).puzzles[0].status).toBe(
+    expect((await storedQuest()).entries[0]!.puzzles[0].status).toBe(
       QuestPuzzleStatus.IN_PROGRESS
     );
   });
@@ -260,8 +264,10 @@ describe("simultaneous actions on a quest", () => {
     expect((await competing).status).toBe("success");
     expect(result.status).toBe("success");
     const quest = await storedQuest();
-    expect(quest.textResponse).toBe("Ready");
-    expect(quest.puzzles[0].status).toBe(QuestPuzzleStatus.COMPLETED);
+    expect(quest.entries[0]!.textResponse).toBe("Ready");
+    expect(quest.entries[0]!.puzzles[0].status).toBe(
+      QuestPuzzleStatus.COMPLETED
+    );
   });
 
   it("reports setting a text reply for an unknown quest", async () => {
@@ -314,7 +320,7 @@ describe("a quest stored without a version key", () => {
     expect(result.status).toBe("success");
     const quest = await storedQuest();
     expect(quest.__v).toBe(1);
-    expect(quest.status).toBe(QuestStatus.IN_PROGRESS);
+    expect(quest.entries[0]!.status).toBe(QuestStatus.IN_PROGRESS);
   });
 
   it("is protected from simultaneous changes", async () => {
