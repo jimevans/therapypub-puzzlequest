@@ -281,6 +281,57 @@ describe("managing a quest", () => {
   });
 });
 
+describe("a stop's card word", () => {
+  const words = async () =>
+    bodyOf(await as("admin", "get", "/quests/quest")).puzzles.map(
+      (puzzle: { cardWord?: string }) => puzzle.cardWord
+    );
+
+  it("is set, kept when left out, and removed when empty", async () => {
+    const set = await as("admin", "patch", "/quests/quest").send({
+      puzzles: [
+        { puzzleName: "first", cardWord: "  SHOW  " },
+        { puzzleName: "second", cardWord: "ALL OF US" },
+        { puzzleName: "third" },
+      ],
+    });
+    expect(set.status).toBe(200);
+    expect(await words()).toEqual(["SHOW", "ALL OF US", undefined]);
+
+    await as("admin", "patch", "/quests/quest").send({
+      puzzles: [
+        { puzzleName: "first" },
+        { puzzleName: "second", cardWord: "" },
+        { puzzleName: "third" },
+      ],
+    });
+    expect(await words()).toEqual(["SHOW", undefined, undefined]);
+  });
+
+  it("is never shown to the players", async () => {
+    await as("admin", "patch", "/quests/quest").send({
+      puzzles: ["first", "second", "third"].map((puzzleName) => ({
+        puzzleName,
+        cardWord: "SECRET",
+      })),
+    });
+    await playSome();
+
+    const response = await as("player", "get", "/quests/quest");
+
+    expect(response.status).toBe(200);
+    expect(response.text).not.toContain("SECRET");
+  });
+
+  it("is refused when longer than a card can hold", async () => {
+    const response = await as("admin", "patch", "/quests/quest").send({
+      puzzles: [{ puzzleName: "first", cardWord: "W".repeat(41) }],
+    });
+
+    expect(response.status).toBe(400);
+  });
+});
+
 describe("running a quest", () => {
   it("starts it, answering with it", async () => {
     const response = await as("admin", "post", "/quests/quest/start");

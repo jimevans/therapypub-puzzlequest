@@ -10,6 +10,15 @@ import { displayName, newName, requiredText, wholeNumber } from "./common.js";
 const questPuzzle = z.object({
   puzzleName: requiredText,
   activationCode: z.string().optional(),
+  cardWord: z
+    .string()
+    .trim()
+    .max(40, "Must be 40 characters or fewer")
+    .optional()
+    .meta({
+      description:
+        "A word or phrase printed large on the stop's QR card, for a mini-game in which the players put the cards' words together. Empty removes it; left out, it stays as it is.",
+    }),
 });
 
 /** The user or team a quest is assigned to, by name. */

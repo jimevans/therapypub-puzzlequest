@@ -10,6 +10,11 @@ export interface StopValues {
   displayName: string;
   /** Missing for a puzzle just added: it gets one when the quest is saved. */
   activationCode?: string;
+  /**
+   * The word or phrase on the stop's QR card, for the cards' mini-game; empty
+   * for none.
+   */
+  cardWord: string;
 }
 
 /** What the quest editor asks. */
@@ -46,6 +51,7 @@ export function formValuesOf(quest?: Quest): QuestFormValues {
         puzzleName: puzzle.puzzleName,
         displayName: puzzle.displayName ?? puzzle.puzzleName,
         activationCode: puzzle.activationCode,
+        cardWord: puzzle.cardWord ?? "",
       })) ?? [],
   };
 }
@@ -97,7 +103,7 @@ export function formFieldOf(field: string): keyof QuestFormValues {
 
 /**
  * Saves a quest. Activation codes aren't sent, so each stop keeps its own and a
- * new one gets one.
+ * new one gets one. Card words are always sent: an empty one removes it.
  * @param values what the editor holds
  * @param existing the quest as stored, when editing one
  * @returns the quest's name
@@ -108,7 +114,10 @@ export async function saveQuest(
 ): Promise<string> {
   const [kind, ...rest] = values.assignee.split(":");
   const assignee = { kind: kind as "user" | "team", name: rest.join(":") };
-  const puzzles = values.stops.map(({ puzzleName }) => ({ puzzleName }));
+  const puzzles = values.stops.map(({ puzzleName, cardWord }) => ({
+    puzzleName,
+    cardWord: cardWord.trim(),
+  }));
   const visibility = values.isPrivate ? "private" : "public";
   if (existing) {
     dataOrThrow(
