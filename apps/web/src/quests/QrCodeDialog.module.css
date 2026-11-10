@@ -19,6 +19,8 @@
 
 .text {
   text-align: center;
+  /* So the code can size itself to the dialog's width. */
+  container-type: inline-size;
 }
 
 .caption {
@@ -28,7 +30,10 @@
 
 .activationCode {
   font-family: ui-monospace, monospace;
-  font-size: 1.75rem;
+  /* A generated code is 32 characters, about 19.2em of monospace: at a
+     twentieth of the width, it fits on one line, on a phone too. Shorter
+     codes stay large. */
+  font-size: min(1.75rem, 5cqi);
   font-weight: 700;
   overflow-wrap: anywhere;
 }
