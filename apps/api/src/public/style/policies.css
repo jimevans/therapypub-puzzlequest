@@ -1,0 +1,159 @@
+/* The legal pages (public/policies/), which work without the React app. Like
+   the error page (error.css), their colours match the app's tokens
+   (apps/web/src/styles/tokens.css), and they use the system's fonts. */
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: #ffffff;
+  color: #111418;
+  font-family: system-ui, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+header {
+  padding: 0.75rem 1.25rem;
+  background: #111418;
+}
+
+header a {
+  color: #ffffff;
+  font-size: 1.625rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+main {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 3rem;
+  /* Long addresses mustn't push the page sideways on a phone. (Not
+     "anywhere", which lets tables squeeze columns to a letter wide.) */
+  overflow-wrap: break-word;
+}
+
+h1 {
+  margin: 0 0 0.25rem;
+  font-size: 2rem;
+  line-height: 1.15;
+}
+
+h2 {
+  margin: 2.25rem 0 0.75rem;
+  font-size: 1.375rem;
+  line-height: 1.25;
+}
+
+h3 {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 1.125rem;
+  line-height: 1.3;
+}
+
+/* Below the header when a contents link jumps to it. */
+[id] {
+  scroll-margin-top: 1rem;
+}
+
+p,
+ul,
+ol,
+table {
+  margin: 0 0 1rem;
+}
+
+p,
+li,
+td {
+  color: #4a4f57;
+}
+
+p.updated {
+  margin-bottom: 2rem;
+}
+
+ul,
+ol {
+  padding-left: 1.5rem;
+}
+
+/* The policies often list items one list apiece: let them read as one. */
+ul + ul,
+ol + ol {
+  margin-top: -1rem;
+}
+
+li {
+  margin-bottom: 0.25rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #c9ced6;
+  text-align: left;
+  vertical-align: top;
+}
+
+td p:last-child {
+  margin-bottom: 0;
+}
+
+/* Three columns don't fit a phone: each row becomes a block, and each cell
+   after the first is labeled with its column (data-label). */
+@media (max-width: 40rem) {
+  table,
+  tbody,
+  tr,
+  td {
+    display: block;
+  }
+
+  thead {
+    /* Hidden from sight only: screen readers still have the headings. */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  tr {
+    margin-bottom: 0.75rem;
+    border: 1px solid #c9ced6;
+  }
+
+  td {
+    padding: 0.25rem 0.75rem;
+    border: 0;
+  }
+
+  td:first-child {
+    padding-top: 0.5rem;
+    color: #111418;
+    font-weight: 600;
+  }
+
+  td:last-child {
+    padding-bottom: 0.5rem;
+  }
+
+  td + td::before {
+    content: attr(data-label) ": ";
+    color: #111418;
+    font-weight: 600;
+  }
+}
+
+a {
+  color: #0a4fd6;
+}

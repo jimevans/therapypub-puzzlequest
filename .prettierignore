@@ -4,7 +4,5 @@ dist/
 # Generated from the API's routes
 packages/api-client/openapi.json
 packages/api-client/src/schema.d.ts
-# Generated legal documents
-apps/api/src/public/policies/
 # Uploaded puzzle media
 storage/
