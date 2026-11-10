@@ -187,6 +187,7 @@ const ROUTES: [string, string, Policy][] = [
     "/api/v1/quests/:name/teams/:teamName/puzzles/:puzzleName/reset",
     ADMIN,
   ],
+  ["post", "/api/v1/quests/:name/text-messages", ADMIN],
   ["post", "/api/v1/quests/:name/teams/:teamName/text-messages", ADMIN],
   ["post", "/api/v1/quests/:name/players/:userName/start", ADMIN],
   ["post", "/api/v1/quests/:name/players/:userName/reset", ADMIN],

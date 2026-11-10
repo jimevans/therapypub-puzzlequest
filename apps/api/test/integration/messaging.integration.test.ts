@@ -508,6 +508,51 @@ describe("POST /api/v1/quests/{name}/{teams|players}/{entrant}/text-messages", (
     });
   });
 
+  it("texts every playing entry's players, setting each entry's reply", async () => {
+    await QuestService.createQuest({
+      name: "race",
+      entrants: [
+        { kind: "team", name: "team-a" },
+        { kind: "user", name: "player" },
+      ],
+      puzzles: [{ puzzleName: "colors" }],
+    });
+    await QuestService.startQuest("race");
+
+    const response = await request(app)
+      .post("/api/v1/quests/race/text-messages")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        message: "Meet at the fountain.",
+        expectedResponse: "Here",
+        responseConfirmation: "See you there!",
+      });
+
+    expect(response.status).toBe(204);
+    expect(
+      twilioRequests.map((sent) => (sent.data as { To: string }).To).sort()
+    ).toEqual(["+15551230001", "+15551230002"]);
+    for (const entry of (await storedQuest("race")).entries) {
+      expect(entry).toMatchObject({
+        textResponse: "Here",
+        textResponseConfirmation: "See you there!",
+      });
+    }
+  });
+
+  it("refuses to text everyone before anyone is playing", async () => {
+    await createQuest("team-quest", "team-a");
+
+    const response = await request(app)
+      .post("/api/v1/quests/team-quest/text-messages")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ message: "Too soon." });
+
+    expect(response.status).toBe(409);
+    expect(JSON.parse(response.text).type).toBe("/problems/wrong-state");
+    expect(twilioRequests).toHaveLength(0);
+  });
+
   it("texts the team's members, even when a user has the team's name", async () => {
     // Names alone couldn't tell these apart; the quest refers to the team.
     await UserModel.create(user("team-a", "+15551230009", { sms: true }));

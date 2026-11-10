@@ -281,6 +281,68 @@ export async function sendOutgoingTextMessage(
 }
 
 /**
+ * Texts a message to the players of every one of a quest's entries in
+ * progress who accept text messages, each number once, and optionally sets
+ * the reply each of those entries then waits for.
+ * @param questName the quest
+ * @param message the message
+ * @param reply the reply to wait for, and the confirmation to send back when
+ *  it arrives; omit to wait for none
+ * @returns a success result, or an error result saying why it wasn't sent
+ */
+export async function sendQuestTextMessageToAll(
+  questName: string,
+  message: string,
+  reply?: { expectedResponse: string; responseConfirmation: string }
+): Promise<ServiceResult<undefined>> {
+  const found = await QuestService.getQuestEntries(questName);
+  if (found.status === "error") {
+    return found;
+  }
+  const playing = found.data.filter(
+    (entry) => entry.status === QuestStatus.IN_PROGRESS
+  );
+  if (!playing.length) {
+    return {
+      status: "error",
+      statusCode: 400,
+      reason: "wrong-state",
+      message: `No one is playing quest ${questName} yet`,
+    };
+  }
+  const numbers = new Set<string>();
+  for (const entry of playing) {
+    const found = await getPhoneNumbersToMessage(entry.assignee);
+    if (found.status === "error") {
+      return found;
+    }
+    found.data.forEach((number) => numbers.add(number));
+  }
+  if (!numbers.size) {
+    return {
+      status: "error",
+      statusCode: 400,
+      reason: "no-recipients",
+      message: "No users accepting text messages found for quest",
+    };
+  }
+  if (reply) {
+    for (const entry of playing) {
+      const expectation = await setupExpectedTextMessage(
+        entry.name,
+        entry.entryId,
+        reply.expectedResponse,
+        reply.responseConfirmation
+      );
+      if (expectation.status === "error") {
+        return expectation;
+      }
+    }
+  }
+  return sendOutgoingTextMessage([...numbers], message);
+}
+
+/**
  * Texts a message to the players of one of a quest's entries, once it is in
  * progress, who accept text messages, and optionally sets the reply the entry
  * then waits for.

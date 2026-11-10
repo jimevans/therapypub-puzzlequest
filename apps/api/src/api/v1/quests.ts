@@ -312,6 +312,39 @@ const entrantRoutes = ENTRANT_ADDRESSES.flatMap((address) => {
 
 export const questRoutes = [
   defineRoute({
+    method: "post",
+    path: "/quests/{name}/text-messages",
+    operationId: "sendQuestTextMessage",
+    summary: "Text every entrant's players",
+    description:
+      "Texts the message to the players of every entry in progress who accept text messages, each number once, a few seconds apart, as carriers require. With an expected response, each of those entries waits for that reply and texts the confirmation back when it arrives. To text one team or player, use its own address.",
+    tags: ["Running quests"],
+    access: "admin",
+    request: { params: questParams, body: sendTextBody },
+    responses: { 204: { description: "Sent." } },
+    problems: [
+      Problems.notFound,
+      Problems.wrongState,
+      Problems.noRecipients,
+      Problems.messagingFailed,
+    ],
+    async handle(req, res) {
+      const { message, expectedResponse, responseConfirmation } = req.body;
+      const sent = await MessagingService.sendQuestTextMessageToAll(
+        req.params.name,
+        message,
+        expectedResponse && responseConfirmation
+          ? { expectedResponse, responseConfirmation }
+          : undefined
+      );
+      if (sent.status === "error") {
+        sendServiceProblem(res, sent);
+        return;
+      }
+      res.status(204).end();
+    },
+  }),
+  defineRoute({
     method: "get",
     path: "/quests",
     operationId: "listQuests",
