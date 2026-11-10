@@ -25,6 +25,7 @@ ask.
 - [0018. Deploys build on the host](0018-deploy-by-building-on-the-host.md)
 - [0019. The live-update websocket is authorized with tickets](0019-live-update-tickets.md)
 - [0020. Share links are stored, hashed tokens](0020-stored-share-links.md)
+- [0021. Native apps in SwiftUI and Kotlin, in their own repositories](0021-native-apps.md)
 
 To add one, copy the shape of an existing record (status, date, context,
 decision, consequences, alternatives), number it next, and add it here. A
