@@ -77,7 +77,14 @@ export function StopsTable({ quest, onSkip, onReset }: StopsTableProps) {
                 </td>
                 <td>{puzzle.statusDescription}</td>
                 <td className={`${adminStyles.secondary} ${styles.code}`}>
-                  {puzzle.activationCode}
+                  {/* Shortened on screen, but whole to copy or hear; the QR
+                      code's dialog shows all of it. */}
+                  <span
+                    className={styles.shortCode}
+                    title={puzzle.activationCode}
+                  >
+                    {puzzle.activationCode}
+                  </span>
                 </td>
                 <td className={adminStyles.secondary}>
                   {puzzle.hints

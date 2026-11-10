@@ -169,6 +169,8 @@ describe("the quest console", () => {
     expect(
       within(rows[3]!).getByRole("button", { name: "QR code for The finale" })
     ).toBeVisible();
+    // Shortened on screen; the whole code shows when hovered.
+    expect(within(rows[3]!).getByTitle("FINALE1")).toHaveTextContent("FINALE1");
     expect(screen.getByText("The Reds (team)")).toBeVisible();
     expect(
       screen.getByRole("link", { name: "Run book (PDF)" })
