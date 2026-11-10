@@ -3489,6 +3489,11 @@
                         },
                         "activationCode": {
                           "type": "string"
+                        },
+                        "cardWord": {
+                          "description": "A word or phrase printed large on the stop's QR card, for a mini-game in which the players put the cards' words together. Empty removes it; left out, it stays as it is.",
+                          "type": "string",
+                          "maxLength": 40
                         }
                       },
                       "required": [
@@ -3747,6 +3752,11 @@
                         },
                         "activationCode": {
                           "type": "string"
+                        },
+                        "cardWord": {
+                          "description": "A word or phrase printed large on the stop's QR card, for a mini-game in which the players put the cards' words together. Empty removes it; left out, it stays as it is.",
+                          "type": "string",
+                          "maxLength": 40
                         }
                       },
                       "required": [
@@ -4714,7 +4724,7 @@
       "get": {
         "operationId": "getQuestQrCards",
         "summary": "Get a quest's activation cards",
-        "description": "A PDF of cards to print, one for each of the quest's stops in order, each with the stop's activation QR code and code, its puzzle's name, the stop's number, and the quest's name. Ten 3.5 × 2 inch cards to a US Letter sheet, laid out for perforated business-card sheets (Avery 8371 and compatibles).",
+        "description": "A PDF of cards to print, one for each of the quest's stops in order, each with the stop's activation QR code and code, the stop's number, and the quest's name. A stop's card word, if it has one, is printed large; when the quest has any, every card but the last says to save it. Ten 3.5 × 2 inch cards to a US Letter sheet, laid out for perforated business-card sheets (Avery 8371 and compatibles).",
         "tags": [
           "Quests"
         ],
@@ -6936,6 +6946,10 @@
           },
           "activationCode": {
             "description": "Only for administrators.",
+            "type": "string"
+          },
+          "cardWord": {
+            "description": "The word or phrase on the stop's QR card, if it has one. Only for administrators.",
             "type": "string"
           },
           "activationTime": {

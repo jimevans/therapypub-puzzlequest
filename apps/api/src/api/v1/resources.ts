@@ -220,6 +220,10 @@ const questPuzzleSchema = z
       .string()
       .optional()
       .meta({ description: "Only for administrators." }),
+    cardWord: z.string().optional().meta({
+      description:
+        "The word or phrase on the stop's QR card, if it has one. Only for administrators.",
+    }),
     activationTime: time.nullish(),
     startTime: time.nullish(),
     endTime: time.nullish(),

@@ -157,7 +157,10 @@ describe("creating a quest", () => {
         displayName: "The Trail",
         visibility: "public",
         assignee: { kind: "team", name: "reds" },
-        puzzles: [{ puzzleName: "lantern" }, { puzzleName: "riddle" }],
+        puzzles: [
+          { puzzleName: "lantern", cardWord: "" },
+          { puzzleName: "riddle", cardWord: "" },
+        ],
       },
     });
   });
@@ -225,7 +228,44 @@ describe("editing a quest", () => {
         displayName: "The Trail",
         visibility: "public",
         assignee: { kind: "team", name: "reds" },
-        puzzles: [{ puzzleName: "finale" }, { puzzleName: "cipher" }],
+        puzzles: [
+          { puzzleName: "finale", cardWord: "" },
+          { puzzleName: "cipher", cardWord: "" },
+        ],
+      },
+    });
+  });
+
+  it("sets, keeps and clears the words on the stops' QR cards", async () => {
+    const user = userEvent.setup();
+    apiWith({
+      ...QUEST,
+      puzzles: [
+        { ...stop("riddle"), cardWord: "SHOW" },
+        { ...stop("cipher"), cardWord: "ALL OF US" },
+        stop("finale"),
+      ],
+    });
+    const patch = vi.spyOn(api, "PATCH").mockResolvedValue(ok(QUEST) as never);
+    show("/quest/trail/edit");
+
+    const riddle = await screen.findByLabelText("Card word for The riddle");
+    expect(riddle).toHaveValue("SHOW");
+    await user.clear(screen.getByLabelText("Card word for The cipher"));
+    await user.type(
+      screen.getByLabelText("Card word for The finale"),
+      " PUZZLEQUEST "
+    );
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(patch).toHaveBeenCalled());
+    expect(patch.mock.calls[0]![1]).toMatchObject({
+      body: {
+        puzzles: [
+          { puzzleName: "riddle", cardWord: "SHOW" },
+          { puzzleName: "cipher", cardWord: "" },
+          { puzzleName: "finale", cardWord: "PUZZLEQUEST" },
+        ],
       },
     });
   });

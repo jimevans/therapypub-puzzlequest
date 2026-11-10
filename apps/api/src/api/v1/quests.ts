@@ -361,7 +361,7 @@ export const questRoutes = [
     operationId: "getQuestQrCards",
     summary: "Get a quest's activation cards",
     description:
-      "A PDF of cards to print, one for each of the quest's stops in order, each with the stop's activation QR code and code, its puzzle's name, the stop's number, and the quest's name. Ten 3.5 × 2 inch cards to a US Letter sheet, laid out for perforated business-card sheets (Avery 8371 and compatibles).",
+      "A PDF of cards to print, one for each of the quest's stops in order, each with the stop's activation QR code and code, the stop's number, and the quest's name. A stop's card word, if it has one, is printed large; when the quest has any, every card but the last says to save it. Ten 3.5 × 2 inch cards to a US Letter sheet, laid out for perforated business-card sheets (Avery 8371 and compatibles).",
     tags: ["Quests"],
     access: "admin",
     request: { params: questParams },
@@ -389,8 +389,8 @@ export const questRoutes = [
         quest.puzzles.map((puzzle, index) => ({
           questName: quest.displayName,
           stopNumber: index + 1,
-          puzzleName: puzzle.puzzleDetail?.displayName ?? puzzle.puzzleName,
           activationCode: puzzle.activationCode,
+          ...(puzzle.cardWord ? { cardWord: puzzle.cardWord } : {}),
         }))
       );
       pdf.end();

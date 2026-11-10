@@ -645,7 +645,7 @@ export interface paths {
         };
         /**
          * Get a quest's activation cards
-         * @description A PDF of cards to print, one for each of the quest's stops in order, each with the stop's activation QR code and code, its puzzle's name, the stop's number, and the quest's name. Ten 3.5 × 2 inch cards to a US Letter sheet, laid out for perforated business-card sheets (Avery 8371 and compatibles).
+         * @description A PDF of cards to print, one for each of the quest's stops in order, each with the stop's activation QR code and code, the stop's number, and the quest's name. A stop's card word, if it has one, is printed large; when the quest has any, every card but the last says to save it. Ten 3.5 × 2 inch cards to a US Letter sheet, laid out for perforated business-card sheets (Avery 8371 and compatibles).
          */
         get: operations["getQuestQrCards"];
         put?: never;
@@ -1130,6 +1130,8 @@ export interface components {
             nextHintToDisplay: number;
             /** @description Only for administrators. */
             activationCode?: string;
+            /** @description The word or phrase on the stop's QR card, if it has one. Only for administrators. */
+            cardWord?: string;
             activationTime?: string | null;
             startTime?: string | null;
             endTime?: string | null;
@@ -3995,6 +3997,8 @@ export interface operations {
                     puzzles?: {
                         puzzleName: string;
                         activationCode?: string;
+                        /** @description A word or phrase printed large on the stop's QR card, for a mini-game in which the players put the cards' words together. Empty removes it; left out, it stays as it is. */
+                        cardWord?: string;
                     }[];
                 };
             };
@@ -4210,6 +4214,8 @@ export interface operations {
                     puzzles?: {
                         puzzleName: string;
                         activationCode?: string;
+                        /** @description A word or phrase printed large on the stop's QR card, for a mini-game in which the players put the cards' words together. Empty removes it; left out, it stays as it is. */
+                        cardWord?: string;
                     }[];
                 };
             };

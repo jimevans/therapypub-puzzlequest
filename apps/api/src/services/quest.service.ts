@@ -76,6 +76,7 @@ export type QuestPuzzleProperties = Pick<
       | "activationTime"
       | "skipped"
       | "penaltyFreeHints"
+      | "cardWord"
     >
   >;
 
@@ -159,6 +160,9 @@ export class QuestPuzzle {
    */
   activationCode: string;
 
+  /** The word or phrase printed on the stop's QR card, if it has one. */
+  cardWord?: string;
+
   /**
    * Gets or sets the time when the puzzle is available for activation.
    */
@@ -194,6 +198,9 @@ export class QuestPuzzle {
     this.nextHintToDisplay = puzzleDefinition.nextHintToDisplay;
     this.status = puzzleDefinition.status;
     this.activationCode = puzzleDefinition.activationCode;
+    if (puzzleDefinition.cardWord) {
+      this.cardWord = puzzleDefinition.cardWord;
+    }
     this.startTime = puzzleDefinition.startTime;
     this.endTime = puzzleDefinition.endTime;
     this.activationTime = puzzleDefinition.activationTime;
@@ -232,6 +239,9 @@ export class QuestPuzzle {
       skipped: this.skipped,
       statusDescription: this.statusDescription,
     };
+    if (this.cardWord) {
+      serializableObject.cardWord = this.cardWord;
+    }
     // If puzzle lookup data is present, flatten certain properties
     // for rendering.
     if (this.puzzleDetail) {
@@ -248,12 +258,13 @@ export class QuestPuzzle {
   /**
    * Gets the serialized representation of this QuestPuzzle that the players
    * may see. It leaves out the activation code, which players must get by
-   * scanning the puzzle's QR code; the hints not yet revealed, which would
-   * avoid their time penalties; and the solution, until the puzzle is solved.
+   * scanning the puzzle's QR code; the card word, which they collect on the
+   * printed cards; the hints not yet revealed, which would avoid their time
+   * penalties; and the solution, until the puzzle is solved.
    * @returns the object to be serialized to JSON
    */
   toPlayerJSON(): Record<string, unknown> {
-    const { activationCode, ...visible } = this.toJSON();
+    const { activationCode, cardWord, ...visible } = this.toJSON();
     if (this.puzzleDetail) {
       visible.hints = this.puzzleDetail.hints.slice(0, this.nextHintToDisplay);
       if (this.status !== QuestPuzzleStatus.COMPLETED) {
@@ -513,9 +524,15 @@ export interface QuestDefinition {
   assignee?: { kind: AssigneeKind; name: string };
   /**
    * The puzzles in the quest, in order. An activation code may be given to
-   * set or change a puzzle's code; otherwise one is generated.
+   * set or change a puzzle's code; otherwise one is generated. A card word
+   * sets the word on the stop's QR card; an empty one removes it, and leaving
+   * it out keeps it as it is.
    */
-  puzzles?: { puzzleName: string; activationCode?: string }[];
+  puzzles?: {
+    puzzleName: string;
+    activationCode?: string;
+    cardWord?: string;
+  }[];
 }
 
 /**
@@ -1237,11 +1254,14 @@ export async function createQuest(
       return ids;
     }
     quest.puzzles.push(
-      ...questDefinition.puzzles.map(({ puzzleName, activationCode }) => ({
-        ...createQuestPuzzleEntry(puzzleIdOf(ids, puzzleName)),
-        // A code given for the puzzle replaces the generated one.
-        ...(activationCode ? { activationCode } : {}),
-      }))
+      ...questDefinition.puzzles.map(
+        ({ puzzleName, activationCode, cardWord }) => ({
+          ...createQuestPuzzleEntry(puzzleIdOf(ids, puzzleName)),
+          // A code given for the puzzle replaces the generated one.
+          ...(activationCode ? { activationCode } : {}),
+          ...(cardWord ? { cardWord } : {}),
+        })
+      )
     );
   }
   try {
@@ -1362,6 +1382,13 @@ export async function updateQuest(
             createQuestPuzzleEntry(puzzleId);
           if (puzzleDefinition.activationCode) {
             puzzle.activationCode = puzzleDefinition.activationCode;
+          }
+          if (puzzleDefinition.cardWord !== undefined) {
+            if (puzzleDefinition.cardWord) {
+              puzzle.cardWord = puzzleDefinition.cardWord;
+            } else {
+              delete puzzle.cardWord;
+            }
           }
           return puzzle;
         })

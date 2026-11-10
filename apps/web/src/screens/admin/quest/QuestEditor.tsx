@@ -217,6 +217,15 @@ function EditorForm({ quest }: { quest?: Quest }) {
                       <span className={styles.secondaryText}>
                         {field.activationCode ?? "Code assigned when saved"}
                       </span>
+                      <label className={styles.cardWord}>
+                        <span>Card word</span>
+                        <input
+                          {...register(`stops.${index}.cardWord`)}
+                          aria-label={`Card word for ${field.displayName}`}
+                          maxLength={40}
+                          autoComplete="off"
+                        />
+                      </label>
                     </span>
                     {!isFixed && (
                       <span className={styles.stopActions}>
@@ -275,6 +284,7 @@ function EditorForm({ quest }: { quest?: Quest }) {
             puzzles.map((puzzle) => ({
               puzzleName: puzzle.name,
               displayName: puzzle.displayName,
+              cardWord: "",
             }))
           );
           setPicking(false);

@@ -40,6 +40,13 @@ const questPuzzleSchema = new Schema({
     default: "",
     required: true,
   },
+  /**
+   * A word or phrase printed large on the stop's QR card, for a mini-game in
+   * which the players put the cards' words together. Optional.
+   */
+  cardWord: {
+    type: String,
+  },
   /** When the puzzle became available to activate. */
   startTime: {
     type: Date,

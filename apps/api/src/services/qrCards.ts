@@ -7,8 +7,12 @@ import QRCode from "qrcode";
 export interface QrCard {
   questName: string;
   stopNumber: number;
-  puzzleName: string;
   activationCode: string;
+  /**
+   * A word or phrase printed large, for a mini-game in which the players put
+   * the cards' words together. Optional.
+   */
+  cardWord?: string;
 }
 
 const INCH = 72;
@@ -91,8 +95,9 @@ function fittingSize(
  * Draws one card, upright, with its top left corner at the origin.
  * @param pdf the document, already moved and turned to the card's place
  * @param card what the card shows
+ * @param keep whether to tell the players to save the card
  */
-function drawCard(pdf: PDFKit.PDFDocument, card: QrCard) {
+function drawCard(pdf: PDFKit.PDFDocument, card: QrCard, keep: boolean) {
   const qrSize = 104;
   drawQrCode(pdf, card.activationCode, (CARD_WIDTH - qrSize) / 2, 12, qrSize);
 
@@ -105,29 +110,39 @@ function drawCard(pdf: PDFKit.PDFDocument, card: QrCard) {
     lineBreak: false,
   });
 
-  // The puzzle's name, large: up to two lines, smaller if it's long.
-  pdf.font("Helvetica-Bold");
-  let size = 20;
-  while (
-    size > 9 &&
-    pdf.fontSize(size).heightOfString(card.puzzleName, { width: TEXT_WIDTH }) >
-      2.4 * size
-  ) {
-    size -= 1;
+  // The card word, large: up to two lines, smaller if it's long, and never
+  // breaking within a word.
+  if (card.cardWord) {
+    pdf.font("Helvetica-Bold");
+    const words = card.cardWord.split(/\s+/);
+    const fits = (size: number) =>
+      words.every(
+        (word) => pdf.fontSize(size).widthOfString(word) <= TEXT_WIDTH
+      ) &&
+      pdf.fontSize(size).heightOfString(card.cardWord!, {
+        width: TEXT_WIDTH,
+      }) <=
+        2.4 * size;
+    let size = 20;
+    while (size > 9 && !fits(size)) {
+      size -= 1;
+    }
+    pdf.fontSize(size).text(card.cardWord, PADDING, 144, {
+      width: TEXT_WIDTH,
+      align: "center",
+      height: 2.4 * size,
+      ellipsis: true,
+    });
   }
-  pdf.fontSize(size).text(card.puzzleName, PADDING, 144, {
-    width: TEXT_WIDTH,
-    align: "center",
-    height: 2.4 * size,
-    ellipsis: true,
-  });
 
-  pdf.font("Helvetica").fontSize(11);
-  pdf.text("Save this card!", PADDING, 198, {
-    width: TEXT_WIDTH,
-    align: "center",
-    lineBreak: false,
-  });
+  if (keep) {
+    pdf.font("Helvetica").fontSize(11);
+    pdf.text("Save this card!", PADDING, 198, {
+      width: TEXT_WIDTH,
+      align: "center",
+      lineBreak: false,
+    });
+  }
 
   // Which quest and stop it belongs to, small, along the bottom.
   const bottom = CARD_HEIGHT - PADDING - 9;
@@ -148,12 +163,15 @@ function drawCard(pdf: PDFKit.PDFDocument, card: QrCard) {
 
 /**
  * Draws the cards, ten to a sheet, in order. Each card is upright when its
- * slot is turned with the sheet's left edge at the top.
+ * slot is turned with the sheet's left edge at the top. When any card has a
+ * word, the cards are a mini-game: every card but the last (which unlocks the
+ * final stop) tells the players to save it.
  * @param pdf the document, without pages yet
  * @param cards the cards, in the order to print them
  */
 export function drawQrCards(pdf: PDFKit.PDFDocument, cards: QrCard[]) {
   const perSheet = SHEET.columns * SHEET.rows;
+  const collected = cards.some((card) => card.cardWord);
   cards.forEach((card, index) => {
     const place = index % perSheet;
     if (place === 0) {
@@ -165,7 +183,7 @@ export function drawQrCards(pdf: PDFKit.PDFDocument, cards: QrCard[]) {
     // The card's top left goes to the slot's bottom left, and its top runs
     // along the slot's left edge.
     pdf.translate(x, y + SHEET.slotHeight).rotate(-90);
-    drawCard(pdf, card);
+    drawCard(pdf, card, collected && index < cards.length - 1);
     pdf.restore();
   });
 }

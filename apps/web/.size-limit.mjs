@@ -105,12 +105,12 @@ export default [
   onTopOfFirstLoad(
     "A quest, as staff see it",
     "src/screens/staff/StaffQuest.tsx",
-    "4 KB"
+    "5 KB"
   ),
   onTopOfFirstLoad(
     "The quest console",
     "src/screens/questConsole/QuestConsole.tsx",
-    "39 KB"
+    "40 KB"
   ),
   onTopOfFirstLoad(
     "The quest editor",
