@@ -107,10 +107,11 @@ beforeEach(async () => {
   sessions = await startSessions("helper", "player");
 });
 
-/** What no staff answer may contain: anything that tells how to solve. */
+/**
+ * What no staff answer may contain: anything that tells how to solve.
+ * (Activation codes aren't: staff show them to the players at each stop.)
+ */
 const NEVER_SHOWN = [
-  /activationCode/,
-  /-code/,
   /solution/i,
   /keyword/,
   /A piano/,
@@ -148,6 +149,7 @@ describe("a quest, as staff see it", () => {
           displayName: "Riddle",
           status: 3,
           statusDescription: "Completed",
+          activationCode: "riddle-code",
           hintsRevealed: 1,
           hintCount: 2,
         },
@@ -156,6 +158,7 @@ describe("a quest, as staff see it", () => {
           displayName: "Lantern",
           status: 0,
           statusDescription: "Unavailable",
+          activationCode: "lantern-code",
           hintsRevealed: 0,
           hintCount: 0,
         },
@@ -201,7 +204,13 @@ describe("the quests, as staff see them", () => {
       assignee: { kind: "team", name: "the-team" },
       statusDescription: "In progress",
     });
-    for (const pattern of [...NEVER_SHOWN, /riddle/i, /lantern/i]) {
+    for (const pattern of [
+      ...NEVER_SHOWN,
+      /activationCode/,
+      /-code/,
+      /riddle/i,
+      /lantern/i,
+    ]) {
       expect(response.text).not.toMatch(pattern);
     }
   });

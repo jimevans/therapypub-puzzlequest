@@ -48,7 +48,7 @@ export const staffRoutes = [
     operationId: "getStaffQuest",
     summary: "Follow a quest as staff",
     description:
-      "Every stop of the quest, in order, whether or not the players have reached it, with its live status and times. No solutions, activation codes, or hint text.",
+      "Every stop of the quest, in order, whether or not the players have reached it, with its live status, times, and activation code. No solutions or hint text.",
     tags: ["Staff"],
     access: "staff",
     request: { params: questParams },

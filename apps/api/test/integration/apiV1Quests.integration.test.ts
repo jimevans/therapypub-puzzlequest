@@ -377,6 +377,28 @@ describe("a run book", () => {
   });
 });
 
+describe("a quest's activation cards", () => {
+  it("are a PDF, named after the quest", async () => {
+    const response = await as("admin", "get", "/quests/quest/qr-cards").buffer(
+      true
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.type).toBe("application/pdf");
+    expect(response.headers["content-disposition"]).toBe(
+      "attachment; filename=quest-qr-cards.pdf"
+    );
+    expect(response.body.subarray(0, 5).toString()).toBe("%PDF-");
+  });
+
+  it("are a problem for a quest that doesn't exist", async () => {
+    const response = await as("admin", "get", "/quests/nothing/qr-cards");
+
+    expect(response.status).toBe(404);
+    expect(bodyOf(response).type).toBe("/problems/not-found");
+  });
+});
+
 describe("an activation QR code", () => {
   it("is a PNG image", async () => {
     const response = await as(

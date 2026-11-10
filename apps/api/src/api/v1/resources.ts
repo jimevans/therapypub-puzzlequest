@@ -669,8 +669,9 @@ export const staffQuestSummarySchema = z
 /**
  * A quest as staff see it: every stop, in order, reached or not, with its live
  * status. Staff run things at the stops, so they need to know what's coming,
- * but not how to solve it: no solutions, activation codes, hint text, or the
- * text reply the quest waits for. Every field is listed on purpose.
+ * and they unlock each stop by showing its activation code; but not how to
+ * solve it: no solutions, hint text, or the text reply the quest waits for.
+ * Every field is listed on purpose.
  */
 export const staffQuestSchema = z
   .object({
@@ -695,6 +696,10 @@ export const staffQuestSchema = z
             "0 not reached, 1 awaiting activation, 2 in progress, 3 completed.",
         }),
         statusDescription: z.string(),
+        activationCode: z.string().meta({
+          description:
+            "The code that unlocks the stop, which staff show the players as a QR code.",
+        }),
         skipped: z.boolean(),
         hintsRevealed: z.number().int(),
         hintCount: z.number().int(),
@@ -753,6 +758,7 @@ export function toStaffQuestResource(quest: QuestService.Quest) {
       displayName: puzzle.puzzleDetail?.displayName ?? puzzle.puzzleName,
       status: puzzle.status,
       statusDescription: puzzle.statusDescription,
+      activationCode: puzzle.activationCode,
       skipped: puzzle.skipped,
       hintsRevealed: puzzle.nextHintToDisplay,
       hintCount: puzzle.puzzleDetail?.hints.length ?? 0,

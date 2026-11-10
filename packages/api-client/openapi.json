@@ -4538,7 +4538,7 @@
       "get": {
         "operationId": "getActivationQrCode",
         "summary": "Get a puzzle's activation QR code",
-        "description": "A PNG image of the QR code holding the puzzle's activation code, to print and place where the players will find it.",
+        "description": "A PNG image of the QR code holding the puzzle's activation code, for staff to show the players or to print.",
         "tags": [
           "Quests"
         ],
@@ -4658,6 +4658,89 @@
         "responses": {
           "200": {
             "description": "The run book.",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "/problems/sign-in-required: Sign in to do this.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "/problems/forbidden: Not allowed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "/problems/not-found: Not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "/problems/unexpected: An unexpected error occurred.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/quests/{name}/qr-cards": {
+      "get": {
+        "operationId": "getQuestQrCards",
+        "summary": "Get a quest's activation cards",
+        "description": "A PDF of cards to print, one for each of the quest's stops in order, each with the stop's activation QR code and code, its puzzle's name, the stop's number, and the quest's name. Ten 3.5 × 2 inch cards to a US Letter sheet, laid out for perforated business-card sheets (Avery 8371 and compatibles).",
+        "tags": [
+          "Quests"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "schema": {
+              "type": "string",
+              "description": "The quest's name."
+            },
+            "required": true,
+            "description": "The quest's name."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The cards.",
             "content": {
               "application/pdf": {
                 "schema": {
@@ -6202,7 +6285,7 @@
       "get": {
         "operationId": "getStaffQuest",
         "summary": "Follow a quest as staff",
-        "description": "Every stop of the quest, in order, whether or not the players have reached it, with its live status and times. No solutions, activation codes, or hint text.",
+        "description": "Every stop of the quest, in order, whether or not the players have reached it, with its live status, times, and activation code. No solutions or hint text.",
         "tags": [
           "Staff"
         ],
@@ -7992,6 +8075,10 @@
                 "statusDescription": {
                   "type": "string"
                 },
+                "activationCode": {
+                  "type": "string",
+                  "description": "The code that unlocks the stop, which staff show the players as a QR code."
+                },
                 "skipped": {
                   "type": "boolean"
                 },
@@ -8047,6 +8134,7 @@
                 "displayName",
                 "status",
                 "statusDescription",
+                "activationCode",
                 "skipped",
                 "hintsRevealed",
                 "hintCount",

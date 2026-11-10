@@ -248,6 +248,15 @@ function Console({ quest }: { quest: Quest }) {
           </a>
         </li>
         <li>
+          <a
+            id="qr-cards"
+            href={`/api/v1/quests/${encodedName}/qr-cards`}
+            download={`${quest.name}-qr-cards.pdf`}
+          >
+            QR cards to print (PDF)
+          </a>
+        </li>
+        <li>
           <Link id="edit-quest" to={`/quest/${encodedName}/edit`}>
             Edit
           </Link>

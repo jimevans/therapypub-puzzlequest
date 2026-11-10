@@ -11,6 +11,7 @@ import {
   updateQuestBody,
 } from "../../schemas/quest.schemas.js";
 import * as MessagingService from "../../services/messaging.service.js";
+import { drawQrCards } from "../../services/qrCards.js";
 import * as QuestService from "../../services/quest.service.js";
 import * as UserService from "../../services/user.service.js";
 import type { ServiceResult } from "../../types.js";
@@ -295,9 +296,9 @@ export const questRoutes = [
     operationId: "getActivationQrCode",
     summary: "Get a puzzle's activation QR code",
     description:
-      "A PNG image of the QR code holding the puzzle's activation code, to print and place where the players will find it.",
+      "A PNG image of the QR code holding the puzzle's activation code, for staff to show the players or to print.",
     tags: ["Quests"],
-    access: "admin",
+    access: "staff",
     request: { params: questPuzzleParams },
     responses: {
       200: {
@@ -351,6 +352,52 @@ export const questRoutes = [
       res
         .type("application/pdf")
         .attachment(`${req.params.name}.pdf`)
+        .send(Buffer.concat(chunks));
+    },
+  }),
+  defineRoute({
+    method: "get",
+    path: "/quests/{name}/qr-cards",
+    operationId: "getQuestQrCards",
+    summary: "Get a quest's activation cards",
+    description:
+      "A PDF of cards to print, one for each of the quest's stops in order, each with the stop's activation QR code and code, its puzzle's name, the stop's number, and the quest's name. Ten 3.5 × 2 inch cards to a US Letter sheet, laid out for perforated business-card sheets (Avery 8371 and compatibles).",
+    tags: ["Quests"],
+    access: "admin",
+    request: { params: questParams },
+    responses: {
+      200: {
+        description: "The cards.",
+        body: z.string().meta({ format: "binary" }),
+        mediaType: "application/pdf",
+      },
+    },
+    problems: [Problems.notFound],
+    async handle(req, res) {
+      const found = await QuestService.getQuestByQuestName(req.params.name);
+      if (found.status === "error") {
+        sendServiceProblem(res, found);
+        return;
+      }
+      const quest = found.data;
+      const pdf = new PDFDocument({ autoFirstPage: false });
+      const chunks: Buffer[] = [];
+      pdf.on("data", (chunk: Buffer) => chunks.push(chunk));
+      const ended = new Promise((resolve) => pdf.on("end", resolve));
+      drawQrCards(
+        pdf,
+        quest.puzzles.map((puzzle, index) => ({
+          questName: quest.displayName,
+          stopNumber: index + 1,
+          puzzleName: puzzle.puzzleDetail?.displayName ?? puzzle.puzzleName,
+          activationCode: puzzle.activationCode,
+        }))
+      );
+      pdf.end();
+      await ended;
+      res
+        .type("application/pdf")
+        .attachment(`${req.params.name}-qr-cards.pdf`)
         .send(Buffer.concat(chunks));
     },
   }),

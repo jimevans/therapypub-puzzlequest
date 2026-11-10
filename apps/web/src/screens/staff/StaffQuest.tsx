@@ -1,10 +1,13 @@
 import type { Schemas } from "@puzzlequest/api-client";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { ApiError, messageOf } from "../../api";
 import { copy } from "../../copy";
 import { useLiveQuest } from "../../live/useLiveQuest";
 import { ClockTime } from "../../quests/ClockTime";
+import type { QrCodeStop } from "../../quests/QrCodeDialog";
+import { QrCodeDialogWhenShown } from "../../quests/QrCodeDialogWhenShown";
 import {
   STEP_AWAITING_ACTIVATION,
   STEP_COMPLETED,
@@ -14,6 +17,7 @@ import { describeProgress, progressSnapshot } from "../../quests/announcements";
 import { Announcement, useAnnouncement } from "../../ui/Announcement";
 import { ShareLinksSection } from "../../quests/ShareLinksSection";
 import { Banner } from "../../ui/Banner";
+import buttonStyles from "../../ui/Button.module.css";
 import styles from "./Staff.module.css";
 import { assigneeOf } from "./assignee";
 import { staffQuestQuery } from "./staffQueries";
@@ -36,10 +40,13 @@ function StepCard({
   quest,
   step,
   index,
+  onShowQrCode,
 }: {
   quest: StaffQuest;
   step: Step;
   index: number;
+  /** Shows the stop's QR code, for the players to scan. */
+  onShowQrCode: () => void;
 }) {
   const clock = quest.progress.puzzles.find(
     (progress) => progress.puzzleName === step.name
@@ -94,11 +101,24 @@ function StepCard({
           </>
         )}
       </dl>
+      {/* A plain button, with the app's button styles: React Aria's would
+          make this screen several times larger. */}
+      <button
+        type="button"
+        className={`${buttonStyles.button} ${
+          current ? buttonStyles.primary : buttonStyles.secondary
+        }`}
+        aria-label={`QR code for ${step.displayName}`}
+        onClick={onShowQrCode}
+      >
+        QR code
+      </button>
     </li>
   );
 }
 
 function QuestView({ quest }: { quest: StaffQuest }) {
+  const [shown, setShown] = useState<QrCodeStop | null>(null);
   const encodedName = encodeURIComponent(quest.name);
   const announcement = useAnnouncement(
     progressSnapshot(quest, quest.puzzles),
@@ -129,9 +149,27 @@ function QuestView({ quest }: { quest: StaffQuest }) {
       )}
       <ol id="staff-steps" className={styles.steps}>
         {quest.puzzles.map((step, index) => (
-          <StepCard key={step.name} quest={quest} step={step} index={index} />
+          <StepCard
+            key={step.name}
+            quest={quest}
+            step={step}
+            index={index}
+            onShowQrCode={() =>
+              setShown({
+                number: index + 1,
+                puzzleName: step.name,
+                label: step.displayName,
+                activationCode: step.activationCode,
+              })
+            }
+          />
         ))}
       </ol>
+      <QrCodeDialogWhenShown
+        questName={quest.name}
+        stop={shown}
+        onClose={() => setShown(null)}
+      />
       <ShareLinksSection questName={quest.name} />
       <p className={styles.links}>
         <Link to={`/monitor/quest/${encodedName}/board`}>Board</Link>
@@ -143,7 +181,8 @@ function QuestView({ quest }: { quest: StaffQuest }) {
 
 /**
  * A quest as staff follow it: every stop in order, with where the players are,
- * kept up to date as they go. It shows nothing about how to solve anything.
+ * kept up to date as they go, and each stop's QR code to show the players. It
+ * shows nothing about how to solve anything.
  */
 export default function StaffQuest() {
   const name = useParams().name ?? "";
