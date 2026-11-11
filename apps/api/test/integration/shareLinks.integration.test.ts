@@ -41,7 +41,7 @@ const QUEST = "/api/v1/quests/secret/spectator-view";
 const PUZZLE = "/api/v1/quests/secret/puzzles/riddle/spectator-view";
 
 /** The path of the puzzle as the quest's entry has it. */
-const puzzlePath = async () => `${PUZZLE}?entry=${await entryIdOf("secret")}`;
+const puzzlePath = async () => `${PUZZLE}?entryId=${await entryIdOf("secret")}`;
 const TICKET = "/api/v1/quests/secret/live-tickets";
 
 beforeAll(async () => {
@@ -208,6 +208,17 @@ describe("the list of links", () => {
       canSetExpiry: false,
       links: [{ label: "Grandma", createdBy: "one name", canRevoke: false }],
     });
+  });
+
+  it("shows null as the maker of a link whose maker deleted their account", async () => {
+    await makeLink("one");
+    await UserModel.deleteOne({ userName: "one" });
+
+    const response = await as(request(app).get(LINKS), "helper");
+
+    expect(JSON.parse(response.text).links).toEqual([
+      expect.objectContaining({ label: "Grandma", createdBy: null }),
+    ]);
   });
 
   it("says who may revoke, and that staff may set expiry", async () => {

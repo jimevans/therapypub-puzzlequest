@@ -29,8 +29,8 @@ export function staffQuestQuery(name: string) {
     queryKey: [...questQueryKey(name), "staff"],
     queryFn: async () =>
       dataOrThrow(
-        await api.GET("/quests/{name}/staff-view", {
-          params: { path: { name } },
+        await api.GET("/quests/{questName}/staff-view", {
+          params: { path: { questName: name } },
         })
       ),
   });

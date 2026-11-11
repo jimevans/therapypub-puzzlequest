@@ -91,7 +91,7 @@ describe("a race", () => {
       displayName: "A Race Helper",
       email: `${helper}@example.com`,
       password: PASSWORD,
-      authorizationLevel: 5,
+      role: "staff",
     });
     for (const [teamName, displayName, member] of [
       [reds, "The Racing Reds", redPlayer],
@@ -109,18 +109,18 @@ describe("a race", () => {
     redToken = await sessionToken(redPlayer);
     blueToken = await sessionToken(bluePlayer);
     await api("POST", "/puzzles", admin, {
-      name: riddle,
+      puzzleName: riddle,
       displayName: "The Racing Riddle",
       text: "What has keys but opens no locks?",
       solutionKeyword: "piano",
-      solutionDisplayText: "A grand piano",
+      solutionText: "A grand piano",
     });
     await api("POST", "/puzzles", admin, {
-      name: finale,
+      puzzleName: finale,
       displayName: "The Racing Finale",
       text: "Say done",
       solutionKeyword: "done",
-      solutionDisplayText: "All done",
+      solutionText: "All done",
     });
   });
 

@@ -30,10 +30,10 @@ function fetchQuests(userName: string) {
 
 function QuestCard({ quest }: { quest: Schemas["QuestSummary"] }) {
   return (
-    <li className={styles.quest} data-quest-name={quest.name}>
+    <li className={styles.quest} data-quest-name={quest.questName}>
       <Link
         className={styles.name}
-        to={`/quest/${encodeURIComponent(quest.name)}`}
+        to={`/quest/${encodeURIComponent(quest.questName)}`}
       >
         {quest.displayName}
       </Link>
@@ -89,7 +89,7 @@ export function Home() {
       {quests.data && quests.data.length > 0 && (
         <ul className={styles.quests}>
           {quests.data.map((quest) => (
-            <QuestCard key={quest.name} quest={quest} />
+            <QuestCard key={quest.questName} quest={quest} />
           ))}
         </ul>
       )}

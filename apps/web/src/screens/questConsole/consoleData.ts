@@ -1,3 +1,4 @@
+import type { Schemas } from "@puzzlequest/api-client";
 import {
   queryOptions,
   useMutation,
@@ -19,8 +20,8 @@ export function eventsQuery(name: string) {
     queryFn: () =>
       fetchAllPages(async (after) =>
         dataOrThrow(
-          await api.GET("/quests/{name}/events", {
-            params: { path: { name }, query: { after } },
+          await api.GET("/quests/{questName}/events", {
+            params: { path: { questName: name }, query: { after } },
           })
         )
       ),
@@ -29,7 +30,7 @@ export function eventsQuery(name: string) {
 
 /** A team or player in a quest, by name, for the actions on its entry. */
 export interface EntrantRef {
-  kind: "user" | "team";
+  kind: Schemas["EntrantKind"];
   name: string;
 }
 
@@ -56,12 +57,12 @@ async function runForEntrant(
   action: QuestAction
 ): Promise<void> {
   if (entrant.kind === "team") {
-    const path = { name, teamName: entrant.name };
+    const path = { questName: name, teamName: entrant.name };
     switch (action.kind) {
       case "skipPuzzle":
         dataOrThrow(
           await api.POST(
-            "/quests/{name}/teams/{teamName}/puzzles/{puzzleName}/skip",
+            "/quests/{questName}/teams/{teamName}/puzzles/{puzzleName}/skip",
             { params: { path: { ...path, puzzleName: action.puzzleName } } }
           )
         );
@@ -69,7 +70,7 @@ async function runForEntrant(
       case "resetPuzzle":
         dataOrThrow(
           await api.POST(
-            "/quests/{name}/teams/{teamName}/puzzles/{puzzleName}/reset",
+            "/quests/{questName}/teams/{teamName}/puzzles/{puzzleName}/reset",
             {
               params: { path: { ...path, puzzleName: action.puzzleName } },
               body: { refundHints: action.refundHints },
@@ -79,19 +80,22 @@ async function runForEntrant(
         return;
       default:
         dataOrThrow(
-          await api.POST(`/quests/{name}/teams/{teamName}/${action.kind}`, {
-            params: { path },
-          })
+          await api.POST(
+            `/quests/{questName}/teams/{teamName}/${action.kind}`,
+            {
+              params: { path },
+            }
+          )
         );
         return;
     }
   }
-  const path = { name, userName: entrant.name };
+  const path = { questName: name, userName: entrant.name };
   switch (action.kind) {
     case "skipPuzzle":
       dataOrThrow(
         await api.POST(
-          "/quests/{name}/players/{userName}/puzzles/{puzzleName}/skip",
+          "/quests/{questName}/players/{userName}/puzzles/{puzzleName}/skip",
           { params: { path: { ...path, puzzleName: action.puzzleName } } }
         )
       );
@@ -99,7 +103,7 @@ async function runForEntrant(
     case "resetPuzzle":
       dataOrThrow(
         await api.POST(
-          "/quests/{name}/players/{userName}/puzzles/{puzzleName}/reset",
+          "/quests/{questName}/players/{userName}/puzzles/{puzzleName}/reset",
           {
             params: { path: { ...path, puzzleName: action.puzzleName } },
             body: { refundHints: action.refundHints },
@@ -109,9 +113,12 @@ async function runForEntrant(
       return;
     default:
       dataOrThrow(
-        await api.POST(`/quests/{name}/players/{userName}/${action.kind}`, {
-          params: { path },
-        })
+        await api.POST(
+          `/quests/{questName}/players/{userName}/${action.kind}`,
+          {
+            params: { path },
+          }
+        )
       );
       return;
   }
@@ -133,8 +140,8 @@ async function run(name: string, action: QuestAction): Promise<void> {
       throw new Error("A puzzle is skipped or reset for one entrant");
     default:
       dataOrThrow(
-        await api.POST(`/quests/{name}/${action.kind}`, {
-          params: { path: { name } },
+        await api.POST(`/quests/{questName}/${action.kind}`, {
+          params: { path: { questName: name } },
         })
       );
   }

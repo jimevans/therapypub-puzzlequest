@@ -19,7 +19,7 @@ const progress = (
 
 const puzzle = (fields: Partial<PuzzleSnapshot> = {}): PuzzleSnapshot => ({
   paused: false,
-  status: 2,
+  status: "inProgress",
   skipped: false,
   solutionText: null,
   hints: [],
@@ -61,18 +61,21 @@ describe("announcing a quest's progress", () => {
 
 describe("announcing a puzzle", () => {
   it("says when it's started, and when it's solved, with the solution", () => {
-    expect(describePuzzle(puzzle({ status: 1 }), puzzle())).toBe(
-      "The puzzle is started."
-    );
     expect(
-      describePuzzle(puzzle(), puzzle({ status: 3, solutionText: "A piano" }))
+      describePuzzle(puzzle({ status: "awaitingActivation" }), puzzle())
+    ).toBe("The puzzle is started.");
+    expect(
+      describePuzzle(
+        puzzle(),
+        puzzle({ status: "completed", solutionText: "A piano" })
+      )
     ).toBe("Solved: A piano.");
   });
 
   it("says when the puzzle master skips it", () => {
-    expect(describePuzzle(puzzle(), puzzle({ status: 3, skipped: true }))).toBe(
-      "Skipped by the puzzle master."
-    );
+    expect(
+      describePuzzle(puzzle(), puzzle({ status: "completed", skipped: true }))
+    ).toBe("Skipped by the puzzle master.");
   });
 
   it("reads out each new hint", () => {
@@ -86,12 +89,20 @@ describe("announcing a puzzle", () => {
 });
 
 describe("a quest's progress snapshot", () => {
-  it("has only the steps reached, by whichever name the view has", () => {
+  it("has only the steps reached, named by their puzzles", () => {
     expect(
-      progressSnapshot({ paused: true, status: 1 }, [
-        { puzzleName: "riddle", displayName: "The Riddle", status: 3 },
-        { puzzleName: "cipher", status: 2 },
-        { puzzleName: "finale", displayName: "The Finale", status: 0 },
+      progressSnapshot({ paused: true, status: "inProgress" }, [
+        {
+          puzzleName: "riddle",
+          displayName: "The Riddle",
+          status: "completed",
+        },
+        { puzzleName: "cipher", status: "inProgress" },
+        {
+          puzzleName: "finale",
+          displayName: "The Finale",
+          status: "notReached",
+        },
       ])
     ).toEqual({
       paused: true,
@@ -109,9 +120,13 @@ describe("announcing several entries' progress", () => {
     id,
     name,
     paused: false,
-    status: 1,
+    status: "inProgress" as const,
     steps: [
-      { name: "riddle", displayName: "The Riddle", status: solved ? 3 : 2 },
+      {
+        puzzleName: "riddle",
+        displayName: "The Riddle",
+        status: solved ? ("completed" as const) : ("inProgress" as const),
+      },
     ],
   });
 

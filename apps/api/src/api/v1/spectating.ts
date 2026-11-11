@@ -19,7 +19,7 @@ import {
 import { defineRoute } from "./route.js";
 
 const questParams = z.object({
-  name: z.string().meta({ description: "The quest's name." }),
+  questName: z.string().meta({ description: "The quest's name." }),
 });
 
 const questPuzzleParams = questParams.extend({
@@ -28,7 +28,7 @@ const questPuzzleParams = questParams.extend({
 
 /** Whose progress on a puzzle to show. */
 const spectatorPuzzleQuery = z.object({
-  entry: z.string().min(1).meta({
+  entryId: z.string().min(1).meta({
     description:
       "The ID of the entry whose progress to show, from the quest's spectator view.",
   }),
@@ -56,7 +56,7 @@ export const liveTicketSchema = z
 export const spectatingRoutes = [
   defineRoute({
     method: "post",
-    path: "/quests/{name}/live-tickets",
+    path: "/quests/{questName}/live-tickets",
     operationId: "createLiveTicket",
     summary: "Get a ticket to follow a quest's live updates",
     description:
@@ -72,7 +72,7 @@ export const spectatingRoutes = [
     problems: [Problems.notFound, Problems.tooManyRequests],
     async handle(req, res) {
       const found = await QuestService.getSpectatedQuest(
-        req.params.name,
+        req.params.questName,
         UserService.getLoggedInUser(req.user),
         shareTokenOf(req)
       );
@@ -82,8 +82,9 @@ export const spectatingRoutes = [
       }
       const shareToken = shareTokenOf(req);
       const issued = await issueLiveTicket(
-        req.params.name,
-        shareToken && (await findValidShareLink(shareToken, req.params.name)),
+        req.params.questName,
+        shareToken &&
+          (await findValidShareLink(shareToken, req.params.questName)),
         UserService.getLoggedInUser(req.user)?.id
       );
       if (!issued) {
@@ -98,7 +99,7 @@ export const spectatingRoutes = [
   }),
   defineRoute({
     method: "get",
-    path: "/quests/{name}/spectator-view",
+    path: "/quests/{questName}/spectator-view",
     operationId: "getSpectatorQuest",
     summary: "Follow a quest",
     description:
@@ -113,7 +114,7 @@ export const spectatingRoutes = [
     problems: [Problems.notFound],
     async handle(req, res) {
       const found = await QuestService.getSpectatedQuest(
-        req.params.name,
+        req.params.questName,
         UserService.getLoggedInUser(req.user),
         shareTokenOf(req)
       );
@@ -126,7 +127,7 @@ export const spectatingRoutes = [
   }),
   defineRoute({
     method: "get",
-    path: "/quests/{name}/puzzles/{puzzleName}/spectator-view",
+    path: "/quests/{questName}/puzzles/{puzzleName}/spectator-view",
     operationId: "getSpectatorPuzzle",
     summary: "Follow a puzzle",
     description:
@@ -141,9 +142,9 @@ export const spectatingRoutes = [
     problems: [Problems.notFound],
     async handle(req, res) {
       const found = await QuestService.getSpectatedQuestPuzzle(
-        req.params.name,
+        req.params.questName,
         req.params.puzzleName,
-        req.query.entry,
+        req.query.entryId,
         UserService.getLoggedInUser(req.user),
         shareTokenOf(req)
       );

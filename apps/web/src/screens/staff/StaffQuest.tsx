@@ -12,6 +12,7 @@ import {
   STEP_AWAITING_ACTIVATION,
   STEP_COMPLETED,
   STEP_IN_PROGRESS,
+  STEP_NOT_REACHED,
 } from "../../quests/status";
 import {
   describeEntries,
@@ -57,7 +58,7 @@ function StepCard({
   onShowQrCode: () => void;
 }) {
   const clock = entry.progress.puzzles.find(
-    (progress) => progress.puzzleName === step.name
+    (progress) => progress.puzzleName === step.puzzleName
   );
   const current = isCurrent(step);
   return (
@@ -65,7 +66,7 @@ function StepCard({
       className={`${styles.step} ${current ? styles.current : ""} ${
         step.status === STEP_COMPLETED ? styles.done : ""
       }`}
-      data-puzzle-name={step.name}
+      data-puzzle-name={step.puzzleName}
       aria-current={current ? "step" : undefined}
     >
       <div className={styles.stepHeading}>
@@ -92,7 +93,7 @@ function StepCard({
             <dd>{at(step.endTime)}</dd>
           </>
         )}
-        {step.hintCount > 0 && step.status !== 0 && (
+        {step.hintCount > 0 && step.status !== STEP_NOT_REACHED && (
           <>
             <dt>Hints</dt>
             <dd>
@@ -171,14 +172,14 @@ function EntryView({
       >
         {entry.puzzles.map((step, index) => (
           <StepCard
-            key={step.name}
+            key={step.puzzleName}
             entry={entry}
             step={step}
             index={index}
             onShowQrCode={() =>
               onShowQrCode({
                 number: index + 1,
-                puzzleName: step.name,
+                puzzleName: step.puzzleName,
                 label: step.displayName,
                 activationCode: step.activationCode,
               })
@@ -204,7 +205,7 @@ function EntryView({
 
 function QuestView({ quest }: { quest: StaffQuest }) {
   const [shown, setShown] = useState<QrCodeStop | null>(null);
-  const encodedName = encodeURIComponent(quest.name);
+  const encodedName = encodeURIComponent(quest.questName);
   const announcement = useAnnouncement(
     entriesSnapshot(
       quest.entries.map((entry) => ({
@@ -231,11 +232,11 @@ function QuestView({ quest }: { quest: StaffQuest }) {
         />
       ))}
       <QrCodeDialogWhenShown
-        questName={quest.name}
+        questName={quest.questName}
         stop={shown}
         onClose={() => setShown(null)}
       />
-      <ShareLinksSection questName={quest.name} />
+      <ShareLinksSection questName={quest.questName} />
       <p className={styles.links}>
         <Link to={`/monitor/quest/${encodedName}/board`}>Board</Link>
         <Link to="/">All quests</Link>

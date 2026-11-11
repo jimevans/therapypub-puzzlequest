@@ -77,7 +77,7 @@ describe("authoring", () => {
       displayName: "A Text Puzzle",
       text: "Name a **color**",
       solutionKeyword: "red",
-      hints: [{ text: "Think of roses", timePenalty: 45 }],
+      hints: [{ text: "Think of roses", timePenaltySeconds: 45 }],
     });
     await expectAccessible();
   });
@@ -86,7 +86,7 @@ describe("authoring", () => {
     await browser.url("/puzzle/new");
     await $("#puzzle-name").setValue(imagePuzzle);
     await $("#display-name").setValue("An Image Puzzle");
-    await $("#puzzle-type").selectByAttribute("value", "1");
+    await $("#puzzle-type").selectByAttribute("value", "image");
     await $("#puzzle-file").setValue(imageFile);
     await expect($("#puzzle-content img")).toHaveAttribute(
       "src",
@@ -143,9 +143,9 @@ describe("authoring", () => {
     await browser.url("/quest/new");
     await $("#quest-name").setValue(questName);
     await $("#display-name").setValue("An Authored Quest");
-    await $("#entrant-choice").selectByAttribute("value", `user:${player}`);
+    await $("#entrant-choice").selectByAttribute("value", `player:${player}`);
     await $("#add-entrant").click();
-    await expect($(`#entrants [data-entrant="user:${player}"]`)).toExist();
+    await expect($(`#entrants [data-entrant="player:${player}"]`)).toExist();
 
     await $("#add-puzzles").click();
     for (const puzzle of [textPuzzle, imagePuzzle]) {
@@ -217,7 +217,7 @@ describe("authoring", () => {
     const quest = await api("GET", `/quests/${questName}`, admin);
     expect(quest.entries).toHaveLength(1);
     expect(quest.entries[0].entrant).toMatchObject({
-      kind: "user",
+      kind: "player",
       name: player,
     });
     expect(

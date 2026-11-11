@@ -1,3 +1,5 @@
+import type { Schemas } from "@puzzlequest/api-client";
+
 /** What the forms for signing up and editing a profile ask for. */
 export interface AccountFormValues {
   userName: string;
@@ -7,14 +9,14 @@ export interface AccountFormValues {
   sms: boolean;
   password: string;
   confirmPassword: string;
-  authorizationLevel: number;
+  role: Schemas["Role"];
 }
 
-/** The authorization levels an administrator can choose. */
-export const AUTHORIZATION_LEVELS = [
-  { value: 1, label: "Player" },
-  { value: 5, label: "Staff" },
-  { value: 10, label: "Administrator" },
+/** The roles an administrator can choose. */
+export const ROLES: { value: Schemas["Role"]; label: string }[] = [
+  { value: "player", label: "Player" },
+  { value: "staff", label: "Staff" },
+  { value: "admin", label: "Administrator" },
 ];
 
 /**

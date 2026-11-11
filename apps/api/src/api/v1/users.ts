@@ -1,7 +1,7 @@
 // Users, their passwords, and verifying their email addresses.
 import { z } from "zod";
 import * as RateLimiter from "../../middleware/rateLimiter.js";
-import { AuthorizationLevel } from "../../models/user.model.js";
+import { toAuthorizationLevel } from "../../schemas/enums.js";
 import {
   changePasswordBody,
   createUserBody,
@@ -86,7 +86,7 @@ export const userRoutes = [
     operationId: "createUser",
     summary: "Sign up, or create a user",
     description:
-      "Anyone may sign up, as a player. An administrator creating a user may also choose its authorization level. A verification email is sent to the address.",
+      "Anyone may sign up, as a player. An administrator creating a user may also choose its role. A verification email is sent to the address.",
     tags: ["Users"],
     access: "public",
     request: { body: createUserBody },
@@ -103,20 +103,20 @@ export const userRoutes = [
       Problems.passwordNotAllowed,
     ],
     async handle(req, res) {
-      const { authorizationLevel, ...definition } = req.body;
+      const { role, ...definition } = req.body;
       const isAdmin = UserService.getLoggedInUser(req.user)?.isAdmin() ?? false;
-      if (authorizationLevel !== undefined && !isAdmin) {
+      if (role !== undefined && !isAdmin) {
         sendProblem(
           res,
           Problems.forbidden,
-          "Only an administrator can choose a new user's authorization level"
+          "Only an administrator can choose a new user's role"
         );
         return;
       }
       const created = await UserService.createUser(
         new UserService.User({
           ...definition,
-          authorizationLevel: authorizationLevel ?? AuthorizationLevel.USER,
+          authorizationLevel: toAuthorizationLevel(role ?? "player"),
         })
       );
       if (created.status === "error") {
@@ -225,27 +225,28 @@ export const userRoutes = [
     operationId: "updateUser",
     summary: "Change a user",
     description:
-      "Changes the fields given. A new email address must be verified again, and a verification email is sent to it. Only an administrator may change an authorization level, which signs the user out everywhere.",
+      "Changes the fields given. A new email address must be verified again, and a verification email is sent to it. Only an administrator may change a role, which signs the user out everywhere.",
     tags: ["Users"],
     access: "selfOrAdmin",
     request: { params: userParams, body: patchUserBody },
     responses: { 200: { description: "The user.", body: userSchema } },
     problems: [Problems.notFound, Problems.alreadyExists],
     async handle(req, res) {
-      const { sms, authorizationLevel, ...changes } = req.body;
+      const { sms, role, ...changes } = req.body;
       const isAdmin = UserService.requireLoggedInUser(req.user).isAdmin();
-      if (authorizationLevel !== undefined && !isAdmin) {
+      if (role !== undefined && !isAdmin) {
         sendProblem(
           res,
           Problems.forbidden,
-          "Only an administrator can change an authorization level"
+          "Only an administrator can change a user's role"
         );
         return;
       }
       const updated = await UserService.updateUser(req.params.userName, {
         ...changes,
         allowSmsMessages: sms,
-        authorizationLevel,
+        authorizationLevel:
+          role !== undefined ? toAuthorizationLevel(role) : undefined,
       });
       if (updated.status === "error") {
         sendServiceProblem(res, updated);
@@ -265,7 +266,7 @@ export const userRoutes = [
     operationId: "deleteUser",
     summary: "Delete a user",
     description:
-      "Deletes the user, ends their sessions, removes them from their teams, and takes their name out of quests' activity logs. Quests assigned to them stay, assigned to a deleted user. Deleting your own account needs your password; wrong ones are limited, as for changing it. The only administrator can't be deleted.",
+      "Deletes the user, ends their sessions, removes them from their teams, and takes their name out of quests' activity logs. Their entries in quests stay, as a deleted user's. Deleting your own account needs your password; wrong ones are limited, as for changing it. The only administrator can't be deleted.",
     tags: ["Users"],
     access: "selfOrAdmin",
     before: [RateLimiter.passwordChangeRateLimiter],

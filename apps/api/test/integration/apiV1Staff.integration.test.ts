@@ -151,33 +151,36 @@ describe("a quest, as staff see it", () => {
     expect(response.status).toBe(200);
     expect(staffQuestSchema.parse(response.body)).toEqual(response.body);
     expect(response.body).toMatchObject({
-      name: "quest",
+      questName: "quest",
       displayName: "Quest",
     });
     expect(response.body.entries).toHaveLength(1);
     expect(response.body.entries[0]).toMatchObject({
       id: await entryIdOf("quest"),
       entrant: { kind: "team", name: "the-team", displayName: "Team Display" },
-      status: 1,
+      status: "inProgress",
       paused: false,
       puzzles: [
         {
-          name: "riddle",
+          puzzleName: "riddle",
           displayName: "Riddle",
-          status: 3,
+          status: "completed",
           statusDescription: "Completed",
           activationCode: "riddle-code",
           hintsRevealed: 1,
           hintCount: 2,
         },
         {
-          name: "lantern",
+          puzzleName: "lantern",
           displayName: "Lantern",
-          status: 0,
+          status: "notReached",
           statusDescription: "Unavailable",
           activationCode: "lantern-code",
           hintsRevealed: 0,
           hintCount: 0,
+          activationTime: null,
+          startTime: null,
+          endTime: null,
         },
       ],
     });
@@ -217,7 +220,7 @@ describe("the quests, as staff see them", () => {
     const [quest] = response.body.items;
     expect(staffQuestSummarySchema.parse(quest)).toEqual(quest);
     expect(quest).toMatchObject({
-      name: "quest",
+      questName: "quest",
       entries: [
         {
           entrant: { kind: "team", name: "the-team" },
@@ -253,18 +256,18 @@ describe("a quest several teams race, as staff see it", () => {
     const response = await asStaff("/api/v1/quests/quest/staff-view");
 
     expect(response.status).toBe(200);
-    const status = (entry: { puzzles: { status: number }[] }) =>
+    const status = (entry: { puzzles: { status: string }[] }) =>
       entry.puzzles.map((puzzle) => puzzle.status);
     const [leaders, rivals] = response.body.entries;
     expect(leaders.entrant.name).toBe("the-team");
-    expect(status(leaders)).toEqual([3, 0]);
+    expect(status(leaders)).toEqual(["completed", "notReached"]);
     expect(rivals).toMatchObject({
       id: await entryIdOf("quest", 1),
       entrant: { kind: "team", name: "rivals", displayName: "Rival Crew" },
-      status: 0,
+      status: "notStarted",
       statusDescription: "Not yet started",
     });
-    expect(status(rivals)).toEqual([0, 0]);
+    expect(status(rivals)).toEqual(["notReached", "notReached"]);
     expect(
       rivals.puzzles.map((p: { activationCode: string }) => p.activationCode)
     ).toEqual(["riddle-code", "lantern-code"]);
@@ -276,14 +279,14 @@ describe("a quest several teams race, as staff see it", () => {
 
     expect(
       response.body.items[0].entries.map(
-        (entry: { entrant: { name: string }; status: number }) => [
+        (entry: { entrant: { name: string }; status: string }) => [
           entry.entrant.name,
           entry.status,
         ]
       )
     ).toEqual([
-      ["the-team", 1],
-      ["rivals", 0],
+      ["the-team", "inProgress"],
+      ["rivals", "notStarted"],
     ]);
   });
 

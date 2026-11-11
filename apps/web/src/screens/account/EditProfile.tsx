@@ -14,10 +14,10 @@ import { userQuery } from "./userQuery";
 
 function EditForm({
   user,
-  canChooseLevel,
+  canChooseRole,
 }: {
   user: Schemas["User"];
-  canChooseLevel: boolean;
+  canChooseRole: boolean;
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -32,7 +32,7 @@ function EditForm({
         sms: user.sms,
         password: "",
         confirmPassword: "",
-        authorizationLevel: user.authorizationLevel,
+        role: user.role,
       },
     });
   const save = useMutation({
@@ -41,7 +41,7 @@ function EditForm({
       email,
       phone,
       sms,
-      authorizationLevel,
+      role,
     }: AccountFormValues) =>
       dataOrThrow(
         await api.PATCH("/users/{userName}", {
@@ -51,7 +51,7 @@ function EditForm({
             email,
             phone,
             sms,
-            ...(canChooseLevel ? { authorizationLevel } : {}),
+            ...(canChooseRole ? { role } : {}),
           },
         })
       ),
@@ -86,7 +86,7 @@ function EditForm({
           control={control}
           register={register}
           isEditing
-          canChooseLevel={canChooseLevel}
+          canChooseRole={canChooseRole}
         />
         <Button
           id="save-profile"
@@ -120,7 +120,7 @@ export function EditProfile() {
       ) : user.data && session.data !== undefined ? (
         <EditForm
           user={user.data}
-          canChooseLevel={isAdministrator(session.data?.user)}
+          canChooseRole={isAdministrator(session.data?.user)}
         />
       ) : (
         user.isError && <Banner tone="danger">{messageOf(user.error)}</Banner>

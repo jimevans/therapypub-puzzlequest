@@ -75,7 +75,7 @@ export function aUser(fields: Partial<Schemas["User"]> = {}): Schemas["User"] {
     emailVerified: true,
     phone: "",
     sms: false,
-    authorizationLevel: 1,
+    role: "player",
     ...fields,
   };
 }
@@ -98,11 +98,11 @@ export const THE_REDS = {
  * @returns the quest, with its one entry
  */
 export function withOneEntry<
-  Quest extends { name: string; displayName: string; visibility?: string },
+  Quest extends { questName: string; displayName: string; visibility?: string },
 >(quest: Quest, entrant: object = THE_REDS, id = "entry-1") {
-  const { name, displayName, visibility, ...entry } = quest;
+  const { questName, displayName, visibility, ...entry } = quest;
   return {
-    name,
+    questName,
     displayName,
     ...(visibility === undefined ? {} : { visibility }),
     entries: [{ id, entrant, ...entry }],

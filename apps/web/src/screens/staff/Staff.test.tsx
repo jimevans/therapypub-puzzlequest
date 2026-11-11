@@ -18,28 +18,44 @@ vi.mock("../../live/useLiveQuest", async (importOriginal) => ({
   useLiveQuest: () => ({ connected: true, connectionId: () => undefined }),
 }));
 
-const STOPPED = { running: false, elapsedMs: 0, penaltyMs: 0, totalMs: 0 };
+const STOPPED = {
+  startTime: null,
+  endTime: null,
+  running: false,
+  clockStart: null,
+  elapsedMs: 0,
+  penaltyMs: 0,
+  totalMs: 0,
+};
 
-function step(name: string, status: number, statusDescription: string) {
+/** The stop statuses, in the order a stop goes through them. */
+const STOP_STATUSES = [
+  "notReached",
+  "awaitingActivation",
+  "inProgress",
+  "completed",
+] as const;
+
+function step(name: string, stage: number, statusDescription: string) {
   return {
-    name,
+    puzzleName: name,
     displayName: `The ${name}`,
-    status,
+    status: STOP_STATUSES[stage],
     statusDescription,
     activationCode: name.toUpperCase(),
     skipped: false,
-    hintsRevealed: status === 3 ? 1 : 0,
+    hintsRevealed: stage === 3 ? 1 : 0,
     hintCount: 2,
-    activationTime: status >= 2 ? "2026-11-07T10:03:00.000Z" : null,
-    startTime: status >= 1 ? "2026-11-07T10:00:00.000Z" : null,
-    endTime: status === 3 ? "2026-11-07T10:15:00.000Z" : null,
+    activationTime: stage >= 2 ? "2026-11-07T10:03:00.000Z" : null,
+    startTime: stage >= 1 ? "2026-11-07T10:00:00.000Z" : null,
+    endTime: stage === 3 ? "2026-11-07T10:15:00.000Z" : null,
   };
 }
 
 const QUEST = {
-  name: "trail",
+  questName: "trail",
   displayName: "The Trail",
-  status: 1,
+  status: "inProgress",
   statusDescription: "In progress",
   paused: false,
   rank: null as number | null,
@@ -64,7 +80,7 @@ const QUEST = {
 
 /** A quest as staff's list shows it: no puzzles, so no length. */
 const SUMMARY = {
-  name: QUEST.name,
+  questName: QUEST.questName,
   displayName: QUEST.displayName,
   status: QUEST.status,
   statusDescription: QUEST.statusDescription,
@@ -112,16 +128,16 @@ describe("staff's home", () => {
         items: [
           withOneEntry({
             ...SUMMARY,
-            name: "done",
+            questName: "done",
             displayName: "Done",
-            status: 2,
+            status: "completed",
             statusDescription: "Completed",
           }),
           withOneEntry({
             ...SUMMARY,
-            name: "later",
+            questName: "later",
             displayName: "Later",
-            status: 0,
+            status: "notStarted",
           }),
           withOneEntry(SUMMARY),
         ],
@@ -149,15 +165,15 @@ describe("staff's home, with a race", () => {
       ok({
         items: [
           {
-            name: "race",
+            questName: "race",
             displayName: "The Race",
             entries: [
               reds,
               {
                 ...reds,
                 id: "entry-2",
-                entrant: { kind: "user", name: "sam", displayName: "Sam" },
-                status: 2,
+                entrant: { kind: "player", name: "sam", displayName: "Sam" },
+                status: "completed",
                 statusDescription: "Completed",
                 rank: 1,
                 progress: {
@@ -170,7 +186,7 @@ describe("staff's home, with a race", () => {
                 ...reds,
                 id: "entry-3",
                 entrant: { kind: "team", name: "blues", displayName: "Blues" },
-                status: 0,
+                status: "notStarted",
                 statusDescription: "Not yet started",
                 progress: STOPPED,
               },
@@ -251,7 +267,7 @@ describe("a quest, as staff follow it", () => {
     const [reds] = withOneEntry(QUEST).entries;
     vi.spyOn(api, "GET").mockResolvedValue(
       ok({
-        name: "trail",
+        questName: "trail",
         displayName: "The Trail",
         entries: [
           reds,
@@ -289,7 +305,7 @@ describe("a quest, as staff follow it", () => {
     const [reds] = withOneEntry(QUEST).entries;
     vi.spyOn(api, "GET").mockResolvedValue(
       ok({
-        name: "trail",
+        questName: "trail",
         displayName: "The Trail",
         entries: [
           reds,
@@ -297,7 +313,7 @@ describe("a quest, as staff follow it", () => {
             ...reds,
             id: "entry-2",
             entrant: { kind: "team", name: "blues", displayName: "The Blues" },
-            status: 2,
+            status: "completed",
             statusDescription: "Completed",
             rank: 1,
           },

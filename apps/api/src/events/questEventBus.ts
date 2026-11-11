@@ -25,10 +25,13 @@ export type PublishedQuestEvent =
   | (HintRevealed & {
       /** The text of the hint. */
       hintText: string;
-      /** True if the puzzle has more hints. */
-      moreHints: boolean;
-      /** True if the next hint gives away the solution. */
-      isNextHintSolution: boolean;
+      /** The puzzle's next hint, or null if this was its last. */
+      nextHint: {
+        /** Its time penalty, in seconds. */
+        timePenalty: number;
+        /** True if it gives away the solution. */
+        solutionWarning: boolean;
+      } | null;
     });
 
 /** Who or what caused an action on a quest. */

@@ -72,41 +72,108 @@ describe("a puzzle", () => {
     const response = await asAdmin("get", "/puzzles/riddle");
 
     expect(bodyOf(response)).toEqual({
-      name: "riddle",
+      puzzleName: "riddle",
       displayName: "Riddle",
-      type: 1,
+      type: "image",
       text: "/puzzleData/riddle.png",
       solutionKeyword: "piano",
-      solutionDisplayText: "A piano",
+      solutionText: "A piano",
       hints: [
-        { text: "It makes music", solutionWarning: false, timePenalty: 60 },
+        {
+          text: "It makes music",
+          solutionWarning: false,
+          timePenaltySeconds: 60,
+        },
       ],
     });
   });
 
   it("is created, with defaults for what is left out", async () => {
     const response = await asAdmin("post", "/puzzles").send({
-      name: "enigma",
+      puzzleName: "enigma",
       solutionKeyword: "x",
-      solutionDisplayText: "X",
+      solutionText: "X",
     });
 
     expect(response.status).toBe(201);
     expect(response.headers.location).toBe("/api/v1/puzzles/enigma");
     expect(bodyOf(response)).toMatchObject({
-      name: "enigma",
+      puzzleName: "enigma",
       displayName: "enigma",
-      type: 0,
+      type: "text",
       text: "",
+      solutionText: "X",
       hints: [],
     });
   });
 
+  it("is created with its type, solution text, and hints, stored as before", async () => {
+    const response = await asAdmin("post", "/puzzles").send({
+      puzzleName: "tune",
+      type: "audio",
+      text: "/puzzleData/tune.mp3",
+      solutionKeyword: "waltz",
+      solutionText: "A waltz",
+      hints: [{ text: "Count to three", timePenaltySeconds: 90 }],
+    });
+
+    expect(response.status).toBe(201);
+    expect(bodyOf(response)).toMatchObject({
+      type: "audio",
+      solutionText: "A waltz",
+      hints: [
+        {
+          text: "Count to three",
+          solutionWarning: false,
+          timePenaltySeconds: 90,
+        },
+      ],
+    });
+    const stored = (await PuzzleModel.findOne({ name: "tune" }).lean())!;
+    expect(stored).toMatchObject({
+      type: 2,
+      solutionDisplayText: "A waltz",
+      hints: [
+        { text: "Count to three", solutionWarning: false, timePenalty: 90 },
+      ],
+    });
+  });
+
+  it("changes its type and solution text, stored as before", async () => {
+    const response = await asAdmin("patch", "/puzzles/riddle").send({
+      type: "video",
+      solutionText: "A grand piano",
+    });
+
+    expect(response.status).toBe(200);
+    expect(bodyOf(response)).toMatchObject({
+      type: "video",
+      solutionText: "A grand piano",
+    });
+    const stored = (await PuzzleModel.findOne({ name: "riddle" }).lean())!;
+    expect(stored).toMatchObject({
+      type: 3,
+      solutionDisplayText: "A grand piano",
+      text: "/puzzleData/riddle.png",
+    });
+  });
+
+  it("refuses a type it doesn't know", async () => {
+    const response = await asAdmin("patch", "/puzzles/riddle").send({
+      type: 1,
+    });
+
+    expect(response.status).toBe(400);
+    expect(bodyOf(response).errors).toEqual([
+      { path: "body.type", message: "Must be a known puzzle type" },
+    ]);
+  });
+
   it("can't share another's name", async () => {
     const response = await asAdmin("post", "/puzzles").send({
-      name: "riddle",
+      puzzleName: "riddle",
       solutionKeyword: "x",
-      solutionDisplayText: "X",
+      solutionText: "X",
     });
 
     expect(response.status).toBe(409);
@@ -176,11 +243,11 @@ describe("listing puzzles", () => {
       await asAdmin("get", `/puzzles?limit=1&after=${first.next}`)
     );
 
-    expect(first.items.map((p: { name: string }) => p.name)).toEqual([
-      "riddle",
-    ]);
+    expect(
+      first.items.map((p: { puzzleName: string }) => p.puzzleName)
+    ).toEqual(["riddle"]);
     expect(second).toEqual({
-      items: [expect.objectContaining({ name: "enigma" })],
+      items: [expect.objectContaining({ puzzleName: "enigma" })],
       next: null,
     });
   });

@@ -137,7 +137,7 @@ export const Problems = {
     title: "Quest not valid",
     status: 422,
     description:
-      "The quest is assigned to a user or team that doesn't exist, or lists a puzzle that doesn't exist or appears twice.",
+      "The quest's entrants name a user or team that doesn't exist, or a player in more than one entry, or it lists a puzzle that doesn't exist or appears twice.",
   },
   wrongState: {
     type: "/problems/wrong-state",
@@ -177,7 +177,7 @@ export const Problems = {
     title: "Nobody to text",
     status: 409,
     description:
-      "Nobody the quest is assigned to has a phone number and accepts text messages.",
+      "No player in the entries being texted has a phone number and accepts text messages.",
   },
   messagingFailed: {
     type: "/problems/messaging-failed",

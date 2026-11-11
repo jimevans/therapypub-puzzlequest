@@ -25,6 +25,7 @@ describe("a running clock", () => {
 describe("a stopped clock", () => {
   const clock = {
     running: false,
+    clockStart: null,
     elapsedMs: 5 * MINUTE,
     penaltyMs: MINUTE,
     totalMs: 6 * MINUTE,

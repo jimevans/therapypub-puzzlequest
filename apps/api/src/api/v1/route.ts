@@ -91,6 +91,13 @@ export interface Route<
     params?: P;
     multipart?: z.ZodObject;
     /**
+     * The schema a multipart upload's text fields are validated against,
+     * as the body, in place of the JSON body's schema: a route taking both
+     * may take different fields in each. Without it, the body's schema
+     * validates both.
+     */
+    multipartFields?: z.ZodObject;
+    /**
      * The body's media type, if it isn't JSON: form fields, as Twilio's
      * webhooks send them, are validated the same way. A route may take both
      * a body and a multipart upload, whose fields are validated as the body.
@@ -186,8 +193,22 @@ export function registerRoutes(router: Router, routes: AnyRoute[]): void {
       ...ACCESS_MIDDLEWARE[route.access],
       ...(route.before ?? []),
     ];
-    const { body, query, params } = route.request ?? {};
-    if (body || query || params) {
+    const { body, query, params, multipartFields } = route.request ?? {};
+    if (multipartFields) {
+      const validateJson = validate({ body, query, params });
+      const validateMultipart = validate({
+        body: multipartFields,
+        query,
+        params,
+      });
+      handlers.push((req, res, next) => {
+        (req.is("multipart/form-data") ? validateMultipart : validateJson)(
+          req,
+          res,
+          next
+        );
+      });
+    } else if (body || query || params) {
       handlers.push(validate({ body, query, params }));
     }
     handlers.push((req, res) => route.handle(req as never, res));

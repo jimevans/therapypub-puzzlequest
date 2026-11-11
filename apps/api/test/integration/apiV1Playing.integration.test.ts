@@ -166,11 +166,11 @@ describe("seeing a puzzle", () => {
 
   it("shows no content until the puzzle is activated", async () => {
     expect(await seen("teammate", "riddle")).toMatchObject({
-      quest: { name: "quest", displayName: "Quest", paused: false },
+      quest: { questName: "quest", displayName: "Quest", paused: false },
       puzzle: {
-        name: "riddle",
+        puzzleName: "riddle",
         displayName: "Riddle",
-        status: 1,
+        status: "awaitingActivation",
         skipped: false,
         stopNumber: 1,
         type: null,
@@ -187,11 +187,11 @@ describe("seeing a puzzle", () => {
     await activate("riddle");
 
     expect((await seen("player", "riddle")).puzzle).toMatchObject({
-      status: 2,
-      type: 0,
+      status: "inProgress",
+      type: "text",
       text: "What has **keys**?",
       hints: [],
-      nextHint: { timePenalty: 60, solutionWarning: false },
+      nextHint: { timePenaltySeconds: 60, solutionWarning: false },
       solutionText: null,
     });
   });
@@ -204,7 +204,7 @@ describe("seeing a puzzle", () => {
     await activate("riddle");
 
     expect((await seen("player", "riddle")).puzzle).toMatchObject({
-      type: 1,
+      type: "image",
       text: "/puzzleData/riddle.png",
     });
   });
@@ -214,8 +214,8 @@ describe("seeing a puzzle", () => {
     await play("player", "hints", "riddle", {});
 
     expect((await seen("player", "riddle")).puzzle).toMatchObject({
-      hints: [{ text: "It makes music", timePenalty: 60 }],
-      nextHint: { timePenalty: 300, solutionWarning: true },
+      hints: [{ text: "It makes music", timePenaltySeconds: 60 }],
+      nextHint: { timePenaltySeconds: 300, solutionWarning: true },
     });
   });
 
@@ -233,14 +233,17 @@ describe("seeing a puzzle", () => {
 
     const solved = await seen("player", "riddle");
     expect(solved.puzzle).toMatchObject({
-      status: 3,
+      status: "completed",
       solutionText: "A piano",
       nextHint: null,
     });
-    expect(solved.next).toEqual({ name: "finale", displayName: "Finale" });
+    expect(solved.next).toEqual({
+      puzzleName: "finale",
+      displayName: "Finale",
+    });
     expect((await seen("player", "finale")).puzzle).toMatchObject({
       stopNumber: 2,
-      status: 1,
+      status: "awaitingActivation",
     });
   });
 
@@ -249,7 +252,7 @@ describe("seeing a puzzle", () => {
 
     expect((await seen("player", "riddle")).puzzle).toMatchObject({
       skipped: true,
-      status: 3,
+      status: "completed",
       solutionText: "A piano",
     });
   });
@@ -348,6 +351,38 @@ describe("activating a puzzle", () => {
     expect(bodyOf(response).type).toBe("/problems/not-found");
   });
 
+  it("leaves the page that activated it out of the live update", async () => {
+    const handler = vi.fn();
+    const stop = questEventBus.subscribe(handler);
+    try {
+      await play("player", "activation", "riddle", {
+        activationCode: "riddle-code",
+        connectionId: "connection-3",
+      });
+    } finally {
+      stop();
+    }
+
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor: "player",
+        connectionId: "connection-3",
+        events: [expect.objectContaining({ type: "PuzzleActivated" })],
+      })
+    );
+  });
+
+  it("doesn't take a frame's size as JSON", async () => {
+    const response = await play("player", "activation", "riddle", {
+      activationCode: "riddle-code",
+      width: "not a number",
+      height: -1,
+    });
+
+    // They're for a scanned frame, so a JSON body's are dropped unread.
+    expect(response.status).toBe(200);
+  });
+
   it("can't start a puzzle twice", async () => {
     await play("player", "activation", "riddle", {
       activationCode: "riddle-code",
@@ -377,7 +412,7 @@ describe("guessing a solution", () => {
     expect(response.status).toBe(200);
     expect(bodyOf(response)).toEqual({
       solutionText: "A piano",
-      nextPuzzle: { name: "finale", displayName: "Finale" },
+      nextPuzzle: { puzzleName: "finale", displayName: "Finale" },
       questComplete: false,
     });
   });
@@ -445,16 +480,15 @@ describe("revealing a hint", () => {
     expect(response.status).toBe(200);
     expect(bodyOf(response)).toEqual({
       text: "It makes music",
-      timePenalty: 60,
-      moreHints: true,
-      isNextHintSolution: true,
+      timePenaltySeconds: 60,
+      nextHint: { timePenaltySeconds: 300, solutionWarning: true },
     });
   });
 
   it("is a problem once every hint is revealed", async () => {
     await play("player", "hints", "riddle", {});
     const last = bodyOf(await play("player", "hints", "riddle", {}));
-    expect(last.moreHints).toBe(false);
+    expect(last.nextHint).toBeNull();
 
     const response = await play("player", "hints", "riddle", {});
 

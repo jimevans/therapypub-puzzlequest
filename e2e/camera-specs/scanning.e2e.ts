@@ -35,17 +35,17 @@ describe("scanning a puzzle's QR code", () => {
     });
     for (const name of [wrongCode, rightCode]) {
       await api("POST", "/puzzles", admin, {
-        name,
+        puzzleName: name,
         displayName: `Puzzle ${name}`,
         text: "Say **yes**",
         solutionKeyword: "yes",
-        solutionDisplayText: "Yes",
+        solutionText: "Yes",
       });
     }
     await api("POST", "/quests", admin, {
-      name: questName,
+      questName,
       displayName: "The Scanning Quest",
-      entrants: [{ kind: "user", name: player }],
+      entrants: [{ kind: "player", name: player }],
       puzzles: [
         { puzzleName: wrongCode, activationCode: "only-by-typing" },
         { puzzleName: rightCode, activationCode: SCANNED_CODE },

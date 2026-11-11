@@ -80,7 +80,7 @@ export interface paths {
         put?: never;
         /**
          * Sign up, or create a user
-         * @description Anyone may sign up, as a player. An administrator creating a user may also choose its authorization level. A verification email is sent to the address.
+         * @description Anyone may sign up, as a player. An administrator creating a user may also choose its role. A verification email is sent to the address.
          */
         post: operations["createUser"];
         delete?: never;
@@ -102,14 +102,14 @@ export interface paths {
         post?: never;
         /**
          * Delete a user
-         * @description Deletes the user, ends their sessions, removes them from their teams, and takes their name out of quests' activity logs. Quests assigned to them stay, assigned to a deleted user. Deleting your own account needs your password; wrong ones are limited, as for changing it. The only administrator can't be deleted.
+         * @description Deletes the user, ends their sessions, removes them from their teams, and takes their name out of quests' activity logs. Their entries in quests stay, as a deleted user's. Deleting your own account needs your password; wrong ones are limited, as for changing it. The only administrator can't be deleted.
          */
         delete: operations["deleteUser"];
         options?: never;
         head?: never;
         /**
          * Change a user
-         * @description Changes the fields given. A new email address must be verified again, and a verification email is sent to it. Only an administrator may change an authorization level, which signs the user out everywhere.
+         * @description Changes the fields given. A new email address must be verified again, and a verification email is sent to it. Only an administrator may change a role, which signs the user out everywhere.
          */
         patch: operations["updateUser"];
         trace?: never;
@@ -382,7 +382,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/puzzles/{name}": {
+    "/puzzles/{puzzleName}": {
         parameters: {
             query?: never;
             header?: never;
@@ -427,7 +427,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/text-messages": {
+    "/quests/{questName}/text-messages": {
         parameters: {
             query?: never;
             header?: never;
@@ -468,7 +468,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}": {
+    "/quests/{questName}": {
         parameters: {
             query?: never;
             header?: never;
@@ -496,7 +496,7 @@ export interface paths {
         patch: operations["updateQuest"];
         trace?: never;
     };
-    "/quests/{name}/start": {
+    "/quests/{questName}/start": {
         parameters: {
             query?: never;
             header?: never;
@@ -516,7 +516,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/reset": {
+    "/quests/{questName}/reset": {
         parameters: {
             query?: never;
             header?: never;
@@ -536,7 +536,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/pause": {
+    "/quests/{questName}/pause": {
         parameters: {
             query?: never;
             header?: never;
@@ -556,7 +556,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/resume": {
+    "/quests/{questName}/resume": {
         parameters: {
             query?: never;
             header?: never;
@@ -576,7 +576,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/teams/{teamName}/start": {
+    "/quests/{questName}/teams/{teamName}/start": {
         parameters: {
             query?: never;
             header?: never;
@@ -596,7 +596,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/teams/{teamName}/reset": {
+    "/quests/{questName}/teams/{teamName}/reset": {
         parameters: {
             query?: never;
             header?: never;
@@ -616,7 +616,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/teams/{teamName}/pause": {
+    "/quests/{questName}/teams/{teamName}/pause": {
         parameters: {
             query?: never;
             header?: never;
@@ -636,7 +636,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/teams/{teamName}/resume": {
+    "/quests/{questName}/teams/{teamName}/resume": {
         parameters: {
             query?: never;
             header?: never;
@@ -656,7 +656,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/teams/{teamName}/puzzles/{puzzleName}/skip": {
+    "/quests/{questName}/teams/{teamName}/puzzles/{puzzleName}/skip": {
         parameters: {
             query?: never;
             header?: never;
@@ -676,7 +676,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/teams/{teamName}/puzzles/{puzzleName}/reset": {
+    "/quests/{questName}/teams/{teamName}/puzzles/{puzzleName}/reset": {
         parameters: {
             query?: never;
             header?: never;
@@ -696,7 +696,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/teams/{teamName}/text-messages": {
+    "/quests/{questName}/teams/{teamName}/text-messages": {
         parameters: {
             query?: never;
             header?: never;
@@ -716,7 +716,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/players/{userName}/start": {
+    "/quests/{questName}/players/{userName}/start": {
         parameters: {
             query?: never;
             header?: never;
@@ -727,7 +727,7 @@ export interface paths {
         put?: never;
         /**
          * Start a player's entry in a quest
-         * @description Makes the first puzzle available to activate, for this entrant only. A player's phone call to the quest's number starts their own entry. Not found if the user isn't one of the quest's entrants.
+         * @description Makes the first puzzle available to activate, for this entrant only. A player's phone call to the quest's number starts their own entry. Not found if the player isn't one of the quest's entrants.
          */
         post: operations["startPlayerEntry"];
         delete?: never;
@@ -736,7 +736,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/players/{userName}/reset": {
+    "/quests/{questName}/players/{userName}/reset": {
         parameters: {
             query?: never;
             header?: never;
@@ -747,7 +747,7 @@ export interface paths {
         put?: never;
         /**
          * Reset a player's entry in a quest
-         * @description Returns the entrant's entry to not started, clearing its progress and pauses; other entries are left as they are. The event log keeps what happened. Not found if the user isn't one of the quest's entrants.
+         * @description Returns the entrant's entry to not started, clearing its progress and pauses; other entries are left as they are. The event log keeps what happened. Not found if the player isn't one of the quest's entrants.
          */
         post: operations["resetPlayerEntry"];
         delete?: never;
@@ -756,7 +756,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/players/{userName}/pause": {
+    "/quests/{questName}/players/{userName}/pause": {
         parameters: {
             query?: never;
             header?: never;
@@ -767,7 +767,7 @@ export interface paths {
         put?: never;
         /**
          * Pause a player's entry in a quest
-         * @description Stops the entrant's clocks; its players can't activate, guess, or reveal hints until it resumes, and the paused time doesn't count. Not found if the user isn't one of the quest's entrants.
+         * @description Stops the entrant's clocks; its players can't activate, guess, or reveal hints until it resumes, and the paused time doesn't count. Not found if the player isn't one of the quest's entrants.
          */
         post: operations["pausePlayerEntry"];
         delete?: never;
@@ -776,7 +776,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/players/{userName}/resume": {
+    "/quests/{questName}/players/{userName}/resume": {
         parameters: {
             query?: never;
             header?: never;
@@ -787,7 +787,7 @@ export interface paths {
         put?: never;
         /**
          * Resume a player's entry in a quest
-         * @description Starts the entrant's clocks again. Not found if the user isn't one of the quest's entrants.
+         * @description Starts the entrant's clocks again. Not found if the player isn't one of the quest's entrants.
          */
         post: operations["resumePlayerEntry"];
         delete?: never;
@@ -796,7 +796,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/players/{userName}/puzzles/{puzzleName}/skip": {
+    "/quests/{questName}/players/{userName}/puzzles/{puzzleName}/skip": {
         parameters: {
             query?: never;
             header?: never;
@@ -807,7 +807,7 @@ export interface paths {
         put?: never;
         /**
          * Skip a puzzle for a player
-         * @description Completes a puzzle the entrant has reached, with no penalty; they see its solution, and the next puzzle becomes available. Allowed while the entry is paused. Not found if the user isn't one of the quest's entrants.
+         * @description Completes a puzzle the entrant has reached, with no penalty; they see its solution, and the next puzzle becomes available. Allowed while the entry is paused. Not found if the player isn't one of the quest's entrants.
          */
         post: operations["skipPlayerPuzzle"];
         delete?: never;
@@ -816,7 +816,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/players/{userName}/puzzles/{puzzleName}/reset": {
+    "/quests/{questName}/players/{userName}/puzzles/{puzzleName}/reset": {
         parameters: {
             query?: never;
             header?: never;
@@ -827,7 +827,7 @@ export interface paths {
         put?: never;
         /**
          * Reset a player's solved puzzle
-         * @description Returns a completed puzzle to in progress for the entrant, so they solve it again, and every later puzzle to not reached. For a puzzle that accepted a wrong answer: pause the entry, correct the puzzle, reset it here, and resume. Allowed while the entry is paused. Not found if the user isn't one of the quest's entrants.
+         * @description Returns a completed puzzle to in progress for the entrant, so they solve it again, and every later puzzle to not reached. For a puzzle that accepted a wrong answer: pause the entry, correct the puzzle, reset it here, and resume. Allowed while the entry is paused. Not found if the player isn't one of the quest's entrants.
          */
         post: operations["resetPlayerPuzzle"];
         delete?: never;
@@ -836,7 +836,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/players/{userName}/text-messages": {
+    "/quests/{questName}/players/{userName}/text-messages": {
         parameters: {
             query?: never;
             header?: never;
@@ -847,7 +847,7 @@ export interface paths {
         put?: never;
         /**
          * Text a player
-         * @description Texts the message to the entrant's players who accept text messages, a few seconds apart, as carriers require; the entry must be in progress. With an expected response, the entry waits for that reply and texts the confirmation back when it arrives. Not found if the user isn't one of the quest's entrants.
+         * @description Texts the message to the entrant's players who accept text messages, a few seconds apart, as carriers require; the entry must be in progress. With an expected response, the entry waits for that reply and texts the confirmation back when it arrives. Not found if the player isn't one of the quest's entrants.
          */
         post: operations["sendPlayerTextMessage"];
         delete?: never;
@@ -856,7 +856,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/puzzles/{puzzleName}/qr-code": {
+    "/quests/{questName}/puzzles/{puzzleName}/qr-code": {
         parameters: {
             query?: never;
             header?: never;
@@ -876,7 +876,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/run-book": {
+    "/quests/{questName}/run-book": {
         parameters: {
             query?: never;
             header?: never;
@@ -896,7 +896,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/qr-cards": {
+    "/quests/{questName}/qr-cards": {
         parameters: {
             query?: never;
             header?: never;
@@ -916,7 +916,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/events": {
+    "/quests/{questName}/events": {
         parameters: {
             query?: never;
             header?: never;
@@ -936,7 +936,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/puzzles/{puzzleName}": {
+    "/quests/{questName}/puzzles/{puzzleName}": {
         parameters: {
             query?: never;
             header?: never;
@@ -956,7 +956,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/puzzles/{puzzleName}/activation": {
+    "/quests/{questName}/puzzles/{puzzleName}/activation": {
         parameters: {
             query?: never;
             header?: never;
@@ -967,7 +967,7 @@ export interface paths {
         put?: never;
         /**
          * Activate a puzzle
-         * @description Starts the puzzle the players have found, with its activation code: typed, as JSON, or scanned, as a multipart camera frame of its QR code. Failed attempts are limited for each player.
+         * @description Starts the puzzle the players have found, with its activation code: typed, as JSON, or scanned, as a multipart camera frame of its QR code. Failed attempts are limited for each player. Send connectionId, either way, so the client isn't sent its own puzzleActivated update.
          */
         post: operations["activatePuzzle"];
         delete?: never;
@@ -976,7 +976,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/puzzles/{puzzleName}/solution-attempts": {
+    "/quests/{questName}/puzzles/{puzzleName}/solution-attempts": {
         parameters: {
             query?: never;
             header?: never;
@@ -996,7 +996,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/puzzles/{puzzleName}/hints": {
+    "/quests/{questName}/puzzles/{puzzleName}/hints": {
         parameters: {
             query?: never;
             header?: never;
@@ -1007,7 +1007,7 @@ export interface paths {
         put?: never;
         /**
          * Reveal a puzzle's next hint
-         * @description Each hint adds its time penalty to the players' score. The answer says whether the next hint gives the solution away, so a page can warn first.
+         * @description Each hint adds its time penalty to the players' time. The answer says what the next hint would cost and whether it gives the solution away, so a client can warn first.
          */
         post: operations["revealHint"];
         delete?: never;
@@ -1016,7 +1016,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/live-tickets": {
+    "/quests/{questName}/live-tickets": {
         parameters: {
             query?: never;
             header?: never;
@@ -1036,7 +1036,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/spectator-view": {
+    "/quests/{questName}/spectator-view": {
         parameters: {
             query?: never;
             header?: never;
@@ -1056,7 +1056,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/puzzles/{puzzleName}/spectator-view": {
+    "/quests/{questName}/puzzles/{puzzleName}/spectator-view": {
         parameters: {
             query?: never;
             header?: never;
@@ -1076,7 +1076,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/share-links": {
+    "/quests/{questName}/share-links": {
         parameters: {
             query?: never;
             header?: never;
@@ -1085,7 +1085,7 @@ export interface paths {
         };
         /**
          * List a quest's share links
-         * @description For the quest's assigned player or team members, and staff. Anyone else finds no such quest.
+         * @description For the quest's players (in any of its entries), and staff. Anyone else finds no such quest.
          */
         get: operations["listShareLinks"];
         put?: never;
@@ -1100,7 +1100,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/share-links/{linkId}": {
+    "/quests/{questName}/share-links/{linkId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1140,7 +1140,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/quests/{name}/staff-view": {
+    "/quests/{questName}/staff-view": {
         parameters: {
             query?: never;
             header?: never;
@@ -1164,6 +1164,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description What the user may do: a player plays the quests they're entered in; staff also follow every quest and show the players its stops' activation codes; an administrator manages everything.
+         * @enum {string}
+         */
+        Role: "player" | "staff" | "admin";
+        /**
+         * @description What the puzzle shows: text (its text is Markdown), or an image, audio, or video file (its text is the file's path).
+         * @enum {string}
+         */
+        PuzzleType: "text" | "image" | "audio" | "video";
+        /**
+         * @description Who plays the entry: a player on their own, or a team. A player's name is their user name; a team's, its team name.
+         * @enum {string}
+         */
+        EntrantKind: "player" | "team";
         Problem: {
             /** @description The kind of problem: one of the types listed in the API's description, or "about:blank" for a plain HTTP error. */
             type: string;
@@ -1201,53 +1216,69 @@ export interface components {
             phone: string;
             /** @description True if the user accepts text messages. */
             sms: boolean;
-            /** @description What the user may do: 1 for a player, 5 for staff, 10 for an administrator. */
-            authorizationLevel: number;
-            /** @description The teams the user is a member of, when getting one user. */
+            role: components["schemas"]["Role"];
+            /** @description The teams the user is a member of; only when getting one user. */
             teams?: components["schemas"]["TeamSummary"][];
         };
         TeamSummary: {
             teamName: string;
             displayName: string;
         };
+        UserPage: {
+            /** @description The page's items. */
+            items: components["schemas"]["User"][];
+            /** @description The cursor for the next page, to send as after; null on the last page. */
+            next: string | null;
+        };
+        QuestSummaryPage: {
+            /** @description The page's items. */
+            items: components["schemas"]["QuestSummary"][];
+            /** @description The cursor for the next page, to send as after; null on the last page. */
+            next: string | null;
+        };
         QuestSummary: {
-            name: string;
+            questName: string;
             displayName: string;
-            /** @description 1 in progress, 2 completed. */
-            status: number;
+            status: components["schemas"]["QuestStatus"];
+            /** @description The status in English words, for display; the wording may change, so act on status instead. */
             statusDescription: string;
+            /** @description True while an administrator has paused the entry: its clocks stop, and its players can't activate, guess, or reveal hints until it resumes. Its status stays inProgress. */
             paused: boolean;
-            progress: {
-                /**
-                 * Format: date-time
-                 * @description When the clock started.
-                 */
-                startTime?: string;
-                /**
-                 * Format: date-time
-                 * @description When the clock stopped.
-                 */
-                endTime?: string;
-                /** @description True while the clock runs: started, not stopped or paused. */
-                running: boolean;
-                /**
-                 * Format: date-time
-                 * @description While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.
-                 */
-                clockStart?: string;
-                /** @description Milliseconds on the clock, leaving out paused time. */
-                elapsedMs: number;
-                /** @description The revealed hints' time penalties, in milliseconds. */
-                penaltyMs: number;
-                /** @description The score: elapsed time plus penalties. Lower is better. */
-                totalMs: number;
-            };
+            progress: components["schemas"]["Clock"];
+        };
+        /**
+         * @description How far the entry has got through the quest: notStarted, inProgress (which includes paused; see paused), or completed.
+         * @enum {string}
+         */
+        QuestStatus: "notStarted" | "inProgress" | "completed";
+        /** @description How long an entry's players have spent on a quest, or on one of its stops. */
+        Clock: {
+            /** @description When the clock started; null until it has. */
+            startTime: string | null;
+            /** @description When the clock stopped; null until it has. */
+            endTime: string | null;
+            /** @description True while the clock runs: started, not stopped, and not paused. */
+            running: boolean;
+            /** @description While running, when the clock would have started if there had been no pauses, so a client's clock can count up from here without asking again; null while not running. */
+            clockStart: string | null;
+            /** @description Milliseconds on the clock, leaving out paused time, as of the response. */
+            elapsedMs: number;
+            /** @description The revealed hints' time penalties, in milliseconds. */
+            penaltyMs: number;
+            /** @description The score: elapsed time plus penalties. Lower is better. */
+            totalMs: number;
         };
         LiveTicket: {
             /** @description Send this with the subscribe message, once. */
             ticket: string;
             /** Format: date-time */
             expiresAt: string;
+        };
+        TeamPage: {
+            /** @description The page's items. */
+            items: components["schemas"]["Team"][];
+            /** @description The cursor for the next page, to send as after; null on the last page. */
+            next: string | null;
         };
         Team: {
             teamName: string;
@@ -1260,34 +1291,46 @@ export interface components {
                 displayName: string;
             }[];
         };
+        PuzzlePage: {
+            /** @description The page's items. */
+            items: components["schemas"]["Puzzle"][];
+            /** @description The cursor for the next page, to send as after; null on the last page. */
+            next: string | null;
+        };
         Puzzle: {
-            name: string;
+            puzzleName: string;
             displayName: string;
-            /** @description 0 for text, 1 for an image, 2 for audio, 3 for video. */
-            type: number;
+            type: components["schemas"]["PuzzleType"];
             /** @description Markdown, for a text puzzle; the media file's path, for the others. */
             text: string;
             /** @description The keywords a guess must contain, separated by commas; letter case, spacing, and punctuation don't matter. */
             solutionKeyword: string;
             /** @description The solution as shown once it is solved. */
-            solutionDisplayText: string;
-            hints: {
-                text: string;
-                /** @description True if the hint gives the solution away. */
-                solutionWarning: boolean;
-                /** @description Seconds added to the players' time for revealing it. */
-                timePenalty: number;
-            }[];
+            solutionText: string;
+            hints: components["schemas"]["HintDefinition"][];
+        };
+        HintDefinition: {
+            text: string;
+            /** @description True if the hint gives the solution away. */
+            solutionWarning: boolean;
+            /** @description Seconds added to the players' time for revealing it. */
+            timePenaltySeconds: number;
         };
         PuzzleMedia: {
             /** @description The file's path on this site, such as /puzzleData/riddle.png: the text of a puzzle that shows it. */
             path: string;
         };
+        QuestPage: {
+            /** @description The page's items. */
+            items: components["schemas"]["Quest"][];
+            /** @description The cursor for the next page, to send as after; null on the last page. */
+            next: string | null;
+        };
         Quest: {
-            name: string;
+            questName: string;
             displayName: string;
             /**
-             * @description Who can follow the quest; only for administrators.
+             * @description Who can follow the quest: anyone, or only its players, staff, and holders of a share link. Only for administrators.
              * @enum {string}
              */
             visibility?: "public" | "private";
@@ -1297,219 +1340,172 @@ export interface components {
         QuestEntry: {
             /** @description The entry's ID. */
             id: string;
-            entrant: components["schemas"]["QuestEntrant"];
-            /** @description 0 not started, 1 in progress, 2 completed. */
-            status: number;
+            entrant: components["schemas"]["Entrant"];
+            status: components["schemas"]["QuestStatus"];
+            /** @description The status in English words, for display; the wording may change, so act on status instead. */
             statusDescription: string;
+            /** @description True while an administrator has paused the entry: its clocks stop, and its players can't activate, guess, or reveal hints until it resumes. Its status stays inProgress. */
             paused: boolean;
-            /** @description The text message reply the entry is waiting for; only for administrators. */
-            textResponse?: string;
-            /** @description What is sent back when the reply arrives; only for administrators. */
-            textResponseConfirmation?: string;
-            /** @description The entry's place on the leaderboard (see SpectatorQuestEntry's rank); only for administrators. Entries stay in entry order. */
+            /** @description The text message reply the entry is waiting for, if any; null if none. Only for administrators: absent for players. */
+            textResponse?: string | null;
+            /** @description What is texted back when the reply arrives; null if no reply is awaited. Only for administrators: absent for players. */
+            textResponseConfirmation?: string | null;
+            /** @description The entry's place on the leaderboard (see SpectatorQuestEntry's rank); null while it hasn't completed. Only for administrators: absent for players. Entries stay in the quest's order. */
             rank?: number | null;
+            /** @description The quest's stops, in order, with the entry's progress on each. Players see only those they have reached. */
             puzzles: components["schemas"]["QuestPuzzle"][];
-            progress: {
-                /**
-                 * Format: date-time
-                 * @description When the clock started.
-                 */
-                startTime?: string;
-                /**
-                 * Format: date-time
-                 * @description When the clock stopped.
-                 */
-                endTime?: string;
-                /** @description True while the clock runs: started, not stopped or paused. */
-                running: boolean;
-                /**
-                 * Format: date-time
-                 * @description While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.
-                 */
-                clockStart?: string;
-                /** @description Milliseconds on the clock, leaving out paused time. */
-                elapsedMs: number;
-                /** @description The revealed hints' time penalties, in milliseconds. */
-                penaltyMs: number;
-                /** @description The score: elapsed time plus penalties. Lower is better. */
-                totalMs: number;
-                puzzles: {
-                    puzzleName: string;
-                    /**
-                     * Format: date-time
-                     * @description When the clock started.
-                     */
-                    startTime?: string;
-                    /**
-                     * Format: date-time
-                     * @description When the clock stopped.
-                     */
-                    endTime?: string;
-                    /** @description True while the clock runs: started, not stopped or paused. */
-                    running: boolean;
-                    /**
-                     * Format: date-time
-                     * @description While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.
-                     */
-                    clockStart?: string;
-                    /** @description Milliseconds on the clock, leaving out paused time. */
-                    elapsedMs: number;
-                    /** @description The revealed hints' time penalties, in milliseconds. */
-                    penaltyMs: number;
-                    /** @description The score: elapsed time plus penalties. Lower is better. */
-                    totalMs: number;
-                }[];
-            };
+            progress: components["schemas"]["Progress"];
         };
-        QuestEntrant: {
-            /** @enum {string} */
-            kind: "user" | "team";
-            /** @description The user name or team name; missing if the user or team has been deleted. */
-            name?: string;
-            displayName?: string;
+        Entrant: {
+            kind: components["schemas"]["EntrantKind"];
+            /** @description The user name or team name; null if the user or team has been deleted. */
+            name: string | null;
+            /** @description Null if the user or team has been deleted. */
+            displayName: string | null;
         };
         QuestPuzzle: {
             puzzleName: string;
-            displayName?: string;
-            /** @description 0 not reached, 1 awaiting activation, 2 in progress, 3 completed. */
-            status: number;
+            displayName: string;
+            status: components["schemas"]["StopStatus"];
+            /** @description The status in English words, for display; the wording may change, so act on status instead. */
             statusDescription: string;
-            /** @description How many hints have been revealed. */
-            nextHintToDisplay: number;
+            /** @description How many of the puzzle's hints the entry has revealed. */
+            hintsRevealed: number;
             /** @description Only for administrators. */
             activationCode?: string;
-            /** @description The word or phrase on the stop's QR card, if it has one. Only for administrators. */
-            cardWord?: string;
-            activationTime?: string | null;
-            startTime?: string | null;
-            endTime?: string | null;
+            /** @description The word or phrase on the stop's QR card; null if it has none. Only for administrators: absent for players. */
+            cardWord?: string | null;
+            /** @description When the entry activated the stop; null until it has. */
+            activationTime: string | null;
+            /** @description When the stop became the entry's next, to find and activate; null until it has. */
+            startTime: string | null;
+            /** @description When the entry completed the stop; null until it has. */
+            endTime: string | null;
+            /** @description True if an administrator skipped the stop for the entry, completing it with no penalty, rather than its players solving it. */
             skipped: boolean;
-            /** @description Shown to the players once the puzzle is completed; always to administrators. */
-            solutionDisplayText?: string;
-            /** @description The players see the hints they have revealed; administrators see them all. */
-            hints?: {
-                text: string;
-                solutionWarning: boolean;
-                timePenalty: number;
-            }[];
+            /** @description The solution as shown once solved. Players see it once the stop is completed; administrators, always. */
+            solutionText?: string;
+            /** @description The puzzle's hints: for players, those revealed; for administrators, all of them. */
+            hints: components["schemas"]["HintDefinition"][];
+        };
+        /**
+         * @description How far the entry has got with the stop: notReached; awaitingActivation, when its players are to find it and activate it; inProgress, once activated, while they solve it; or completed, when solved or skipped (see skipped).
+         * @enum {string}
+         */
+        StopStatus: "notReached" | "awaitingActivation" | "inProgress" | "completed";
+        /** @description How long an entry's players have spent on a quest, overall and stop by stop. */
+        Progress: {
+            /** @description When the clock started; null until it has. */
+            startTime: string | null;
+            /** @description When the clock stopped; null until it has. */
+            endTime: string | null;
+            /** @description True while the clock runs: started, not stopped, and not paused. */
+            running: boolean;
+            /** @description While running, when the clock would have started if there had been no pauses, so a client's clock can count up from here without asking again; null while not running. */
+            clockStart: string | null;
+            /** @description Milliseconds on the clock, leaving out paused time, as of the response. */
+            elapsedMs: number;
+            /** @description The revealed hints' time penalties, in milliseconds. */
+            penaltyMs: number;
+            /** @description The score: elapsed time plus penalties. Lower is better. */
+            totalMs: number;
+            /** @description Each stop's clock, in order. Views for players and the public have only the stops reached so far, and none when the view is the standings alone (see SpectatorQuest's stopsHidden). */
+            puzzles: components["schemas"]["PuzzleClock"][];
+        };
+        /** @description How long an entry's players have spent on one stop. */
+        PuzzleClock: {
+            puzzleName: string;
+            /** @description When the clock started; null until it has. */
+            startTime: string | null;
+            /** @description When the clock stopped; null until it has. */
+            endTime: string | null;
+            /** @description True while the clock runs: started, not stopped, and not paused. */
+            running: boolean;
+            /** @description While running, when the clock would have started if there had been no pauses, so a client's clock can count up from here without asking again; null while not running. */
+            clockStart: string | null;
+            /** @description Milliseconds on the clock, leaving out paused time, as of the response. */
+            elapsedMs: number;
+            /** @description The revealed hints' time penalties, in milliseconds. */
+            penaltyMs: number;
+            /** @description The score: elapsed time plus penalties. Lower is better. */
+            totalMs: number;
+        };
+        QuestEventPage: {
+            /** @description The page's items. */
+            items: components["schemas"]["QuestEvent"][];
+            /** @description The cursor for the next page, to send as after; null on the last page. */
+            next: string | null;
         };
         QuestEvent: {
-            /** @description What happened: QuestStarted, PuzzleActivated, PuzzleSolved, PuzzleStarted, HintRevealed, QuestCompleted, QuestReset, QuestPaused, QuestResumed, PuzzleSkipped, or PuzzleReset. */
-            type: string;
+            type: components["schemas"]["QuestEventType"];
             /** Format: date-time */
             at: string;
-            puzzleName?: string;
-            /** @description The user name of whoever acted; missing when the system did, such as on an incoming call, or when they have since deleted their account. */
-            actor?: string;
+            /** @description The puzzle it happened to; null for the whole quest's. */
+            puzzleName: string | null;
+            /** @description The user name of whoever acted; null when the system did, such as on an incoming call, or when they have since deleted their account (see actorDeleted). */
+            actor: string | null;
             /** @description True when whoever acted has since deleted their account, which took their name out of the log. */
-            actorDeleted?: boolean;
+            actorDeleted: boolean;
             /** @description The user or team whose entry it happened in; null for events logged before quests had several entries. */
             entrant: {
-                /** @enum {string} */
-                kind: "user" | "team";
-                /** @description The user name or team name as it was at the time; missing if the user has since deleted their account, or the team was already deleted. */
-                name?: string;
+                kind: components["schemas"]["EntrantKind"];
+                /** @description The user name or team name as it was at the time; null if the user has since deleted their account, or the team was already deleted. */
+                name: string | null;
             } | null;
-            /** @description Details particular to the type. */
-            data?: {
+            /** @description Details particular to the type, or null if it has none: for hintRevealed, the hint's hintIndex (from 0) and timePenaltySeconds; for puzzleReset, refundedHints, how many revealed hints' penalties were refunded. */
+            data: {
                 [key: string]: unknown;
-            };
+            } | null;
         };
+        /**
+         * @description What happened.
+         * @enum {string}
+         */
+        QuestEventType: "questStarted" | "puzzleStarted" | "puzzleActivated" | "puzzleSolved" | "hintRevealed" | "questCompleted" | "puzzleSkipped" | "puzzleReset" | "questPaused" | "questResumed" | "questReset";
         PlayerPuzzle: {
             quest: {
-                name: string;
+                questName: string;
                 displayName: string;
-                /** @description 0 not started, 1 in progress, 2 completed. */
-                status: number;
+                status: components["schemas"]["QuestStatus"];
+                /** @description The status in English words, for display; the wording may change, so act on status instead. */
                 statusDescription: string;
+                /** @description True while an administrator has paused the entry: its clocks stop, and its players can't activate, guess, or reveal hints until it resumes. Its status stays inProgress. */
                 paused: boolean;
-                progress: {
-                    /**
-                     * Format: date-time
-                     * @description When the clock started.
-                     */
-                    startTime?: string;
-                    /**
-                     * Format: date-time
-                     * @description When the clock stopped.
-                     */
-                    endTime?: string;
-                    /** @description True while the clock runs: started, not stopped or paused. */
-                    running: boolean;
-                    /**
-                     * Format: date-time
-                     * @description While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.
-                     */
-                    clockStart?: string;
-                    /** @description Milliseconds on the clock, leaving out paused time. */
-                    elapsedMs: number;
-                    /** @description The revealed hints' time penalties, in milliseconds. */
-                    penaltyMs: number;
-                    /** @description The score: elapsed time plus penalties. Lower is better. */
-                    totalMs: number;
-                    /** @description The puzzles reached so far, in order. */
-                    puzzles: {
-                        puzzleName: string;
-                        /**
-                         * Format: date-time
-                         * @description When the clock started.
-                         */
-                        startTime?: string;
-                        /**
-                         * Format: date-time
-                         * @description When the clock stopped.
-                         */
-                        endTime?: string;
-                        /** @description True while the clock runs: started, not stopped or paused. */
-                        running: boolean;
-                        /**
-                         * Format: date-time
-                         * @description While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.
-                         */
-                        clockStart?: string;
-                        /** @description Milliseconds on the clock, leaving out paused time. */
-                        elapsedMs: number;
-                        /** @description The revealed hints' time penalties, in milliseconds. */
-                        penaltyMs: number;
-                        /** @description The score: elapsed time plus penalties. Lower is better. */
-                        totalMs: number;
-                    }[];
-                };
+                progress: components["schemas"]["Progress"];
             };
             puzzle: {
-                name: string;
+                puzzleName: string;
                 displayName: string;
-                /** @description 1 awaiting activation, 2 in progress, 3 completed. */
-                status: number;
+                status: components["schemas"]["StopStatus"];
+                /** @description The status in English words, for display; the wording may change, so act on status instead. */
                 statusDescription: string;
+                /** @description True if an administrator skipped the stop for the entry, completing it with no penalty, rather than its players solving it. */
                 skipped: boolean;
-                /** @description The puzzle's place in the quest, counting from 1. How many stops are left is never shown. */
+                /** @description The stop's place in the quest, counting from 1. How many stops are left is never shown. */
                 stopNumber: number;
-                /** @description 0 text, 1 image, 2 audio, 3 video; null until the puzzle is activated. */
-                type: number | null;
+                /** @description Null until the puzzle is activated. */
+                type: components["schemas"]["PuzzleType"] | null;
                 /** @description The puzzle's Markdown, or the path of its media; null until the puzzle is activated. */
                 text: string | null;
                 /** @description The hints revealed so far. */
-                hints: {
-                    text: string;
-                    /** @description In seconds. */
-                    timePenalty: number;
-                }[];
+                hints: components["schemas"]["RevealedHint"][];
                 /** @description What revealing the next hint would cost; null if the puzzle isn't in progress or has no more hints. */
-                nextHint: {
-                    /** @description In seconds. */
-                    timePenalty: number;
-                    /** @description True if the hint gives the solution away. */
-                    solutionWarning: boolean;
-                } | null;
+                nextHint: components["schemas"]["NextHint"] | null;
                 /** @description Null until the puzzle is completed. */
                 solutionText: string | null;
             };
-            /** @description The puzzle after this one, once the players have reached it; otherwise null. */
-            next: {
-                name: string;
-                displayName: string;
-            } | null;
+            /** @description The stop after this one, once the players have reached it; otherwise null. */
+            next: components["schemas"]["NextStop"] | null;
+        };
+        RevealedHint: {
+            text: string;
+            /** @description Seconds it added to the players' time. */
+            timePenaltySeconds: number;
+        };
+        /** @description The stop after this one, which the players have reached. */
+        NextStop: {
+            puzzleName: string;
+            displayName: string;
         };
         Activation: {
             /** Format: date-time */
@@ -1517,22 +1513,20 @@ export interface components {
         };
         Solution: {
             solutionText: string;
-            /** @description The puzzle now waiting to be found and activated; null after the last. */
-            nextPuzzle: {
-                name: string;
-                displayName: string;
-            } | null;
+            /** @description The stop now waiting to be found and activated; null after the last. */
+            nextPuzzle: components["schemas"]["NextStop"] | null;
+            /** @description True if it was the quest's last puzzle: the entry has completed the quest. */
             questComplete: boolean;
         };
         Hint: {
             text: string;
-            /** @description Seconds added to the players' score. */
-            timePenalty: number;
-            moreHints: boolean;
-            isNextHintSolution: boolean;
+            /** @description Seconds added to the players' time. */
+            timePenaltySeconds: number;
+            /** @description What revealing the next hint would cost; null if this was the last. */
+            nextHint: components["schemas"]["NextHint"] | null;
         };
         SpectatorQuest: {
-            name: string;
+            questName: string;
             displayName: string;
             /** @description True while the quest is a race that not every entry has finished: it has several entries, and not all have completed it. The same for every viewer. */
             racing: boolean;
@@ -1548,107 +1542,60 @@ export interface components {
         SpectatorQuestEntry: {
             /** @description The entry's ID, for following one of its puzzles with getSpectatorPuzzle. */
             id: string;
-            entrant: {
-                /** @enum {string} */
-                kind: "user" | "team";
-                /** @description Missing if the user or team has been deleted. */
-                displayName?: string;
-            };
-            /** @description 0 not started, 1 in progress, 2 completed. */
-            status: number;
+            entrant: components["schemas"]["SpectatorEntrant"];
+            status: components["schemas"]["QuestStatus"];
+            /** @description The status in English words, for display; the wording may change, so act on status instead. */
             statusDescription: string;
+            /** @description True while an administrator has paused the entry: its clocks stop, and its players can't activate, guess, or reveal hints until it resumes. Its status stays inProgress. */
             paused: boolean;
             /** @description The entry's place on the leaderboard, from 1, once it has completed the quest: entries are ranked by progress.totalMs, lowest first, and entries with the same total share a rank (1, 2, 2, 4). Null while it hasn't completed. Ranks are provisional until every entry has completed, since one still playing could beat them. */
             rank: number | null;
-            /** @description The entry's time; its puzzles are empty when the quest's stopsHidden is true, leaving the totals: the standings. */
-            progress: {
-                /**
-                 * Format: date-time
-                 * @description When the clock started.
-                 */
-                startTime?: string;
-                /**
-                 * Format: date-time
-                 * @description When the clock stopped.
-                 */
-                endTime?: string;
-                /** @description True while the clock runs: started, not stopped or paused. */
-                running: boolean;
-                /**
-                 * Format: date-time
-                 * @description While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.
-                 */
-                clockStart?: string;
-                /** @description Milliseconds on the clock, leaving out paused time. */
-                elapsedMs: number;
-                /** @description The revealed hints' time penalties, in milliseconds. */
-                penaltyMs: number;
-                /** @description The score: elapsed time plus penalties. Lower is better. */
-                totalMs: number;
-                /** @description The puzzles reached so far, in order. */
-                puzzles: {
-                    puzzleName: string;
-                    /**
-                     * Format: date-time
-                     * @description When the clock started.
-                     */
-                    startTime?: string;
-                    /**
-                     * Format: date-time
-                     * @description When the clock stopped.
-                     */
-                    endTime?: string;
-                    /** @description True while the clock runs: started, not stopped or paused. */
-                    running: boolean;
-                    /**
-                     * Format: date-time
-                     * @description While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.
-                     */
-                    clockStart?: string;
-                    /** @description Milliseconds on the clock, leaving out paused time. */
-                    elapsedMs: number;
-                    /** @description The revealed hints' time penalties, in milliseconds. */
-                    penaltyMs: number;
-                    /** @description The score: elapsed time plus penalties. Lower is better. */
-                    totalMs: number;
-                }[];
-            };
-            /** @description The puzzles the entry has reached, in order; empty when the quest's stopsHidden is true. */
-            puzzles: {
-                name: string;
-                displayName: string;
-                /** @description 1 awaiting activation, 2 in progress, 3 completed. */
-                status: number;
-                statusDescription: string;
-                skipped: boolean;
-                activationTime: string | null;
-                /** @description Null until the puzzle is completed. */
-                solutionText: string | null;
-            }[];
+            /** @description The entry's time, with the stops it has reached; no stops when the quest's stopsHidden is true, leaving the totals: the standings. */
+            progress: components["schemas"]["Progress"];
+            /** @description The stops the entry has reached, in order; empty when the quest's stopsHidden is true. */
+            puzzles: components["schemas"]["SpectatorStop"][];
+        };
+        /** @description Who plays the entry, by display name only. */
+        SpectatorEntrant: {
+            kind: components["schemas"]["EntrantKind"];
+            /** @description Null if the user or team has been deleted. */
+            displayName: string | null;
+        };
+        SpectatorStop: {
+            puzzleName: string;
+            displayName: string;
+            /** @description Never notReached: the public sees only the stops an entry has reached. */
+            status: components["schemas"]["StopStatus"];
+            /** @description The status in English words, for display; the wording may change, so act on status instead. */
+            statusDescription: string;
+            /** @description True if an administrator skipped the stop for the entry, completing it with no penalty, rather than its players solving it. */
+            skipped: boolean;
+            /** @description When the entry activated the stop; null until it has. */
+            activationTime: string | null;
+            /** @description Null until the stop is completed. */
+            solutionText: string | null;
         };
         SpectatorPuzzle: {
             quest: {
-                name: string;
+                questName: string;
                 displayName: string;
+                /** @description True while an administrator has paused the entry: its clocks stop, and its players can't activate, guess, or reveal hints until it resumes. Its status stays inProgress. */
                 paused: boolean;
             };
             puzzle: {
-                name: string;
+                puzzleName: string;
                 displayName: string;
-                /** @description 2 in progress, 3 completed. */
-                status: number;
+                /** @description inProgress or completed: the puzzle is shown only once activated. */
+                status: components["schemas"]["StopStatus"];
+                /** @description The status in English words, for display; the wording may change, so act on status instead. */
                 statusDescription: string;
+                /** @description True if an administrator skipped the stop for the entry, completing it with no penalty, rather than its players solving it. */
                 skipped: boolean;
-                /** @description 0 text, 1 image, 2 audio, 3 video. */
-                type: number;
+                type: components["schemas"]["PuzzleType"];
                 /** @description The puzzle's Markdown, or the path of its media. */
                 text: string;
                 /** @description The hints revealed so far. */
-                hints: {
-                    text: string;
-                    /** @description In seconds. */
-                    timePenalty: number;
-                }[];
+                hints: components["schemas"]["RevealedHint"][];
                 /** @description Null until the puzzle is completed. */
                 solutionText: string | null;
             };
@@ -1659,14 +1606,15 @@ export interface components {
              * @enum {string}
              */
             visibility: "public" | "private";
+            /** @description Whether the user asking may choose when a new link expires; only staff may. */
             canSetExpiry: boolean;
             links: components["schemas"]["ShareLink"][];
         };
         ShareLink: {
             id: string;
             label: string;
-            /** @description Who made it. Missing if their account has been deleted. */
-            createdBy?: string;
+            /** @description The display name of whoever made it; null if their account has been deleted. */
+            createdBy: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -1681,128 +1629,76 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
         };
+        StaffQuestSummaryPage: {
+            /** @description The page's items. */
+            items: components["schemas"]["StaffQuestSummary"][];
+            /** @description The cursor for the next page, to send as after; null on the last page. */
+            next: string | null;
+        };
         StaffQuestSummary: {
-            name: string;
+            questName: string;
             displayName: string;
             entries: components["schemas"]["StaffQuestEntrySummary"][];
         };
         StaffQuestEntrySummary: {
             /** @description The entry's ID. */
             id: string;
-            entrant: components["schemas"]["QuestEntrant"];
-            /** @description 0 not started, 1 in progress, 2 completed. */
-            status: number;
+            entrant: components["schemas"]["Entrant"];
+            status: components["schemas"]["QuestStatus"];
+            /** @description The status in English words, for display; the wording may change, so act on status instead. */
             statusDescription: string;
+            /** @description True while an administrator has paused the entry: its clocks stop, and its players can't activate, guess, or reveal hints until it resumes. Its status stays inProgress. */
             paused: boolean;
-            /** @description The entry's place on the leaderboard (see SpectatorQuestEntry's rank). Entries stay in the quest's order. */
+            /** @description The entry's place on the leaderboard (see SpectatorQuestEntry's rank); null while it hasn't completed. Entries stay in the quest's order. */
             rank: number | null;
-            progress: {
-                /**
-                 * Format: date-time
-                 * @description When the clock started.
-                 */
-                startTime?: string;
-                /**
-                 * Format: date-time
-                 * @description When the clock stopped.
-                 */
-                endTime?: string;
-                /** @description True while the clock runs: started, not stopped or paused. */
-                running: boolean;
-                /**
-                 * Format: date-time
-                 * @description While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.
-                 */
-                clockStart?: string;
-                /** @description Milliseconds on the clock, leaving out paused time. */
-                elapsedMs: number;
-                /** @description The revealed hints' time penalties, in milliseconds. */
-                penaltyMs: number;
-                /** @description The score: elapsed time plus penalties. Lower is better. */
-                totalMs: number;
-            };
+            progress: components["schemas"]["Clock"];
         };
         StaffQuest: {
-            name: string;
+            questName: string;
             displayName: string;
             entries: components["schemas"]["StaffQuestEntry"][];
         };
         StaffQuestEntry: {
             /** @description The entry's ID. */
             id: string;
-            entrant: components["schemas"]["QuestEntrant"];
-            /** @description 0 not started, 1 in progress, 2 completed. */
-            status: number;
+            entrant: components["schemas"]["Entrant"];
+            status: components["schemas"]["QuestStatus"];
+            /** @description The status in English words, for display; the wording may change, so act on status instead. */
             statusDescription: string;
+            /** @description True while an administrator has paused the entry: its clocks stop, and its players can't activate, guess, or reveal hints until it resumes. Its status stays inProgress. */
             paused: boolean;
-            /** @description The entry's place on the leaderboard (see SpectatorQuestEntry's rank). Entries stay in the quest's order. */
+            /** @description The entry's place on the leaderboard (see SpectatorQuestEntry's rank); null while it hasn't completed. Entries stay in the quest's order. */
             rank: number | null;
-            progress: {
-                /**
-                 * Format: date-time
-                 * @description When the clock started.
-                 */
-                startTime?: string;
-                /**
-                 * Format: date-time
-                 * @description When the clock stopped.
-                 */
-                endTime?: string;
-                /** @description True while the clock runs: started, not stopped or paused. */
-                running: boolean;
-                /**
-                 * Format: date-time
-                 * @description While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.
-                 */
-                clockStart?: string;
-                /** @description Milliseconds on the clock, leaving out paused time. */
-                elapsedMs: number;
-                /** @description The revealed hints' time penalties, in milliseconds. */
-                penaltyMs: number;
-                /** @description The score: elapsed time plus penalties. Lower is better. */
-                totalMs: number;
-                puzzles: {
-                    puzzleName: string;
-                    /**
-                     * Format: date-time
-                     * @description When the clock started.
-                     */
-                    startTime?: string;
-                    /**
-                     * Format: date-time
-                     * @description When the clock stopped.
-                     */
-                    endTime?: string;
-                    /** @description True while the clock runs: started, not stopped or paused. */
-                    running: boolean;
-                    /**
-                     * Format: date-time
-                     * @description While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.
-                     */
-                    clockStart?: string;
-                    /** @description Milliseconds on the clock, leaving out paused time. */
-                    elapsedMs: number;
-                    /** @description The revealed hints' time penalties, in milliseconds. */
-                    penaltyMs: number;
-                    /** @description The score: elapsed time plus penalties. Lower is better. */
-                    totalMs: number;
-                }[];
-            };
-            puzzles: {
-                name: string;
-                displayName: string;
-                /** @description 0 not reached, 1 awaiting activation, 2 in progress, 3 completed. */
-                status: number;
-                statusDescription: string;
-                /** @description The code that unlocks the stop, which staff show the players as a QR code. */
-                activationCode: string;
-                skipped: boolean;
-                hintsRevealed: number;
-                hintCount: number;
-                activationTime: string | null;
-                startTime: string | null;
-                endTime: string | null;
-            }[];
+            progress: components["schemas"]["Progress"];
+            puzzles: components["schemas"]["StaffStop"][];
+        };
+        StaffStop: {
+            puzzleName: string;
+            displayName: string;
+            status: components["schemas"]["StopStatus"];
+            /** @description The status in English words, for display; the wording may change, so act on status instead. */
+            statusDescription: string;
+            /** @description The code that unlocks the stop, which staff show the players as a QR code. */
+            activationCode: string;
+            /** @description True if an administrator skipped the stop for the entry, completing it with no penalty, rather than its players solving it. */
+            skipped: boolean;
+            /** @description How many of the puzzle's hints the entry has revealed. */
+            hintsRevealed: number;
+            /** @description How many hints the puzzle has. */
+            hintCount: number;
+            /** @description When the entry activated the stop; null until it has. */
+            activationTime: string | null;
+            /** @description When the stop became the entry's next, to find and activate; null until it has. */
+            startTime: string | null;
+            /** @description When the entry completed the stop; null until it has. */
+            endTime: string | null;
+        };
+        /** @description What revealing the puzzle's next hint would cost. */
+        NextHint: {
+            /** @description Seconds revealing it adds to the players' time. */
+            timePenaltySeconds: number;
+            /** @description True if the hint gives the solution away, so a client can warn first. */
+            solutionWarning: boolean;
         };
         /** @description A message from the live-update websocket, /api/v1/updates, to a client: which kind is in its message field. */
         LiveUpdate: {
@@ -1828,11 +1724,8 @@ export interface components {
             solutionText: string;
             /** Format: date-time */
             endTime: string;
-            /**
-             * @description Present when it was the quest's last puzzle.
-             * @constant
-             */
-            questComplete?: true;
+            /** @description True when it was the quest's last puzzle: the entry has completed the quest. */
+            questComplete: boolean;
         } | {
             /** @constant */
             message: "puzzleStarted";
@@ -1845,16 +1738,16 @@ export interface components {
             startTime: string;
         } | {
             /** @constant */
-            message: "hintRequested";
+            message: "hintRevealed";
             questName: string;
             /** @description The ID of the quest's entry whose progress changed: a quest can have several users or teams playing it, each with its own progress. */
             entryId: string;
             puzzleName: string;
             hintText: string;
-            moreHints: boolean;
-            /** @description In seconds. */
-            timePenalty: number;
-            isNextHintSolution: boolean;
+            /** @description Seconds the hint adds to the players' time. */
+            timePenaltySeconds: number;
+            /** @description What revealing the puzzle's next hint would cost; null if it has no more. */
+            nextHint: components["schemas"]["NextHint"] | null;
         } | {
             /** @constant */
             message: "questUpdated";
@@ -1870,7 +1763,7 @@ export interface components {
             /** @constant */
             message: "subscribe";
             questName: string;
-            /** @description A ticket from POST /quests/{name}/live-tickets, which can be used once. */
+            /** @description A ticket from POST /quests/{questName}/live-tickets, which can be used once. */
             ticket: string;
         } | {
             /** @constant */
@@ -2103,12 +1996,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @description The page's items. */
-                        items: components["schemas"]["User"][];
-                        /** @description The cursor for the next page, to send as after; null on the last page. */
-                        next: string | null;
-                    };
+                    "application/json": components["schemas"]["UserPage"];
                 };
             };
             /** @description /problems/invalid-request: The request isn't valid. */
@@ -2168,7 +2056,8 @@ export interface operations {
                     /** @default false */
                     sms?: boolean;
                     password: string;
-                    authorizationLevel?: number;
+                    /** @description Only an administrator may give it; anyone else signs up as a player. */
+                    role?: components["schemas"]["Role"];
                 };
             };
         };
@@ -2426,7 +2315,8 @@ export interface operations {
                     email?: string;
                     phone?: string;
                     sms?: boolean;
-                    authorizationLevel?: number;
+                    /** @description Only an administrator may change it, which signs the user out everywhere. */
+                    role?: components["schemas"]["Role"];
                 };
             };
         };
@@ -2528,12 +2418,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @description The page's items. */
-                        items: components["schemas"]["QuestSummary"][];
-                        /** @description The cursor for the next page, to send as after; null on the last page. */
-                        next: string | null;
-                    };
+                    "application/json": components["schemas"]["QuestSummaryPage"];
                 };
             };
             /** @description /problems/invalid-request: The request isn't valid. */
@@ -3232,12 +3117,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @description The page's items. */
-                        items: components["schemas"]["Team"][];
-                        /** @description The cursor for the next page, to send as after; null on the last page. */
-                        next: string | null;
-                    };
+                    "application/json": components["schemas"]["TeamPage"];
                 };
             };
             /** @description /problems/invalid-request: The request isn't valid. */
@@ -3751,12 +3631,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @description The page's items. */
-                        items: components["schemas"]["Puzzle"][];
-                        /** @description The cursor for the next page, to send as after; null on the last page. */
-                        next: string | null;
-                    };
+                    "application/json": components["schemas"]["PuzzlePage"];
                 };
             };
             /** @description /problems/invalid-request: The request isn't valid. */
@@ -3807,22 +3682,33 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    name: string;
+                    puzzleName: string;
                     /** @default  */
                     displayName?: string;
-                    /** @default 0 */
-                    type?: number;
-                    /** @default  */
+                    /** @default text */
+                    type?: components["schemas"]["PuzzleType"];
+                    /**
+                     * @description Markdown, for a text puzzle; the media file's path, for the others.
+                     * @default
+                     */
                     text?: string;
+                    /** @description The keywords a guess must contain, separated by commas; letter case, spacing, and punctuation don't matter. */
                     solutionKeyword: string;
-                    solutionDisplayText: string;
+                    /** @description The solution as shown once it is solved. */
+                    solutionText: string;
                     /** @default [] */
                     hints?: {
                         text: string;
-                        /** @default false */
+                        /**
+                         * @description True if the hint gives the solution away.
+                         * @default false
+                         */
                         solutionWarning?: boolean;
-                        /** @default 0 */
-                        timePenalty?: number;
+                        /**
+                         * @description Seconds added to the players' time for revealing it.
+                         * @default 0
+                         */
+                        timePenaltySeconds?: number;
                     }[];
                 };
             };
@@ -3901,7 +3787,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The puzzle's name. */
-                name: string;
+                puzzleName: string;
             };
             cookie?: never;
         };
@@ -3960,7 +3846,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The puzzle's name. */
-                name: string;
+                puzzleName: string;
             };
             cookie?: never;
         };
@@ -4026,7 +3912,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The puzzle's name. */
-                name: string;
+                puzzleName: string;
             };
             cookie?: never;
         };
@@ -4034,16 +3920,25 @@ export interface operations {
             content: {
                 "application/json": {
                     displayName?: string;
-                    type?: number;
+                    type?: components["schemas"]["PuzzleType"];
+                    /** @description Markdown, for a text puzzle; the media file's path, for the others. */
                     text?: string;
+                    /** @description The keywords a guess must contain, separated by commas; letter case, spacing, and punctuation don't matter. */
                     solutionKeyword?: string;
-                    solutionDisplayText?: string;
+                    /** @description The solution as shown once it is solved. */
+                    solutionText?: string;
                     hints?: {
                         text: string;
-                        /** @default false */
+                        /**
+                         * @description True if the hint gives the solution away.
+                         * @default false
+                         */
                         solutionWarning?: boolean;
-                        /** @default 0 */
-                        timePenalty?: number;
+                        /**
+                         * @description Seconds added to the players' time for revealing it.
+                         * @default 0
+                         */
+                        timePenaltySeconds?: number;
                     }[];
                 };
             };
@@ -4201,7 +4096,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
             };
             cookie?: never;
         };
@@ -4318,12 +4213,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @description The page's items. */
-                        items: components["schemas"]["Quest"][];
-                        /** @description The cursor for the next page, to send as after; null on the last page. */
-                        next: string | null;
-                    };
+                    "application/json": components["schemas"]["QuestPage"];
                 };
             };
             /** @description /problems/invalid-request: The request isn't valid. */
@@ -4374,7 +4264,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    name: string;
+                    questName: string;
                     displayName: string;
                     /**
                      * @description Who can follow the quest: anyone, or only its players (in any of its entries) and staff. New quests are public.
@@ -4383,8 +4273,7 @@ export interface operations {
                     visibility?: "public" | "private";
                     /** @description The users and teams playing the quest, in order; at least one. Each has its own progress through the same stops. A player may be in only one of them, as a user or in a team. On a change, those already playing keep their progress, new ones start out not started, and those left out are removed, which is allowed only before they start. */
                     entrants: {
-                        /** @enum {string} */
-                        kind: "user" | "team";
+                        kind: components["schemas"]["EntrantKind"];
                         /** @description The user name or team name. */
                         name: string;
                     }[];
@@ -4481,7 +4370,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
             };
             cookie?: never;
         };
@@ -4531,7 +4420,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
             };
             cookie?: never;
         };
@@ -4588,7 +4477,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
             };
             cookie?: never;
         };
@@ -4603,8 +4492,7 @@ export interface operations {
                     visibility?: "public" | "private";
                     /** @description The users and teams playing the quest, in order; at least one. Each has its own progress through the same stops. A player may be in only one of them, as a user or in a team. On a change, those already playing keep their progress, new ones start out not started, and those left out are removed, which is allowed only before they start. */
                     entrants?: {
-                        /** @enum {string} */
-                        kind: "user" | "team";
+                        kind: components["schemas"]["EntrantKind"];
                         /** @description The user name or team name. */
                         name: string;
                     }[];
@@ -4707,7 +4595,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
             };
             cookie?: never;
         };
@@ -4775,7 +4663,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
             };
             cookie?: never;
         };
@@ -4843,7 +4731,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
             };
             cookie?: never;
         };
@@ -4911,7 +4799,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
             };
             cookie?: never;
         };
@@ -4979,7 +4867,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
                 /** @description The team's name. */
                 teamName: string;
             };
@@ -5049,7 +4937,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
                 /** @description The team's name. */
                 teamName: string;
             };
@@ -5119,7 +5007,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
                 /** @description The team's name. */
                 teamName: string;
             };
@@ -5189,7 +5077,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
                 /** @description The team's name. */
                 teamName: string;
             };
@@ -5259,7 +5147,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
                 /** @description The team's name. */
                 teamName: string;
                 /** @description The puzzle's name. */
@@ -5331,7 +5219,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
                 /** @description The team's name. */
                 teamName: string;
                 /** @description The puzzle's name. */
@@ -5428,7 +5316,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
                 /** @description The team's name. */
                 teamName: string;
             };
@@ -5533,7 +5421,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
                 /** @description The user name of the player playing on their own. */
                 userName: string;
             };
@@ -5603,7 +5491,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
                 /** @description The user name of the player playing on their own. */
                 userName: string;
             };
@@ -5673,7 +5561,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
                 /** @description The user name of the player playing on their own. */
                 userName: string;
             };
@@ -5743,7 +5631,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
                 /** @description The user name of the player playing on their own. */
                 userName: string;
             };
@@ -5813,7 +5701,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
                 /** @description The user name of the player playing on their own. */
                 userName: string;
                 /** @description The puzzle's name. */
@@ -5885,7 +5773,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
                 /** @description The user name of the player playing on their own. */
                 userName: string;
                 /** @description The puzzle's name. */
@@ -5982,7 +5870,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
                 /** @description The user name of the player playing on their own. */
                 userName: string;
             };
@@ -6087,7 +5975,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
                 /** @description The puzzle's name. */
                 puzzleName: string;
             };
@@ -6148,7 +6036,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
             };
             cookie?: never;
         };
@@ -6207,7 +6095,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
             };
             cookie?: never;
         };
@@ -6271,7 +6159,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
             };
             cookie?: never;
         };
@@ -6283,12 +6171,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @description The page's items. */
-                        items: components["schemas"]["QuestEvent"][];
-                        /** @description The cursor for the next page, to send as after; null on the last page. */
-                        next: string | null;
-                    };
+                    "application/json": components["schemas"]["QuestEventPage"];
                 };
             };
             /** @description /problems/invalid-request: The request isn't valid. */
@@ -6344,7 +6227,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
                 /** @description The puzzle's name. */
                 puzzleName: string;
             };
@@ -6405,7 +6288,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
                 /** @description The puzzle's name. */
                 puzzleName: string;
             };
@@ -6416,10 +6299,8 @@ export interface operations {
                 "application/json": {
                     /** @description The code, typed, in any letter case; or scan its QR code instead. */
                     activationCode?: string;
-                    /** @description The scanned frame's width, in pixels. */
-                    width?: number;
-                    /** @description The scanned frame's height, in pixels. */
-                    height?: number;
+                    /** @description The client's live-update connection, which isn't sent the update about this action: the client shows the result itself. */
+                    connectionId?: string;
                 };
                 "multipart/form-data": {
                     /** @description The frame's width, in pixels. */
@@ -6431,6 +6312,8 @@ export interface operations {
                      * @description The frame's raw RGBA pixels, four bytes each, at most 20 MB.
                      */
                     image: string;
+                    /** @description The client's live-update connection, which isn't sent the update about this action: the client shows the result itself. */
+                    connectionId?: string;
                 };
             };
         };
@@ -6533,7 +6416,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
                 /** @description The puzzle's name. */
                 puzzleName: string;
             };
@@ -6543,7 +6426,7 @@ export interface operations {
             content: {
                 "application/json": {
                     guess: string;
-                    /** @description The page's live-update connection, which isn't sent the update about this action. */
+                    /** @description The client's live-update connection, which isn't sent the update about this action: the client shows the result itself. */
                     connectionId?: string;
                 };
             };
@@ -6647,7 +6530,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
                 /** @description The puzzle's name. */
                 puzzleName: string;
             };
@@ -6656,7 +6539,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    /** @description The page's live-update connection, which isn't sent the update about this action. */
+                    /** @description The client's live-update connection, which isn't sent the update about this action: the client shows the result itself. */
                     connectionId?: string;
                 };
             };
@@ -6742,7 +6625,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
             };
             cookie?: never;
         };
@@ -6801,7 +6684,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
             };
             cookie?: never;
         };
@@ -6840,12 +6723,12 @@ export interface operations {
         parameters: {
             query: {
                 /** @description The ID of the entry whose progress to show, from the quest's spectator view. */
-                entry: string;
+                entryId: string;
             };
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
                 /** @description The puzzle's name. */
                 puzzleName: string;
             };
@@ -6897,7 +6780,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
             };
             cookie?: never;
         };
@@ -6947,7 +6830,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
             };
             cookie?: never;
         };
@@ -7036,7 +6919,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
                 /** @description The share link's ID. */
                 linkId: string;
             };
@@ -7109,12 +6992,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @description The page's items. */
-                        items: components["schemas"]["StaffQuestSummary"][];
-                        /** @description The cursor for the next page, to send as after; null on the last page. */
-                        next: string | null;
-                    };
+                    "application/json": components["schemas"]["StaffQuestSummaryPage"];
                 };
             };
             /** @description /problems/invalid-request: The request isn't valid. */
@@ -7161,7 +7039,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The quest's name. */
-                name: string;
+                questName: string;
             };
             cookie?: never;
         };

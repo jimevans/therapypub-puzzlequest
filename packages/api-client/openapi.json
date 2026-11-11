@@ -3,7 +3,7 @@
   "info": {
     "title": "PuzzleQuest API",
     "version": "1.0.0",
-    "description": "PuzzleQuest's API, for its web pages and for apps. This description is at `/api/v1/openapi.json`, and shown as a reference at `/api/v1/docs`.\n\nSign in with `POST /sessions`. A browser keeps the session in a cookie; an app asks for its token (`\"client\": \"native\"`) and sends it as `Authorization: Bearer <token>`. A request that changes something and is sent with the cookie must come from this site.\n\nLists come a page at a time: `?limit=` (default 50, at most 200) and `?after=`, the `next` value of the page before.\n\nClients follow a quest as it happens over the live-update websocket, `/api/v1/updates`. Anyone may connect. A client sends a `LiveUpdateSubscription` naming the quest, with a ticket from `POST /quests/{name}/live-tickets`; the server answers with its connection's ID, then sends a `LiveUpdate` for each change to that quest, naming the puzzle concerned where there is one. A client sends its connection's ID as `connectionId` with its own actions, so their updates aren't sent back to it. Each update names the entry whose progress changed (`entryId`). While a quest is a race that not every entry has finished, a connection is sent an update's content only if its ticket was issued to staff, an administrator, or a player of that entry; every other connection is sent `questUpdated` with the entry's ID instead, and fetches what it shows again. Starting and resetting a quest send no update to its followers. A player's home screen instead names the user, with a ticket from `POST /users/{userName}/live-tickets`, and is sent `questsChanged` whenever the list of quests they play should be fetched again, starting and resetting included. Both messages are described under the schemas. Updates can be missed, so a client should fetch what it follows again each time it connects.\n\nErrors are problem details (RFC 9457), sent as `application/problem+json`. Act on their `type`, one of:\n\n| Type | Status | When |\n| --- | --- | --- |\n| `/problems/invalid-request` | 400 | The request's parameters or body are missing, malformed, or have values that aren't allowed. The errors member lists each problem, with where it is, such as body.email. |\n| `/problems/sign-in-required` | 401 | The request needs a signed-in user, and has no session, or one that has ended. |\n| `/problems/sign-in-failed` | 401 | The user name and password don't match an account. Which of them is wrong isn't said. |\n| `/problems/forbidden` | 403 | The signed-in user isn't allowed to do this. |\n| `/problems/cross-site-request` | 403 | A request that changes something was sent with this site's cookie from a page on another site. Send it from this site, or with a Bearer token. |\n| `/problems/not-found` | 404 | There is no such resource, or the signed-in user may not know about it. |\n| `/problems/already-exists` | 409 | Something with that name, email address, or join code already exists, or the user is already a member of the team. |\n| `/problems/email-not-verified` | 409 | The user hasn't verified their email address, so nothing can be sent to it that depends on it, such as a password reset link. |\n| `/problems/incorrect-password` | 422 | The current password given isn't the user's password. |\n| `/problems/password-not-allowed` | 422 | The new password doesn't meet the password policy, such as its length, or is the same as the current one. |\n| `/problems/wrong-join-code` | 422 | The join code isn't the team's. |\n| `/problems/invalid-link` | 422 | The token from a password reset or email verification link isn't valid: it is malformed, already used, or expired. |\n| `/problems/in-use` | 409 | It can't be deleted while something uses it, such as a puzzle a quest includes. The detail says what uses it. |\n| `/problems/invalid-upload` | 400 | The upload is missing a field, sends its fields in the wrong order, or is a kind of file that isn't accepted. |\n| `/problems/body-too-large` | 413 | The request's body is larger than the server reads. |\n| `/problems/upload-too-large` | 413 | The uploaded file is larger than allowed. |\n| `/problems/invalid-quest` | 422 | The quest is assigned to a user or team that doesn't exist, or lists a puzzle that doesn't exist or appears twice. |\n| `/problems/wrong-state` | 409 | The quest or puzzle isn't in a state that allows this: for example, the quest has already started, isn't paused, or is completed, or the puzzle hasn't been reached or solved. The detail says which. |\n| `/problems/quest-paused` | 409 | The puzzle master has paused the quest; the players can't act until it resumes. |\n| `/problems/try-again` | 409 | Someone else changed the quest at the same moment, several times over. Try again. |\n| `/problems/wrong-activation-code` | 422 | The activation code, typed or scanned, isn't the puzzle's. |\n| `/problems/wrong-answer` | 422 | The guess isn't the puzzle's solution. |\n| `/problems/no-recipients` | 409 | Nobody the quest is assigned to has a phone number and accepts text messages. |\n| `/problems/messaging-failed` | 502 | The text messaging service refused or failed to send a message. The details are logged. |\n| `/problems/unreadable-qr-code` | 422 | No QR code could be read from the scanned image; try again, closer or with more light, or type the code. |\n| `/problems/no-more-hints` | 409 | Every one of the puzzle's hints has been revealed. |\n| `/problems/too-many-requests` | 429 | Too many attempts in a short time. The RateLimit and RateLimit-Policy headers say when to try again. |\n| `/problems/unexpected` | 500 | Something went wrong on the server. The details are logged, not sent. |\n| `about:blank` | 4xx | Any other HTTP error, such as a body that isn't valid JSON; the title is the status's. |"
+    "description": "PuzzleQuest's API, for its web pages and for apps. This description is at `/api/v1/openapi.json`, and shown as a reference at `/api/v1/docs`.\n\nSign in with `POST /sessions`. A browser keeps the session in a cookie; an app asks for its token (`\"client\": \"native\"`) and sends it as `Authorization: Bearer <token>`. A request that changes something and is sent with the cookie must come from this site.\n\nLists come a page at a time: `?limit=` (default 50, at most 200) and `?after=`, the `next` value of the page before.\n\nNames and values follow the same conventions throughout. Things are named in paths and bodies as `questName`, `puzzleName`, `teamName`, and `userName`; a quest's stop is named by its puzzle's `puzzleName`. Enumerated values, such as statuses, roles, and event types, are camelCase strings. A field whose value isn't set, such as a time that hasn't come yet, is present with the value `null`; a field is absent only when the caller isn't allowed to see it, as each such field's description says. Units are in names: `timePenaltySeconds`, `elapsedMs`.\n\nVersion 1.0 can gain fields, enumerated values, problem types, and live-update messages without a new version. Clients must ignore fields they don't recognise, and treat a value they don't recognise sensibly, such as an unknown status as unknown, rather than failing; the schemas here describe this version's responses exactly.\n\nClients follow a quest as it happens over the live-update websocket, `/api/v1/updates`. Anyone may connect. A client sends a `LiveUpdateSubscription` naming the quest, with a ticket from `POST /quests/{questName}/live-tickets`; the server answers with its connection's ID, then sends a `LiveUpdate` for each change to that quest, naming the puzzle concerned where there is one. A client sends its connection's ID as `connectionId` with its own actions, so their updates aren't sent back to it. Each update names the entry whose progress changed (`entryId`). While a quest is a race that not every entry has finished, a connection is sent an update's content only if its ticket was issued to staff, an administrator, or a player of that entry; every other connection is sent `questUpdated` with the entry's ID instead, and fetches what it shows again. Starting and resetting a quest send no update to its followers. A player's home screen instead names the user, with a ticket from `POST /users/{userName}/live-tickets`, and is sent `questsChanged` whenever the list of quests they play should be fetched again, starting and resetting included. Both messages are described under the schemas. Updates can be missed, so a client should fetch what it follows again each time it connects.\n\nErrors are problem details (RFC 9457), sent as `application/problem+json`. Act on their `type`, one of:\n\n| Type | Status | When |\n| --- | --- | --- |\n| `/problems/invalid-request` | 400 | The request's parameters or body are missing, malformed, or have values that aren't allowed. The errors member lists each problem, with where it is, such as body.email. |\n| `/problems/sign-in-required` | 401 | The request needs a signed-in user, and has no session, or one that has ended. |\n| `/problems/sign-in-failed` | 401 | The user name and password don't match an account. Which of them is wrong isn't said. |\n| `/problems/forbidden` | 403 | The signed-in user isn't allowed to do this. |\n| `/problems/cross-site-request` | 403 | A request that changes something was sent with this site's cookie from a page on another site. Send it from this site, or with a Bearer token. |\n| `/problems/not-found` | 404 | There is no such resource, or the signed-in user may not know about it. |\n| `/problems/already-exists` | 409 | Something with that name, email address, or join code already exists, or the user is already a member of the team. |\n| `/problems/email-not-verified` | 409 | The user hasn't verified their email address, so nothing can be sent to it that depends on it, such as a password reset link. |\n| `/problems/incorrect-password` | 422 | The current password given isn't the user's password. |\n| `/problems/password-not-allowed` | 422 | The new password doesn't meet the password policy, such as its length, or is the same as the current one. |\n| `/problems/wrong-join-code` | 422 | The join code isn't the team's. |\n| `/problems/invalid-link` | 422 | The token from a password reset or email verification link isn't valid: it is malformed, already used, or expired. |\n| `/problems/in-use` | 409 | It can't be deleted while something uses it, such as a puzzle a quest includes. The detail says what uses it. |\n| `/problems/invalid-upload` | 400 | The upload is missing a field, sends its fields in the wrong order, or is a kind of file that isn't accepted. |\n| `/problems/body-too-large` | 413 | The request's body is larger than the server reads. |\n| `/problems/upload-too-large` | 413 | The uploaded file is larger than allowed. |\n| `/problems/invalid-quest` | 422 | The quest's entrants name a user or team that doesn't exist, or a player in more than one entry, or it lists a puzzle that doesn't exist or appears twice. |\n| `/problems/wrong-state` | 409 | The quest or puzzle isn't in a state that allows this: for example, the quest has already started, isn't paused, or is completed, or the puzzle hasn't been reached or solved. The detail says which. |\n| `/problems/quest-paused` | 409 | The puzzle master has paused the quest; the players can't act until it resumes. |\n| `/problems/try-again` | 409 | Someone else changed the quest at the same moment, several times over. Try again. |\n| `/problems/wrong-activation-code` | 422 | The activation code, typed or scanned, isn't the puzzle's. |\n| `/problems/wrong-answer` | 422 | The guess isn't the puzzle's solution. |\n| `/problems/no-recipients` | 409 | No player in the entries being texted has a phone number and accepts text messages. |\n| `/problems/messaging-failed` | 502 | The text messaging service refused or failed to send a message. The details are logged. |\n| `/problems/unreadable-qr-code` | 422 | No QR code could be read from the scanned image; try again, closer or with more light, or type the code. |\n| `/problems/no-more-hints` | 409 | Every one of the puzzle's hints has been revealed. |\n| `/problems/too-many-requests` | 429 | Too many attempts in a short time. The RateLimit and RateLimit-Policy headers say when to try again. |\n| `/problems/unexpected` | 500 | Something went wrong on the server. The details are logged, not sent. |\n| `about:blank` | 4xx | Any other HTTP error, such as a body that isn't valid JSON; the title is the status's. |"
   },
   "servers": [
     {
@@ -305,28 +305,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "items": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/User"
-                      },
-                      "description": "The page's items."
-                    },
-                    "next": {
-                      "description": "The cursor for the next page, to send as after; null on the last page.",
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "items",
-                    "next"
-                  ],
-                  "additionalProperties": false
+                  "$ref": "#/components/schemas/UserPage"
                 }
               }
             }
@@ -376,7 +355,7 @@
       "post": {
         "operationId": "createUser",
         "summary": "Sign up, or create a user",
-        "description": "Anyone may sign up, as a player. An administrator creating a user may also choose its authorization level. A verification email is sent to the address.",
+        "description": "Anyone may sign up, as a player. An administrator creating a user may also choose its role. A verification email is sent to the address.",
         "tags": [
           "Users"
         ],
@@ -414,10 +393,9 @@
                     "type": "string",
                     "minLength": 1
                   },
-                  "authorizationLevel": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
+                  "role": {
+                    "description": "Only an administrator may give it; anyone else signs up as a player.",
+                    "$ref": "#/components/schemas/Role"
                   }
                 },
                 "required": [
@@ -594,7 +572,7 @@
       "patch": {
         "operationId": "updateUser",
         "summary": "Change a user",
-        "description": "Changes the fields given. A new email address must be verified again, and a verification email is sent to it. Only an administrator may change an authorization level, which signs the user out everywhere.",
+        "description": "Changes the fields given. A new email address must be verified again, and a verification email is sent to it. Only an administrator may change a role, which signs the user out everywhere.",
         "tags": [
           "Users"
         ],
@@ -640,10 +618,9 @@
                   "sms": {
                     "type": "boolean"
                   },
-                  "authorizationLevel": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
+                  "role": {
+                    "description": "Only an administrator may change it, which signs the user out everywhere.",
+                    "$ref": "#/components/schemas/Role"
                   }
                 }
               }
@@ -736,7 +713,7 @@
       "delete": {
         "operationId": "deleteUser",
         "summary": "Delete a user",
-        "description": "Deletes the user, ends their sessions, removes them from their teams, and takes their name out of quests' activity logs. Quests assigned to them stay, assigned to a deleted user. Deleting your own account needs your password; wrong ones are limited, as for changing it. The only administrator can't be deleted.",
+        "description": "Deletes the user, ends their sessions, removes them from their teams, and takes their name out of quests' activity logs. Their entries in quests stay, as a deleted user's. Deleting your own account needs your password; wrong ones are limited, as for changing it. The only administrator can't be deleted.",
         "tags": [
           "Users"
         ],
@@ -928,28 +905,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "items": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/QuestSummary"
-                      },
-                      "description": "The page's items."
-                    },
-                    "next": {
-                      "description": "The cursor for the next page, to send as after; null on the last page.",
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "items",
-                    "next"
-                  ],
-                  "additionalProperties": false
+                  "$ref": "#/components/schemas/QuestSummaryPage"
                 }
               }
             }
@@ -1881,28 +1837,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "items": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Team"
-                      },
-                      "description": "The page's items."
-                    },
-                    "next": {
-                      "description": "The cursor for the next page, to send as after; null on the last page.",
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "items",
-                    "next"
-                  ],
-                  "additionalProperties": false
+                  "$ref": "#/components/schemas/TeamPage"
                 }
               }
             }
@@ -2631,28 +2566,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "items": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Puzzle"
-                      },
-                      "description": "The page's items."
-                    },
-                    "next": {
-                      "description": "The cursor for the next page, to send as after; null on the last page.",
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "items",
-                    "next"
-                  ],
-                  "additionalProperties": false
+                  "$ref": "#/components/schemas/PuzzlePage"
                 }
               }
             }
@@ -2721,7 +2635,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "name": {
+                  "puzzleName": {
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 100
@@ -2732,22 +2646,23 @@
                     "maxLength": 200
                   },
                   "type": {
-                    "default": 0,
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
+                    "default": "text",
+                    "$ref": "#/components/schemas/PuzzleType"
                   },
                   "text": {
                     "default": "",
-                    "type": "string"
+                    "type": "string",
+                    "description": "Markdown, for a text puzzle; the media file's path, for the others."
                   },
                   "solutionKeyword": {
                     "type": "string",
-                    "minLength": 1
+                    "minLength": 1,
+                    "description": "The keywords a guess must contain, separated by commas; letter case, spacing, and punctuation don't matter."
                   },
-                  "solutionDisplayText": {
+                  "solutionText": {
                     "type": "string",
-                    "minLength": 1
+                    "minLength": 1,
+                    "description": "The solution as shown once it is solved."
                   },
                   "hints": {
                     "default": [],
@@ -2760,10 +2675,12 @@
                         },
                         "solutionWarning": {
                           "default": false,
+                          "description": "True if the hint gives the solution away.",
                           "type": "boolean"
                         },
-                        "timePenalty": {
+                        "timePenaltySeconds": {
                           "default": 0,
+                          "description": "Seconds added to the players' time for revealing it.",
                           "type": "integer",
                           "minimum": 0,
                           "maximum": 9007199254740991
@@ -2776,9 +2693,9 @@
                   }
                 },
                 "required": [
-                  "name",
+                  "puzzleName",
                   "solutionKeyword",
-                  "solutionDisplayText"
+                  "solutionText"
                 ]
               }
             }
@@ -2866,7 +2783,7 @@
         }
       }
     },
-    "/puzzles/{name}": {
+    "/puzzles/{puzzleName}": {
       "get": {
         "operationId": "getPuzzle",
         "summary": "Get a puzzle",
@@ -2884,7 +2801,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "puzzleName",
             "schema": {
               "type": "string",
               "description": "The puzzle's name."
@@ -2964,7 +2881,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "puzzleName",
             "schema": {
               "type": "string",
               "description": "The puzzle's name."
@@ -2985,20 +2902,21 @@
                     "maxLength": 200
                   },
                   "type": {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
+                    "$ref": "#/components/schemas/PuzzleType"
                   },
                   "text": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Markdown, for a text puzzle; the media file's path, for the others."
                   },
                   "solutionKeyword": {
                     "type": "string",
-                    "minLength": 1
+                    "minLength": 1,
+                    "description": "The keywords a guess must contain, separated by commas; letter case, spacing, and punctuation don't matter."
                   },
-                  "solutionDisplayText": {
+                  "solutionText": {
                     "type": "string",
-                    "minLength": 1
+                    "minLength": 1,
+                    "description": "The solution as shown once it is solved."
                   },
                   "hints": {
                     "type": "array",
@@ -3010,10 +2928,12 @@
                         },
                         "solutionWarning": {
                           "default": false,
+                          "description": "True if the hint gives the solution away.",
                           "type": "boolean"
                         },
-                        "timePenalty": {
+                        "timePenaltySeconds": {
                           "default": 0,
+                          "description": "Seconds added to the players' time for revealing it.",
                           "type": "integer",
                           "minimum": 0,
                           "maximum": 9007199254740991
@@ -3120,7 +3040,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "puzzleName",
             "schema": {
               "type": "string",
               "description": "The puzzle's name."
@@ -3305,7 +3225,7 @@
         }
       }
     },
-    "/quests/{name}/text-messages": {
+    "/quests/{questName}/text-messages": {
       "post": {
         "operationId": "sendQuestTextMessage",
         "summary": "Text every entrant's players",
@@ -3324,7 +3244,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -3492,28 +3412,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "items": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Quest"
-                      },
-                      "description": "The page's items."
-                    },
-                    "next": {
-                      "description": "The cursor for the next page, to send as after; null on the last page.",
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "items",
-                    "next"
-                  ],
-                  "additionalProperties": false
+                  "$ref": "#/components/schemas/QuestPage"
                 }
               }
             }
@@ -3582,7 +3481,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "name": {
+                  "questName": {
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 100
@@ -3607,11 +3506,7 @@
                       "type": "object",
                       "properties": {
                         "kind": {
-                          "type": "string",
-                          "enum": [
-                            "user",
-                            "team"
-                          ]
+                          "$ref": "#/components/schemas/EntrantKind"
                         },
                         "name": {
                           "type": "string",
@@ -3652,7 +3547,7 @@
                   }
                 },
                 "required": [
-                  "name",
+                  "questName",
                   "displayName",
                   "entrants"
                 ]
@@ -3752,7 +3647,7 @@
         }
       }
     },
-    "/quests/{name}": {
+    "/quests/{questName}": {
       "get": {
         "operationId": "getQuest",
         "summary": "Get a quest",
@@ -3771,7 +3666,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -3841,7 +3736,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -3877,11 +3772,7 @@
                       "type": "object",
                       "properties": {
                         "kind": {
-                          "type": "string",
-                          "enum": [
-                            "user",
-                            "team"
-                          ]
+                          "$ref": "#/components/schemas/EntrantKind"
                         },
                         "name": {
                           "type": "string",
@@ -4035,7 +3926,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -4091,7 +3982,7 @@
         }
       }
     },
-    "/quests/{name}/start": {
+    "/quests/{questName}/start": {
       "post": {
         "operationId": "startQuest",
         "summary": "Start a quest, for every entrant",
@@ -4110,7 +4001,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -4183,7 +4074,7 @@
         }
       }
     },
-    "/quests/{name}/reset": {
+    "/quests/{questName}/reset": {
       "post": {
         "operationId": "resetQuest",
         "summary": "Reset a quest, for every entrant",
@@ -4202,7 +4093,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -4275,7 +4166,7 @@
         }
       }
     },
-    "/quests/{name}/pause": {
+    "/quests/{questName}/pause": {
       "post": {
         "operationId": "pauseQuest",
         "summary": "Pause a quest, for every entrant",
@@ -4294,7 +4185,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -4367,7 +4258,7 @@
         }
       }
     },
-    "/quests/{name}/resume": {
+    "/quests/{questName}/resume": {
       "post": {
         "operationId": "resumeQuest",
         "summary": "Resume a quest, for every entrant",
@@ -4386,7 +4277,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -4459,7 +4350,7 @@
         }
       }
     },
-    "/quests/{name}/teams/{teamName}/start": {
+    "/quests/{questName}/teams/{teamName}/start": {
       "post": {
         "operationId": "startTeamEntry",
         "summary": "Start a team's entry in a quest",
@@ -4478,7 +4369,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -4561,7 +4452,7 @@
         }
       }
     },
-    "/quests/{name}/teams/{teamName}/reset": {
+    "/quests/{questName}/teams/{teamName}/reset": {
       "post": {
         "operationId": "resetTeamEntry",
         "summary": "Reset a team's entry in a quest",
@@ -4580,7 +4471,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -4663,7 +4554,7 @@
         }
       }
     },
-    "/quests/{name}/teams/{teamName}/pause": {
+    "/quests/{questName}/teams/{teamName}/pause": {
       "post": {
         "operationId": "pauseTeamEntry",
         "summary": "Pause a team's entry in a quest",
@@ -4682,7 +4573,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -4765,7 +4656,7 @@
         }
       }
     },
-    "/quests/{name}/teams/{teamName}/resume": {
+    "/quests/{questName}/teams/{teamName}/resume": {
       "post": {
         "operationId": "resumeTeamEntry",
         "summary": "Resume a team's entry in a quest",
@@ -4784,7 +4675,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -4867,7 +4758,7 @@
         }
       }
     },
-    "/quests/{name}/teams/{teamName}/puzzles/{puzzleName}/skip": {
+    "/quests/{questName}/teams/{teamName}/puzzles/{puzzleName}/skip": {
       "post": {
         "operationId": "skipTeamPuzzle",
         "summary": "Skip a puzzle for a team",
@@ -4886,7 +4777,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -4979,7 +4870,7 @@
         }
       }
     },
-    "/quests/{name}/teams/{teamName}/puzzles/{puzzleName}/reset": {
+    "/quests/{questName}/teams/{teamName}/puzzles/{puzzleName}/reset": {
       "post": {
         "operationId": "resetTeamPuzzle",
         "summary": "Reset a team's solved puzzle",
@@ -4998,7 +4889,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -5127,7 +5018,7 @@
         }
       }
     },
-    "/quests/{name}/teams/{teamName}/text-messages": {
+    "/quests/{questName}/teams/{teamName}/text-messages": {
       "post": {
         "operationId": "sendTeamTextMessage",
         "summary": "Text a team's members",
@@ -5146,7 +5037,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -5280,11 +5171,11 @@
         }
       }
     },
-    "/quests/{name}/players/{userName}/start": {
+    "/quests/{questName}/players/{userName}/start": {
       "post": {
         "operationId": "startPlayerEntry",
         "summary": "Start a player's entry in a quest",
-        "description": "Makes the first puzzle available to activate, for this entrant only. A player's phone call to the quest's number starts their own entry. Not found if the user isn't one of the quest's entrants.",
+        "description": "Makes the first puzzle available to activate, for this entrant only. A player's phone call to the quest's number starts their own entry. Not found if the player isn't one of the quest's entrants.",
         "tags": [
           "Running quests"
         ],
@@ -5299,7 +5190,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -5382,11 +5273,11 @@
         }
       }
     },
-    "/quests/{name}/players/{userName}/reset": {
+    "/quests/{questName}/players/{userName}/reset": {
       "post": {
         "operationId": "resetPlayerEntry",
         "summary": "Reset a player's entry in a quest",
-        "description": "Returns the entrant's entry to not started, clearing its progress and pauses; other entries are left as they are. The event log keeps what happened. Not found if the user isn't one of the quest's entrants.",
+        "description": "Returns the entrant's entry to not started, clearing its progress and pauses; other entries are left as they are. The event log keeps what happened. Not found if the player isn't one of the quest's entrants.",
         "tags": [
           "Running quests"
         ],
@@ -5401,7 +5292,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -5484,11 +5375,11 @@
         }
       }
     },
-    "/quests/{name}/players/{userName}/pause": {
+    "/quests/{questName}/players/{userName}/pause": {
       "post": {
         "operationId": "pausePlayerEntry",
         "summary": "Pause a player's entry in a quest",
-        "description": "Stops the entrant's clocks; its players can't activate, guess, or reveal hints until it resumes, and the paused time doesn't count. Not found if the user isn't one of the quest's entrants.",
+        "description": "Stops the entrant's clocks; its players can't activate, guess, or reveal hints until it resumes, and the paused time doesn't count. Not found if the player isn't one of the quest's entrants.",
         "tags": [
           "Running quests"
         ],
@@ -5503,7 +5394,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -5586,11 +5477,11 @@
         }
       }
     },
-    "/quests/{name}/players/{userName}/resume": {
+    "/quests/{questName}/players/{userName}/resume": {
       "post": {
         "operationId": "resumePlayerEntry",
         "summary": "Resume a player's entry in a quest",
-        "description": "Starts the entrant's clocks again. Not found if the user isn't one of the quest's entrants.",
+        "description": "Starts the entrant's clocks again. Not found if the player isn't one of the quest's entrants.",
         "tags": [
           "Running quests"
         ],
@@ -5605,7 +5496,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -5688,11 +5579,11 @@
         }
       }
     },
-    "/quests/{name}/players/{userName}/puzzles/{puzzleName}/skip": {
+    "/quests/{questName}/players/{userName}/puzzles/{puzzleName}/skip": {
       "post": {
         "operationId": "skipPlayerPuzzle",
         "summary": "Skip a puzzle for a player",
-        "description": "Completes a puzzle the entrant has reached, with no penalty; they see its solution, and the next puzzle becomes available. Allowed while the entry is paused. Not found if the user isn't one of the quest's entrants.",
+        "description": "Completes a puzzle the entrant has reached, with no penalty; they see its solution, and the next puzzle becomes available. Allowed while the entry is paused. Not found if the player isn't one of the quest's entrants.",
         "tags": [
           "Running quests"
         ],
@@ -5707,7 +5598,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -5800,11 +5691,11 @@
         }
       }
     },
-    "/quests/{name}/players/{userName}/puzzles/{puzzleName}/reset": {
+    "/quests/{questName}/players/{userName}/puzzles/{puzzleName}/reset": {
       "post": {
         "operationId": "resetPlayerPuzzle",
         "summary": "Reset a player's solved puzzle",
-        "description": "Returns a completed puzzle to in progress for the entrant, so they solve it again, and every later puzzle to not reached. For a puzzle that accepted a wrong answer: pause the entry, correct the puzzle, reset it here, and resume. Allowed while the entry is paused. Not found if the user isn't one of the quest's entrants.",
+        "description": "Returns a completed puzzle to in progress for the entrant, so they solve it again, and every later puzzle to not reached. For a puzzle that accepted a wrong answer: pause the entry, correct the puzzle, reset it here, and resume. Allowed while the entry is paused. Not found if the player isn't one of the quest's entrants.",
         "tags": [
           "Running quests"
         ],
@@ -5819,7 +5710,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -5948,11 +5839,11 @@
         }
       }
     },
-    "/quests/{name}/players/{userName}/text-messages": {
+    "/quests/{questName}/players/{userName}/text-messages": {
       "post": {
         "operationId": "sendPlayerTextMessage",
         "summary": "Text a player",
-        "description": "Texts the message to the entrant's players who accept text messages, a few seconds apart, as carriers require; the entry must be in progress. With an expected response, the entry waits for that reply and texts the confirmation back when it arrives. Not found if the user isn't one of the quest's entrants.",
+        "description": "Texts the message to the entrant's players who accept text messages, a few seconds apart, as carriers require; the entry must be in progress. With an expected response, the entry waits for that reply and texts the confirmation back when it arrives. Not found if the player isn't one of the quest's entrants.",
         "tags": [
           "Running quests"
         ],
@@ -5967,7 +5858,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -6101,7 +5992,7 @@
         }
       }
     },
-    "/quests/{name}/puzzles/{puzzleName}/qr-code": {
+    "/quests/{questName}/puzzles/{puzzleName}/qr-code": {
       "get": {
         "operationId": "getActivationQrCode",
         "summary": "Get a puzzle's activation QR code",
@@ -6120,7 +6011,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -6194,7 +6085,7 @@
         }
       }
     },
-    "/quests/{name}/run-book": {
+    "/quests/{questName}/run-book": {
       "get": {
         "operationId": "getQuestRunBook",
         "summary": "Get a quest's run book",
@@ -6213,7 +6104,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -6277,7 +6168,7 @@
         }
       }
     },
-    "/quests/{name}/qr-cards": {
+    "/quests/{questName}/qr-cards": {
       "get": {
         "operationId": "getQuestQrCards",
         "summary": "Get a quest's activation cards",
@@ -6296,7 +6187,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -6360,7 +6251,7 @@
         }
       }
     },
-    "/quests/{name}/events": {
+    "/quests/{questName}/events": {
       "get": {
         "operationId": "listQuestEvents",
         "summary": "List what happened in a quest",
@@ -6400,7 +6291,7 @@
           },
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -6415,28 +6306,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "items": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/QuestEvent"
-                      },
-                      "description": "The page's items."
-                    },
-                    "next": {
-                      "description": "The cursor for the next page, to send as after; null on the last page.",
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "items",
-                    "next"
-                  ],
-                  "additionalProperties": false
+                  "$ref": "#/components/schemas/QuestEventPage"
                 }
               }
             }
@@ -6494,7 +6364,7 @@
         }
       }
     },
-    "/quests/{name}/puzzles/{puzzleName}": {
+    "/quests/{questName}/puzzles/{puzzleName}": {
       "get": {
         "operationId": "getPlayerPuzzle",
         "summary": "See a puzzle as its players do",
@@ -6513,7 +6383,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -6586,11 +6456,11 @@
         }
       }
     },
-    "/quests/{name}/puzzles/{puzzleName}/activation": {
+    "/quests/{questName}/puzzles/{puzzleName}/activation": {
       "post": {
         "operationId": "activatePuzzle",
         "summary": "Activate a puzzle",
-        "description": "Starts the puzzle the players have found, with its activation code: typed, as JSON, or scanned, as a multipart camera frame of its QR code. Failed attempts are limited for each player.",
+        "description": "Starts the puzzle the players have found, with its activation code: typed, as JSON, or scanned, as a multipart camera frame of its QR code. Failed attempts are limited for each player. Send connectionId, either way, so the client isn't sent its own puzzleActivated update.",
         "tags": [
           "Playing"
         ],
@@ -6605,7 +6475,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -6635,17 +6505,9 @@
                     "description": "The code, typed, in any letter case; or scan its QR code instead.",
                     "type": "string"
                   },
-                  "width": {
-                    "description": "The scanned frame's width, in pixels.",
-                    "type": "integer",
-                    "exclusiveMinimum": 0,
-                    "maximum": 9007199254740991
-                  },
-                  "height": {
-                    "description": "The scanned frame's height, in pixels.",
-                    "type": "integer",
-                    "exclusiveMinimum": 0,
-                    "maximum": 9007199254740991
+                  "connectionId": {
+                    "description": "The client's live-update connection, which isn't sent the update about this action: the client shows the result itself.",
+                    "type": "string"
                   }
                 }
               }
@@ -6656,13 +6518,13 @@
                 "properties": {
                   "width": {
                     "type": "integer",
-                    "minimum": -9007199254740991,
+                    "exclusiveMinimum": 0,
                     "maximum": 9007199254740991,
                     "description": "The frame's width, in pixels."
                   },
                   "height": {
                     "type": "integer",
-                    "minimum": -9007199254740991,
+                    "exclusiveMinimum": 0,
                     "maximum": 9007199254740991,
                     "description": "The frame's height, in pixels."
                   },
@@ -6671,6 +6533,10 @@
                     "format": "binary",
                     "contentEncoding": "binary",
                     "description": "The frame's raw RGBA pixels, four bytes each, at most 20 MB."
+                  },
+                  "connectionId": {
+                    "description": "The client's live-update connection, which isn't sent the update about this action: the client shows the result itself.",
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -6786,7 +6652,7 @@
         }
       }
     },
-    "/quests/{name}/puzzles/{puzzleName}/solution-attempts": {
+    "/quests/{questName}/puzzles/{puzzleName}/solution-attempts": {
       "post": {
         "operationId": "attemptSolution",
         "summary": "Guess a puzzle's solution",
@@ -6805,7 +6671,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -6836,7 +6702,7 @@
                     "maxLength": 1000
                   },
                   "connectionId": {
-                    "description": "The page's live-update connection, which isn't sent the update about this action.",
+                    "description": "The client's live-update connection, which isn't sent the update about this action: the client shows the result itself.",
                     "type": "string"
                   }
                 },
@@ -6951,11 +6817,11 @@
         }
       }
     },
-    "/quests/{name}/puzzles/{puzzleName}/hints": {
+    "/quests/{questName}/puzzles/{puzzleName}/hints": {
       "post": {
         "operationId": "revealHint",
         "summary": "Reveal a puzzle's next hint",
-        "description": "Each hint adds its time penalty to the players' score. The answer says whether the next hint gives the solution away, so a page can warn first.",
+        "description": "Each hint adds its time penalty to the players' time. The answer says what the next hint would cost and whether it gives the solution away, so a client can warn first.",
         "tags": [
           "Playing"
         ],
@@ -6970,7 +6836,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -6997,7 +6863,7 @@
                 "type": "object",
                 "properties": {
                   "connectionId": {
-                    "description": "The page's live-update connection, which isn't sent the update about this action.",
+                    "description": "The client's live-update connection, which isn't sent the update about this action: the client shows the result itself.",
                     "type": "string"
                   }
                 }
@@ -7089,7 +6955,7 @@
         }
       }
     },
-    "/quests/{name}/live-tickets": {
+    "/quests/{questName}/live-tickets": {
       "post": {
         "operationId": "createLiveTicket",
         "summary": "Get a ticket to follow a quest's live updates",
@@ -7112,7 +6978,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -7175,7 +7041,7 @@
         }
       }
     },
-    "/quests/{name}/spectator-view": {
+    "/quests/{questName}/spectator-view": {
       "get": {
         "operationId": "getSpectatorQuest",
         "summary": "Follow a quest",
@@ -7198,7 +7064,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -7241,7 +7107,7 @@
         }
       }
     },
-    "/quests/{name}/puzzles/{puzzleName}/spectator-view": {
+    "/quests/{questName}/puzzles/{puzzleName}/spectator-view": {
       "get": {
         "operationId": "getSpectatorPuzzle",
         "summary": "Follow a puzzle",
@@ -7264,7 +7130,7 @@
         "parameters": [
           {
             "in": "query",
-            "name": "entry",
+            "name": "entryId",
             "schema": {
               "type": "string",
               "minLength": 1,
@@ -7275,7 +7141,7 @@
           },
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -7338,11 +7204,11 @@
         }
       }
     },
-    "/quests/{name}/share-links": {
+    "/quests/{questName}/share-links": {
       "get": {
         "operationId": "listShareLinks",
         "summary": "List a quest's share links",
-        "description": "For the quest's assigned player or team members, and staff. Anyone else finds no such quest.",
+        "description": "For the quest's players (in any of its entries), and staff. Anyone else finds no such quest.",
         "tags": [
           "Spectating"
         ],
@@ -7357,7 +7223,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -7427,7 +7293,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -7537,7 +7403,7 @@
         }
       }
     },
-    "/quests/{name}/share-links/{linkId}": {
+    "/quests/{questName}/share-links/{linkId}": {
       "delete": {
         "operationId": "revokeShareLink",
         "summary": "Revoke a share link",
@@ -7556,7 +7422,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -7667,28 +7533,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "items": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/StaffQuestSummary"
-                      },
-                      "description": "The page's items."
-                    },
-                    "next": {
-                      "description": "The cursor for the next page, to send as after; null on the last page.",
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "items",
-                    "next"
-                  ],
-                  "additionalProperties": false
+                  "$ref": "#/components/schemas/StaffQuestSummaryPage"
                 }
               }
             }
@@ -7736,7 +7581,7 @@
         }
       }
     },
-    "/quests/{name}/staff-view": {
+    "/quests/{questName}/staff-view": {
       "get": {
         "operationId": "getStaffQuest",
         "summary": "Follow a quest as staff",
@@ -7755,7 +7600,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "name",
+            "name": "questName",
             "schema": {
               "type": "string",
               "description": "The quest's name."
@@ -7821,6 +7666,33 @@
   },
   "components": {
     "schemas": {
+      "Role": {
+        "type": "string",
+        "enum": [
+          "player",
+          "staff",
+          "admin"
+        ],
+        "description": "What the user may do: a player plays the quests they're entered in; staff also follow every quest and show the players its stops' activation codes; an administrator manages everything."
+      },
+      "PuzzleType": {
+        "type": "string",
+        "enum": [
+          "text",
+          "image",
+          "audio",
+          "video"
+        ],
+        "description": "What the puzzle shows: text (its text is Markdown), or an image, audio, or video file (its text is the file's path)."
+      },
+      "EntrantKind": {
+        "type": "string",
+        "enum": [
+          "player",
+          "team"
+        ],
+        "description": "Who plays the entry: a player on their own, or a team. A player's name is their user name; a team's, its team name."
+      },
       "Problem": {
         "type": "object",
         "properties": {
@@ -7924,14 +7796,11 @@
             "type": "boolean",
             "description": "True if the user accepts text messages."
           },
-          "authorizationLevel": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991,
-            "description": "What the user may do: 1 for a player, 5 for staff, 10 for an administrator."
+          "role": {
+            "$ref": "#/components/schemas/Role"
           },
           "teams": {
-            "description": "The teams the user is a member of, when getting one user.",
+            "description": "The teams the user is a member of; only when getting one user.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/TeamSummary"
@@ -7946,7 +7815,7 @@
           "emailVerified",
           "phone",
           "sms",
-          "authorizationLevel"
+          "role"
         ],
         "additionalProperties": false
       },
@@ -7966,76 +7835,80 @@
         ],
         "additionalProperties": false
       },
+      "UserPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/User"
+            },
+            "description": "The page's items."
+          },
+          "next": {
+            "description": "The cursor for the next page, to send as after; null on the last page.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "next"
+        ],
+        "additionalProperties": false
+      },
+      "QuestSummaryPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestSummary"
+            },
+            "description": "The page's items."
+          },
+          "next": {
+            "description": "The cursor for the next page, to send as after; null on the last page.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "next"
+        ],
+        "additionalProperties": false
+      },
       "QuestSummary": {
         "type": "object",
         "properties": {
-          "name": {
+          "questName": {
             "type": "string"
           },
           "displayName": {
             "type": "string"
           },
           "status": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991,
-            "description": "1 in progress, 2 completed."
+            "$ref": "#/components/schemas/QuestStatus"
           },
           "statusDescription": {
-            "type": "string"
+            "type": "string",
+            "description": "The status in English words, for display; the wording may change, so act on status instead."
           },
           "paused": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "True while an administrator has paused the entry: its clocks stop, and its players can't activate, guess, or reveal hints until it resumes. Its status stays inProgress."
           },
           "progress": {
-            "type": "object",
-            "properties": {
-              "startTime": {
-                "description": "When the clock started.",
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-              },
-              "endTime": {
-                "description": "When the clock stopped.",
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-              },
-              "running": {
-                "type": "boolean",
-                "description": "True while the clock runs: started, not stopped or paused."
-              },
-              "clockStart": {
-                "description": "While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.",
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-              },
-              "elapsedMs": {
-                "type": "number",
-                "description": "Milliseconds on the clock, leaving out paused time."
-              },
-              "penaltyMs": {
-                "type": "number",
-                "description": "The revealed hints' time penalties, in milliseconds."
-              },
-              "totalMs": {
-                "type": "number",
-                "description": "The score: elapsed time plus penalties. Lower is better."
-              }
-            },
-            "required": [
-              "running",
-              "elapsedMs",
-              "penaltyMs",
-              "totalMs"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/Clock"
           }
         },
         "required": [
-          "name",
+          "questName",
           "displayName",
           "status",
           "statusDescription",
@@ -8043,6 +7916,92 @@
           "progress"
         ],
         "additionalProperties": false
+      },
+      "QuestStatus": {
+        "type": "string",
+        "enum": [
+          "notStarted",
+          "inProgress",
+          "completed"
+        ],
+        "description": "How far the entry has got through the quest: notStarted, inProgress (which includes paused; see paused), or completed."
+      },
+      "Clock": {
+        "type": "object",
+        "properties": {
+          "startTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the clock started; null until it has."
+          },
+          "endTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the clock stopped; null until it has."
+          },
+          "running": {
+            "type": "boolean",
+            "description": "True while the clock runs: started, not stopped, and not paused."
+          },
+          "clockStart": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "While running, when the clock would have started if there had been no pauses, so a client's clock can count up from here without asking again; null while not running."
+          },
+          "elapsedMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Milliseconds on the clock, leaving out paused time, as of the response."
+          },
+          "penaltyMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "The revealed hints' time penalties, in milliseconds."
+          },
+          "totalMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "The score: elapsed time plus penalties. Lower is better."
+          }
+        },
+        "required": [
+          "startTime",
+          "endTime",
+          "running",
+          "clockStart",
+          "elapsedMs",
+          "penaltyMs",
+          "totalMs"
+        ],
+        "additionalProperties": false,
+        "description": "How long an entry's players have spent on a quest, or on one of its stops."
       },
       "LiveTicket": {
         "type": "object",
@@ -8060,6 +8019,30 @@
         "required": [
           "ticket",
           "expiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "TeamPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Team"
+            },
+            "description": "The page's items."
+          },
+          "next": {
+            "description": "The cursor for the next page, to send as after; null on the last page.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "next"
         ],
         "additionalProperties": false
       },
@@ -8103,20 +8086,41 @@
         ],
         "additionalProperties": false
       },
+      "PuzzlePage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Puzzle"
+            },
+            "description": "The page's items."
+          },
+          "next": {
+            "description": "The cursor for the next page, to send as after; null on the last page.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "next"
+        ],
+        "additionalProperties": false
+      },
       "Puzzle": {
         "type": "object",
         "properties": {
-          "name": {
+          "puzzleName": {
             "type": "string"
           },
           "displayName": {
             "type": "string"
           },
           "type": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991,
-            "description": "0 for text, 1 for an image, 2 for audio, 3 for video."
+            "$ref": "#/components/schemas/PuzzleType"
           },
           "text": {
             "type": "string",
@@ -8126,46 +8130,49 @@
             "type": "string",
             "description": "The keywords a guess must contain, separated by commas; letter case, spacing, and punctuation don't matter."
           },
-          "solutionDisplayText": {
+          "solutionText": {
             "type": "string",
             "description": "The solution as shown once it is solved."
           },
           "hints": {
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "text": {
-                  "type": "string"
-                },
-                "solutionWarning": {
-                  "type": "boolean",
-                  "description": "True if the hint gives the solution away."
-                },
-                "timePenalty": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991,
-                  "description": "Seconds added to the players' time for revealing it."
-                }
-              },
-              "required": [
-                "text",
-                "solutionWarning",
-                "timePenalty"
-              ],
-              "additionalProperties": false
+              "$ref": "#/components/schemas/HintDefinition"
             }
           }
         },
         "required": [
-          "name",
+          "puzzleName",
           "displayName",
           "type",
           "text",
           "solutionKeyword",
-          "solutionDisplayText",
+          "solutionText",
           "hints"
+        ],
+        "additionalProperties": false
+      },
+      "HintDefinition": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "solutionWarning": {
+            "type": "boolean",
+            "description": "True if the hint gives the solution away."
+          },
+          "timePenaltySeconds": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Seconds added to the players' time for revealing it."
+          }
+        },
+        "required": [
+          "text",
+          "solutionWarning",
+          "timePenaltySeconds"
         ],
         "additionalProperties": false
       },
@@ -8182,17 +8189,41 @@
         ],
         "additionalProperties": false
       },
+      "QuestPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Quest"
+            },
+            "description": "The page's items."
+          },
+          "next": {
+            "description": "The cursor for the next page, to send as after; null on the last page.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "next"
+        ],
+        "additionalProperties": false
+      },
       "Quest": {
         "type": "object",
         "properties": {
-          "name": {
+          "questName": {
             "type": "string"
           },
           "displayName": {
             "type": "string"
           },
           "visibility": {
-            "description": "Who can follow the quest; only for administrators.",
+            "description": "Who can follow the quest: anyone, or only its players, staff, and holders of a share link. Only for administrators.",
             "type": "string",
             "enum": [
               "public",
@@ -8208,7 +8239,7 @@
           }
         },
         "required": [
-          "name",
+          "questName",
           "displayName",
           "entries"
         ],
@@ -8222,34 +8253,39 @@
             "description": "The entry's ID."
           },
           "entrant": {
-            "$ref": "#/components/schemas/QuestEntrant"
+            "$ref": "#/components/schemas/Entrant"
           },
           "status": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991,
-            "description": "0 not started, 1 in progress, 2 completed."
+            "$ref": "#/components/schemas/QuestStatus"
           },
           "statusDescription": {
-            "type": "string"
+            "type": "string",
+            "description": "The status in English words, for display; the wording may change, so act on status instead."
           },
           "paused": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "True while an administrator has paused the entry: its clocks stop, and its players can't activate, guess, or reveal hints until it resumes. Its status stays inProgress."
           },
           "textResponse": {
-            "description": "The text message reply the entry is waiting for; only for administrators.",
-            "type": "string"
+            "description": "The text message reply the entry is waiting for, if any; null if none. Only for administrators: absent for players.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "textResponseConfirmation": {
-            "description": "What is sent back when the reply arrives; only for administrators.",
-            "type": "string"
+            "description": "What is texted back when the reply arrives; null if no reply is awaited. Only for administrators: absent for players.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "rank": {
-            "description": "The entry's place on the leaderboard (see SpectatorQuestEntry's rank); only for administrators. Entries stay in entry order.",
+            "description": "The entry's place on the leaderboard (see SpectatorQuestEntry's rank); null while it hasn't completed. Only for administrators: absent for players. Entries stay in the quest's order.",
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": -9007199254740991,
+                "exclusiveMinimum": 0,
                 "maximum": 9007199254740991
               },
               {
@@ -8261,107 +8297,11 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/QuestPuzzle"
-            }
+            },
+            "description": "The quest's stops, in order, with the entry's progress on each. Players see only those they have reached."
           },
           "progress": {
-            "type": "object",
-            "properties": {
-              "startTime": {
-                "description": "When the clock started.",
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-              },
-              "endTime": {
-                "description": "When the clock stopped.",
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-              },
-              "running": {
-                "type": "boolean",
-                "description": "True while the clock runs: started, not stopped or paused."
-              },
-              "clockStart": {
-                "description": "While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.",
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-              },
-              "elapsedMs": {
-                "type": "number",
-                "description": "Milliseconds on the clock, leaving out paused time."
-              },
-              "penaltyMs": {
-                "type": "number",
-                "description": "The revealed hints' time penalties, in milliseconds."
-              },
-              "totalMs": {
-                "type": "number",
-                "description": "The score: elapsed time plus penalties. Lower is better."
-              },
-              "puzzles": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "puzzleName": {
-                      "type": "string"
-                    },
-                    "startTime": {
-                      "description": "When the clock started.",
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                    },
-                    "endTime": {
-                      "description": "When the clock stopped.",
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                    },
-                    "running": {
-                      "type": "boolean",
-                      "description": "True while the clock runs: started, not stopped or paused."
-                    },
-                    "clockStart": {
-                      "description": "While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.",
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                    },
-                    "elapsedMs": {
-                      "type": "number",
-                      "description": "Milliseconds on the clock, leaving out paused time."
-                    },
-                    "penaltyMs": {
-                      "type": "number",
-                      "description": "The revealed hints' time penalties, in milliseconds."
-                    },
-                    "totalMs": {
-                      "type": "number",
-                      "description": "The score: elapsed time plus penalties. Lower is better."
-                    }
-                  },
-                  "required": [
-                    "puzzleName",
-                    "running",
-                    "elapsedMs",
-                    "penaltyMs",
-                    "totalMs"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            },
-            "required": [
-              "running",
-              "elapsedMs",
-              "penaltyMs",
-              "totalMs",
-              "puzzles"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/Progress"
           }
         },
         "required": [
@@ -8375,26 +8315,31 @@
         ],
         "additionalProperties": false
       },
-      "QuestEntrant": {
+      "Entrant": {
         "type": "object",
         "properties": {
           "kind": {
-            "type": "string",
-            "enum": [
-              "user",
-              "team"
-            ]
+            "$ref": "#/components/schemas/EntrantKind"
           },
           "name": {
-            "description": "The user name or team name; missing if the user or team has been deleted.",
-            "type": "string"
+            "description": "The user name or team name; null if the user or team has been deleted.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "displayName": {
-            "type": "string"
+            "description": "Null if the user or team has been deleted.",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
-          "kind"
+          "kind",
+          "name",
+          "displayName"
         ],
         "additionalProperties": false
       },
@@ -8408,27 +8353,28 @@
             "type": "string"
           },
           "status": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991,
-            "description": "0 not reached, 1 awaiting activation, 2 in progress, 3 completed."
+            "$ref": "#/components/schemas/StopStatus"
           },
           "statusDescription": {
-            "type": "string"
+            "type": "string",
+            "description": "The status in English words, for display; the wording may change, so act on status instead."
           },
-          "nextHintToDisplay": {
+          "hintsRevealed": {
             "type": "integer",
-            "minimum": -9007199254740991,
+            "minimum": 0,
             "maximum": 9007199254740991,
-            "description": "How many hints have been revealed."
+            "description": "How many of the puzzle's hints the entry has revealed."
           },
           "activationCode": {
             "description": "Only for administrators.",
             "type": "string"
           },
           "cardWord": {
-            "description": "The word or phrase on the stop's QR card, if it has one. Only for administrators.",
-            "type": "string"
+            "description": "The word or phrase on the stop's QR card; null if it has none. Only for administrators: absent for players.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "activationTime": {
             "anyOf": [
@@ -8440,7 +8386,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "When the entry activated the stop; null until it has."
           },
           "startTime": {
             "anyOf": [
@@ -8452,7 +8399,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "When the stop became the entry's next, to find and activate; null until it has."
           },
           "endTime": {
             "anyOf": [
@@ -8464,48 +8412,236 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "When the entry completed the stop; null until it has."
           },
           "skipped": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "True if an administrator skipped the stop for the entry, completing it with no penalty, rather than its players solving it."
           },
-          "solutionDisplayText": {
-            "description": "Shown to the players once the puzzle is completed; always to administrators.",
+          "solutionText": {
+            "description": "The solution as shown once solved. Players see it once the stop is completed; administrators, always.",
             "type": "string"
           },
           "hints": {
-            "description": "The players see the hints they have revealed; administrators see them all.",
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "text": {
-                  "type": "string"
-                },
-                "solutionWarning": {
-                  "type": "boolean"
-                },
-                "timePenalty": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                }
-              },
-              "required": [
-                "text",
-                "solutionWarning",
-                "timePenalty"
-              ],
-              "additionalProperties": false
-            }
+              "$ref": "#/components/schemas/HintDefinition"
+            },
+            "description": "The puzzle's hints: for players, those revealed; for administrators, all of them."
           }
         },
         "required": [
           "puzzleName",
+          "displayName",
           "status",
           "statusDescription",
-          "nextHintToDisplay",
-          "skipped"
+          "hintsRevealed",
+          "activationTime",
+          "startTime",
+          "endTime",
+          "skipped",
+          "hints"
+        ],
+        "additionalProperties": false
+      },
+      "StopStatus": {
+        "type": "string",
+        "enum": [
+          "notReached",
+          "awaitingActivation",
+          "inProgress",
+          "completed"
+        ],
+        "description": "How far the entry has got with the stop: notReached; awaitingActivation, when its players are to find it and activate it; inProgress, once activated, while they solve it; or completed, when solved or skipped (see skipped)."
+      },
+      "Progress": {
+        "type": "object",
+        "properties": {
+          "startTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the clock started; null until it has."
+          },
+          "endTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the clock stopped; null until it has."
+          },
+          "running": {
+            "type": "boolean",
+            "description": "True while the clock runs: started, not stopped, and not paused."
+          },
+          "clockStart": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "While running, when the clock would have started if there had been no pauses, so a client's clock can count up from here without asking again; null while not running."
+          },
+          "elapsedMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Milliseconds on the clock, leaving out paused time, as of the response."
+          },
+          "penaltyMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "The revealed hints' time penalties, in milliseconds."
+          },
+          "totalMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "The score: elapsed time plus penalties. Lower is better."
+          },
+          "puzzles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PuzzleClock"
+            },
+            "description": "Each stop's clock, in order. Views for players and the public have only the stops reached so far, and none when the view is the standings alone (see SpectatorQuest's stopsHidden)."
+          }
+        },
+        "required": [
+          "startTime",
+          "endTime",
+          "running",
+          "clockStart",
+          "elapsedMs",
+          "penaltyMs",
+          "totalMs",
+          "puzzles"
+        ],
+        "additionalProperties": false,
+        "description": "How long an entry's players have spent on a quest, overall and stop by stop."
+      },
+      "PuzzleClock": {
+        "type": "object",
+        "properties": {
+          "puzzleName": {
+            "type": "string"
+          },
+          "startTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the clock started; null until it has."
+          },
+          "endTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the clock stopped; null until it has."
+          },
+          "running": {
+            "type": "boolean",
+            "description": "True while the clock runs: started, not stopped, and not paused."
+          },
+          "clockStart": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "While running, when the clock would have started if there had been no pauses, so a client's clock can count up from here without asking again; null while not running."
+          },
+          "elapsedMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Milliseconds on the clock, leaving out paused time, as of the response."
+          },
+          "penaltyMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "The revealed hints' time penalties, in milliseconds."
+          },
+          "totalMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "The score: elapsed time plus penalties. Lower is better."
+          }
+        },
+        "required": [
+          "puzzleName",
+          "startTime",
+          "endTime",
+          "running",
+          "clockStart",
+          "elapsedMs",
+          "penaltyMs",
+          "totalMs"
+        ],
+        "additionalProperties": false,
+        "description": "How long an entry's players have spent on one stop."
+      },
+      "QuestEventPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestEvent"
+            },
+            "description": "The page's items."
+          },
+          "next": {
+            "description": "The cursor for the next page, to send as after; null on the last page.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "next"
         ],
         "additionalProperties": false
       },
@@ -8513,8 +8649,7 @@
         "type": "object",
         "properties": {
           "type": {
-            "type": "string",
-            "description": "What happened: QuestStarted, PuzzleActivated, PuzzleSolved, PuzzleStarted, HintRevealed, QuestCompleted, QuestReset, QuestPaused, QuestResumed, PuzzleSkipped, or PuzzleReset."
+            "$ref": "#/components/schemas/QuestEventType"
           },
           "at": {
             "type": "string",
@@ -8522,15 +8657,22 @@
             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
           },
           "puzzleName": {
-            "type": "string"
+            "description": "The puzzle it happened to; null for the whole quest's.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "actor": {
-            "description": "The user name of whoever acted; missing when the system did, such as on an incoming call, or when they have since deleted their account.",
-            "type": "string"
+            "description": "The user name of whoever acted; null when the system did, such as on an incoming call, or when they have since deleted their account (see actorDeleted).",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "actorDeleted": {
-            "description": "True when whoever acted has since deleted their account, which took their name out of the log.",
-            "type": "boolean"
+            "type": "boolean",
+            "description": "True when whoever acted has since deleted their account, which took their name out of the log."
           },
           "entrant": {
             "anyOf": [
@@ -8538,19 +8680,19 @@
                 "type": "object",
                 "properties": {
                   "kind": {
-                    "type": "string",
-                    "enum": [
-                      "user",
-                      "team"
-                    ]
+                    "$ref": "#/components/schemas/EntrantKind"
                   },
                   "name": {
-                    "description": "The user name or team name as it was at the time; missing if the user has since deleted their account, or the team was already deleted.",
-                    "type": "string"
+                    "description": "The user name or team name as it was at the time; null if the user has since deleted their account, or the team was already deleted.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   }
                 },
                 "required": [
-                  "kind"
+                  "kind",
+                  "name"
                 ],
                 "additionalProperties": false
               },
@@ -8561,20 +8703,48 @@
             "description": "The user or team whose entry it happened in; null for events logged before quests had several entries."
           },
           "data": {
-            "description": "Details particular to the type.",
-            "type": "object",
-            "propertyNames": {
-              "type": "string"
-            },
-            "additionalProperties": {}
+            "anyOf": [
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Details particular to the type, or null if it has none: for hintRevealed, the hint's hintIndex (from 0) and timePenaltySeconds; for puzzleReset, refundedHints, how many revealed hints' penalties were refunded."
           }
         },
         "required": [
           "type",
           "at",
-          "entrant"
+          "puzzleName",
+          "actor",
+          "actorDeleted",
+          "entrant",
+          "data"
         ],
         "additionalProperties": false
+      },
+      "QuestEventType": {
+        "type": "string",
+        "enum": [
+          "questStarted",
+          "puzzleStarted",
+          "puzzleActivated",
+          "puzzleSolved",
+          "hintRevealed",
+          "questCompleted",
+          "puzzleSkipped",
+          "puzzleReset",
+          "questPaused",
+          "questResumed",
+          "questReset"
+        ],
+        "description": "What happened."
       },
       "PlayerPuzzle": {
         "type": "object",
@@ -8582,128 +8752,29 @@
           "quest": {
             "type": "object",
             "properties": {
-              "name": {
+              "questName": {
                 "type": "string"
               },
               "displayName": {
                 "type": "string"
               },
               "status": {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991,
-                "description": "0 not started, 1 in progress, 2 completed."
+                "$ref": "#/components/schemas/QuestStatus"
               },
               "statusDescription": {
-                "type": "string"
+                "type": "string",
+                "description": "The status in English words, for display; the wording may change, so act on status instead."
               },
               "paused": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "True while an administrator has paused the entry: its clocks stop, and its players can't activate, guess, or reveal hints until it resumes. Its status stays inProgress."
               },
               "progress": {
-                "type": "object",
-                "properties": {
-                  "startTime": {
-                    "description": "When the clock started.",
-                    "type": "string",
-                    "format": "date-time",
-                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                  },
-                  "endTime": {
-                    "description": "When the clock stopped.",
-                    "type": "string",
-                    "format": "date-time",
-                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                  },
-                  "running": {
-                    "type": "boolean",
-                    "description": "True while the clock runs: started, not stopped or paused."
-                  },
-                  "clockStart": {
-                    "description": "While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.",
-                    "type": "string",
-                    "format": "date-time",
-                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                  },
-                  "elapsedMs": {
-                    "type": "number",
-                    "description": "Milliseconds on the clock, leaving out paused time."
-                  },
-                  "penaltyMs": {
-                    "type": "number",
-                    "description": "The revealed hints' time penalties, in milliseconds."
-                  },
-                  "totalMs": {
-                    "type": "number",
-                    "description": "The score: elapsed time plus penalties. Lower is better."
-                  },
-                  "puzzles": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "puzzleName": {
-                          "type": "string"
-                        },
-                        "startTime": {
-                          "description": "When the clock started.",
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                        },
-                        "endTime": {
-                          "description": "When the clock stopped.",
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                        },
-                        "running": {
-                          "type": "boolean",
-                          "description": "True while the clock runs: started, not stopped or paused."
-                        },
-                        "clockStart": {
-                          "description": "While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.",
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                        },
-                        "elapsedMs": {
-                          "type": "number",
-                          "description": "Milliseconds on the clock, leaving out paused time."
-                        },
-                        "penaltyMs": {
-                          "type": "number",
-                          "description": "The revealed hints' time penalties, in milliseconds."
-                        },
-                        "totalMs": {
-                          "type": "number",
-                          "description": "The score: elapsed time plus penalties. Lower is better."
-                        }
-                      },
-                      "required": [
-                        "puzzleName",
-                        "running",
-                        "elapsedMs",
-                        "penaltyMs",
-                        "totalMs"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "description": "The puzzles reached so far, in order."
-                  }
-                },
-                "required": [
-                  "running",
-                  "elapsedMs",
-                  "penaltyMs",
-                  "totalMs",
-                  "puzzles"
-                ],
-                "additionalProperties": false
+                "$ref": "#/components/schemas/Progress"
               }
             },
             "required": [
-              "name",
+              "questName",
               "displayName",
               "status",
               "statusDescription",
@@ -8715,42 +8786,39 @@
           "puzzle": {
             "type": "object",
             "properties": {
-              "name": {
+              "puzzleName": {
                 "type": "string"
               },
               "displayName": {
                 "type": "string"
               },
               "status": {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991,
-                "description": "1 awaiting activation, 2 in progress, 3 completed."
+                "$ref": "#/components/schemas/StopStatus"
               },
               "statusDescription": {
-                "type": "string"
+                "type": "string",
+                "description": "The status in English words, for display; the wording may change, so act on status instead."
               },
               "skipped": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "True if an administrator skipped the stop for the entry, completing it with no penalty, rather than its players solving it."
               },
               "stopNumber": {
                 "type": "integer",
-                "minimum": -9007199254740991,
+                "exclusiveMinimum": 0,
                 "maximum": 9007199254740991,
-                "description": "The puzzle's place in the quest, counting from 1. How many stops are left is never shown."
+                "description": "The stop's place in the quest, counting from 1. How many stops are left is never shown."
               },
               "type": {
                 "anyOf": [
                   {
-                    "type": "integer",
-                    "minimum": -9007199254740991,
-                    "maximum": 9007199254740991
+                    "$ref": "#/components/schemas/PuzzleType"
                   },
                   {
                     "type": "null"
                   }
                 ],
-                "description": "0 text, 1 image, 2 audio, 3 video; null until the puzzle is activated."
+                "description": "Null until the puzzle is activated."
               },
               "text": {
                 "description": "The puzzle's Markdown, or the path of its media; null until the puzzle is activated.",
@@ -8762,47 +8830,14 @@
               "hints": {
                 "type": "array",
                 "items": {
-                  "type": "object",
-                  "properties": {
-                    "text": {
-                      "type": "string"
-                    },
-                    "timePenalty": {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991,
-                      "description": "In seconds."
-                    }
-                  },
-                  "required": [
-                    "text",
-                    "timePenalty"
-                  ],
-                  "additionalProperties": false
+                  "$ref": "#/components/schemas/RevealedHint"
                 },
                 "description": "The hints revealed so far."
               },
               "nextHint": {
                 "anyOf": [
                   {
-                    "type": "object",
-                    "properties": {
-                      "timePenalty": {
-                        "type": "integer",
-                        "minimum": -9007199254740991,
-                        "maximum": 9007199254740991,
-                        "description": "In seconds."
-                      },
-                      "solutionWarning": {
-                        "type": "boolean",
-                        "description": "True if the hint gives the solution away."
-                      }
-                    },
-                    "required": [
-                      "timePenalty",
-                      "solutionWarning"
-                    ],
-                    "additionalProperties": false
+                    "$ref": "#/components/schemas/NextHint"
                   },
                   {
                     "type": "null"
@@ -8819,7 +8854,7 @@
               }
             },
             "required": [
-              "name",
+              "puzzleName",
               "displayName",
               "status",
               "statusDescription",
@@ -8836,26 +8871,13 @@
           "next": {
             "anyOf": [
               {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "displayName": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "name",
-                  "displayName"
-                ],
-                "additionalProperties": false
+                "$ref": "#/components/schemas/NextStop"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "The puzzle after this one, once the players have reached it; otherwise null."
+            "description": "The stop after this one, once the players have reached it; otherwise null."
           }
         },
         "required": [
@@ -8864,6 +8886,42 @@
           "next"
         ],
         "additionalProperties": false
+      },
+      "RevealedHint": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "timePenaltySeconds": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Seconds it added to the players' time."
+          }
+        },
+        "required": [
+          "text",
+          "timePenaltySeconds"
+        ],
+        "additionalProperties": false
+      },
+      "NextStop": {
+        "type": "object",
+        "properties": {
+          "puzzleName": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "puzzleName",
+          "displayName"
+        ],
+        "additionalProperties": false,
+        "description": "The stop after this one, which the players have reached."
       },
       "Activation": {
         "type": "object",
@@ -8888,29 +8946,17 @@
           "nextPuzzle": {
             "anyOf": [
               {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "displayName": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "name",
-                  "displayName"
-                ],
-                "additionalProperties": false
+                "$ref": "#/components/schemas/NextStop"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "The puzzle now waiting to be found and activated; null after the last."
+            "description": "The stop now waiting to be found and activated; null after the last."
           },
           "questComplete": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "True if it was the quest's last puzzle: the entry has completed the quest."
           }
         },
         "required": [
@@ -8926,31 +8972,35 @@
           "text": {
             "type": "string"
           },
-          "timePenalty": {
+          "timePenaltySeconds": {
             "type": "integer",
-            "minimum": -9007199254740991,
+            "minimum": 0,
             "maximum": 9007199254740991,
-            "description": "Seconds added to the players' score."
+            "description": "Seconds added to the players' time."
           },
-          "moreHints": {
-            "type": "boolean"
-          },
-          "isNextHintSolution": {
-            "type": "boolean"
+          "nextHint": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NextHint"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What revealing the next hint would cost; null if this was the last."
           }
         },
         "required": [
           "text",
-          "timePenalty",
-          "moreHints",
-          "isNextHintSolution"
+          "timePenaltySeconds",
+          "nextHint"
         ],
         "additionalProperties": false
       },
       "SpectatorQuest": {
         "type": "object",
         "properties": {
-          "name": {
+          "questName": {
             "type": "string"
           },
           "displayName": {
@@ -8981,7 +9031,7 @@
           }
         },
         "required": [
-          "name",
+          "questName",
           "displayName",
           "racing",
           "stopsHidden",
@@ -8999,42 +9049,24 @@
             "description": "The entry's ID, for following one of its puzzles with getSpectatorPuzzle."
           },
           "entrant": {
-            "type": "object",
-            "properties": {
-              "kind": {
-                "type": "string",
-                "enum": [
-                  "user",
-                  "team"
-                ]
-              },
-              "displayName": {
-                "description": "Missing if the user or team has been deleted.",
-                "type": "string"
-              }
-            },
-            "required": [
-              "kind"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/SpectatorEntrant"
           },
           "status": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991,
-            "description": "0 not started, 1 in progress, 2 completed."
+            "$ref": "#/components/schemas/QuestStatus"
           },
           "statusDescription": {
-            "type": "string"
+            "type": "string",
+            "description": "The status in English words, for display; the wording may change, so act on status instead."
           },
           "paused": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "True while an administrator has paused the entry: its clocks stop, and its players can't activate, guess, or reveal hints until it resumes. Its status stays inProgress."
           },
           "rank": {
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": -9007199254740991,
+                "exclusiveMinimum": 0,
                 "maximum": 9007199254740991
               },
               {
@@ -9044,162 +9076,15 @@
             "description": "The entry's place on the leaderboard, from 1, once it has completed the quest: entries are ranked by progress.totalMs, lowest first, and entries with the same total share a rank (1, 2, 2, 4). Null while it hasn't completed. Ranks are provisional until every entry has completed, since one still playing could beat them."
           },
           "progress": {
-            "type": "object",
-            "properties": {
-              "startTime": {
-                "description": "When the clock started.",
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-              },
-              "endTime": {
-                "description": "When the clock stopped.",
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-              },
-              "running": {
-                "type": "boolean",
-                "description": "True while the clock runs: started, not stopped or paused."
-              },
-              "clockStart": {
-                "description": "While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.",
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-              },
-              "elapsedMs": {
-                "type": "number",
-                "description": "Milliseconds on the clock, leaving out paused time."
-              },
-              "penaltyMs": {
-                "type": "number",
-                "description": "The revealed hints' time penalties, in milliseconds."
-              },
-              "totalMs": {
-                "type": "number",
-                "description": "The score: elapsed time plus penalties. Lower is better."
-              },
-              "puzzles": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "puzzleName": {
-                      "type": "string"
-                    },
-                    "startTime": {
-                      "description": "When the clock started.",
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                    },
-                    "endTime": {
-                      "description": "When the clock stopped.",
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                    },
-                    "running": {
-                      "type": "boolean",
-                      "description": "True while the clock runs: started, not stopped or paused."
-                    },
-                    "clockStart": {
-                      "description": "While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.",
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                    },
-                    "elapsedMs": {
-                      "type": "number",
-                      "description": "Milliseconds on the clock, leaving out paused time."
-                    },
-                    "penaltyMs": {
-                      "type": "number",
-                      "description": "The revealed hints' time penalties, in milliseconds."
-                    },
-                    "totalMs": {
-                      "type": "number",
-                      "description": "The score: elapsed time plus penalties. Lower is better."
-                    }
-                  },
-                  "required": [
-                    "puzzleName",
-                    "running",
-                    "elapsedMs",
-                    "penaltyMs",
-                    "totalMs"
-                  ],
-                  "additionalProperties": false
-                },
-                "description": "The puzzles reached so far, in order."
-              }
-            },
-            "required": [
-              "running",
-              "elapsedMs",
-              "penaltyMs",
-              "totalMs",
-              "puzzles"
-            ],
-            "additionalProperties": false,
-            "description": "The entry's time; its puzzles are empty when the quest's stopsHidden is true, leaving the totals: the standings."
+            "description": "The entry's time, with the stops it has reached; no stops when the quest's stopsHidden is true, leaving the totals: the standings.",
+            "$ref": "#/components/schemas/Progress"
           },
           "puzzles": {
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "name": {
-                  "type": "string"
-                },
-                "displayName": {
-                  "type": "string"
-                },
-                "status": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991,
-                  "description": "1 awaiting activation, 2 in progress, 3 completed."
-                },
-                "statusDescription": {
-                  "type": "string"
-                },
-                "skipped": {
-                  "type": "boolean"
-                },
-                "activationTime": {
-                  "anyOf": [
-                    {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "solutionText": {
-                  "description": "Null until the puzzle is completed.",
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                }
-              },
-              "required": [
-                "name",
-                "displayName",
-                "status",
-                "statusDescription",
-                "skipped",
-                "activationTime",
-                "solutionText"
-              ],
-              "additionalProperties": false
+              "$ref": "#/components/schemas/SpectatorStop"
             },
-            "description": "The puzzles the entry has reached, in order; empty when the quest's stopsHidden is true."
+            "description": "The stops the entry has reached, in order; empty when the quest's stopsHidden is true."
           }
         },
         "required": [
@@ -9214,24 +9099,99 @@
         ],
         "additionalProperties": false
       },
+      "SpectatorEntrant": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/EntrantKind"
+          },
+          "displayName": {
+            "description": "Null if the user or team has been deleted.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "displayName"
+        ],
+        "additionalProperties": false,
+        "description": "Who plays the entry, by display name only."
+      },
+      "SpectatorStop": {
+        "type": "object",
+        "properties": {
+          "puzzleName": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "status": {
+            "description": "Never notReached: the public sees only the stops an entry has reached.",
+            "$ref": "#/components/schemas/StopStatus"
+          },
+          "statusDescription": {
+            "type": "string",
+            "description": "The status in English words, for display; the wording may change, so act on status instead."
+          },
+          "skipped": {
+            "type": "boolean",
+            "description": "True if an administrator skipped the stop for the entry, completing it with no penalty, rather than its players solving it."
+          },
+          "activationTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the entry activated the stop; null until it has."
+          },
+          "solutionText": {
+            "description": "Null until the stop is completed.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "puzzleName",
+          "displayName",
+          "status",
+          "statusDescription",
+          "skipped",
+          "activationTime",
+          "solutionText"
+        ],
+        "additionalProperties": false
+      },
       "SpectatorPuzzle": {
         "type": "object",
         "properties": {
           "quest": {
             "type": "object",
             "properties": {
-              "name": {
+              "questName": {
                 "type": "string"
               },
               "displayName": {
                 "type": "string"
               },
               "paused": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "True while an administrator has paused the entry: its clocks stop, and its players can't activate, guess, or reveal hints until it resumes. Its status stays inProgress."
               }
             },
             "required": [
-              "name",
+              "questName",
               "displayName",
               "paused"
             ],
@@ -9240,29 +9200,26 @@
           "puzzle": {
             "type": "object",
             "properties": {
-              "name": {
+              "puzzleName": {
                 "type": "string"
               },
               "displayName": {
                 "type": "string"
               },
               "status": {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991,
-                "description": "2 in progress, 3 completed."
+                "description": "inProgress or completed: the puzzle is shown only once activated.",
+                "$ref": "#/components/schemas/StopStatus"
               },
               "statusDescription": {
-                "type": "string"
+                "type": "string",
+                "description": "The status in English words, for display; the wording may change, so act on status instead."
               },
               "skipped": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "True if an administrator skipped the stop for the entry, completing it with no penalty, rather than its players solving it."
               },
               "type": {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991,
-                "description": "0 text, 1 image, 2 audio, 3 video."
+                "$ref": "#/components/schemas/PuzzleType"
               },
               "text": {
                 "type": "string",
@@ -9271,23 +9228,7 @@
               "hints": {
                 "type": "array",
                 "items": {
-                  "type": "object",
-                  "properties": {
-                    "text": {
-                      "type": "string"
-                    },
-                    "timePenalty": {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991,
-                      "description": "In seconds."
-                    }
-                  },
-                  "required": [
-                    "text",
-                    "timePenalty"
-                  ],
-                  "additionalProperties": false
+                  "$ref": "#/components/schemas/RevealedHint"
                 },
                 "description": "The hints revealed so far."
               },
@@ -9300,7 +9241,7 @@
               }
             },
             "required": [
-              "name",
+              "puzzleName",
               "displayName",
               "status",
               "statusDescription",
@@ -9331,7 +9272,8 @@
             "description": "A public quest can be followed without a link."
           },
           "canSetExpiry": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Whether the user asking may choose when a new link expires; only staff may."
           },
           "links": {
             "type": "array",
@@ -9357,8 +9299,11 @@
             "type": "string"
           },
           "createdBy": {
-            "description": "Who made it. Missing if their account has been deleted.",
-            "type": "string"
+            "description": "The display name of whoever made it; null if their account has been deleted.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "createdAt": {
             "type": "string",
@@ -9378,6 +9323,7 @@
         "required": [
           "id",
           "label",
+          "createdBy",
           "createdAt",
           "expiresAt",
           "canRevoke"
@@ -9407,10 +9353,34 @@
         ],
         "additionalProperties": false
       },
+      "StaffQuestSummaryPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffQuestSummary"
+            },
+            "description": "The page's items."
+          },
+          "next": {
+            "description": "The cursor for the next page, to send as after; null on the last page.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "next"
+        ],
+        "additionalProperties": false
+      },
       "StaffQuestSummary": {
         "type": "object",
         "properties": {
-          "name": {
+          "questName": {
             "type": "string"
           },
           "displayName": {
@@ -9424,7 +9394,7 @@
           }
         },
         "required": [
-          "name",
+          "questName",
           "displayName",
           "entries"
         ],
@@ -9438,78 +9408,34 @@
             "description": "The entry's ID."
           },
           "entrant": {
-            "$ref": "#/components/schemas/QuestEntrant"
+            "$ref": "#/components/schemas/Entrant"
           },
           "status": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991,
-            "description": "0 not started, 1 in progress, 2 completed."
+            "$ref": "#/components/schemas/QuestStatus"
           },
           "statusDescription": {
-            "type": "string"
+            "type": "string",
+            "description": "The status in English words, for display; the wording may change, so act on status instead."
           },
           "paused": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "True while an administrator has paused the entry: its clocks stop, and its players can't activate, guess, or reveal hints until it resumes. Its status stays inProgress."
           },
           "rank": {
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": -9007199254740991,
+                "exclusiveMinimum": 0,
                 "maximum": 9007199254740991
               },
               {
                 "type": "null"
               }
             ],
-            "description": "The entry's place on the leaderboard (see SpectatorQuestEntry's rank). Entries stay in the quest's order."
+            "description": "The entry's place on the leaderboard (see SpectatorQuestEntry's rank); null while it hasn't completed. Entries stay in the quest's order."
           },
           "progress": {
-            "type": "object",
-            "properties": {
-              "startTime": {
-                "description": "When the clock started.",
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-              },
-              "endTime": {
-                "description": "When the clock stopped.",
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-              },
-              "running": {
-                "type": "boolean",
-                "description": "True while the clock runs: started, not stopped or paused."
-              },
-              "clockStart": {
-                "description": "While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.",
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-              },
-              "elapsedMs": {
-                "type": "number",
-                "description": "Milliseconds on the clock, leaving out paused time."
-              },
-              "penaltyMs": {
-                "type": "number",
-                "description": "The revealed hints' time penalties, in milliseconds."
-              },
-              "totalMs": {
-                "type": "number",
-                "description": "The score: elapsed time plus penalties. Lower is better."
-              }
-            },
-            "required": [
-              "running",
-              "elapsedMs",
-              "penaltyMs",
-              "totalMs"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/Clock"
           }
         },
         "required": [
@@ -9526,7 +9452,7 @@
       "StaffQuest": {
         "type": "object",
         "properties": {
-          "name": {
+          "questName": {
             "type": "string"
           },
           "displayName": {
@@ -9540,7 +9466,7 @@
           }
         },
         "required": [
-          "name",
+          "questName",
           "displayName",
           "entries"
         ],
@@ -9554,221 +9480,39 @@
             "description": "The entry's ID."
           },
           "entrant": {
-            "$ref": "#/components/schemas/QuestEntrant"
+            "$ref": "#/components/schemas/Entrant"
           },
           "status": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991,
-            "description": "0 not started, 1 in progress, 2 completed."
+            "$ref": "#/components/schemas/QuestStatus"
           },
           "statusDescription": {
-            "type": "string"
+            "type": "string",
+            "description": "The status in English words, for display; the wording may change, so act on status instead."
           },
           "paused": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "True while an administrator has paused the entry: its clocks stop, and its players can't activate, guess, or reveal hints until it resumes. Its status stays inProgress."
           },
           "rank": {
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": -9007199254740991,
+                "exclusiveMinimum": 0,
                 "maximum": 9007199254740991
               },
               {
                 "type": "null"
               }
             ],
-            "description": "The entry's place on the leaderboard (see SpectatorQuestEntry's rank). Entries stay in the quest's order."
+            "description": "The entry's place on the leaderboard (see SpectatorQuestEntry's rank); null while it hasn't completed. Entries stay in the quest's order."
           },
           "progress": {
-            "type": "object",
-            "properties": {
-              "startTime": {
-                "description": "When the clock started.",
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-              },
-              "endTime": {
-                "description": "When the clock stopped.",
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-              },
-              "running": {
-                "type": "boolean",
-                "description": "True while the clock runs: started, not stopped or paused."
-              },
-              "clockStart": {
-                "description": "While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.",
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-              },
-              "elapsedMs": {
-                "type": "number",
-                "description": "Milliseconds on the clock, leaving out paused time."
-              },
-              "penaltyMs": {
-                "type": "number",
-                "description": "The revealed hints' time penalties, in milliseconds."
-              },
-              "totalMs": {
-                "type": "number",
-                "description": "The score: elapsed time plus penalties. Lower is better."
-              },
-              "puzzles": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "puzzleName": {
-                      "type": "string"
-                    },
-                    "startTime": {
-                      "description": "When the clock started.",
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                    },
-                    "endTime": {
-                      "description": "When the clock stopped.",
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                    },
-                    "running": {
-                      "type": "boolean",
-                      "description": "True while the clock runs: started, not stopped or paused."
-                    },
-                    "clockStart": {
-                      "description": "While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.",
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                    },
-                    "elapsedMs": {
-                      "type": "number",
-                      "description": "Milliseconds on the clock, leaving out paused time."
-                    },
-                    "penaltyMs": {
-                      "type": "number",
-                      "description": "The revealed hints' time penalties, in milliseconds."
-                    },
-                    "totalMs": {
-                      "type": "number",
-                      "description": "The score: elapsed time plus penalties. Lower is better."
-                    }
-                  },
-                  "required": [
-                    "puzzleName",
-                    "running",
-                    "elapsedMs",
-                    "penaltyMs",
-                    "totalMs"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            },
-            "required": [
-              "running",
-              "elapsedMs",
-              "penaltyMs",
-              "totalMs",
-              "puzzles"
-            ],
-            "additionalProperties": false
+            "$ref": "#/components/schemas/Progress"
           },
           "puzzles": {
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "name": {
-                  "type": "string"
-                },
-                "displayName": {
-                  "type": "string"
-                },
-                "status": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991,
-                  "description": "0 not reached, 1 awaiting activation, 2 in progress, 3 completed."
-                },
-                "statusDescription": {
-                  "type": "string"
-                },
-                "activationCode": {
-                  "type": "string",
-                  "description": "The code that unlocks the stop, which staff show the players as a QR code."
-                },
-                "skipped": {
-                  "type": "boolean"
-                },
-                "hintsRevealed": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                },
-                "hintCount": {
-                  "type": "integer",
-                  "minimum": -9007199254740991,
-                  "maximum": 9007199254740991
-                },
-                "activationTime": {
-                  "anyOf": [
-                    {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "startTime": {
-                  "anyOf": [
-                    {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                },
-                "endTime": {
-                  "anyOf": [
-                    {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
-                }
-              },
-              "required": [
-                "name",
-                "displayName",
-                "status",
-                "statusDescription",
-                "activationCode",
-                "skipped",
-                "hintsRevealed",
-                "hintCount",
-                "activationTime",
-                "startTime",
-                "endTime"
-              ],
-              "additionalProperties": false
+              "$ref": "#/components/schemas/StaffStop"
             }
           }
         },
@@ -9783,6 +9527,118 @@
           "puzzles"
         ],
         "additionalProperties": false
+      },
+      "StaffStop": {
+        "type": "object",
+        "properties": {
+          "puzzleName": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/StopStatus"
+          },
+          "statusDescription": {
+            "type": "string",
+            "description": "The status in English words, for display; the wording may change, so act on status instead."
+          },
+          "activationCode": {
+            "type": "string",
+            "description": "The code that unlocks the stop, which staff show the players as a QR code."
+          },
+          "skipped": {
+            "type": "boolean",
+            "description": "True if an administrator skipped the stop for the entry, completing it with no penalty, rather than its players solving it."
+          },
+          "hintsRevealed": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "How many of the puzzle's hints the entry has revealed."
+          },
+          "hintCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "How many hints the puzzle has."
+          },
+          "activationTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the entry activated the stop; null until it has."
+          },
+          "startTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the stop became the entry's next, to find and activate; null until it has."
+          },
+          "endTime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the entry completed the stop; null until it has."
+          }
+        },
+        "required": [
+          "puzzleName",
+          "displayName",
+          "status",
+          "statusDescription",
+          "activationCode",
+          "skipped",
+          "hintsRevealed",
+          "hintCount",
+          "activationTime",
+          "startTime",
+          "endTime"
+        ],
+        "additionalProperties": false
+      },
+      "NextHint": {
+        "type": "object",
+        "properties": {
+          "timePenaltySeconds": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Seconds revealing it adds to the players' time."
+          },
+          "solutionWarning": {
+            "type": "boolean",
+            "description": "True if the hint gives the solution away, so a client can warn first."
+          }
+        },
+        "required": [
+          "timePenaltySeconds",
+          "solutionWarning"
+        ],
+        "additionalProperties": false,
+        "description": "What revealing the puzzle's next hint would cost."
       },
       "LiveUpdate": {
         "oneOf": [
@@ -9861,9 +9717,8 @@
                 "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
               },
               "questComplete": {
-                "description": "Present when it was the quest's last puzzle.",
                 "type": "boolean",
-                "const": true
+                "description": "True when it was the quest's last puzzle: the entry has completed the quest."
               }
             },
             "required": [
@@ -9872,7 +9727,8 @@
               "entryId",
               "puzzleName",
               "solutionText",
-              "endTime"
+              "endTime",
+              "questComplete"
             ],
             "additionalProperties": false
           },
@@ -9917,7 +9773,7 @@
             "properties": {
               "message": {
                 "type": "string",
-                "const": "hintRequested"
+                "const": "hintRevealed"
               },
               "questName": {
                 "type": "string"
@@ -9932,17 +9788,22 @@
               "hintText": {
                 "type": "string"
               },
-              "moreHints": {
-                "type": "boolean"
-              },
-              "timePenalty": {
+              "timePenaltySeconds": {
                 "type": "integer",
-                "minimum": -9007199254740991,
+                "minimum": 0,
                 "maximum": 9007199254740991,
-                "description": "In seconds."
+                "description": "Seconds the hint adds to the players' time."
               },
-              "isNextHintSolution": {
-                "type": "boolean"
+              "nextHint": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/NextHint"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "What revealing the puzzle's next hint would cost; null if it has no more."
               }
             },
             "required": [
@@ -9951,9 +9812,8 @@
               "entryId",
               "puzzleName",
               "hintText",
-              "moreHints",
-              "timePenalty",
-              "isNextHintSolution"
+              "timePenaltySeconds",
+              "nextHint"
             ],
             "additionalProperties": false
           },
@@ -10012,7 +9872,7 @@
               "ticket": {
                 "type": "string",
                 "minLength": 1,
-                "description": "A ticket from POST /quests/{name}/live-tickets, which can be used once."
+                "description": "A ticket from POST /quests/{questName}/live-tickets, which can be used once."
               }
             },
             "required": [

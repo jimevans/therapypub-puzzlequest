@@ -46,9 +46,11 @@ export function QuestsList() {
   const quests = useQuery(allQuestsQuery);
   const flow = useDeletion<Quest>({
     queryKey: QUERY_KEY,
-    remove: async ({ name }) =>
+    remove: async ({ questName }) =>
       dataOrThrow(
-        await api.DELETE("/quests/{name}", { params: { path: { name } } })
+        await api.DELETE("/quests/{questName}", {
+          params: { path: { questName } },
+        })
       ),
   });
 
@@ -77,13 +79,13 @@ export function QuestsList() {
           </thead>
           <tbody>
             {quests.data.map((quest) => (
-              <tr key={quest.name} data-quest-name={quest.name}>
+              <tr key={quest.questName} data-quest-name={quest.questName}>
                 <td>
-                  <Link to={`/quest/${encodeURIComponent(quest.name)}`}>
+                  <Link to={`/quest/${encodeURIComponent(quest.questName)}`}>
                     {quest.displayName}
                   </Link>
                 </td>
-                <td className={styles.secondary}>{quest.name}</td>
+                <td className={styles.secondary}>{quest.questName}</td>
                 <td>{entrantsOf(quest)}</td>
                 <td>{statusOf(quest)}</td>
                 <td className={styles.rowActions}>

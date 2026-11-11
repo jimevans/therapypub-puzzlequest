@@ -175,11 +175,18 @@ describe("following a quest as it's played", () => {
     await vi.waitFor(() =>
       expect(follower.kinds()).toEqual([
         "puzzleActivated",
-        "hintRequested",
+        "hintRevealed",
         "puzzleSolved",
         "puzzleStarted",
       ])
     );
+    const [, hint, solved] = follower.raw.map((raw) => JSON.parse(raw));
+    expect(hint).toMatchObject({
+      hintText: "It makes music",
+      timePenaltySeconds: 60,
+      nextHint: { timePenaltySeconds: 300, solutionWarning: false },
+    });
+    expect(solved.questComplete).toBe(false);
     const text = follower.raw.join("\n");
     expect(text).toContain("It makes music");
     expect(text).toContain("Lantern");
@@ -199,13 +206,16 @@ describe("following a quest as it's played", () => {
     const acting = await follow("quest");
     const other = await follow("quest");
 
-    await play("activation", "riddle", { activationCode: "riddle-code" });
+    await play("activation", "riddle", {
+      activationCode: "riddle-code",
+      connectionId: acting.connectionId,
+    });
     await play("hints", "riddle", { connectionId: acting.connectionId });
 
     await vi.waitFor(() =>
-      expect(other.kinds()).toEqual(["puzzleActivated", "hintRequested"])
+      expect(other.kinds()).toEqual(["puzzleActivated", "hintRevealed"])
     );
-    expect(acting.kinds()).toEqual(["puzzleActivated"]);
+    expect(acting.kinds()).toEqual([]);
   });
 
   it("says when the quest is complete, only after the last puzzle", async () => {
@@ -299,7 +309,7 @@ describe("following a quest several race", () => {
       await vi.waitFor(() =>
         expect(follower.kinds()).toEqual([
           "puzzleActivated",
-          "hintRequested",
+          "hintRevealed",
           "puzzleSolved",
           "puzzleStarted",
         ])

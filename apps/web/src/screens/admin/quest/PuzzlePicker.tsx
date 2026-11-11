@@ -30,9 +30,11 @@ function Choices({
   const words = search.trim().toLowerCase();
   const offered = (puzzles.data ?? []).filter(
     (puzzle) =>
-      !inQuest.has(puzzle.name) &&
+      !inQuest.has(puzzle.puzzleName) &&
       (words === "" ||
-        `${puzzle.displayName} ${puzzle.name}`.toLowerCase().includes(words))
+        `${puzzle.displayName} ${puzzle.puzzleName}`
+          .toLowerCase()
+          .includes(words))
   );
 
   return (
@@ -58,22 +60,22 @@ function Choices({
       )}
       <ul className={styles.choices}>
         {offered.map((puzzle, index) => (
-          <li key={puzzle.name}>
+          <li key={puzzle.puzzleName}>
             <input
               id={`choose-${index}`}
               type="checkbox"
-              checked={chosen.includes(puzzle.name)}
+              checked={chosen.includes(puzzle.puzzleName)}
               onChange={(event) =>
                 setChosen(
                   event.target.checked
-                    ? [...chosen, puzzle.name]
-                    : chosen.filter((name) => name !== puzzle.name)
+                    ? [...chosen, puzzle.puzzleName]
+                    : chosen.filter((name) => name !== puzzle.puzzleName)
                 )
               }
             />
             <label htmlFor={`choose-${index}`}>
               {puzzle.displayName}
-              <span className={styles.secondaryText}> {puzzle.name}</span>
+              <span className={styles.secondaryText}> {puzzle.puzzleName}</span>
             </label>
           </li>
         ))}
@@ -88,7 +90,9 @@ function Choices({
             onAdd(
               chosen.flatMap(
                 (name) =>
-                  puzzles.data?.filter((puzzle) => puzzle.name === name) ?? []
+                  puzzles.data?.filter(
+                    (puzzle) => puzzle.puzzleName === name
+                  ) ?? []
               )
             )
           }

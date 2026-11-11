@@ -1,18 +1,6 @@
 import { z } from "zod";
-import { AuthorizationLevel } from "../models/user.model.js";
-import {
-  displayName,
-  newName,
-  phoneNumber,
-  requiredText,
-  wholeNumber,
-} from "./common.js";
-
-/** An authorization level (see AuthorizationLevel). */
-const authorizationLevel = wholeNumber.refine(
-  (level) => (Object.values(AuthorizationLevel) as number[]).includes(level),
-  "Must be a known authorization level"
-);
+import { roleSchema } from "./enums.js";
+import { displayName, newName, phoneNumber, requiredText } from "./common.js";
 
 /** POST /api/v1/sessions */
 export const loginBody = z.object({
@@ -37,8 +25,10 @@ export const createUserBody = z.object({
   phone: phoneNumber.default(""),
   sms: z.boolean().default(false),
   password: requiredText,
-  /** Counts only when an administrator creates the account. */
-  authorizationLevel: authorizationLevel.optional(),
+  role: roleSchema.optional().meta({
+    description:
+      "Only an administrator may give it; anyone else signs up as a player.",
+  }),
 });
 export type CreateUserBody = z.infer<typeof createUserBody>;
 
@@ -50,8 +40,10 @@ export const updateUserBody = z.object({
   sms: z.boolean().optional(),
   /** Counts only when an administrator sends it. */
   password: requiredText.optional(),
-  /** Counts only when an administrator sends it. */
-  authorizationLevel: authorizationLevel.optional(),
+  role: roleSchema.optional().meta({
+    description:
+      "Only an administrator may change it, which signs the user out everywhere.",
+  }),
 });
 export type UpdateUserBody = z.infer<typeof updateUserBody>;
 

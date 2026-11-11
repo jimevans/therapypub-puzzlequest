@@ -118,16 +118,15 @@ describe("listing a user's quests", () => {
 
     const { items, next } = await listed("player", "player");
 
-    expect(items.map(({ name }: { name: string }) => name)).toEqual([
-      "mine",
-      "ours",
-    ]);
+    expect(
+      items.map(({ questName }: { questName: string }) => questName)
+    ).toEqual(["mine", "ours"]);
     expect(next).toBeNull();
     expect(items[0]).toMatchObject({
       displayName: "Quest mine",
-      status: 1,
+      status: "inProgress",
       paused: false,
-      progress: { running: true },
+      progress: { running: true, endTime: null },
     });
   });
 
@@ -152,7 +151,7 @@ describe("listing a user's quests", () => {
     const { items } = await listed("player", "player");
 
     expect(items).toHaveLength(1);
-    expect(items[0].status).toBe(2);
+    expect(items[0].status).toBe("completed");
   });
 
   it("says when a quest is paused", async () => {
@@ -188,8 +187,8 @@ describe("listing a user's quests", () => {
       (await list("player", "player", `?limit=2&after=${first.next}`)).text
     );
 
-    const names = (page: { items: { name: string }[] }) =>
-      page.items.map(({ name }) => name);
+    const names = (page: { items: { questName: string }[] }) =>
+      page.items.map(({ questName }) => questName);
     expect(names(first)).toEqual(["one", "two"]);
     expect(names(second)).toEqual(["three"]);
     expect(second.next).toBeNull();
@@ -201,7 +200,9 @@ describe("listing a user's quests", () => {
 
     const { items } = await listed("admin", "player");
 
-    expect(items.map(({ name }: { name: string }) => name)).toEqual(["ours"]);
+    expect(
+      items.map(({ questName }: { questName: string }) => questName)
+    ).toEqual(["ours"]);
   });
 
   it("answers 404 for a user who doesn't exist", async () => {

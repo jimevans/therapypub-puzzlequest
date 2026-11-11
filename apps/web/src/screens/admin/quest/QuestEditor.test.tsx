@@ -7,24 +7,36 @@ import { api } from "../../../api";
 import { aUser, ok, refusal, withOneEntry } from "../../../test/fakes";
 import { QuestEditor } from "./QuestEditor";
 
-const STOPPED = { running: false, elapsedMs: 0, penaltyMs: 0, totalMs: 0 };
+const STOPPED = {
+  startTime: null,
+  endTime: null,
+  running: false,
+  clockStart: null,
+  elapsedMs: 0,
+  penaltyMs: 0,
+  totalMs: 0,
+};
 
-function stop(puzzleName: string, status = 0) {
+function stop(puzzleName: string, completed = false) {
   return {
     puzzleName,
     displayName: `The ${puzzleName}`,
-    status,
-    statusDescription: status ? "Completed" : "Unavailable",
-    nextHintToDisplay: 0,
+    status: completed ? "completed" : "notReached",
+    statusDescription: completed ? "Completed" : "Unavailable",
+    hintsRevealed: 0,
     activationCode: `${puzzleName}-code`,
+    activationTime: completed ? "2026-11-07T10:05:00.000Z" : null,
+    startTime: completed ? "2026-11-07T10:00:00.000Z" : null,
+    endTime: completed ? "2026-11-07T10:15:00.000Z" : null,
     skipped: false,
+    hints: [],
   };
 }
 
 const QUEST = {
-  name: "trail",
+  questName: "trail",
   displayName: "The Trail",
-  status: 0,
+  status: "notStarted",
   statusDescription: "Not yet started",
   paused: false,
   puzzles: [stop("riddle"), stop("cipher"), stop("finale")],
@@ -32,18 +44,18 @@ const QUEST = {
 };
 const RUNNING = {
   ...QUEST,
-  status: 1,
+  status: "inProgress",
   statusDescription: "In progress",
-  puzzles: [stop("riddle", 3), stop("cipher"), stop("finale")],
+  puzzles: [stop("riddle", true), stop("cipher"), stop("finale")],
 };
 const PUZZLES = ["riddle", "cipher", "finale", "lantern", "bell"].map(
   (name) => ({
-    name,
+    puzzleName: name,
     displayName: `The ${name}`,
-    type: 0,
+    type: "text",
     text: "",
     solutionKeyword: "x",
-    solutionDisplayText: "X",
+    solutionText: "X",
     hints: [],
   })
 );
@@ -58,12 +70,13 @@ const asStored = (quest: typeof QUEST) => withOneEntry(quest);
  */
 function apiWith(
   quest:
-    ({ name: string; displayName: string } & Record<string, unknown>) | null
+    | ({ questName: string; displayName: string } & Record<string, unknown>)
+    | null
 ) {
   const stored = quest && ("entries" in quest ? quest : withOneEntry(quest));
   return vi.spyOn(api, "GET").mockImplementation((async (path: string) => {
     switch (path) {
-      case "/quests/{name}":
+      case "/quests/{questName}":
         return stored ? ok(stored) : refusal("not-found", "No such quest");
       case "/users":
         return ok({
@@ -179,7 +192,7 @@ describe("creating a quest", () => {
     );
     expect(post).toHaveBeenCalledWith("/quests", {
       body: {
-        name: "trail",
+        questName: "trail",
         displayName: "The Trail",
         visibility: "public",
         entrants: [{ kind: "team", name: "reds" }],
@@ -210,7 +223,7 @@ describe("creating a quest", () => {
     apiWith(null);
     vi.spyOn(api, "POST").mockResolvedValue(
       refusal("already-exists", "A quest named trail already exists", [
-        { path: "body.name", message: "Already taken" },
+        { path: "body.questName", message: "Already taken" },
       ]) as never
     );
     show("/quest/new");
@@ -224,7 +237,7 @@ describe("creating a quest", () => {
     );
     await user.selectOptions(
       screen.getByLabelText("Add a team or player"),
-      "user:pat"
+      "player:pat"
     );
     await user.click(screen.getByRole("button", { name: "Add" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
@@ -252,8 +265,8 @@ describe("editing a quest", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(patch).toHaveBeenCalled());
-    expect(patch).toHaveBeenCalledWith("/quests/{name}", {
-      params: { path: { name: "trail" } },
+    expect(patch).toHaveBeenCalledWith("/quests/{questName}", {
+      params: { path: { questName: "trail" } },
       body: {
         displayName: "The Trail",
         visibility: "public",
@@ -363,9 +376,9 @@ describe("editing a quest", () => {
   it("locks a completed quest's stops", async () => {
     apiWith({
       ...RUNNING,
-      status: 2,
+      status: "completed",
       statusDescription: "Completed",
-      puzzles: RUNNING.puzzles.map((puzzle) => ({ ...puzzle, status: 3 })),
+      puzzles: ["riddle", "cipher", "finale"].map((name) => stop(name, true)),
     });
     show("/quest/trail/edit");
 
@@ -423,7 +436,7 @@ describe("editing a quest", () => {
     ).not.toBeInTheDocument();
     await user.selectOptions(choice, "team:blues");
     await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.selectOptions(choice, "user:pat");
+    await user.selectOptions(choice, "player:pat");
     await user.click(screen.getByRole("button", { name: "Add" }));
     expect(entrantNames()).toEqual([
       "The Reds (team)",
@@ -442,7 +455,7 @@ describe("editing a quest", () => {
     expect(patch.mock.calls[0]?.[1]).toMatchObject({
       body: {
         entrants: [
-          { kind: "user", name: "pat" },
+          { kind: "player", name: "pat" },
           { kind: "team", name: "blues" },
         ],
       },

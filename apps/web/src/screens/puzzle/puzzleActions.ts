@@ -3,7 +3,7 @@ import { questQueryKey } from "../../live/useLiveQuest";
 
 /** What identifies the puzzle in the API's paths. */
 export interface PuzzlePath {
-  name: string;
+  questName: string;
   puzzleName: string;
 }
 
@@ -14,13 +14,13 @@ export interface PuzzlePath {
  * the old state can't be acted on in the meantime.
  */
 export function usePuzzleAction<Input>(
-  { name }: PuzzlePath,
+  { questName }: PuzzlePath,
   send: (input: Input) => Promise<unknown>
 ) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: send,
     onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: questQueryKey(name) }),
+      queryClient.invalidateQueries({ queryKey: questQueryKey(questName) }),
   });
 }

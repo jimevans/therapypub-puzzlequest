@@ -160,70 +160,78 @@ const ROUTES: [string, string, Policy][] = [
   ["delete", "/api/v1/teams/:teamName/members/:userName", SELF_OR_ADMIN],
   ["get", "/api/v1/puzzles", ADMIN],
   ["post", "/api/v1/puzzles", ADMIN],
-  ["get", "/api/v1/puzzles/:name", ADMIN],
-  ["patch", "/api/v1/puzzles/:name", ADMIN],
-  ["delete", "/api/v1/puzzles/:name", ADMIN],
+  ["get", "/api/v1/puzzles/:puzzleName", ADMIN],
+  ["patch", "/api/v1/puzzles/:puzzleName", ADMIN],
+  ["delete", "/api/v1/puzzles/:puzzleName", ADMIN],
   ["post", "/api/v1/puzzle-media", ADMIN],
   ["get", "/api/v1/quests", ADMIN],
   ["post", "/api/v1/quests", ADMIN],
-  ["get", "/api/v1/quests/:name", QUEST_VIEWER],
-  ["patch", "/api/v1/quests/:name", ADMIN],
-  ["delete", "/api/v1/quests/:name", ADMIN],
-  ["post", "/api/v1/quests/:name/start", ADMIN],
-  ["post", "/api/v1/quests/:name/reset", ADMIN],
-  ["post", "/api/v1/quests/:name/pause", ADMIN],
-  ["post", "/api/v1/quests/:name/resume", ADMIN],
-  ["post", "/api/v1/quests/:name/teams/:teamName/start", ADMIN],
-  ["post", "/api/v1/quests/:name/teams/:teamName/reset", ADMIN],
-  ["post", "/api/v1/quests/:name/teams/:teamName/pause", ADMIN],
-  ["post", "/api/v1/quests/:name/teams/:teamName/resume", ADMIN],
+  ["get", "/api/v1/quests/:questName", QUEST_VIEWER],
+  ["patch", "/api/v1/quests/:questName", ADMIN],
+  ["delete", "/api/v1/quests/:questName", ADMIN],
+  ["post", "/api/v1/quests/:questName/start", ADMIN],
+  ["post", "/api/v1/quests/:questName/reset", ADMIN],
+  ["post", "/api/v1/quests/:questName/pause", ADMIN],
+  ["post", "/api/v1/quests/:questName/resume", ADMIN],
+  ["post", "/api/v1/quests/:questName/teams/:teamName/start", ADMIN],
+  ["post", "/api/v1/quests/:questName/teams/:teamName/reset", ADMIN],
+  ["post", "/api/v1/quests/:questName/teams/:teamName/pause", ADMIN],
+  ["post", "/api/v1/quests/:questName/teams/:teamName/resume", ADMIN],
   [
     "post",
-    "/api/v1/quests/:name/teams/:teamName/puzzles/:puzzleName/skip",
+    "/api/v1/quests/:questName/teams/:teamName/puzzles/:puzzleName/skip",
     ADMIN,
   ],
   [
     "post",
-    "/api/v1/quests/:name/teams/:teamName/puzzles/:puzzleName/reset",
+    "/api/v1/quests/:questName/teams/:teamName/puzzles/:puzzleName/reset",
     ADMIN,
   ],
-  ["post", "/api/v1/quests/:name/text-messages", ADMIN],
-  ["post", "/api/v1/quests/:name/teams/:teamName/text-messages", ADMIN],
-  ["post", "/api/v1/quests/:name/players/:userName/start", ADMIN],
-  ["post", "/api/v1/quests/:name/players/:userName/reset", ADMIN],
-  ["post", "/api/v1/quests/:name/players/:userName/pause", ADMIN],
-  ["post", "/api/v1/quests/:name/players/:userName/resume", ADMIN],
+  ["post", "/api/v1/quests/:questName/text-messages", ADMIN],
+  ["post", "/api/v1/quests/:questName/teams/:teamName/text-messages", ADMIN],
+  ["post", "/api/v1/quests/:questName/players/:userName/start", ADMIN],
+  ["post", "/api/v1/quests/:questName/players/:userName/reset", ADMIN],
+  ["post", "/api/v1/quests/:questName/players/:userName/pause", ADMIN],
+  ["post", "/api/v1/quests/:questName/players/:userName/resume", ADMIN],
   [
     "post",
-    "/api/v1/quests/:name/players/:userName/puzzles/:puzzleName/skip",
+    "/api/v1/quests/:questName/players/:userName/puzzles/:puzzleName/skip",
     ADMIN,
   ],
   [
     "post",
-    "/api/v1/quests/:name/players/:userName/puzzles/:puzzleName/reset",
+    "/api/v1/quests/:questName/players/:userName/puzzles/:puzzleName/reset",
     ADMIN,
   ],
-  ["post", "/api/v1/quests/:name/players/:userName/text-messages", ADMIN],
-  ["get", "/api/v1/quests/:name/puzzles/:puzzleName/qr-code", STAFF],
-  ["get", "/api/v1/quests/:name/events", ADMIN],
-  ["get", "/api/v1/quests/:name/run-book", ADMIN],
-  ["get", "/api/v1/quests/:name/qr-cards", ADMIN],
+  ["post", "/api/v1/quests/:questName/players/:userName/text-messages", ADMIN],
+  ["get", "/api/v1/quests/:questName/puzzles/:puzzleName/qr-code", STAFF],
+  ["get", "/api/v1/quests/:questName/events", ADMIN],
+  ["get", "/api/v1/quests/:questName/run-book", ADMIN],
+  ["get", "/api/v1/quests/:questName/qr-cards", ADMIN],
   ["get", "/api/v1/staff/quests", STAFF],
-  ["get", "/api/v1/quests/:name/staff-view", STAFF],
-  ["get", "/api/v1/quests/:name/puzzles/:puzzleName", QUEST_VIEWER],
-  ["post", "/api/v1/quests/:name/live-tickets", PUBLIC],
-  ["get", "/api/v1/quests/:name/share-links", QUEST_MEMBER],
-  ["post", "/api/v1/quests/:name/share-links", QUEST_MEMBER],
-  ["delete", "/api/v1/quests/:name/share-links/:linkId", NO_SUCH_LINK],
-  ["get", "/api/v1/quests/:name/spectator-view", PUBLIC],
-  ["get", "/api/v1/quests/:name/puzzles/:puzzleName/spectator-view", PUBLIC],
-  ["post", "/api/v1/quests/:name/puzzles/:puzzleName/activation", QUEST_PLAYER],
+  ["get", "/api/v1/quests/:questName/staff-view", STAFF],
+  ["get", "/api/v1/quests/:questName/puzzles/:puzzleName", QUEST_VIEWER],
+  ["post", "/api/v1/quests/:questName/live-tickets", PUBLIC],
+  ["get", "/api/v1/quests/:questName/share-links", QUEST_MEMBER],
+  ["post", "/api/v1/quests/:questName/share-links", QUEST_MEMBER],
+  ["delete", "/api/v1/quests/:questName/share-links/:linkId", NO_SUCH_LINK],
+  ["get", "/api/v1/quests/:questName/spectator-view", PUBLIC],
+  [
+    "get",
+    "/api/v1/quests/:questName/puzzles/:puzzleName/spectator-view",
+    PUBLIC,
+  ],
   [
     "post",
-    "/api/v1/quests/:name/puzzles/:puzzleName/solution-attempts",
+    "/api/v1/quests/:questName/puzzles/:puzzleName/activation",
     QUEST_PLAYER,
   ],
-  ["post", "/api/v1/quests/:name/puzzles/:puzzleName/hints", QUEST_PLAYER],
+  [
+    "post",
+    "/api/v1/quests/:questName/puzzles/:puzzleName/solution-attempts",
+    QUEST_PLAYER,
+  ],
+  ["post", "/api/v1/quests/:questName/puzzles/:puzzleName/hints", QUEST_PLAYER],
   ["post", "/api/v1/webhooks/twilio/voice", TWILIO],
   ["post", "/api/v1/webhooks/twilio/messages", TWILIO],
 
@@ -243,7 +251,9 @@ const ROUTES: [string, string, Policy][] = [
 /** Values for the route parameters: the fixture's quest, puzzle, and team. */
 const PARAMS: Record<string, string> = {
   userName: "player",
+  // The pages' addresses still name the quest :name.
   name: "quest",
+  questName: "quest",
   puzzleName: "riddle",
   teamName: "team-a",
   linkId: "000000000000000000000000",
@@ -254,11 +264,11 @@ const PARAMS: Record<string, string> = {
  * decision. Most authorization doesn't depend on the body.
  */
 const BODIES: Record<string, object> = {
-  "/api/v1/quests/:name/share-links": { label: "A link" },
-  "/api/v1/quests/:name/puzzles/:puzzleName/activation": {
+  "/api/v1/quests/:questName/share-links": { label: "A link" },
+  "/api/v1/quests/:questName/puzzles/:puzzleName/activation": {
     activationCode: "wrong",
   },
-  "/api/v1/quests/:name/puzzles/:puzzleName/solution-attempts": {
+  "/api/v1/quests/:questName/puzzles/:puzzleName/solution-attempts": {
     guess: "wrong",
   },
 };
@@ -345,7 +355,8 @@ beforeEach(async () => {
  * @returns the response
  */
 function send(method: string, routePath: string, role: Role) {
-  // Puzzle routes use :name for the puzzle; quest routes, for the quest.
+  // The puzzle pages use :name for the puzzle; the quest pages, for the
+  // quest.
   const isPuzzleRoute = /^\/(api\/(v1\/)?)?puzzles?\//.test(routePath);
   // A quest's per-player routes name the quest's player entrant.
   const isEntrantRoute = routePath.includes("/players/:userName");

@@ -21,13 +21,14 @@ import {
   questEventSchema,
   questSchema,
   resourcePath,
+  toQuestEventResource,
   toQuestResource,
 } from "./resources.js";
 import { type AnyRoute, defineRoute } from "./route.js";
 
 /** The path parameter naming a quest. */
 const questParams = z.object({
-  name: z.string().meta({ description: "The quest's name." }),
+  questName: z.string().meta({ description: "The quest's name." }),
 });
 
 /** The path parameters naming a quest and one of its puzzles. */
@@ -37,8 +38,8 @@ const questPuzzleParams = questParams.extend({
 
 /**
  * The two kinds of entrant, and how an administrator's per-entrant addresses
- * name them: /quests/{name}/teams/{teamName}/… for a team, and
- * /quests/{name}/players/{userName}/… for a user playing on their own.
+ * name them: /quests/{questName}/teams/{teamName}/… for a team, and
+ * /quests/{questName}/players/{userName}/… for a user playing on their own.
  */
 const ENTRANT_ADDRESSES = [
   {
@@ -106,7 +107,7 @@ async function sendQuest(
 /**
  * Defines one of the administrator's actions on a quest, which answers with
  * the quest as it is afterwards.
- * @param route the action's path below /quests/{name}, its operation, what it
+ * @param route the action's path below /quests/{questName}, its operation, what it
  *  does, its request's schemas, and the problems it can report
  * @param run runs the action
  * @returns the route
@@ -129,7 +130,7 @@ function questAction<P extends z.ZodObject, B extends z.ZodType>(
 ): AnyRoute {
   return defineRoute({
     method: "post",
-    path: `/quests/{name}/${route.path}`,
+    path: `/quests/{questName}/${route.path}`,
     operationId: route.operationId,
     summary: route.summary,
     description: route.description,
@@ -154,7 +155,7 @@ function questAction<P extends z.ZodObject, B extends z.ZodType>(
         sendServiceProblem(res, result);
         return;
       }
-      await sendQuest(res, req.params.name as string);
+      await sendQuest(res, req.params.questName as string);
     },
   });
 }
@@ -209,7 +210,7 @@ const wholeQuestActions = ENTRY_ACTIONS.map(
         description: `${whole} Answers wrong-state only if no entry could be changed.${call}`,
         params: questParams,
       },
-      ({ name }, _body, actor) => run(name, { actor }, "all")
+      ({ questName }, _body, actor) => run(questName, { actor }, "all")
     )
 );
 
@@ -222,7 +223,7 @@ const entrantRoutes = ENTRANT_ADDRESSES.flatMap((address) => {
   const puzzleParams = params.extend({
     puzzleName: z.string().meta({ description: "The puzzle's name." }),
   });
-  const notEntrant = `Not found if the ${address.kind} isn't one of the quest's entrants.`;
+  const notEntrant = `Not found if the ${address.noun.toLowerCase()} isn't one of the quest's entrants.`;
   const entry = (raw: Record<string, string>) => ({
     entrant: entrantOf(address, raw),
   });
@@ -236,7 +237,7 @@ const entrantRoutes = ENTRANT_ADDRESSES.flatMap((address) => {
           description: `${one}${call} ${notEntrant}`,
           params,
         },
-        (raw, _body, actor) => run(raw.name, { actor }, entry(raw))
+        (raw, _body, actor) => run(raw.questName, { actor }, entry(raw))
       )
     ),
     questAction(
@@ -249,7 +250,7 @@ const entrantRoutes = ENTRANT_ADDRESSES.flatMap((address) => {
       },
       (raw, _body, actor) =>
         QuestService.skipQuestPuzzle(
-          raw.name,
+          raw.questName,
           raw.puzzleName,
           { actor },
           entry(raw)
@@ -266,7 +267,7 @@ const entrantRoutes = ENTRANT_ADDRESSES.flatMap((address) => {
       },
       (raw, body, actor) =>
         QuestService.resetQuestPuzzle(
-          raw.name,
+          raw.questName,
           raw.puzzleName,
           body.refundHints,
           { actor },
@@ -275,7 +276,7 @@ const entrantRoutes = ENTRANT_ADDRESSES.flatMap((address) => {
     ),
     defineRoute({
       method: "post",
-      path: `/quests/{name}/${address.segment}/{${address.param}}/text-messages`,
+      path: `/quests/{questName}/${address.segment}/{${address.param}}/text-messages`,
       operationId: `send${address.noun}TextMessage`,
       summary: `Text a ${address.kind === "team" ? "team's members" : "player"}`,
       description: `Texts the message to the entrant's players who accept text messages, a few seconds apart, as carriers require; the entry must be in progress. With an expected response, the entry waits for that reply and texts the confirmation back when it arrives. ${notEntrant}`,
@@ -293,7 +294,7 @@ const entrantRoutes = ENTRANT_ADDRESSES.flatMap((address) => {
         const raw = req.params as Record<string, string>;
         const { message, expectedResponse, responseConfirmation } = req.body;
         const sent = await MessagingService.sendQuestTextMessage(
-          raw.name,
+          raw.questName,
           entrantOf(address, raw),
           message,
           expectedResponse && responseConfirmation
@@ -313,7 +314,7 @@ const entrantRoutes = ENTRANT_ADDRESSES.flatMap((address) => {
 export const questRoutes = [
   defineRoute({
     method: "post",
-    path: "/quests/{name}/text-messages",
+    path: "/quests/{questName}/text-messages",
     operationId: "sendQuestTextMessage",
     summary: "Text every entrant's players",
     description:
@@ -331,7 +332,7 @@ export const questRoutes = [
     async handle(req, res) {
       const { message, expectedResponse, responseConfirmation } = req.body;
       const sent = await MessagingService.sendQuestTextMessageToAll(
-        req.params.name,
+        req.params.questName,
         message,
         expectedResponse && responseConfirmation
           ? { expectedResponse, responseConfirmation }
@@ -393,7 +394,7 @@ export const questRoutes = [
   }),
   defineRoute({
     method: "get",
-    path: "/quests/{name}",
+    path: "/quests/{questName}",
     operationId: "getQuest",
     summary: "Get a quest",
     description:
@@ -405,7 +406,10 @@ export const questRoutes = [
     problems: [Problems.notFound],
     async handle(req, res) {
       const user = UserService.requireLoggedInUser(req.user);
-      const found = await QuestService.getQuestEntries(req.params.name, user);
+      const found = await QuestService.getQuestEntries(
+        req.params.questName,
+        user
+      );
       if (found.status === "error") {
         sendServiceProblem(res, found);
         return;
@@ -417,7 +421,7 @@ export const questRoutes = [
   }),
   defineRoute({
     method: "patch",
-    path: "/quests/{name}",
+    path: "/quests/{questName}",
     operationId: "updateQuest",
     summary: "Change a quest",
     description:
@@ -435,18 +439,18 @@ export const questRoutes = [
     async handle(req, res) {
       const updated = await QuestService.updateQuest({
         ...req.body,
-        name: req.params.name,
+        name: req.params.questName,
       });
       if (updated.status === "error") {
         sendServiceProblem(res, updated);
         return;
       }
-      await sendQuest(res, req.params.name);
+      await sendQuest(res, req.params.questName);
     },
   }),
   defineRoute({
     method: "delete",
-    path: "/quests/{name}",
+    path: "/quests/{questName}",
     operationId: "deleteQuest",
     summary: "Delete a quest",
     description: "Its event log is kept.",
@@ -456,7 +460,7 @@ export const questRoutes = [
     responses: { 204: { description: "Deleted." } },
     problems: [Problems.notFound],
     async handle(req, res) {
-      const deleted = await QuestService.deleteQuest(req.params.name);
+      const deleted = await QuestService.deleteQuest(req.params.questName);
       if (deleted.status === "error") {
         sendServiceProblem(res, deleted);
         return;
@@ -468,7 +472,7 @@ export const questRoutes = [
   ...entrantRoutes,
   defineRoute({
     method: "get",
-    path: "/quests/{name}/puzzles/{puzzleName}/qr-code",
+    path: "/quests/{questName}/puzzles/{puzzleName}/qr-code",
     operationId: "getActivationQrCode",
     summary: "Get a puzzle's activation QR code",
     description:
@@ -486,7 +490,7 @@ export const questRoutes = [
     problems: [Problems.notFound],
     async handle(req, res) {
       const qrCode = await QuestService.getPuzzleActivationQrCode(
-        req.params.name,
+        req.params.questName,
         req.params.puzzleName
       );
       if (qrCode.status === "error") {
@@ -498,7 +502,7 @@ export const questRoutes = [
   }),
   defineRoute({
     method: "get",
-    path: "/quests/{name}/run-book",
+    path: "/quests/{questName}/run-book",
     operationId: "getQuestRunBook",
     summary: "Get a quest's run book",
     description:
@@ -519,7 +523,10 @@ export const questRoutes = [
       const chunks: Buffer[] = [];
       pdf.on("data", (chunk: Buffer) => chunks.push(chunk));
       const ended = new Promise((resolve) => pdf.on("end", resolve));
-      const written = await QuestService.getQuestRunBook(req.params.name, pdf);
+      const written = await QuestService.getQuestRunBook(
+        req.params.questName,
+        pdf
+      );
       if (written.status === "error") {
         sendServiceProblem(res, written);
         return;
@@ -527,13 +534,13 @@ export const questRoutes = [
       await ended;
       res
         .type("application/pdf")
-        .attachment(`${req.params.name}.pdf`)
+        .attachment(`${req.params.questName}.pdf`)
         .send(Buffer.concat(chunks));
     },
   }),
   defineRoute({
     method: "get",
-    path: "/quests/{name}/qr-cards",
+    path: "/quests/{questName}/qr-cards",
     operationId: "getQuestQrCards",
     summary: "Get a quest's activation cards",
     description:
@@ -550,7 +557,7 @@ export const questRoutes = [
     },
     problems: [Problems.notFound],
     async handle(req, res) {
-      const found = await QuestService.getQuestEntries(req.params.name);
+      const found = await QuestService.getQuestEntries(req.params.questName);
       if (found.status === "error") {
         sendServiceProblem(res, found);
         return;
@@ -574,13 +581,13 @@ export const questRoutes = [
       await ended;
       res
         .type("application/pdf")
-        .attachment(`${req.params.name}-qr-cards.pdf`)
+        .attachment(`${req.params.questName}-qr-cards.pdf`)
         .send(Buffer.concat(chunks));
     },
   }),
   defineRoute({
     method: "get",
-    path: "/quests/{name}/events",
+    path: "/quests/{questName}/events",
     operationId: "listQuestEvents",
     summary: "List what happened in a quest",
     description:
@@ -597,14 +604,17 @@ export const questRoutes = [
     problems: [Problems.notFound],
     async handle(req, res) {
       const page = await QuestService.listQuestEventsPage(
-        req.params.name,
+        req.params.questName,
         req.query
       );
       if (page.status === "error") {
         sendServiceProblem(res, page);
         return;
       }
-      res.json(page.data);
+      res.json({
+        items: page.data.items.map(toQuestEventResource),
+        next: page.data.next,
+      });
     },
   }),
 ];

@@ -156,7 +156,7 @@ describe("followQuest", () => {
     });
 
     it("asks for fresh state on each update", () => {
-      latest().receive({ message: "hintRequested", questName: "trail" });
+      latest().receive({ message: "hintRevealed", questName: "trail" });
       latest().receive({ message: "puzzleSolved", questName: "trail" });
 
       expect(onChange).toHaveBeenCalledTimes(2);

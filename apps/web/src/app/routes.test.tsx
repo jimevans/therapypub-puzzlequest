@@ -161,16 +161,16 @@ describe("the routes", () => {
   });
 
   it.each([
-    ["/quest/trail", "/quests/{name}", { name: "trail" }],
+    ["/quest/trail", "/quests/{questName}", { questName: "trail" }],
     [
       "/quest/trail/puzzle/riddle",
-      "/quests/{name}/puzzles/{puzzleName}",
-      { name: "trail", puzzleName: "riddle" },
+      "/quests/{questName}/puzzles/{puzzleName}",
+      { questName: "trail", puzzleName: "riddle" },
     ],
     [
       "/monitor/quest/trail",
-      "/quests/{name}/spectator-view",
-      { name: "trail" },
+      "/quests/{questName}/spectator-view",
+      { questName: "trail" },
     ],
   ])("start fetching %s's data at once", async (path, apiPath, params) => {
     renderAt(path);
@@ -187,11 +187,11 @@ describe("the routes", () => {
 
     await waitFor(() =>
       expect(api.GET).toHaveBeenCalledWith(
-        "/quests/{name}/puzzles/{puzzleName}/spectator-view",
+        "/quests/{questName}/puzzles/{puzzleName}/spectator-view",
         {
           params: {
-            path: { name: "trail", puzzleName: "riddle" },
-            query: { entry: "entry-1" },
+            path: { questName: "trail", puzzleName: "riddle" },
+            query: { entryId: "entry-1" },
           },
         }
       )
@@ -215,7 +215,7 @@ describe("the routes", () => {
   it("show an administrator the console at a quest's address", async () => {
     vi.mocked(api.GET).mockImplementation((async (path: string) =>
       path === "/sessions/current"
-        ? ok({ user: aUser({ userName: "boss", authorizationLevel: 10 }) })
+        ? ok({ user: aUser({ userName: "boss", role: "admin" }) })
         : refusal("not-found", "No such quest")) as never);
     renderAt("/quest/trail");
 
@@ -230,7 +230,7 @@ describe("the routes", () => {
   it("show staff their view at a quest's address", async () => {
     vi.mocked(api.GET).mockImplementation((async (path: string) =>
       path === "/sessions/current"
-        ? ok({ user: aUser({ userName: "helper", authorizationLevel: 5 }) })
+        ? ok({ user: aUser({ userName: "helper", role: "staff" }) })
         : refusal("not-found", "No such quest")) as never);
     renderAt("/quest/trail");
 

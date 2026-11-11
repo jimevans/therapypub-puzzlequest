@@ -26,10 +26,10 @@ function entryDetail(entry: Entry): string {
 function QuestCard({ quest }: { quest: Quest }) {
   const [only] = quest.entries;
   return (
-    <li className={styles.quest} data-quest-name={quest.name}>
+    <li className={styles.quest} data-quest-name={quest.questName}>
       <Link
         className={styles.name}
-        to={`/quest/${encodeURIComponent(quest.name)}`}
+        to={`/quest/${encodeURIComponent(quest.questName)}`}
       >
         {quest.displayName}
       </Link>
@@ -93,7 +93,7 @@ export default function StaffHome() {
       {quests.data?.length === 0 && <p>There are no quests yet.</p>}
       <ul id="staff-quests" className={styles.quests}>
         {sorted.map((quest) => (
-          <QuestCard key={quest.name} quest={quest} />
+          <QuestCard key={quest.questName} quest={quest} />
         ))}
       </ul>
     </>

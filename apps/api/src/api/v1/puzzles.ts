@@ -18,7 +18,7 @@ import { defineRoute } from "./route.js";
 
 /** The path parameter naming a puzzle. */
 const puzzleParams = z.object({
-  name: z.string().meta({ description: "The puzzle's name." }),
+  puzzleName: z.string().meta({ description: "The puzzle's name." }),
 });
 
 /** An upload of a puzzle's media file, as multipart form data. */
@@ -113,7 +113,7 @@ export const puzzleRoutes = [
   }),
   defineRoute({
     method: "get",
-    path: "/puzzles/{name}",
+    path: "/puzzles/{puzzleName}",
     operationId: "getPuzzle",
     summary: "Get a puzzle",
     tags: ["Puzzles"],
@@ -122,7 +122,7 @@ export const puzzleRoutes = [
     responses: { 200: { description: "The puzzle.", body: puzzleSchema } },
     problems: [Problems.notFound],
     async handle(req, res) {
-      const puzzle = await getPuzzleResource(req.params.name);
+      const puzzle = await getPuzzleResource(req.params.puzzleName);
       if (puzzle.status === "error") {
         sendServiceProblem(res, puzzle);
         return;
@@ -132,7 +132,7 @@ export const puzzleRoutes = [
   }),
   defineRoute({
     method: "patch",
-    path: "/puzzles/{name}",
+    path: "/puzzles/{puzzleName}",
     operationId: "updatePuzzle",
     summary: "Change a puzzle",
     description:
@@ -144,14 +144,14 @@ export const puzzleRoutes = [
     problems: [Problems.notFound],
     async handle(req, res) {
       const updated = await PuzzleService.updatePuzzle(
-        req.params.name,
+        req.params.puzzleName,
         req.body
       );
       if (updated.status === "error") {
         sendServiceProblem(res, updated);
         return;
       }
-      const puzzle = await getPuzzleResource(req.params.name);
+      const puzzle = await getPuzzleResource(req.params.puzzleName);
       if (puzzle.status === "error") {
         sendServiceProblem(res, puzzle);
         return;
@@ -161,7 +161,7 @@ export const puzzleRoutes = [
   }),
   defineRoute({
     method: "delete",
-    path: "/puzzles/{name}",
+    path: "/puzzles/{puzzleName}",
     operationId: "deletePuzzle",
     summary: "Delete a puzzle",
     description:
@@ -172,7 +172,7 @@ export const puzzleRoutes = [
     responses: { 204: { description: "Deleted." } },
     problems: [Problems.notFound, Problems.inUse],
     async handle(req, res) {
-      const deleted = await PuzzleService.deletePuzzle(req.params.name);
+      const deleted = await PuzzleService.deletePuzzle(req.params.puzzleName);
       if (deleted.status === "error") {
         sendServiceProblem(res, deleted);
         return;

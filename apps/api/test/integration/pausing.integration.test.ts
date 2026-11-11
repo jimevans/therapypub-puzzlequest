@@ -294,7 +294,7 @@ describe("a paused quest's pages", () => {
 
     expect(entry.paused).toBe(true);
     expect(entry.progress.running).toBe(false);
-    expect(entry.progress.clockStart).toBeUndefined();
+    expect(entry.progress.clockStart).toBeNull();
   });
 
   it("tell spectators it is paused", async () => {

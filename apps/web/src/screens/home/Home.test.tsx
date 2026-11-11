@@ -18,13 +18,21 @@ const assign = vi.fn();
 
 const PLAYER = aUser({ userName: "player one" });
 
-const CLOCK = { running: false, elapsedMs: 0, penaltyMs: 0, totalMs: 0 };
+const CLOCK = {
+  startTime: null,
+  endTime: null,
+  running: false,
+  clockStart: null,
+  elapsedMs: 0,
+  penaltyMs: 0,
+  totalMs: 0,
+};
 
 function summary(name: string, fields = {}) {
   return {
-    name,
+    questName: name,
     displayName: `The ${name}`,
-    status: 1,
+    status: "inProgress",
     statusDescription: "In progress",
     paused: false,
     progress: CLOCK,
@@ -144,7 +152,7 @@ describe("Home", () => {
   });
 
   it("sends an administrator to the lists, and fetches no quests of theirs", async () => {
-    const get = apiAnswers({ ...PLAYER, authorizationLevel: 10 });
+    const get = apiAnswers({ ...PLAYER, role: "admin" });
     render(
       <QueryClientProvider client={new QueryClient()}>
         <MemoryRouter>
@@ -167,7 +175,7 @@ describe("Home", () => {
 
   it("shows staff every quest, and fetches no quests of theirs", async () => {
     const get = apiAnswers(
-      { ...PLAYER, authorizationLevel: 5 },
+      { ...PLAYER, role: "staff" },
       { items: [], next: null }
     );
     show();

@@ -424,7 +424,7 @@ describe("POST /api/v1/webhooks/twilio/messages", () => {
   });
 });
 
-describe("POST /api/v1/quests/{name}/{teams|players}/{entrant}/text-messages", () => {
+describe("POST /api/v1/quests/{questName}/{teams|players}/{entrant}/text-messages", () => {
   let twilioRequests: { data?: unknown }[];
 
   let adminToken = "";

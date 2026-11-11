@@ -1,3 +1,4 @@
+import type { Schemas } from "@puzzlequest/api-client";
 import { useQuery } from "@tanstack/react-query";
 import { api, dataOrThrow } from "./api";
 
@@ -27,10 +28,8 @@ export function goToSignIn(): void {
  * @param user the user, if any
  * @returns true if so
  */
-export function isAdministrator(user?: {
-  authorizationLevel: number;
-}): boolean {
-  return (user?.authorizationLevel ?? 0) >= 10;
+export function isAdministrator(user?: { role: Schemas["Role"] }): boolean {
+  return user?.role === "admin";
 }
 
 /**
@@ -39,7 +38,6 @@ export function isAdministrator(user?: {
  * @param user the user, if any
  * @returns true if so
  */
-export function isStaff(user?: { authorizationLevel: number }): boolean {
-  const level = user?.authorizationLevel ?? 0;
-  return level >= 5 && level < 10;
+export function isStaff(user?: { role: Schemas["Role"] }): boolean {
+  return user?.role === "staff";
 }

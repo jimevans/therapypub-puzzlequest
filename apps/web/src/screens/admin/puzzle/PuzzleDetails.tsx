@@ -16,7 +16,7 @@ function Details({ puzzle }: { puzzle: Puzzle }) {
         <h1>{puzzle.displayName}</h1>
         <LinkButton
           id="edit-puzzle"
-          to={`/puzzle/${encodeURIComponent(puzzle.name)}/edit`}
+          to={`/puzzle/${encodeURIComponent(puzzle.puzzleName)}/edit`}
           variant="primary"
         >
           Edit
@@ -24,13 +24,13 @@ function Details({ puzzle }: { puzzle: Puzzle }) {
       </div>
       <dl className={styles.details}>
         <dt>Name</dt>
-        <dd>{puzzle.name}</dd>
+        <dd>{puzzle.puzzleName}</dd>
         <dt>Type</dt>
         <dd>{puzzleTypeLabel(puzzle.type)}</dd>
         <dt>Solution keywords</dt>
         <dd id="solution-keyword">{puzzle.solutionKeyword}</dd>
         <dt>Solution as shown</dt>
-        <dd>{puzzle.solutionDisplayText}</dd>
+        <dd>{puzzle.solutionText}</dd>
       </dl>
       <section className={styles.section} aria-labelledby="content-heading">
         <h2 id="content-heading" className={styles.label}>
@@ -66,7 +66,9 @@ function Details({ puzzle }: { puzzle: Puzzle }) {
               {puzzle.hints.map((hint, index) => (
                 <tr key={index}>
                   <td>{hint.text}</td>
-                  <td className={styles.seconds}>{hint.timePenalty} s</td>
+                  <td className={styles.seconds}>
+                    {hint.timePenaltySeconds} s
+                  </td>
                   <td>{hint.solutionWarning ? "Yes" : "No"}</td>
                 </tr>
               ))}

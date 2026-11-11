@@ -945,16 +945,14 @@ describe("getPuzzleHint", () => {
       statusCode: 200,
       data: {
         hintText: "Think of the flag",
-        moreHints: true,
         timePenalty: 60,
-        isNextHintSolution: true,
+        nextHint: { timePenalty: 300, solutionWarning: true },
       },
     });
     expect(second.data).toEqual({
       hintText: "It is red and blue",
-      moreHints: false,
       timePenalty: 300,
-      isNextHintSolution: false,
+      nextHint: null,
     });
     expect((await storedQuest()).entries[0]!.puzzles[0].nextHintToDisplay).toBe(
       2

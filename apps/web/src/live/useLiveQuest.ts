@@ -41,8 +41,8 @@ export function useLiveQuest(questName: string) {
       questName,
       getTicket: async () =>
         dataOrThrow(
-          await api.POST("/quests/{name}/live-tickets", {
-            params: { path: { name: questName } },
+          await api.POST("/quests/{questName}/live-tickets", {
+            params: { path: { questName } },
             ...shareLinkRequest(questName),
           })
         ).ticket,

@@ -27,6 +27,7 @@ ask.
 - [0020. Share links are stored, hashed tokens](0020-stored-share-links.md)
 - [0021. Native apps in SwiftUI and Kotlin, in their own repositories](0021-native-apps.md)
 - [0022. A quest's players are entries, each with its own progress](0022-quest-entries.md)
+- [0023. The API's conventions, for version 1.0](0023-api-conventions.md)
 
 To add one, copy the shape of an existing record (status, date, context,
 decision, consequences, alternatives), number it next, and add it here. A

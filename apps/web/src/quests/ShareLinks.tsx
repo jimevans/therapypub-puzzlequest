@@ -61,8 +61,8 @@ function CreateLink({ questName, canSetExpiry, onClose }: CreateLinkProps) {
   const create = useMutation({
     mutationFn: async () =>
       dataOrThrow(
-        await api.POST("/quests/{name}/share-links", {
-          params: { path: { name: questName } },
+        await api.POST("/quests/{questName}/share-links", {
+          params: { path: { questName } },
           body: {
             label,
             ...(expires
@@ -176,8 +176,8 @@ export function ShareLinks({ questName }: { questName: string }) {
   const revoke = useMutation({
     mutationFn: async (id: string) => {
       const { error, response } = await api.DELETE(
-        "/quests/{name}/share-links/{linkId}",
-        { params: { path: { name: questName, linkId: id } } }
+        "/quests/{questName}/share-links/{linkId}",
+        { params: { path: { questName, linkId: id } } }
       );
       if (!response.ok) {
         throw new Error(error?.detail ?? "Couldn't revoke the link");

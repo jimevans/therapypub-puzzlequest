@@ -45,7 +45,7 @@ export function ActivityLog({
   entrant?: EntrantRef;
   Heading?: "h2" | "h3";
 }) {
-  const events = useQuery(eventsQuery(quest.name));
+  const events = useQuery(eventsQuery(quest.questName));
   const [showAll, setShowAll] = useState(false);
   const [everyone, setEveryone] = useState(false);
   const labels = new Map(

@@ -21,7 +21,9 @@ export function questQuery(name: string) {
     staleTime: JUST_FETCHED_MS,
     queryFn: async () =>
       dataOrThrow(
-        await api.GET("/quests/{name}", { params: { path: { name } } })
+        await api.GET("/quests/{questName}", {
+          params: { path: { questName: name } },
+        })
       ),
   });
 }
@@ -37,8 +39,8 @@ export function shareLinksQuery(name: string) {
     staleTime: JUST_FETCHED_MS,
     queryFn: async () =>
       dataOrThrow(
-        await api.GET("/quests/{name}/share-links", {
-          params: { path: { name } },
+        await api.GET("/quests/{questName}/share-links", {
+          params: { path: { questName: name } },
         })
       ),
   });
@@ -55,8 +57,8 @@ export function spectatorQuestQuery(name: string) {
     staleTime: JUST_FETCHED_MS,
     queryFn: async () =>
       dataOrThrow(
-        await api.GET("/quests/{name}/spectator-view", {
-          params: { path: { name } },
+        await api.GET("/quests/{questName}/spectator-view", {
+          params: { path: { questName: name } },
           ...shareLinkRequest(name),
         })
       ),
@@ -81,10 +83,16 @@ export function spectatorPuzzleQuery(
     staleTime: JUST_FETCHED_MS,
     queryFn: async () =>
       dataOrThrow(
-        await api.GET("/quests/{name}/puzzles/{puzzleName}/spectator-view", {
-          params: { path: { name, puzzleName }, query: { entry } },
-          ...shareLinkRequest(name),
-        })
+        await api.GET(
+          "/quests/{questName}/puzzles/{puzzleName}/spectator-view",
+          {
+            params: {
+              path: { questName: name, puzzleName },
+              query: { entryId: entry },
+            },
+            ...shareLinkRequest(name),
+          }
+        )
       ),
   });
 }
@@ -101,8 +109,8 @@ export function puzzleQuery(name: string, puzzleName: string) {
     staleTime: JUST_FETCHED_MS,
     queryFn: async () =>
       dataOrThrow(
-        await api.GET("/quests/{name}/puzzles/{puzzleName}", {
-          params: { path: { name, puzzleName } },
+        await api.GET("/quests/{questName}/puzzles/{puzzleName}", {
+          params: { path: { questName: name, puzzleName } },
         })
       ),
   });

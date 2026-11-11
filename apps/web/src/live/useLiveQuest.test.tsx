@@ -54,8 +54,8 @@ describe("useLiveQuest", () => {
 
     await expect(followed().getTicket()).resolves.toBe("ticket-1");
 
-    expect(post).toHaveBeenCalledWith("/quests/{name}/live-tickets", {
-      params: { path: { name: "trail" } },
+    expect(post).toHaveBeenCalledWith("/quests/{questName}/live-tickets", {
+      params: { path: { questName: "trail" } },
     });
   });
 

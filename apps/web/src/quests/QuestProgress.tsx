@@ -22,9 +22,9 @@ export type EntrySummary = Pick<
 
 /** One step of a quest, however the API describes it to this viewer. */
 export interface QuestStep {
-  name: string;
+  puzzleName: string;
   displayName: string;
-  status: number;
+  status: Schemas["StopStatus"];
   statusDescription: string;
   startTime?: string | null;
   activationTime?: string | null;
@@ -84,7 +84,7 @@ function StepCard({
   return (
     <ProgressStep
       state={completed ? "done" : "current"}
-      data-puzzle-name={step.name}
+      data-puzzle-name={step.puzzleName}
     >
       <p className={styles.stepNumber}>{copy.stepLabel(stepNumber)}</p>
       <Heading className={styles.stepName}>
@@ -150,11 +150,11 @@ export function EntryProgress({
       <ProgressLine label={copy.stepsReached} open={!completed}>
         {steps.map((step, index) => (
           <StepCard
-            key={step.name}
+            key={step.puzzleName}
             step={step}
             stepNumber={index + 1}
             clock={progress.puzzles.find(
-              ({ puzzleName }) => puzzleName === step.name
+              ({ puzzleName }) => puzzleName === step.puzzleName
             )}
             Heading={stepHeading}
           />

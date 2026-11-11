@@ -66,7 +66,7 @@ async function signUpAsAdmin(signedInAs: "admin" | "player" | null) {
     displayName: "Newcomer",
     email: "newcomer@example.com",
     password: "a long enough password",
-    authorizationLevel: AuthorizationLevel.ADMIN,
+    role: "admin",
   });
 }
 
@@ -90,7 +90,7 @@ describe("signing up", () => {
     expect(response.headers.location).toBe("/api/v1/users/newcomer");
     expect(JSON.parse(response.text)).toMatchObject({
       userName: "newcomer",
-      authorizationLevel: AuthorizationLevel.USER,
+      role: "player",
       emailVerified: false,
       teams: [],
     });

@@ -60,12 +60,12 @@ export default [
   onTopOfFirstLoad(
     "The puzzle screen",
     "src/screens/puzzle/PuzzleScreen.tsx",
-    "24 KB"
+    "25 KB"
   ),
   onTopOfFirstLoad(
     "Following a quest",
     "src/screens/followAlong/FollowQuest.tsx",
-    "7 KB"
+    "8 KB"
   ),
   onTopOfFirstLoad(
     "Following a puzzle",
@@ -110,12 +110,12 @@ export default [
   onTopOfFirstLoad(
     "The quest console",
     "src/screens/questConsole/QuestConsole.tsx",
-    "42 KB"
+    "43 KB"
   ),
   onTopOfFirstLoad(
     "The quest editor",
     "src/screens/admin/quest/QuestEditor.tsx",
-    "52 KB"
+    "53 KB"
   ),
   onTopOfFirstLoad(
     "The puzzle editor",

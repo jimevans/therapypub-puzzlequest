@@ -30,7 +30,7 @@ interface FollowOptions {
 
 export interface FollowQuestOptions extends FollowOptions {
   questName: string;
-  /** Gets a new ticket from POST /quests/{name}/live-tickets. */
+  /** Gets a new ticket from POST /quests/{questName}/live-tickets. */
   getTicket: () => Promise<string>;
 }
 
