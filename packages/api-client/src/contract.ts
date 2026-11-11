@@ -120,7 +120,45 @@ function problemTypeMismatch(
 }
 
 /**
- * Makes a contract from an OpenAPI 3.1 description.
+ * Closes every object schema that doesn't say what other fields it allows,
+ * so checking against it fails on a field it doesn't list. The published
+ * description leaves responses open, since version 1 may add fields and
+ * clients must ignore them; but what this version sends must be exactly
+ * what it describes, which is how tests catch a field leaking into a
+ * response, such as a quest's length into a player's view.
+ * @param schema a schema, or any part of the description
+ * @returns a closed copy
+ */
+function closed(schema: unknown): unknown {
+  if (Array.isArray(schema)) {
+    return schema.map(closed);
+  }
+  if (typeof schema !== "object" || schema === null) {
+    return schema;
+  }
+  const copy = Object.fromEntries(
+    Object.entries(schema).map(([key, value]) => [
+      key,
+      // A schema's properties are a map of names to schemas, not a schema:
+      // close each property, but not the map, which may have any names.
+      key === "properties" && typeof value === "object" && value !== null
+        ? Object.fromEntries(
+            Object.entries(value).map(([name, property]) => [
+              name,
+              closed(property),
+            ])
+          )
+        : closed(value),
+    ])
+  );
+  return "properties" in copy && !("additionalProperties" in copy)
+    ? { ...copy, additionalProperties: false }
+    : copy;
+}
+
+/**
+ * Makes a contract from an OpenAPI 3.1 description. Responses are checked
+ * as exactly what it describes: a field it doesn't list fails (see closed).
  * @param description the description, as parsed JSON
  * @returns the contract
  */
@@ -131,7 +169,7 @@ export function createContract(description: unknown): Contract {
   // references to shared schemas resolved.
   const ajv = new Ajv2020({ strict: false, allErrors: true });
   addFormats(ajv);
-  ajv.addSchema(description as object, "api");
+  ajv.addSchema(closed(description) as object, "api");
 
   // A literal segment beats a parameter, so /sessions/current is found
   // before a /sessions/{id} would be.

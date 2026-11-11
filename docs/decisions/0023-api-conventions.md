@@ -61,10 +61,13 @@ them:
 - Generated Swift and Kotlin clients get real enums and one type per shape.
 - A change to the wire format is a change to the mapping, not to storage, and
   storage can change without changing the API.
-- Response schemas still forbid fields they don't list, so the server's tests
-  catch a field leaking into a view (decision
-  [0011](0011-quest-length-stays-hidden.md)); clients are told to tolerate
-  new ones regardless.
+- The published response schemas don't forbid fields they don't list
+  (changed in 1.0.1): 1.0's did, and a client generated from them, such as
+  the iOS app's, rejected any field added later. The server's and web app's
+  tests check responses with every object closed (`createContract`), so a
+  field leaking into a view (decision
+  [0011](0011-quest-length-stays-hidden.md)) still fails them. Messages
+  clients send keep forbidding extra fields where the server refuses them.
 - Problem details keep RFC 9457's shape, whose extension members (`errors`,
   `requestId`) are absent when they don't apply.
 

@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "PuzzleQuest API",
-    "version": "1.0.0",
-    "description": "PuzzleQuest's API, for its web pages and for apps. This description is at `/api/v1/openapi.json`, and shown as a reference at `/api/v1/docs`.\n\nSign in with `POST /sessions`. A browser keeps the session in a cookie; an app asks for its token (`\"client\": \"native\"`) and sends it as `Authorization: Bearer <token>`. A request that changes something and is sent with the cookie must come from this site.\n\nLists come a page at a time: `?limit=` (default 50, at most 200) and `?after=`, the `next` value of the page before.\n\nNames and values follow the same conventions throughout. Things are named in paths and bodies as `questName`, `puzzleName`, `teamName`, and `userName`; a quest's stop is named by its puzzle's `puzzleName`. Enumerated values, such as statuses, roles, and event types, are camelCase strings. A field whose value isn't set, such as a time that hasn't come yet, is present with the value `null`; a field is absent only when the caller isn't allowed to see it, as each such field's description says. Units are in names: `timePenaltySeconds`, `elapsedMs`.\n\nVersion 1.0 can gain fields, enumerated values, problem types, and live-update messages without a new version. Clients must ignore fields they don't recognise, and treat a value they don't recognise sensibly, such as an unknown status as unknown, rather than failing; the schemas here describe this version's responses exactly.\n\nClients follow a quest as it happens over the live-update websocket, `/api/v1/updates`. Anyone may connect. A client sends a `LiveUpdateSubscription` naming the quest, with a ticket from `POST /quests/{questName}/live-tickets`; the server answers with its connection's ID, then sends a `LiveUpdate` for each change to that quest, naming the puzzle concerned where there is one. A client sends its connection's ID as `connectionId` with its own actions, so their updates aren't sent back to it. Each update names the entry whose progress changed (`entryId`). While a quest is a race that not every entry has finished, a connection is sent an update's content only if its ticket was issued to staff, an administrator, or a player of that entry; every other connection is sent `questUpdated` with the entry's ID instead, and fetches what it shows again. Starting and resetting a quest send no update to its followers. A player's home screen instead names the user, with a ticket from `POST /users/{userName}/live-tickets`, and is sent `questsChanged` whenever the list of quests they play should be fetched again, starting and resetting included. Both messages are described under the schemas. Updates can be missed, so a client should fetch what it follows again each time it connects.\n\nErrors are problem details (RFC 9457), sent as `application/problem+json`. Act on their `type`, one of:\n\n| Type | Status | When |\n| --- | --- | --- |\n| `/problems/invalid-request` | 400 | The request's parameters or body are missing, malformed, or have values that aren't allowed. The errors member lists each problem, with where it is, such as body.email. |\n| `/problems/sign-in-required` | 401 | The request needs a signed-in user, and has no session, or one that has ended. |\n| `/problems/sign-in-failed` | 401 | The user name and password don't match an account. Which of them is wrong isn't said. |\n| `/problems/forbidden` | 403 | The signed-in user isn't allowed to do this. |\n| `/problems/cross-site-request` | 403 | A request that changes something was sent with this site's cookie from a page on another site. Send it from this site, or with a Bearer token. |\n| `/problems/not-found` | 404 | There is no such resource, or the signed-in user may not know about it. |\n| `/problems/already-exists` | 409 | Something with that name, email address, or join code already exists, or the user is already a member of the team. |\n| `/problems/email-not-verified` | 409 | The user hasn't verified their email address, so nothing can be sent to it that depends on it, such as a password reset link. |\n| `/problems/incorrect-password` | 422 | The current password given isn't the user's password. |\n| `/problems/password-not-allowed` | 422 | The new password doesn't meet the password policy, such as its length, or is the same as the current one. |\n| `/problems/wrong-join-code` | 422 | The join code isn't the team's. |\n| `/problems/invalid-link` | 422 | The token from a password reset or email verification link isn't valid: it is malformed, already used, or expired. |\n| `/problems/in-use` | 409 | It can't be deleted while something uses it, such as a puzzle a quest includes. The detail says what uses it. |\n| `/problems/invalid-upload` | 400 | The upload is missing a field, sends its fields in the wrong order, or is a kind of file that isn't accepted. |\n| `/problems/body-too-large` | 413 | The request's body is larger than the server reads. |\n| `/problems/upload-too-large` | 413 | The uploaded file is larger than allowed. |\n| `/problems/invalid-quest` | 422 | The quest's entrants name a user or team that doesn't exist, or a player in more than one entry, or it lists a puzzle that doesn't exist or appears twice. |\n| `/problems/wrong-state` | 409 | The quest or puzzle isn't in a state that allows this: for example, the quest has already started, isn't paused, or is completed, or the puzzle hasn't been reached or solved. The detail says which. |\n| `/problems/quest-paused` | 409 | The puzzle master has paused the quest; the players can't act until it resumes. |\n| `/problems/try-again` | 409 | Someone else changed the quest at the same moment, several times over. Try again. |\n| `/problems/wrong-activation-code` | 422 | The activation code, typed or scanned, isn't the puzzle's. |\n| `/problems/wrong-answer` | 422 | The guess isn't the puzzle's solution. |\n| `/problems/no-recipients` | 409 | No player in the entries being texted has a phone number and accepts text messages. |\n| `/problems/messaging-failed` | 502 | The text messaging service refused or failed to send a message. The details are logged. |\n| `/problems/unreadable-qr-code` | 422 | No QR code could be read from the scanned image; try again, closer or with more light, or type the code. |\n| `/problems/no-more-hints` | 409 | Every one of the puzzle's hints has been revealed. |\n| `/problems/too-many-requests` | 429 | Too many attempts in a short time. The RateLimit and RateLimit-Policy headers say when to try again. |\n| `/problems/unexpected` | 500 | Something went wrong on the server. The details are logged, not sent. |\n| `about:blank` | 4xx | Any other HTTP error, such as a body that isn't valid JSON; the title is the status's. |"
+    "version": "1.0.1",
+    "description": "PuzzleQuest's API, for its web pages and for apps. This description is at `/api/v1/openapi.json`, and shown as a reference at `/api/v1/docs`.\n\nSign in with `POST /sessions`. A browser keeps the session in a cookie; an app asks for its token (`\"client\": \"native\"`) and sends it as `Authorization: Bearer <token>`. A request that changes something and is sent with the cookie must come from this site.\n\nLists come a page at a time: `?limit=` (default 50, at most 200) and `?after=`, the `next` value of the page before.\n\nNames and values follow the same conventions throughout. Things are named in paths and bodies as `questName`, `puzzleName`, `teamName`, and `userName`; a quest's stop is named by its puzzle's `puzzleName`. Enumerated values, such as statuses, roles, and event types, are camelCase strings. A field whose value isn't set, such as a time that hasn't come yet, is present with the value `null`; a field is absent only when the caller isn't allowed to see it, as each such field's description says. Units are in names: `timePenaltySeconds`, `elapsedMs`.\n\nVersion 1.0 can gain fields, enumerated values, problem types, and live-update messages without a new version. Clients must ignore fields they don't recognise, and treat a value they don't recognise sensibly, such as an unknown status as unknown, rather than failing. So the response schemas here don't forbid fields they don't list, though this version sends only the fields they list.\n\nClients follow a quest as it happens over the live-update websocket, `/api/v1/updates`. Anyone may connect. A client sends a `LiveUpdateSubscription` naming the quest, with a ticket from `POST /quests/{questName}/live-tickets`; the server answers with its connection's ID, then sends a `LiveUpdate` for each change to that quest, naming the puzzle concerned where there is one. A client sends its connection's ID as `connectionId` with its own actions, so their updates aren't sent back to it. Each update names the entry whose progress changed (`entryId`). While a quest is a race that not every entry has finished, a connection is sent an update's content only if its ticket was issued to staff, an administrator, or a player of that entry; every other connection is sent `questUpdated` with the entry's ID instead, and fetches what it shows again. Starting and resetting a quest send no update to its followers. A player's home screen instead names the user, with a ticket from `POST /users/{userName}/live-tickets`, and is sent `questsChanged` whenever the list of quests they play should be fetched again, starting and resetting included. Both messages are described under the schemas. Updates can be missed, so a client should fetch what it follows again each time it connects.\n\nErrors are problem details (RFC 9457), sent as `application/problem+json`. Act on their `type`, one of:\n\n| Type | Status | When |\n| --- | --- | --- |\n| `/problems/invalid-request` | 400 | The request's parameters or body are missing, malformed, or have values that aren't allowed. The errors member lists each problem, with where it is, such as body.email. |\n| `/problems/sign-in-required` | 401 | The request needs a signed-in user, and has no session, or one that has ended. |\n| `/problems/sign-in-failed` | 401 | The user name and password don't match an account. Which of them is wrong isn't said. |\n| `/problems/forbidden` | 403 | The signed-in user isn't allowed to do this. |\n| `/problems/cross-site-request` | 403 | A request that changes something was sent with this site's cookie from a page on another site. Send it from this site, or with a Bearer token. |\n| `/problems/not-found` | 404 | There is no such resource, or the signed-in user may not know about it. |\n| `/problems/already-exists` | 409 | Something with that name, email address, or join code already exists, or the user is already a member of the team. |\n| `/problems/email-not-verified` | 409 | The user hasn't verified their email address, so nothing can be sent to it that depends on it, such as a password reset link. |\n| `/problems/incorrect-password` | 422 | The current password given isn't the user's password. |\n| `/problems/password-not-allowed` | 422 | The new password doesn't meet the password policy, such as its length, or is the same as the current one. |\n| `/problems/wrong-join-code` | 422 | The join code isn't the team's. |\n| `/problems/invalid-link` | 422 | The token from a password reset or email verification link isn't valid: it is malformed, already used, or expired. |\n| `/problems/in-use` | 409 | It can't be deleted while something uses it, such as a puzzle a quest includes. The detail says what uses it. |\n| `/problems/invalid-upload` | 400 | The upload is missing a field, sends its fields in the wrong order, or is a kind of file that isn't accepted. |\n| `/problems/body-too-large` | 413 | The request's body is larger than the server reads. |\n| `/problems/upload-too-large` | 413 | The uploaded file is larger than allowed. |\n| `/problems/invalid-quest` | 422 | The quest's entrants name a user or team that doesn't exist, or a player in more than one entry, or it lists a puzzle that doesn't exist or appears twice. |\n| `/problems/wrong-state` | 409 | The quest or puzzle isn't in a state that allows this: for example, the quest has already started, isn't paused, or is completed, or the puzzle hasn't been reached or solved. The detail says which. |\n| `/problems/quest-paused` | 409 | The puzzle master has paused the quest; the players can't act until it resumes. |\n| `/problems/try-again` | 409 | Someone else changed the quest at the same moment, several times over. Try again. |\n| `/problems/wrong-activation-code` | 422 | The activation code, typed or scanned, isn't the puzzle's. |\n| `/problems/wrong-answer` | 422 | The guess isn't the puzzle's solution. |\n| `/problems/no-recipients` | 409 | No player in the entries being texted has a phone number and accepts text messages. |\n| `/problems/messaging-failed` | 502 | The text messaging service refused or failed to send a message. The details are logged. |\n| `/problems/unreadable-qr-code` | 422 | No QR code could be read from the scanned image; try again, closer or with more light, or type the code. |\n| `/problems/no-more-hints` | 409 | Every one of the puzzle's hints has been revealed. |\n| `/problems/too-many-requests` | 429 | Too many attempts in a short time. The RateLimit and RateLimit-Policy headers say when to try again. |\n| `/problems/unexpected` | 500 | Something went wrong on the server. The details are logged, not sent. |\n| `about:blank` | 4xx | Any other HTTP error, such as a body that isn't valid JSON; the title is the status's. |"
   },
   "servers": [
     {
@@ -7731,8 +7731,7 @@
           "title",
           "status",
           "detail"
-        ],
-        "additionalProperties": false
+        ]
       },
       "FieldError": {
         "type": "object",
@@ -7749,8 +7748,7 @@
         "required": [
           "path",
           "message"
-        ],
-        "additionalProperties": false
+        ]
       },
       "Session": {
         "type": "object",
@@ -7765,8 +7763,7 @@
         },
         "required": [
           "user"
-        ],
-        "additionalProperties": false
+        ]
       },
       "User": {
         "type": "object",
@@ -7816,8 +7813,7 @@
           "phone",
           "sms",
           "role"
-        ],
-        "additionalProperties": false
+        ]
       },
       "TeamSummary": {
         "type": "object",
@@ -7832,8 +7828,7 @@
         "required": [
           "teamName",
           "displayName"
-        ],
-        "additionalProperties": false
+        ]
       },
       "UserPage": {
         "type": "object",
@@ -7856,8 +7851,7 @@
         "required": [
           "items",
           "next"
-        ],
-        "additionalProperties": false
+        ]
       },
       "QuestSummaryPage": {
         "type": "object",
@@ -7880,8 +7874,7 @@
         "required": [
           "items",
           "next"
-        ],
-        "additionalProperties": false
+        ]
       },
       "QuestSummary": {
         "type": "object",
@@ -7914,8 +7907,7 @@
           "statusDescription",
           "paused",
           "progress"
-        ],
-        "additionalProperties": false
+        ]
       },
       "QuestStatus": {
         "type": "string",
@@ -8000,7 +7992,6 @@
           "penaltyMs",
           "totalMs"
         ],
-        "additionalProperties": false,
         "description": "How long an entry's players have spent on a quest, or on one of its stops."
       },
       "LiveTicket": {
@@ -8019,8 +8010,7 @@
         "required": [
           "ticket",
           "expiresAt"
-        ],
-        "additionalProperties": false
+        ]
       },
       "TeamPage": {
         "type": "object",
@@ -8043,8 +8033,7 @@
         "required": [
           "items",
           "next"
-        ],
-        "additionalProperties": false
+        ]
       },
       "Team": {
         "type": "object",
@@ -8075,16 +8064,14 @@
               "required": [
                 "userName",
                 "displayName"
-              ],
-              "additionalProperties": false
+              ]
             }
           }
         },
         "required": [
           "teamName",
           "displayName"
-        ],
-        "additionalProperties": false
+        ]
       },
       "PuzzlePage": {
         "type": "object",
@@ -8107,8 +8094,7 @@
         "required": [
           "items",
           "next"
-        ],
-        "additionalProperties": false
+        ]
       },
       "Puzzle": {
         "type": "object",
@@ -8149,8 +8135,7 @@
           "solutionKeyword",
           "solutionText",
           "hints"
-        ],
-        "additionalProperties": false
+        ]
       },
       "HintDefinition": {
         "type": "object",
@@ -8173,8 +8158,7 @@
           "text",
           "solutionWarning",
           "timePenaltySeconds"
-        ],
-        "additionalProperties": false
+        ]
       },
       "PuzzleMedia": {
         "type": "object",
@@ -8186,8 +8170,7 @@
         },
         "required": [
           "path"
-        ],
-        "additionalProperties": false
+        ]
       },
       "QuestPage": {
         "type": "object",
@@ -8210,8 +8193,7 @@
         "required": [
           "items",
           "next"
-        ],
-        "additionalProperties": false
+        ]
       },
       "Quest": {
         "type": "object",
@@ -8242,8 +8224,7 @@
           "questName",
           "displayName",
           "entries"
-        ],
-        "additionalProperties": false
+        ]
       },
       "QuestEntry": {
         "type": "object",
@@ -8312,8 +8293,7 @@
           "paused",
           "puzzles",
           "progress"
-        ],
-        "additionalProperties": false
+        ]
       },
       "Entrant": {
         "type": "object",
@@ -8340,8 +8320,7 @@
           "kind",
           "name",
           "displayName"
-        ],
-        "additionalProperties": false
+        ]
       },
       "QuestPuzzle": {
         "type": "object",
@@ -8442,8 +8421,7 @@
           "endTime",
           "skipped",
           "hints"
-        ],
-        "additionalProperties": false
+        ]
       },
       "StopStatus": {
         "type": "string",
@@ -8537,7 +8515,6 @@
           "totalMs",
           "puzzles"
         ],
-        "additionalProperties": false,
         "description": "How long an entry's players have spent on a quest, overall and stop by stop."
       },
       "PuzzleClock": {
@@ -8618,7 +8595,6 @@
           "penaltyMs",
           "totalMs"
         ],
-        "additionalProperties": false,
         "description": "How long an entry's players have spent on one stop."
       },
       "QuestEventPage": {
@@ -8642,8 +8618,7 @@
         "required": [
           "items",
           "next"
-        ],
-        "additionalProperties": false
+        ]
       },
       "QuestEvent": {
         "type": "object",
@@ -8693,8 +8668,7 @@
                 "required": [
                   "kind",
                   "name"
-                ],
-                "additionalProperties": false
+                ]
               },
               {
                 "type": "null"
@@ -8726,8 +8700,7 @@
           "actorDeleted",
           "entrant",
           "data"
-        ],
-        "additionalProperties": false
+        ]
       },
       "QuestEventType": {
         "type": "string",
@@ -8780,8 +8753,7 @@
               "statusDescription",
               "paused",
               "progress"
-            ],
-            "additionalProperties": false
+            ]
           },
           "puzzle": {
             "type": "object",
@@ -8865,8 +8837,7 @@
               "hints",
               "nextHint",
               "solutionText"
-            ],
-            "additionalProperties": false
+            ]
           },
           "next": {
             "anyOf": [
@@ -8884,8 +8855,7 @@
           "quest",
           "puzzle",
           "next"
-        ],
-        "additionalProperties": false
+        ]
       },
       "RevealedHint": {
         "type": "object",
@@ -8903,8 +8873,7 @@
         "required": [
           "text",
           "timePenaltySeconds"
-        ],
-        "additionalProperties": false
+        ]
       },
       "NextStop": {
         "type": "object",
@@ -8920,7 +8889,6 @@
           "puzzleName",
           "displayName"
         ],
-        "additionalProperties": false,
         "description": "The stop after this one, which the players have reached."
       },
       "Activation": {
@@ -8934,8 +8902,7 @@
         },
         "required": [
           "activationTime"
-        ],
-        "additionalProperties": false
+        ]
       },
       "Solution": {
         "type": "object",
@@ -8963,8 +8930,7 @@
           "solutionText",
           "nextPuzzle",
           "questComplete"
-        ],
-        "additionalProperties": false
+        ]
       },
       "Hint": {
         "type": "object",
@@ -8994,8 +8960,7 @@
           "text",
           "timePenaltySeconds",
           "nextHint"
-        ],
-        "additionalProperties": false
+        ]
       },
       "SpectatorQuest": {
         "type": "object",
@@ -9038,8 +9003,7 @@
           "rivalsHidden",
           "provisional",
           "entries"
-        ],
-        "additionalProperties": false
+        ]
       },
       "SpectatorQuestEntry": {
         "type": "object",
@@ -9096,8 +9060,7 @@
           "rank",
           "progress",
           "puzzles"
-        ],
-        "additionalProperties": false
+        ]
       },
       "SpectatorEntrant": {
         "type": "object",
@@ -9117,7 +9080,6 @@
           "kind",
           "displayName"
         ],
-        "additionalProperties": false,
         "description": "Who plays the entry, by display name only."
       },
       "SpectatorStop": {
@@ -9170,8 +9132,7 @@
           "skipped",
           "activationTime",
           "solutionText"
-        ],
-        "additionalProperties": false
+        ]
       },
       "SpectatorPuzzle": {
         "type": "object",
@@ -9194,8 +9155,7 @@
               "questName",
               "displayName",
               "paused"
-            ],
-            "additionalProperties": false
+            ]
           },
           "puzzle": {
             "type": "object",
@@ -9250,15 +9210,13 @@
               "text",
               "hints",
               "solutionText"
-            ],
-            "additionalProperties": false
+            ]
           }
         },
         "required": [
           "quest",
           "puzzle"
-        ],
-        "additionalProperties": false
+        ]
       },
       "ShareLinks": {
         "type": "object",
@@ -9286,8 +9244,7 @@
           "visibility",
           "canSetExpiry",
           "links"
-        ],
-        "additionalProperties": false
+        ]
       },
       "ShareLink": {
         "type": "object",
@@ -9327,8 +9284,7 @@
           "createdAt",
           "expiresAt",
           "canRevoke"
-        ],
-        "additionalProperties": false
+        ]
       },
       "CreatedShareLink": {
         "type": "object",
@@ -9350,8 +9306,7 @@
           "id",
           "token",
           "expiresAt"
-        ],
-        "additionalProperties": false
+        ]
       },
       "StaffQuestSummaryPage": {
         "type": "object",
@@ -9374,8 +9329,7 @@
         "required": [
           "items",
           "next"
-        ],
-        "additionalProperties": false
+        ]
       },
       "StaffQuestSummary": {
         "type": "object",
@@ -9397,8 +9351,7 @@
           "questName",
           "displayName",
           "entries"
-        ],
-        "additionalProperties": false
+        ]
       },
       "StaffQuestEntrySummary": {
         "type": "object",
@@ -9446,8 +9399,7 @@
           "paused",
           "rank",
           "progress"
-        ],
-        "additionalProperties": false
+        ]
       },
       "StaffQuest": {
         "type": "object",
@@ -9469,8 +9421,7 @@
           "questName",
           "displayName",
           "entries"
-        ],
-        "additionalProperties": false
+        ]
       },
       "StaffQuestEntry": {
         "type": "object",
@@ -9525,8 +9476,7 @@
           "rank",
           "progress",
           "puzzles"
-        ],
-        "additionalProperties": false
+        ]
       },
       "StaffStop": {
         "type": "object",
@@ -9616,8 +9566,7 @@
           "activationTime",
           "startTime",
           "endTime"
-        ],
-        "additionalProperties": false
+        ]
       },
       "NextHint": {
         "type": "object",
@@ -9637,7 +9586,6 @@
           "timePenaltySeconds",
           "solutionWarning"
         ],
-        "additionalProperties": false,
         "description": "What revealing the puzzle's next hint would cost."
       },
       "LiveUpdate": {
@@ -9656,8 +9604,7 @@
             "required": [
               "message",
               "connectionId"
-            ],
-            "additionalProperties": false
+            ]
           },
           {
             "type": "object",
@@ -9688,8 +9635,7 @@
               "entryId",
               "puzzleName",
               "activationTime"
-            ],
-            "additionalProperties": false
+            ]
           },
           {
             "type": "object",
@@ -9729,8 +9675,7 @@
               "solutionText",
               "endTime",
               "questComplete"
-            ],
-            "additionalProperties": false
+            ]
           },
           {
             "type": "object",
@@ -9765,8 +9710,7 @@
               "puzzleName",
               "displayName",
               "startTime"
-            ],
-            "additionalProperties": false
+            ]
           },
           {
             "type": "object",
@@ -9814,8 +9758,7 @@
               "hintText",
               "timePenaltySeconds",
               "nextHint"
-            ],
-            "additionalProperties": false
+            ]
           },
           {
             "type": "object",
@@ -9836,8 +9779,7 @@
               "message",
               "questName",
               "entryId"
-            ],
-            "additionalProperties": false
+            ]
           },
           {
             "type": "object",
@@ -9849,8 +9791,7 @@
             },
             "required": [
               "message"
-            ],
-            "additionalProperties": false
+            ]
           }
         ],
         "description": "A message from the live-update websocket, /api/v1/updates, to a client: which kind is in its message field.",
