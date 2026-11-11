@@ -1,0 +1,62 @@
+name: Release
+
+# Pushing a version tag, such as v1.0.0, publishes a GitHub release
+# with that version's notes from CHANGELOG.md and the API's description, which
+# the iOS and Android apps pin and generate their clients from (decision 0021):
+#
+# - openapi.json: the REST API.
+# - live-updates.json: the live-update messages, which openapi.json describes
+#   too, kept whole for the apps' own compatibility checks.
+#
+# A release that already exists for the tag gets the files replaced.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Publish the release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # A tag that doesn't match the version the packages say is a mistake:
+      # the release would describe a different version than its name.
+      - name: Check the tag matches the version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::The tag is $TAG, but package.json says $version."
+            exit 1
+          fi
+      - name: Get the version's notes from the changelog
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          awk -v version="${TAG#v}" '
+            /^## / { if (found) exit; found = index($0, "## " version " ") == 1 || $0 == "## " version; next }
+            found
+          ' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          if [ ! -s "$RUNNER_TEMP/notes.md" ]; then
+            echo "::error::CHANGELOG.md has no section for ${TAG#v}."
+            exit 1
+          fi
+      - name: Publish the release and its files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          files="packages/api-client/openapi.json packages/api-client/live-updates.json"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" $files --clobber
+          else
+            gh release create "$TAG" $files --verify-tag --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
+          fi

@@ -44,11 +44,15 @@ account`, `fix: leave the health check to the server`.
   and anything the person deploying it must do.
 - A change that players, staff, administrators, or an app's developers would
   notice gets a line in `CHANGELOG.md`, under "Unreleased". A release moves
-  those lines under its version number, sets that number in every
-  `package.json` (`npm version X.Y.Z --workspaces --include-workspace-root
---no-git-tag-version`), and is tagged `vX.Y.Z` on `main` once merged. The
-  API's own version (`API_VERSION`) changes only when the API does: its minor
-  number when it gains something.
+  those lines under a `## X.Y.Z — date` heading, sets that number in every
+  `package.json` with
+  `npm version X.Y.Z --workspaces --include-workspace-root --no-git-tag-version`,
+  and is tagged `vX.Y.Z` on `main` once merged. Pushing the tag publishes a
+  GitHub release with that version's changelog notes and the API's
+  description (`openapi.json`, `live-updates.json`) for the apps to pin; it
+  fails if the tag doesn't match `package.json` or the changelog has no
+  section for it. The API's own version (`API_VERSION`) changes only when the
+  API does: its minor number when it gains something.
 
 ## Before opening a pull request
 
