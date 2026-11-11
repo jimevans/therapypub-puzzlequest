@@ -286,4 +286,35 @@ describe("a quest several teams race, as staff see it", () => {
       ["rivals", 0],
     ]);
   });
+
+  it("ranks the entries that have finished, keeping them in the quest's order", async () => {
+    await QuestService.startQuest(
+      "quest",
+      {},
+      { entrant: { kind: "team", name: "rivals" } }
+    );
+    for (const puzzleName of ["riddle", "lantern"]) {
+      await QuestService.skipQuestPuzzle(
+        "quest",
+        puzzleName,
+        {},
+        { entrant: { kind: "team", name: "rivals" } }
+      );
+    }
+    const ranks = (body: {
+      entries: { entrant: { name: string }; rank: number | null }[];
+    }) => body.entries.map(({ entrant, rank }) => [entrant.name, rank]);
+
+    const quest = await asStaff("/api/v1/quests/quest/staff-view");
+    const list = await asStaff("/api/v1/staff/quests");
+
+    expect(ranks(quest.body)).toEqual([
+      ["the-team", null],
+      ["rivals", 1],
+    ]);
+    expect(ranks(list.body.items[0])).toEqual([
+      ["the-team", null],
+      ["rivals", 1],
+    ]);
+  });
 });

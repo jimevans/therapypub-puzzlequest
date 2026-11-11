@@ -27,8 +27,8 @@ export default defineConfig({
         autoUpdate: (threshold) => Math.floor(threshold),
         branches: 88,
         functions: 98,
-        lines: 94,
-        statements: 94,
+        lines: 95,
+        statements: 95,
         "src/domain/**": {
           branches: 100,
           functions: 100,

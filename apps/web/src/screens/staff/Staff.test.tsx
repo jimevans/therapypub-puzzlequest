@@ -42,6 +42,7 @@ const QUEST = {
   status: 1,
   statusDescription: "In progress",
   paused: false,
+  rank: null as number | null,
   progress: {
     ...STOPPED,
     startTime: "2026-11-07T10:00:00.000Z",
@@ -68,6 +69,7 @@ const SUMMARY = {
   status: QUEST.status,
   statusDescription: QUEST.statusDescription,
   paused: QUEST.paused,
+  rank: null as number | null,
   progress: { ...STOPPED, startTime: "2026-11-07T10:00:00.000Z" },
 };
 
@@ -157,11 +159,20 @@ describe("staff's home, with a race", () => {
                 entrant: { kind: "user", name: "sam", displayName: "Sam" },
                 status: 2,
                 statusDescription: "Completed",
+                rank: 1,
                 progress: {
                   ...STOPPED,
                   startTime: "2026-11-07T10:00:00.000Z",
                   totalMs: 60_000,
                 },
+              },
+              {
+                ...reds,
+                id: "entry-3",
+                entrant: { kind: "team", name: "blues", displayName: "Blues" },
+                status: 0,
+                statusDescription: "Not yet started",
+                progress: STOPPED,
               },
             ],
           },
@@ -173,9 +184,12 @@ describe("staff's home, with a race", () => {
 
     const quest = await screen.findByRole("link", { name: "The Race" });
     const card = within(quest.closest("li") as HTMLElement);
+    // In leaderboard order: those finished, by rank, then those playing.
     const entries = card.getAllByRole("listitem");
-    expect(entries[0]).toHaveTextContent("The Reds (team) · In progress");
-    expect(entries[1]).toHaveTextContent("Sam (player) · Completed1:00");
+    expect(entries[0]).toHaveTextContent("1st · Sam (player) · Completed1:00");
+    expect(entries[1]).toHaveTextContent("The Reds (team) · In progress");
+    expect(entries[1]).not.toHaveTextContent(/1st|2nd/);
+    expect(entries[2]).toHaveTextContent("Blues (team) · Not yet started");
   });
 });
 
@@ -259,6 +273,7 @@ describe("a quest, as staff follow it", () => {
     const blues = await screen.findByRole("region", {
       name: "The Blues (team)",
     });
+    expect(screen.queryByText(/1st/)).not.toBeInTheDocument();
     const steps = within(
       within(blues).getByRole("list", { name: "Stops for The Blues (team)" })
     ).getAllByRole("listitem");
@@ -268,6 +283,37 @@ describe("a quest, as staff follow it", () => {
         screen.getByRole("region", { name: "The Reds (team)" })
       ).getAllByRole("listitem")[1]
     ).toHaveTextContent("Players here · Awaiting activation");
+  });
+
+  it("puts the teams in a race in leaderboard order, with their ranks", async () => {
+    const [reds] = withOneEntry(QUEST).entries;
+    vi.spyOn(api, "GET").mockResolvedValue(
+      ok({
+        name: "trail",
+        displayName: "The Trail",
+        entries: [
+          reds,
+          {
+            ...reds,
+            id: "entry-2",
+            entrant: { kind: "team", name: "blues", displayName: "The Blues" },
+            status: 2,
+            statusDescription: "Completed",
+            rank: 1,
+          },
+        ],
+      }) as never
+    );
+    show(<StaffQuest />, "/quest/trail", "/quest/:name");
+
+    await screen.findByRole("region", { name: "The Blues (team)" });
+    const headings = screen
+      .getAllByRole("heading", { level: 2 })
+      .map((heading) => heading.textContent);
+    expect(headings).toEqual(["The Blues (team)", "The Reds (team)"]);
+    expect(
+      screen.getByRole("region", { name: "The Blues (team)" })
+    ).toHaveTextContent("1st · The Blues (team) · Completed");
   });
 
   it("says when there's no such quest", async () => {

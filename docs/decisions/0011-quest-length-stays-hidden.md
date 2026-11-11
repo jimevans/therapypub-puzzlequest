@@ -28,6 +28,11 @@ anything that would reveal it, such as per-puzzle progress.
   hints, and answers, or learn the quest's length from a team that has
   finished. Once every entry has finished, the views show each entry's
   reached stops as before.
+- The standings are a leaderboard: entries that have finished are ranked by
+  total time, provisionally until every entry has. A player whose own entry
+  is still racing sees only that entry in them, not how rivals stand, until
+  it finishes; the public, share links, and staff see every entry. The
+  leaderboard never shows how many stops anyone has completed.
 
 ## Alternatives considered
 

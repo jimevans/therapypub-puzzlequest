@@ -4,7 +4,12 @@ import { Link } from "react-router";
 import { messageOf } from "../../api";
 import { ClockTime } from "../../quests/ClockTime";
 import { Banner } from "../../ui/Banner";
-import { entrantLabel, overallState } from "../../quests/entrants";
+import {
+  entrantLabel,
+  inLeaderboardOrder,
+  ordinal,
+  overallState,
+} from "../../quests/entrants";
 import styles from "./Staff.module.css";
 import { staffQuestsQuery } from "./staffQueries";
 
@@ -40,11 +45,15 @@ function QuestCard({ quest }: { quest: Quest }) {
           )}
         </>
       ) : (
-        // A race: each team or player on a line, with its time.
+        // A race: each team or player on a line, with its time, in
+        // leaderboard order, with its rank once it has finished.
         <ul className={styles.entries}>
-          {quest.entries.map((entry) => (
+          {inLeaderboardOrder(quest.entries, (entry) => entry).map((entry) => (
             <li key={entry.id}>
-              <span>{entryDetail(entry)}</span>
+              <span>
+                {entry.rank !== null && `${ordinal(entry.rank)} · `}
+                {entryDetail(entry)}
+              </span>
               {entry.progress.startTime && (
                 <ClockTime
                   className={styles.time}

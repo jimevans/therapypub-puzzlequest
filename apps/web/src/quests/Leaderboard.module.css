@@ -1,0 +1,91 @@
+.leaderboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow-wrap: anywhere;
+}
+
+.table caption {
+  margin-bottom: var(--space-2);
+  font-family: var(--font-display);
+  font-size: 1.5em;
+  font-weight: 700;
+  text-align: left;
+}
+
+.table th,
+.table td {
+  padding: var(--space-2) var(--space-3) var(--space-2) 0;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  vertical-align: baseline;
+}
+
+.table thead th {
+  color: var(--ink-soft);
+  font-size: var(--text-small);
+  font-weight: 600;
+}
+
+.table .rank {
+  padding-left: var(--space-2);
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.time {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The winner: in bold, with a bar beside it and the word "Winner", so that
+   it doesn't rest on color. */
+.winner th,
+.winner td {
+  font-weight: 700;
+}
+
+.winner .rank {
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+
+/* The viewer's own team, labelled as well as shaded. */
+.own {
+  background: var(--paper-soft);
+}
+
+.badge {
+  display: inline-block;
+  padding: 0 0.4em;
+  border: 1px solid currentcolor;
+  border-radius: var(--radius);
+  font-size: 0.75em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.note {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-small);
+}
+
+/* Text for screen readers only: read out, but not shown. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

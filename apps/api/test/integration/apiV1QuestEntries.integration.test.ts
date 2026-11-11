@@ -231,6 +231,38 @@ describe("a quest several entrants race", () => {
     expect(response.text).not.toMatch(/reds|solo|second|third/);
   });
 
+  it("ranks, for an administrator, the entries that have finished, in entry order", async () => {
+    await as("admin", "post", "/quests/race/start").expect(200);
+    for (const name of ["blues", "solo"]) {
+      for (const puzzle of ["first", "second", "third"]) {
+        await QuestService.skipQuestPuzzle(
+          "race",
+          puzzle,
+          {},
+          { entrant: { kind: name === "solo" ? "user" : "team", name } }
+        );
+      }
+    }
+
+    const quest = bodyOf(await as("admin", "get", "/quests/race"));
+    const [reds, blues, solo] = quest.entries;
+
+    expect(reds).toMatchObject({ entrant: { name: "reds" }, rank: null });
+    expect(blues.entrant.name).toBe("blues");
+    expect(solo.entrant.name).toBe("solo");
+    const [faster, slower] =
+      blues.progress.totalMs <= solo.progress.totalMs
+        ? [blues, solo]
+        : [solo, blues];
+    expect(faster.rank).toBe(1);
+    expect(slower.rank).toBe(
+      slower.progress.totalMs === faster.progress.totalMs ? 1 : 2
+    );
+    // A player's own entry has no rank: it's only for administrators.
+    const own = bodyOf(await as("blue1", "get", "/quests/race"));
+    expect(own.entries[0]).not.toHaveProperty("rank");
+  });
+
   it("shows a player their own entry's puzzle", async () => {
     await as("admin", "post", "/quests/race/start").expect(200);
     await solveFirst("red1");

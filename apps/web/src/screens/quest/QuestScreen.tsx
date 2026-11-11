@@ -1,5 +1,6 @@
 import type { Schemas } from "@puzzlequest/api-client";
 import { useQuery } from "@tanstack/react-query";
+import { Suspense, lazy } from "react";
 import { useParams } from "react-router";
 import { ApiError } from "../../api";
 import { useLiveQuest } from "../../live/useLiveQuest";
@@ -11,6 +12,10 @@ import { formatDuration } from "../../quests/clock";
 import { questQuery } from "../../quests/queries";
 import { Banner } from "../../ui/Banner";
 import styles from "./QuestScreen.module.css";
+
+// Only a player who has finished needs a race's standings, so they download
+// them then. (lazy() loads a component's code the first time it renders.)
+const RaceStandings = lazy(() => import("./RaceStandings"));
 
 function QuestDetails({ quest }: { quest: Schemas["Quest"] }) {
   // A player sees only their own entry, as the quest's one entry.
@@ -34,10 +39,15 @@ function QuestDetails({ quest }: { quest: Schemas["Quest"] }) {
         path: `/quest/${encodeURIComponent(quest.name)}/puzzle/${encodeURIComponent(step.puzzleName)}`,
       }))}
       finish={
-        <FinishPanel>
-          Congratulations! You finished {quest.displayName} in{" "}
-          <strong>{formatDuration(entry.progress.totalMs)}</strong>.
-        </FinishPanel>
+        <>
+          <FinishPanel>
+            Congratulations! You finished {quest.displayName} in{" "}
+            <strong>{formatDuration(entry.progress.totalMs)}</strong>.
+          </FinishPanel>
+          <Suspense fallback={null}>
+            <RaceStandings questName={quest.name} entryId={entry.id} />
+          </Suspense>
+        </>
       }
     />
   );

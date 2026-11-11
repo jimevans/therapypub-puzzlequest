@@ -1,7 +1,9 @@
 // A race: two teams playing one quest, each with its own progress through the
 // same stops. The puzzle master runs them from one console; while they race,
-// rivals and the public see only the standings, never the stops, and staff
-// see everything; once both have finished, everyone sees each team's stops.
+// the public sees only the standings (the leaderboard), never the stops, a
+// player still racing sees only their own team, and staff see everything.
+// A team that finishes sees the standings; once both have, everyone sees the
+// final standings, with the winner, and each team's stops.
 import {
   ADMIN,
   api,
@@ -207,15 +209,16 @@ describe("a race", () => {
     expect(await $("body").getText()).not.toContain("A grand piano");
   });
 
-  it("shows only the standings to rivals following along", async () => {
+  it("shows a rival following along only their own team's standing", async () => {
     await browser.url(`/monitor/quest/${questName}`);
 
     await expect($("#standings")).toBeDisplayed();
-    await expect($("#stops-hidden")).toBeDisplayed();
     await expect($("#standings")).toHaveText(
-      expect.stringContaining("The Racing Reds")
+      expect.stringContaining("The Racing Blues")
     );
+    await expect($("#standings-when-finished")).toBeDisplayed();
     const page = await $("body").getHTML();
+    expect(page).not.toContain("The Racing Reds");
     for (const secret of secrets) {
       expect(page).not.toContain(secret);
     }
@@ -225,14 +228,19 @@ describe("a race", () => {
   it("shows only the standings to the public, and on the board", async () => {
     await openSignedOut(`/monitor/quest/${questName}`);
     await expect($("#standings")).toBeDisplayed();
+    await expect($("#stops-hidden")).toBeDisplayed();
+    for (const team of ["The Racing Reds", "The Racing Blues"]) {
+      await expect($("#standings")).toHaveText(expect.stringContaining(team));
+    }
     for (const secret of secrets) {
       expect(await $("body").getHTML()).not.toContain(secret);
     }
 
     await browser.url(`/monitor/quest/${questName}/board`);
-    await expect($("h2=The Racing Reds")).toBeDisplayed();
-    await expect($("h2=The Racing Blues")).toBeDisplayed();
-    await expect($("#stops-hidden")).toBeDisplayed();
+    await expect($("#standings")).toBeDisplayed();
+    for (const team of ["The Racing Reds", "The Racing Blues"]) {
+      await expect($("#standings")).toHaveText(expect.stringContaining(team));
+    }
     for (const secret of secrets) {
       expect(await $("body").getHTML()).not.toContain(secret);
     }
@@ -252,14 +260,80 @@ describe("a race", () => {
     await expectAccessible();
   });
 
-  it("shows everyone each team's stops once both have finished", async () => {
+  it("ranks the first team to finish on the board, provisionally", async () => {
     await play(redToken, finale, "done");
+
+    await openSignedOut(`/monitor/quest/${questName}/board`);
+
+    await expect($("#standings caption")).toHaveText("Standings");
+    const rows = $$("#standings tbody tr");
+    await expect(rows[0]).toHaveText(expect.stringContaining("1st"));
+    await expect(rows[0]).toHaveText(
+      expect.stringContaining("The Racing Reds")
+    );
+    await expect(rows[1]).toHaveText(
+      expect.stringContaining("The Racing Blues")
+    );
+    await expect($("#standings-provisional")).toBeDisplayed();
+    await expect($("[data-winner]")).not.toExist();
+    await expectAccessible();
+  });
+
+  it("still shows the rival, racing on, only their own team", async () => {
+    await switchTo(bluePlayer);
+    await browser.url(`/monitor/quest/${questName}`);
+
+    await expect($("#standings")).toHaveText(
+      expect.stringContaining("The Racing Blues")
+    );
+    await expect($("#standings-when-finished")).toBeDisplayed();
+    expect(await $("body").getHTML()).not.toContain("The Racing Reds");
+  });
+
+  it("shows the finishing team's player the standings, live, on their quest screen", async () => {
+    await switchTo(redPlayer);
+    await browser.url(`/quest/${questName}`);
+
+    await expect($("#quest-finished")).toBeDisplayed();
+    await expect($("#standings")).toBeDisplayed();
+    await expect($$("#standings tbody tr")[0]).toHaveText(
+      expect.stringContaining("Your team")
+    );
+    await expect($("#standings-provisional")).toBeDisplayed();
+    await expectAccessible();
+
+    // The rivals finish while the screen is open.
+    await expect($(LIVE_UPDATES_CONNECTED)).toExist();
     await play(blueToken, riddle, "piano");
     await play(blueToken, finale, "done");
 
+    await expect($("#standings caption")).toHaveText("Final standings");
+    await expect($("[data-winner]")).toHaveText(
+      expect.stringContaining("The Racing Reds")
+    );
+    await expect($("#standings-provisional")).not.toExist();
+  });
+
+  it("keeps the final standings, with the winner, on the board", async () => {
+    await openSignedOut(`/monitor/quest/${questName}/board`);
+
+    await expect($("#standings caption")).toHaveText("Final standings");
+    await expect($("[data-winner]")).toHaveText(
+      expect.stringContaining("Winner")
+    );
+    await expect($("[data-winner]")).toHaveText(
+      expect.stringContaining("The Racing Reds")
+    );
+    await expect($$("#standings tbody tr")[1]).toHaveText(
+      expect.stringContaining("2nd")
+    );
+    await expectAccessible();
+  });
+
+  it("shows everyone each team's stops once both have finished", async () => {
     await openSignedOut(`/monitor/quest/${questName}`);
 
-    await expect($("#standings")).not.toExist();
+    await expect($("#standings caption")).toHaveText("Final standings");
     await expect($("h2=The Racing Reds")).toBeDisplayed();
     await expect($("h2=The Racing Blues")).toBeDisplayed();
     await expect($$(`[data-puzzle-name="${riddle}"]`)).toBeElementsArrayOfSize(

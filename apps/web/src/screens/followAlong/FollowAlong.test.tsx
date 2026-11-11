@@ -56,6 +56,7 @@ const QUEST = {
   status: 1,
   statusDescription: "In progress",
   paused: false,
+  rank: null as number | null,
   puzzles: [SOLVED_STEP, ACTIVE_STEP, WAITING_STEP],
   progress: {
     ...STOPPED,
@@ -91,6 +92,8 @@ function spectated(quest: typeof QUEST) {
     ...withOneEntry(quest, { kind: "team", displayName: "The Reds" }),
     racing: false,
     stopsHidden: false,
+    rivalsHidden: false,
+    provisional: false,
   };
 }
 
@@ -245,8 +248,7 @@ describe("following a quest", () => {
   it("shows only the standings while a race is under way", async () => {
     const [reds] = spectated(QUEST).entries;
     apiShows({
-      name: "trail",
-      displayName: "The Trail",
+      ...spectated(QUEST),
       racing: true,
       stopsHidden: true,
       entries: [
@@ -266,35 +268,109 @@ describe("following a quest", () => {
 
     const table = await screen.findByRole("table", { name: "Standings" });
     const rows = within(table).getAllByRole("row");
-    expect(rows[1]).toHaveTextContent("The RedsIn progress10:00");
+    expect(rows[0]).toHaveTextContent("RankTeam or playerStatusTime");
+    expect(rows[1]).toHaveTextContent("Not ranked yetThe RedsIn progress10:00");
     expect(rows[2]).toHaveTextContent("Solo SamNot started–");
     expect(screen.getByText(copy.stopsHiddenInRace)).toBeVisible();
+    expect(screen.queryByText(/Provisional/)).not.toBeInTheDocument();
     expect(
       screen.queryByRole("list", { name: copy.stepsReached })
     ).not.toBeInTheDocument();
   });
 
-  it("shows each entry's stops once every one has finished", async () => {
+  it("ranks those who have finished, provisionally, while others play", async () => {
+    const [reds] = spectated(QUEST).entries;
+    apiShows({
+      ...spectated(QUEST),
+      racing: true,
+      stopsHidden: true,
+      provisional: true,
+      entries: [
+        {
+          ...reds,
+          id: "entry-2",
+          entrant: { kind: "team", displayName: "The Blues" },
+          status: 2,
+          statusDescription: "Completed",
+          rank: 1,
+          puzzles: [],
+          progress: {
+            ...STOPPED,
+            startTime: "2026-11-06T18:00:00.000Z",
+            totalMs: 540_000,
+            puzzles: [],
+          },
+        },
+        { ...reds, puzzles: [], progress: { ...QUEST.progress, puzzles: [] } },
+      ],
+    });
+    show(QUEST_PAGE);
+
+    const table = await screen.findByRole("table", { name: "Standings" });
+    const rows = within(table).getAllByRole("row");
+    expect(rows[1]).toHaveTextContent("1stThe BluesCompleted9:00");
+    expect(rows[2]).toHaveTextContent("The RedsIn progress10:00");
+    expect(
+      screen.getByText(/Provisional until every team finishes/)
+    ).toBeVisible();
+    expect(screen.queryByText("Winner")).not.toBeInTheDocument();
+  });
+
+  it("shows a player still racing only their own team, and says why", async () => {
+    const [reds] = spectated(QUEST).entries;
+    apiShows({
+      ...spectated(QUEST),
+      racing: true,
+      stopsHidden: true,
+      rivalsHidden: true,
+      entries: [
+        { ...reds, puzzles: [], progress: { ...QUEST.progress, puzzles: [] } },
+      ],
+    });
+    show(QUEST_PAGE);
+
+    const table = await screen.findByRole("table", { name: "Standings" });
+    const rows = within(table).getAllByRole("row");
+    expect(rows).toHaveLength(2);
+    expect(rows[1]).toHaveTextContent("The Reds Your team");
+    expect(
+      screen.getByText(/the standings will show here once your team finishes/)
+    ).toBeVisible();
+    expect(screen.queryByText(copy.stopsHiddenInRace)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("list", { name: copy.stepsReached })
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the final standings, and each entry's stops, once every one has finished", async () => {
     const finished = spectated({
       ...QUEST,
       status: 2,
       statusDescription: "Completed",
+      rank: 2,
     });
     const [reds] = finished.entries;
     apiShows({
       ...finished,
       entries: [
-        reds,
         {
           ...reds,
           id: "entry-2",
           entrant: { kind: "team", displayName: "The Blues" },
+          rank: 1,
         },
+        reds,
       ],
     });
     show(QUEST_PAGE);
 
-    const blues = await screen.findByRole("region", { name: "The Blues" });
+    const table = await screen.findByRole("table", { name: "Final standings" });
+    const rows = within(table).getAllByRole("row");
+    expect(rows[1]).toHaveTextContent("1stThe Blues WinnerCompleted");
+    expect(rows[1]).toHaveAttribute("data-winner", "true");
+    expect(rows[2]).toHaveTextContent("2ndThe RedsCompleted");
+    expect(screen.queryByText(/Provisional/)).not.toBeInTheDocument();
+    const blues = screen.getByRole("region", { name: "The Blues" });
     expect(
       within(blues).getByRole("heading", { name: "The Lantern", level: 3 })
     ).toBeVisible();

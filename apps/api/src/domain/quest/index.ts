@@ -7,5 +7,6 @@ export * from "./editing.js";
 export * from "./events.js";
 export * from "./progress.js";
 export * from "./solution.js";
+export * from "./standings.js";
 export * from "./state.js";
 export * from "./transitions.js";
