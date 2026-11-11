@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
 import { copy } from "../../copy";
 import { questQueryKey } from "../../live/useLiveQuest";
-import { ok, refusal, serverError } from "../../test/fakes";
+import { ok, refusal, serverError, withOneEntry } from "../../test/fakes";
 import { QuestScreen } from "./QuestScreen";
 
 const live = vi.hoisted(() => ({ connected: false }));
@@ -51,7 +51,6 @@ const WAITING_STEP = {
 const QUEST = {
   name: "trail",
   displayName: "The Trail",
-  assignee: { kind: "user", id: "1" },
   status: 1,
   statusDescription: "In progress",
   paused: false,
@@ -73,8 +72,13 @@ const QUEST = {
   },
 };
 
-function apiAnswers(data: unknown) {
-  return vi.spyOn(api, "GET").mockResolvedValue(ok(data) as never);
+/** The quest as its player gets it: with their own entry alone. */
+function asPlayed(quest: typeof QUEST) {
+  return withOneEntry(quest, { kind: "user", name: "player" });
+}
+
+function apiAnswers(quest: typeof QUEST) {
+  return vi.spyOn(api, "GET").mockResolvedValue(ok(asPlayed(quest)) as never);
 }
 
 function show(
@@ -221,7 +225,7 @@ describe("QuestScreen", () => {
     const client = show();
     await screen.findByRole("heading", { name: "The Trail", level: 1 });
 
-    get.mockResolvedValue(ok(QUEST) as never);
+    get.mockResolvedValue(ok(asPlayed(QUEST)) as never);
     await client.invalidateQueries({ queryKey: questQueryKey("trail") });
 
     await waitFor(() =>

@@ -172,11 +172,6 @@ describe("the routes", () => {
       "/quests/{name}/spectator-view",
       { name: "trail" },
     ],
-    [
-      "/monitor/quest/trail/puzzle/riddle",
-      "/quests/{name}/puzzles/{puzzleName}/spectator-view",
-      { name: "trail", puzzleName: "riddle" },
-    ],
   ])("start fetching %s's data at once", async (path, apiPath, params) => {
     renderAt(path);
 
@@ -184,6 +179,22 @@ describe("the routes", () => {
       expect(api.GET).toHaveBeenCalledWith(apiPath, {
         params: { path: params },
       })
+    );
+  });
+
+  it("start fetching a followed puzzle's data at once, for the entry asked", async () => {
+    renderAt("/monitor/quest/trail/puzzle/riddle?entry=entry-1");
+
+    await waitFor(() =>
+      expect(api.GET).toHaveBeenCalledWith(
+        "/quests/{name}/puzzles/{puzzleName}/spectator-view",
+        {
+          params: {
+            path: { name: "trail", puzzleName: "riddle" },
+            query: { entry: "entry-1" },
+          },
+        }
+      )
     );
   });
 

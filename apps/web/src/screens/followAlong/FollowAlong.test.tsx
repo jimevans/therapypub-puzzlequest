@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
 import { copy } from "../../copy";
-import { ok, refusal, serverError } from "../../test/fakes";
+import { ok, refusal, serverError, withOneEntry } from "../../test/fakes";
 import { FollowPuzzle } from "./FollowPuzzle";
 import { FollowQuest } from "./FollowQuest";
 
@@ -85,6 +85,15 @@ const PUZZLE = {
   },
 };
 
+/** The public view of a quest played by one team. */
+function spectated(quest: typeof QUEST) {
+  return {
+    ...withOneEntry(quest, { kind: "team", displayName: "The Reds" }),
+    racing: false,
+    stopsHidden: false,
+  };
+}
+
 function apiShows(data: unknown) {
   return vi.spyOn(api, "GET").mockResolvedValue(ok(data) as never);
 }
@@ -113,7 +122,7 @@ function show(path: string) {
 }
 
 const QUEST_PAGE = "/monitor/quest/trail";
-const PUZZLE_PAGE = "/monitor/quest/trail/puzzle/riddle";
+const PUZZLE_PAGE = "/monitor/quest/trail/puzzle/riddle?entry=entry-1";
 
 function stepNamed(name: string) {
   const step = screen.getByText(name).closest("li");
@@ -133,7 +142,7 @@ describe("following a quest", () => {
   });
 
   it("fetches the public view, not the player's", async () => {
-    const get = apiShows(QUEST);
+    const get = apiShows(spectated(QUEST));
     show(QUEST_PAGE);
 
     await screen.findByRole("list", { name: copy.stepsReached });
@@ -143,7 +152,7 @@ describe("following a quest", () => {
   });
 
   it("numbers the steps reached, with nothing about how many are left", async () => {
-    apiShows(QUEST);
+    apiShows(spectated(QUEST));
     show(QUEST_PAGE);
 
     await screen.findByRole("list", { name: copy.stepsReached });
@@ -153,12 +162,15 @@ describe("following a quest", () => {
   });
 
   it("links to activated puzzles' public pages only", async () => {
-    apiShows(QUEST);
+    apiShows(spectated(QUEST));
     show(QUEST_PAGE);
 
     expect(
       await screen.findByRole("link", { name: "The Lantern" })
-    ).toHaveAttribute("href", "/monitor/quest/trail/puzzle/lantern");
+    ).toHaveAttribute(
+      "href",
+      "/monitor/quest/trail/puzzle/lantern?entry=entry-1"
+    );
     expect(screen.getByText("The Bridge")).toBeVisible();
     expect(
       screen.queryByRole("link", { name: "The Bridge" })
@@ -166,7 +178,7 @@ describe("following a quest", () => {
   });
 
   it("shows a solution only once solved", async () => {
-    apiShows(QUEST);
+    apiShows(spectated(QUEST));
     show(QUEST_PAGE);
 
     await screen.findByRole("list", { name: copy.stepsReached });
@@ -177,12 +189,14 @@ describe("following a quest", () => {
   });
 
   it("says when a quest hasn't started", async () => {
-    apiShows({
-      ...QUEST,
-      status: 0,
-      statusDescription: "Not started",
-      puzzles: [],
-    });
+    apiShows(
+      spectated({
+        ...QUEST,
+        status: 0,
+        statusDescription: "Not started",
+        puzzles: [],
+      })
+    );
     show(QUEST_PAGE);
 
     expect(await screen.findByText(/hasn't started yet/)).toBeVisible();
@@ -191,7 +205,7 @@ describe("following a quest", () => {
   });
 
   it("says when the quest is paused", async () => {
-    apiShows({ ...QUEST, paused: true });
+    apiShows(spectated({ ...QUEST, paused: true }));
     show(QUEST_PAGE);
 
     expect(
@@ -200,11 +214,13 @@ describe("following a quest", () => {
   });
 
   it("marks the end once the quest is over", async () => {
-    apiShows({
-      ...QUEST,
-      status: 2,
-      progress: { ...QUEST.progress, totalMs: 3_845_000 },
-    });
+    apiShows(
+      spectated({
+        ...QUEST,
+        status: 2,
+        progress: { ...QUEST.progress, totalMs: 3_845_000 },
+      })
+    );
     show(QUEST_PAGE);
 
     expect(
@@ -217,13 +233,83 @@ describe("following a quest", () => {
 
   it("shows when live updates are connected", async () => {
     live.connected = true;
-    apiShows(QUEST);
+    apiShows(spectated(QUEST));
     show(QUEST_PAGE);
 
     await screen.findByRole("list", { name: copy.stepsReached });
     expect(
       document.querySelector('[data-live-updates="connected"]')
     ).not.toBeNull();
+  });
+
+  it("shows only the standings while a race is under way", async () => {
+    const [reds] = spectated(QUEST).entries;
+    apiShows({
+      name: "trail",
+      displayName: "The Trail",
+      racing: true,
+      stopsHidden: true,
+      entries: [
+        { ...reds, puzzles: [], progress: { ...QUEST.progress, puzzles: [] } },
+        {
+          ...reds,
+          id: "entry-2",
+          entrant: { kind: "user", displayName: "Solo Sam" },
+          status: 0,
+          statusDescription: "Not started",
+          puzzles: [],
+          progress: { ...STOPPED, puzzles: [] },
+        },
+      ],
+    });
+    show(QUEST_PAGE);
+
+    const table = await screen.findByRole("table", { name: "Standings" });
+    const rows = within(table).getAllByRole("row");
+    expect(rows[1]).toHaveTextContent("The RedsIn progress10:00");
+    expect(rows[2]).toHaveTextContent("Solo SamNot started–");
+    expect(screen.getByText(copy.stopsHiddenInRace)).toBeVisible();
+    expect(
+      screen.queryByRole("list", { name: copy.stepsReached })
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows each entry's stops once every one has finished", async () => {
+    const finished = spectated({
+      ...QUEST,
+      status: 2,
+      statusDescription: "Completed",
+    });
+    const [reds] = finished.entries;
+    apiShows({
+      ...finished,
+      entries: [
+        reds,
+        {
+          ...reds,
+          id: "entry-2",
+          entrant: { kind: "team", displayName: "The Blues" },
+        },
+      ],
+    });
+    show(QUEST_PAGE);
+
+    const blues = await screen.findByRole("region", { name: "The Blues" });
+    expect(
+      within(blues).getByRole("heading", { name: "The Lantern", level: 3 })
+    ).toBeVisible();
+    expect(
+      within(blues).getByRole("link", { name: "The Lantern" })
+    ).toHaveAttribute(
+      "href",
+      "/monitor/quest/trail/puzzle/lantern?entry=entry-2"
+    );
+    expect(screen.getByRole("region", { name: "The Reds" })).toHaveTextContent(
+      "The Reds finished in 10:00."
+    );
+    expect(
+      screen.getAllByRole("list", { name: copy.stepsReached })
+    ).toHaveLength(2);
   });
 
   it("says when there's no such quest", async () => {
@@ -263,7 +349,12 @@ describe("following a puzzle", () => {
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(get).toHaveBeenCalledWith(
       "/quests/{name}/puzzles/{puzzleName}/spectator-view",
-      { params: { path: { name: "trail", puzzleName: "riddle" } } }
+      {
+        params: {
+          path: { name: "trail", puzzleName: "riddle" },
+          query: { entry: "entry-1" },
+        },
+      }
     );
   });
 
@@ -304,6 +395,16 @@ describe("following a puzzle", () => {
     expect(
       await screen.findByText(/^Paused by the puzzle master/)
     ).toHaveTextContent("Paused");
+  });
+
+  it("needs to know whose progress to show", async () => {
+    const get = apiShows(PUZZLE);
+    show("/monitor/quest/trail/puzzle/riddle");
+
+    expect(
+      await screen.findByRole("heading", { name: "Puzzle not available" })
+    ).toBeVisible();
+    expect(get).not.toHaveBeenCalled();
   });
 
   it("says when the puzzle isn't available", async () => {

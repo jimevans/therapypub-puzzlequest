@@ -13,17 +13,21 @@ import {
   STEP_COMPLETED,
   STEP_IN_PROGRESS,
 } from "../../quests/status";
-import { describeProgress, progressSnapshot } from "../../quests/announcements";
+import {
+  describeEntries,
+  entriesSnapshot,
+} from "../../quests/entryAnnouncements";
+import { entrantLabel } from "../../quests/entrants";
 import { Announcement, useAnnouncement } from "../../ui/Announcement";
 import { ShareLinksSection } from "../../quests/ShareLinksSection";
 import { Banner } from "../../ui/Banner";
 import buttonStyles from "../../ui/Button.module.css";
 import styles from "./Staff.module.css";
-import { assigneeOf } from "./assignee";
 import { staffQuestQuery } from "./staffQueries";
 
 type StaffQuest = Schemas["StaffQuest"];
-type Step = StaffQuest["puzzles"][number];
+type Entry = StaffQuest["entries"][number];
+type Step = Entry["puzzles"][number];
 
 const timeFormat = new Intl.DateTimeFormat(undefined, { timeStyle: "short" });
 
@@ -37,18 +41,18 @@ function isCurrent(step: Step): boolean {
 }
 
 function StepCard({
-  quest,
+  entry,
   step,
   index,
   onShowQrCode,
 }: {
-  quest: StaffQuest;
+  entry: Entry;
   step: Step;
   index: number;
   /** Shows the stop's QR code, for the players to scan. */
   onShowQrCode: () => void;
 }) {
-  const clock = quest.progress.puzzles.find(
+  const clock = entry.progress.puzzles.find(
     (progress) => progress.puzzleName === step.name
   );
   const current = isCurrent(step);
@@ -117,45 +121,57 @@ function StepCard({
   );
 }
 
-function QuestView({ quest }: { quest: StaffQuest }) {
-  const [shown, setShown] = useState<QrCodeStop | null>(null);
-  const encodedName = encodeURIComponent(quest.name);
-  const announcement = useAnnouncement(
-    progressSnapshot(quest, quest.puzzles),
-    describeProgress
-  );
-  return (
+/**
+ * One entry: how its team or player is doing, and every stop, with where they
+ * are. In a race, each has a heading of its own.
+ */
+function EntryView({
+  entry,
+  single,
+  onShowQrCode,
+}: {
+  entry: Entry;
+  /** Whether it's the quest's only entry, which needs no heading. */
+  single: boolean;
+  onShowQrCode: (stop: QrCodeStop) => void;
+}) {
+  const headingId = `entry-${entry.id}`;
+  const details = (
     <>
-      <h1>{quest.displayName}</h1>
-      <Announcement message={announcement} />
       <p className={styles.intro}>
-        {assigneeOf(quest.assignee)} · {quest.statusDescription}
-        {quest.progress.startTime && (
+        {entrantLabel(entry.entrant)} · {entry.statusDescription}
+        {entry.progress.startTime && (
           <>
             {" · "}
             <ClockTime
               className={styles.time}
-              clock={quest.progress}
+              clock={entry.progress}
               show="total"
             />
           </>
         )}
       </p>
-      {quest.paused && (
-        <Banner id="paused-banner">
+      {entry.paused && (
+        <Banner id={single ? "paused-banner" : undefined}>
           Paused by the puzzle master. The clock is stopped, and the players
           can&apos;t do anything until the quest resumes.
         </Banner>
       )}
-      <ol id="staff-steps" className={styles.steps}>
-        {quest.puzzles.map((step, index) => (
+      <ol
+        id={single ? "staff-steps" : undefined}
+        className={styles.steps}
+        aria-label={
+          single ? undefined : `Stops for ${entrantLabel(entry.entrant)}`
+        }
+      >
+        {entry.puzzles.map((step, index) => (
           <StepCard
             key={step.name}
-            quest={quest}
+            entry={entry}
             step={step}
             index={index}
             onShowQrCode={() =>
-              setShown({
+              onShowQrCode({
                 number: index + 1,
                 puzzleName: step.name,
                 label: step.displayName,
@@ -165,6 +181,49 @@ function QuestView({ quest }: { quest: StaffQuest }) {
           />
         ))}
       </ol>
+    </>
+  );
+  return single ? (
+    details
+  ) : (
+    <section
+      className={styles.entry}
+      data-entry-id={entry.id}
+      aria-labelledby={headingId}
+    >
+      <h2 id={headingId}>{entrantLabel(entry.entrant)}</h2>
+      {details}
+    </section>
+  );
+}
+
+function QuestView({ quest }: { quest: StaffQuest }) {
+  const [shown, setShown] = useState<QrCodeStop | null>(null);
+  const encodedName = encodeURIComponent(quest.name);
+  const announcement = useAnnouncement(
+    entriesSnapshot(
+      quest.entries.map((entry) => ({
+        id: entry.id,
+        name: entrantLabel(entry.entrant),
+        paused: entry.paused,
+        status: entry.status,
+        steps: entry.puzzles,
+      }))
+    ),
+    describeEntries
+  );
+  return (
+    <>
+      <h1>{quest.displayName}</h1>
+      <Announcement message={announcement} />
+      {quest.entries.map((entry) => (
+        <EntryView
+          key={entry.id}
+          entry={entry}
+          single={quest.entries.length === 1}
+          onShowQrCode={setShown}
+        />
+      ))}
       <QrCodeDialogWhenShown
         questName={quest.name}
         stop={shown}

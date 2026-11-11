@@ -1,11 +1,47 @@
+import type { Schemas } from "@puzzlequest/api-client";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { ApiError } from "../../api";
+import { copy } from "../../copy";
+import { entrantName } from "../../quests/entrants";
 import { useLiveQuest } from "../../live/useLiveQuest";
 import { spectatorQuestQuery } from "../../quests/queries";
 import { FocusOnNavigate } from "../../ui/FocusOnNavigate";
 import styles from "./Board.module.css";
 import { BoardEntry } from "./BoardEntry";
+
+/**
+ * The quest's entries: its one team or player filling the screen, or, in a
+ * race, each of them.
+ */
+function Entries({ quest }: { quest: Schemas["SpectatorQuest"] }) {
+  const [only] = quest.entries;
+  if (quest.entries.length === 1 && only) {
+    return (
+      <BoardEntry title={quest.displayName} entry={only} compact={false} />
+    );
+  }
+  return (
+    <>
+      <h1 className={styles.raceName}>{quest.displayName}</h1>
+      {quest.stopsHidden && (
+        <p id="stops-hidden" className={styles.note}>
+          {copy.stopsHiddenInRace}
+        </p>
+      )}
+      <div className={styles.entries}>
+        {quest.entries.map((entry) => (
+          <BoardEntry
+            key={entry.id}
+            title={entrantName(entry.entrant)}
+            entry={entry}
+            compact
+          />
+        ))}
+      </div>
+    </>
+  );
+}
 
 /**
  * A quest on a big screen, to read from across a room. Anyone can open it, so,
@@ -23,6 +59,7 @@ export function Board() {
     <main
       className={styles.board}
       data-live-updates={connected ? "connected" : "connecting"}
+      data-quest-name={quest.data?.name}
     >
       <FocusOnNavigate />
       <title>
@@ -32,7 +69,7 @@ export function Board() {
       {gone ? (
         <p className={styles.message}>This quest isn't available.</p>
       ) : quest.data ? (
-        <BoardEntry quest={quest.data} />
+        <Entries quest={quest.data} />
       ) : (
         quest.isError && (
           <p className={styles.message}>

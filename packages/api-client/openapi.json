@@ -7843,7 +7843,7 @@
             "description": "What went wrong with this request."
           },
           "errors": {
-            "description": "For an invalid request, each problem with it.",
+            "description": "For an invalid request, each problem with it; for another problem about one of the request's fields (such as a quest's entrants), that field.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/FieldError"

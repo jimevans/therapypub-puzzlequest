@@ -1173,7 +1173,7 @@ export interface components {
             status: number;
             /** @description What went wrong with this request. */
             detail: string;
-            /** @description For an invalid request, each problem with it. */
+            /** @description For an invalid request, each problem with it; for another problem about one of the request's fields (such as a quest's entrants), that field. */
             errors?: components["schemas"]["FieldError"][];
             /** @description For an unexpected error, the request's ID, also in the X-Request-Id header: quote it when reporting the problem, to find it in the server's log. */
             requestId?: string;

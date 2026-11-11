@@ -4,11 +4,22 @@ import { Link } from "react-router";
 import { messageOf } from "../../api";
 import { ClockTime } from "../../quests/ClockTime";
 import { Banner } from "../../ui/Banner";
+import { entrantLabel, overallState } from "../../quests/entrants";
 import styles from "./Staff.module.css";
-import { assigneeOf } from "./assignee";
 import { staffQuestsQuery } from "./staffQueries";
 
-function QuestCard({ quest }: { quest: Schemas["StaffQuestSummary"] }) {
+type Quest = Schemas["StaffQuestSummary"];
+type Entry = Quest["entries"][number];
+
+/** An entry's team or player, and how it's doing. */
+function entryDetail(entry: Entry): string {
+  return `${entrantLabel(entry.entrant)} · ${entry.statusDescription}${
+    entry.paused ? ", paused" : ""
+  }`;
+}
+
+function QuestCard({ quest }: { quest: Quest }) {
+  const [only] = quest.entries;
   return (
     <li className={styles.quest} data-quest-name={quest.name}>
       <Link
@@ -17,16 +28,33 @@ function QuestCard({ quest }: { quest: Schemas["StaffQuestSummary"] }) {
       >
         {quest.displayName}
       </Link>
-      <span className={styles.detail}>
-        {assigneeOf(quest.assignee)} · {quest.statusDescription}
-        {quest.paused && ", paused"}
-      </span>
-      {quest.progress.startTime && (
-        <ClockTime
-          className={styles.clock}
-          clock={quest.progress}
-          show="total"
-        />
+      {quest.entries.length === 1 && only ? (
+        <>
+          <span className={styles.detail}>{entryDetail(only)}</span>
+          {only.progress.startTime && (
+            <ClockTime
+              className={styles.clock}
+              clock={only.progress}
+              show="total"
+            />
+          )}
+        </>
+      ) : (
+        // A race: each team or player on a line, with its time.
+        <ul className={styles.entries}>
+          {quest.entries.map((entry) => (
+            <li key={entry.id}>
+              <span>{entryDetail(entry)}</span>
+              {entry.progress.startTime && (
+                <ClockTime
+                  className={styles.time}
+                  clock={entry.progress}
+                  show="total"
+                />
+              )}
+            </li>
+          ))}
+        </ul>
       )}
     </li>
   );
@@ -36,9 +64,11 @@ function QuestCard({ quest }: { quest: Schemas["StaffQuestSummary"] }) {
 export default function StaffHome() {
   const quests = useQuery(staffQuestsQuery);
   // Those under way first, then those yet to start, then those finished.
-  const order = [1, 0, 2];
+  const order = ["underWay", "notStarted", "finished"];
   const sorted = [...(quests.data ?? [])].sort(
-    (a, b) => order.indexOf(a.status) - order.indexOf(b.status)
+    (a, b) =>
+      order.indexOf(overallState(a.entries)) -
+      order.indexOf(overallState(b.entries))
   );
 
   return (

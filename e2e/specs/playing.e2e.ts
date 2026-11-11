@@ -55,7 +55,7 @@ describe("playing a quest", () => {
     await api("POST", "/quests", admin, {
       name: questName,
       displayName: "The Quest",
-      assignee: { kind: "team", name: teamName },
+      entrants: [{ kind: "team", name: teamName }],
       puzzles: [
         { puzzleName: riddle, activationCode: "riddle-code" },
         { puzzleName: finale, activationCode: "finale-code" },
@@ -214,8 +214,8 @@ describe("playing a quest", () => {
     await expect($("#solution-text")).toHaveText("Done");
     await expect($("#quest-finished")).toBeDisplayed();
     const quest = await api("GET", `/quests/${questName}`, admin);
-    expect(quest.statusDescription).toBe("Completed");
-    expect(quest.progress.penaltyMs).toBe(360000);
+    expect(quest.entries[0].statusDescription).toBe("Completed");
+    expect(quest.entries[0].progress.penaltyMs).toBe(360000);
     await expectAccessible();
   });
 });

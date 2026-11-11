@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
 import { copy } from "../../copy";
-import { ok, refusal, serverError } from "../../test/fakes";
+import { ok, refusal, serverError, withOneEntry } from "../../test/fakes";
 import { Board } from "./Board";
 
 const live = vi.hoisted(() => ({ connected: true }));
@@ -54,6 +54,15 @@ const QUEST = {
   },
 };
 
+/** The public view of a quest played by one team. */
+function spectated(quest: typeof QUEST) {
+  return {
+    ...withOneEntry(quest, { kind: "team", displayName: "The Reds" }),
+    racing: false,
+    stopsHidden: false,
+  };
+}
+
 function apiShows(data: unknown) {
   return vi.spyOn(api, "GET").mockResolvedValue(ok(data) as never);
 }
@@ -87,7 +96,7 @@ describe("Board", () => {
   });
 
   it("fetches the public view of the quest", async () => {
-    const get = apiShows(QUEST);
+    const get = apiShows(spectated(QUEST));
     show();
 
     await screen.findByRole("heading", { name: "The Trail" });
@@ -97,7 +106,7 @@ describe("Board", () => {
   });
 
   it("shows the clock, and the step the quest has reached", async () => {
-    apiShows(QUEST);
+    apiShows(spectated(QUEST));
     show();
 
     expect(await screen.findByText("5:00")).toBeVisible();
@@ -107,7 +116,7 @@ describe("Board", () => {
   });
 
   it("doesn't give away a solution, or how long the quest is", async () => {
-    apiShows(QUEST);
+    apiShows(spectated(QUEST));
     show();
 
     await screen.findByText("5:00");
@@ -117,10 +126,12 @@ describe("Board", () => {
   });
 
   it("includes penalties in the clock, and says so", async () => {
-    apiShows({
-      ...QUEST,
-      progress: { ...QUEST.progress, penaltyMs: 60_000, totalMs: 360_000 },
-    });
+    apiShows(
+      spectated({
+        ...QUEST,
+        progress: { ...QUEST.progress, penaltyMs: 60_000, totalMs: 360_000 },
+      })
+    );
     show();
 
     expect(await screen.findByText("6:00")).toBeVisible();
@@ -128,7 +139,7 @@ describe("Board", () => {
   });
 
   it("says when the quest is paused", async () => {
-    apiShows({ ...QUEST, paused: true });
+    apiShows(spectated({ ...QUEST, paused: true }));
     show();
 
     expect(await screen.findByRole("status")).toHaveTextContent(
@@ -137,7 +148,7 @@ describe("Board", () => {
   });
 
   it("says when the quest hasn't started, with no clock", async () => {
-    apiShows({ ...QUEST, status: 0, puzzles: [] });
+    apiShows(spectated({ ...QUEST, status: 0, puzzles: [] }));
     show();
 
     expect(await screen.findByText("Starting soon")).toBeVisible();
@@ -145,16 +156,57 @@ describe("Board", () => {
   });
 
   it("marks the end, with the final time", async () => {
-    apiShows({
-      ...QUEST,
-      status: 2,
-      puzzles: [SOLVED],
-      progress: { ...QUEST.progress, totalMs: 3_845_000 },
-    });
+    apiShows(
+      spectated({
+        ...QUEST,
+        status: 2,
+        puzzles: [SOLVED],
+        progress: { ...QUEST.progress, totalMs: 3_845_000 },
+      })
+    );
     show();
 
     expect(await screen.findByText(copy.questFinished)).toBeVisible();
     expect(screen.getByText("1:04:05")).toBeVisible();
+  });
+
+  it("lists each team in a race, with their times but no stops", async () => {
+    const [reds] = spectated(QUEST).entries;
+    apiShows({
+      name: "trail",
+      displayName: "The Trail",
+      racing: true,
+      stopsHidden: true,
+      entries: [
+        { ...reds, puzzles: [] },
+        {
+          ...reds,
+          id: "entry-2",
+          entrant: { kind: "team", displayName: "The Blues" },
+          paused: true,
+          puzzles: [],
+          progress: { ...QUEST.progress, elapsedMs: 0, totalMs: 420_000 },
+        },
+      ],
+    });
+    show();
+
+    expect(
+      await screen.findByRole("heading", { name: "The Trail", level: 1 })
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "The Reds", level: 2 })
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "The Blues", level: 2 })
+    ).toBeVisible();
+    expect(screen.getByText("5:00")).toBeVisible();
+    expect(screen.getByText("7:00")).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Paused by the puzzle master"
+    );
+    expect(screen.getByText(copy.stopsHiddenInRace)).toBeVisible();
+    expect(screen.queryByText(/The Bridge/)).not.toBeInTheDocument();
   });
 
   it("says when the quest isn't available", async () => {
@@ -175,7 +227,7 @@ describe("Board", () => {
 
   it("says when it has lost its connection, keeping what it last knew", async () => {
     live.connected = false;
-    apiShows(QUEST);
+    apiShows(spectated(QUEST));
     show();
 
     expect(await screen.findByText("Reconnecting…")).toBeInTheDocument();
@@ -183,7 +235,7 @@ describe("Board", () => {
   });
 
   it("says nothing of the connection when it's fine", async () => {
-    apiShows(QUEST);
+    apiShows(spectated(QUEST));
     show();
 
     await screen.findByText("5:00");

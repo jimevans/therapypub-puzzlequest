@@ -184,3 +184,15 @@
 .choices label {
   overflow-wrap: anywhere;
 }
+
+/* Choosing a team or player to add to the quest. */
+.addEntrant {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2) var(--space-3);
+}
+
+.addEntrant .field {
+  flex: 1 1 16rem;
+}

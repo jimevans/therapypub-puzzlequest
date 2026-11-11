@@ -79,3 +79,32 @@ export function aUser(fields: Partial<Schemas["User"]> = {}): Schemas["User"] {
     ...fields,
   };
 }
+
+/** A team that plays quests in tests, as an entrant. */
+export const THE_REDS = {
+  kind: "team",
+  name: "reds",
+  displayName: "The Reds",
+} as const;
+
+/**
+ * A quest played by one team or player, from its definition and its one
+ * entry's progress written side by side, as quests were before they could
+ * have several entries.
+ * @param quest the quest's name and display name, its visibility if any, and
+ *  the entry's status, progress and puzzles
+ * @param entrant who plays it
+ * @param id the entry's ID
+ * @returns the quest, with its one entry
+ */
+export function withOneEntry<
+  Quest extends { name: string; displayName: string; visibility?: string },
+>(quest: Quest, entrant: object = THE_REDS, id = "entry-1") {
+  const { name, displayName, visibility, ...entry } = quest;
+  return {
+    name,
+    displayName,
+    ...(visibility === undefined ? {} : { visibility }),
+    entries: [{ id, entrant, ...entry }],
+  };
+}

@@ -11,10 +11,13 @@ import { type Clock, formatDuration, formatMoment } from "./clock";
 import styles from "./QuestProgress.module.css";
 import { QUEST_COMPLETED, STEP_COMPLETED } from "./status";
 
-/** A quest, as players and spectators both see it. */
-export type QuestSummary = Pick<
-  Schemas["SpectatorQuest"],
-  "displayName" | "status" | "statusDescription" | "paused" | "progress"
+/**
+ * One entry's progress through a quest, as players and spectators both see it:
+ * a player sees their own entry, and spectators each entry.
+ */
+export type EntrySummary = Pick<
+  Schemas["SpectatorQuestEntry"],
+  "status" | "statusDescription" | "paused" | "progress"
 >;
 
 /** One step of a quest, however the API describes it to this viewer. */
@@ -63,14 +66,19 @@ function Times({ clock }: { clock: Clock }) {
   );
 }
 
+/** The level of a step's heading: below the page's, or below an entry's. */
+type StepHeading = "h2" | "h3";
+
 function StepCard({
   step,
   stepNumber,
   clock,
+  Heading,
 }: {
   step: QuestStep;
   stepNumber: number;
   clock?: Clock;
+  Heading: StepHeading;
 }) {
   const completed = step.status === STEP_COMPLETED;
   return (
@@ -79,13 +87,13 @@ function StepCard({
       data-puzzle-name={step.name}
     >
       <p className={styles.stepNumber}>{copy.stepLabel(stepNumber)}</p>
-      <h2 className={styles.stepName}>
+      <Heading className={styles.stepName}>
         {step.path ? (
           <Link to={step.path}>{step.displayName}</Link>
         ) : (
           step.displayName
         )}
-      </h2>
+      </Heading>
       <p className={styles.status}>{step.statusDescription}</p>
       <dl className={styles.facts}>
         <Moment label="Started" at={step.startTime} />
@@ -104,35 +112,33 @@ function StepCard({
 }
 
 /**
- * Where a quest has got to: the clock, and each step reached, on a line that
- * stays open until the quest is over.
+ * Where one entry has got to: the clock, and each step reached, on a line that
+ * stays open until it has finished the quest.
  */
-export function QuestProgress({
-  quest,
+export function EntryProgress({
+  entry,
   steps,
   finish,
+  stepHeading = "h2",
+  id,
 }: {
-  quest: QuestSummary;
+  entry: EntrySummary;
   steps: QuestStep[];
-  /** What to show when the quest is over. */
+  /** What to show when the entry has finished. */
   finish: ReactNode;
+  /** The level of each step's heading; h3 when the entry has a heading. */
+  stepHeading?: StepHeading;
+  /** The summary's ID, when the page shows only this entry. */
+  id?: string;
 }) {
-  const { progress } = quest;
-  const completed = quest.status === QUEST_COMPLETED;
-  const announcement = useAnnouncement(
-    progressSnapshot(quest, steps),
-    describeProgress
-  );
+  const { progress } = entry;
+  const completed = entry.status === QUEST_COMPLETED;
   return (
     <>
-      <title>{`${quest.displayName} · PuzzleQuest`}</title>
-      <h1>{quest.displayName}</h1>
-      <Announcement message={announcement} />
-      {quest.paused && <PausedBanner />}
-      <section id="quest-progress" className={styles.summary}>
+      <section id={id} className={styles.summary}>
         <ClockTime className={styles.clock} clock={progress} show="total" />
         <p className={styles.status}>
-          {quest.statusDescription}
+          {entry.statusDescription}
           {progress.penaltyMs > 0 &&
             `, including ${formatDuration(progress.penaltyMs)} in hint penalties`}
         </p>
@@ -150,10 +156,48 @@ export function QuestProgress({
             clock={progress.puzzles.find(
               ({ puzzleName }) => puzzleName === step.name
             )}
+            Heading={stepHeading}
           />
         ))}
       </ProgressLine>
       {completed && finish}
+    </>
+  );
+}
+
+/**
+ * Where a quest has got to, for a page that shows one entry: the quest's name,
+ * and that entry's progress, announced as it changes.
+ */
+export function QuestProgress({
+  displayName,
+  entry,
+  steps,
+  finish,
+}: {
+  /** The quest's name. */
+  displayName: string;
+  entry: EntrySummary;
+  steps: QuestStep[];
+  /** What to show when the quest is over. */
+  finish: ReactNode;
+}) {
+  const announcement = useAnnouncement(
+    progressSnapshot(entry, steps),
+    describeProgress
+  );
+  return (
+    <>
+      <title>{`${displayName} · PuzzleQuest`}</title>
+      <h1>{displayName}</h1>
+      <Announcement message={announcement} />
+      {entry.paused && <PausedBanner />}
+      <EntryProgress
+        id="quest-progress"
+        entry={entry}
+        steps={steps}
+        finish={finish}
+      />
     </>
   );
 }

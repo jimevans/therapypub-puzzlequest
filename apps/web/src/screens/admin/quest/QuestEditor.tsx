@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
+import { type Control, useFieldArray, useForm } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router";
 import { ApiError, messageOf } from "../../../api";
 import { fieldErrorsOf } from "../../../fieldErrors";
@@ -25,60 +25,147 @@ import {
 
 const questPath = (name: string) => `/quest/${encodeURIComponent(name)}`;
 
-/** Who a quest can be assigned to: any team, or any user. */
-function AssigneeSelect({
-  register,
+/** The teams and players playing the quest, in order. */
+function EntrantsField({
+  control,
   error,
 }: {
-  register: ReturnType<typeof useForm<QuestFormValues>>["register"];
+  control: Control<QuestFormValues>;
   error?: string;
 }) {
   const users = useQuery(allUsersQuery);
   const teams = useQuery(allTeamsQuery);
-  if (users.isError || teams.isError) {
-    return (
-      <Banner tone="danger">
-        {messageOf((users.error ?? teams.error) as Error)}
-      </Banner>
-    );
-  }
-  // Drawn only once there's a choice to show: a select box drawn before its
-  // options are there shows nothing chosen, and that's what it would submit.
-  if (!users.data || !teams.data) {
-    return <p>Loading who it can be assigned to…</p>;
-  }
+  const { fields, append, remove, move } = useFieldArray({
+    control,
+    name: "entrants",
+    rules: {
+      validate: (entrants) => entrants.length > 0 || "Add a team or a player",
+    },
+  });
+  // The team or player chosen to add, as "team:name" or "user:name".
+  const [choice, setChoice] = useState("");
+  const added = new Set(fields.map((field) => `${field.kind}:${field.name}`));
+  const errorId = "entrants-error";
+
+  const add = () => {
+    const [kind, ...rest] = choice.split(":");
+    const name = rest.join(":");
+    const label =
+      kind === "team"
+        ? `${teams.data?.find((team) => team.teamName === name)?.displayName ?? name} (team)`
+        : `${users.data?.find((user) => user.userName === name)?.displayName ?? name} (player)`;
+    append({ kind: kind as "user" | "team", name, label, started: false });
+    setChoice("");
+  };
+
   return (
-    <div className={styles.field}>
-      <label htmlFor="assignee">Assigned to</label>
-      <select
-        id="assignee"
-        className={styles.select}
-        aria-invalid={error !== undefined}
-        aria-describedby={error ? "assignee-error" : undefined}
-        {...register("assignee", { required: "Choose a team or a player" })}
-      >
-        <option value="">Choose…</option>
-        <optgroup label="Teams">
-          {teams.data.map((team) => (
-            <option key={team.teamName} value={`team:${team.teamName}`}>
-              {team.displayName} ({team.teamName})
-            </option>
-          ))}
-        </optgroup>
-        <optgroup label="Players">
-          {users.data.map((user) => (
-            <option key={user.userName} value={`user:${user.userName}`}>
-              {user.displayName} ({user.userName})
-            </option>
-          ))}
-        </optgroup>
-      </select>
+    <fieldset
+      id="entrants"
+      className={styles.stops}
+      aria-describedby={error ? errorId : undefined}
+    >
+      <legend>Entrants</legend>
+      <p className={styles.note}>
+        The teams and players who play it, each with its own progress through
+        the same stops: more than one makes it a race. A player can be in only
+        one of them.
+      </p>
       {error && (
-        <p id="assignee-error" className={styles.error}>
+        <p id={errorId} className={styles.error}>
           {error}
         </p>
       )}
-    </div>
+      {fields.length === 0 ? (
+        <p>No entrants yet.</p>
+      ) : (
+        <SortableList
+          items={fields}
+          getId={(field) => field.id}
+          label={(field) => field.label}
+          onMove={move}
+          className={styles.stopList}
+          renderItem={(field, index, handle) => (
+            <div
+              className={styles.stop}
+              data-entrant={`${field.kind}:${field.name}`}
+            >
+              {handle}
+              <span className={styles.stopNumber}>{index + 1}</span>
+              <span className={styles.stopName}>{field.label}</span>
+              <span className={styles.stopActions}>
+                <Button
+                  aria-label={`Move ${field.label} up`}
+                  isDisabled={index === 0}
+                  onPress={() => move(index, index - 1)}
+                >
+                  Up
+                </Button>
+                <Button
+                  aria-label={`Move ${field.label} down`}
+                  isDisabled={index === fields.length - 1}
+                  onPress={() => move(index, index + 1)}
+                >
+                  Down
+                </Button>
+                {/* Once it has started, resetting its entry comes first. */}
+                {field.started ? (
+                  <span className={styles.fixedMark}>Started</span>
+                ) : (
+                  <Button
+                    aria-label={`Remove ${field.label}`}
+                    onPress={() => remove(index)}
+                  >
+                    Remove
+                  </Button>
+                )}
+              </span>
+            </div>
+          )}
+        />
+      )}
+      {users.isError || teams.isError ? (
+        <Banner tone="danger">
+          {messageOf((users.error ?? teams.error) as Error)}
+        </Banner>
+      ) : !users.data || !teams.data ? (
+        <p>Loading the teams and players…</p>
+      ) : (
+        <div className={styles.addEntrant}>
+          <div className={styles.field}>
+            <label htmlFor="entrant-choice">Add a team or player</label>
+            <select
+              id="entrant-choice"
+              className={styles.select}
+              value={choice}
+              onChange={(event) => setChoice(event.target.value)}
+            >
+              <option value="">Choose…</option>
+              <optgroup label="Teams">
+                {teams.data
+                  .filter((team) => !added.has(`team:${team.teamName}`))
+                  .map((team) => (
+                    <option key={team.teamName} value={`team:${team.teamName}`}>
+                      {team.displayName} ({team.teamName})
+                    </option>
+                  ))}
+              </optgroup>
+              <optgroup label="Players">
+                {users.data
+                  .filter((user) => !added.has(`user:${user.userName}`))
+                  .map((user) => (
+                    <option key={user.userName} value={`user:${user.userName}`}>
+                      {user.displayName} ({user.userName})
+                    </option>
+                  ))}
+              </optgroup>
+            </select>
+          </div>
+          <Button id="add-entrant" isDisabled={choice === ""} onPress={add}>
+            Add
+          </Button>
+        </div>
+      )}
+    </fieldset>
   );
 }
 
@@ -150,7 +237,6 @@ function EditorForm({ quest }: { quest?: Quest }) {
           label="Display name"
           description="What players see."
         />
-        <AssigneeSelect register={register} error={errors.assignee?.message} />
         <div className={styles.field}>
           <label>
             <input
@@ -164,6 +250,11 @@ function EditorForm({ quest }: { quest?: Quest }) {
             Only its players and staff can follow it. Otherwise anyone can.
           </p>
         </div>
+
+        <EntrantsField
+          control={control}
+          error={errors.entrants?.message ?? errors.entrants?.root?.message}
+        />
 
         <fieldset id="stops" className={styles.stops}>
           <legend>Stops</legend>

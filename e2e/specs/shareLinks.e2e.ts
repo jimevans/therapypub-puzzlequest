@@ -40,7 +40,7 @@ describe("a private quest", () => {
       name: questName,
       displayName: "A Private Quest",
       visibility: "private",
-      assignee: { kind: "user", name: player },
+      entrants: [{ kind: "user", name: player }],
       puzzles: [{ puzzleName: riddle }],
     });
     await api("POST", `/quests/${questName}/start`, admin);

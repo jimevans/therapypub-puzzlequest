@@ -27,49 +27,116 @@ export function eventsQuery(name: string) {
   });
 }
 
-/** Something an administrator does to a running quest. */
-export type QuestAction =
-  | { kind: "start" | "pause" | "resume" | "reset" }
-  | { kind: "skipPuzzle"; puzzleName: string }
-  | { kind: "resetPuzzle"; puzzleName: string; refundHints: boolean };
+/** A team or player in a quest, by name, for the actions on its entry. */
+export interface EntrantRef {
+  kind: "user" | "team";
+  name: string;
+}
 
 /**
- * Asks the API to do an action.
+ * Something an administrator does to a running quest: to one entrant's entry,
+ * or, with no entrant, to every entry.
+ */
+export type QuestAction = { entrant?: EntrantRef } & (
+  | { kind: "start" | "pause" | "resume" | "reset" }
+  | { kind: "skipPuzzle"; puzzleName: string }
+  | { kind: "resetPuzzle"; puzzleName: string; refundHints: boolean }
+);
+
+/**
+ * Asks the API to do an action to one team's or player's entry. Teams and
+ * players have routes of their own, which the client types separately.
  * @param name the quest's name
+ * @param entrant the team or player
  * @param action what to do
  */
-async function run(name: string, action: QuestAction): Promise<void> {
-  const path = { name };
+async function runForEntrant(
+  name: string,
+  entrant: EntrantRef,
+  action: QuestAction
+): Promise<void> {
+  if (entrant.kind === "team") {
+    const path = { name, teamName: entrant.name };
+    switch (action.kind) {
+      case "skipPuzzle":
+        dataOrThrow(
+          await api.POST(
+            "/quests/{name}/teams/{teamName}/puzzles/{puzzleName}/skip",
+            { params: { path: { ...path, puzzleName: action.puzzleName } } }
+          )
+        );
+        return;
+      case "resetPuzzle":
+        dataOrThrow(
+          await api.POST(
+            "/quests/{name}/teams/{teamName}/puzzles/{puzzleName}/reset",
+            {
+              params: { path: { ...path, puzzleName: action.puzzleName } },
+              body: { refundHints: action.refundHints },
+            }
+          )
+        );
+        return;
+      default:
+        dataOrThrow(
+          await api.POST(`/quests/{name}/teams/{teamName}/${action.kind}`, {
+            params: { path },
+          })
+        );
+        return;
+    }
+  }
+  const path = { name, userName: entrant.name };
   switch (action.kind) {
-    case "start":
-      dataOrThrow(await api.POST("/quests/{name}/start", { params: { path } }));
-      return;
-    case "pause":
-      dataOrThrow(await api.POST("/quests/{name}/pause", { params: { path } }));
-      return;
-    case "resume":
-      dataOrThrow(
-        await api.POST("/quests/{name}/resume", { params: { path } })
-      );
-      return;
-    case "reset":
-      dataOrThrow(await api.POST("/quests/{name}/reset", { params: { path } }));
-      return;
     case "skipPuzzle":
       dataOrThrow(
-        await api.POST("/quests/{name}/puzzles/{puzzleName}/skip", {
-          params: { path: { name, puzzleName: action.puzzleName } },
-        })
+        await api.POST(
+          "/quests/{name}/players/{userName}/puzzles/{puzzleName}/skip",
+          { params: { path: { ...path, puzzleName: action.puzzleName } } }
+        )
       );
       return;
     case "resetPuzzle":
       dataOrThrow(
-        await api.POST("/quests/{name}/puzzles/{puzzleName}/reset", {
-          params: { path: { name, puzzleName: action.puzzleName } },
-          body: { refundHints: action.refundHints },
+        await api.POST(
+          "/quests/{name}/players/{userName}/puzzles/{puzzleName}/reset",
+          {
+            params: { path: { ...path, puzzleName: action.puzzleName } },
+            body: { refundHints: action.refundHints },
+          }
+        )
+      );
+      return;
+    default:
+      dataOrThrow(
+        await api.POST(`/quests/{name}/players/{userName}/${action.kind}`, {
+          params: { path },
         })
       );
       return;
+  }
+}
+
+/**
+ * Asks the API to do an action.
+ * @param name the quest's name
+ * @param action what to do, and to whose entry
+ */
+async function run(name: string, action: QuestAction): Promise<void> {
+  if (action.entrant) {
+    await runForEntrant(name, action.entrant, action);
+    return;
+  }
+  switch (action.kind) {
+    case "skipPuzzle":
+    case "resetPuzzle":
+      throw new Error("A puzzle is skipped or reset for one entrant");
+    default:
+      dataOrThrow(
+        await api.POST(`/quests/{name}/${action.kind}`, {
+          params: { path: { name } },
+        })
+      );
   }
 }
 
