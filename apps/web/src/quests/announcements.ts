@@ -2,15 +2,14 @@
 // such as a teammate solving a puzzle or the puzzle master pausing the quest:
 // a sighted player sees it happen; these say it. The running clock isn't
 // announced. See ui/Announcement.tsx.
+import type { Schemas } from "@puzzlequest/api-client";
 import { copy } from "../copy";
 import {
   QUEST_COMPLETED,
   STEP_AWAITING_ACTIVATION,
   STEP_COMPLETED,
+  STEP_NOT_REACHED,
 } from "./status";
-
-/** A step's status before it's reached, as the API gives it. */
-const STEP_UNAVAILABLE = 0;
 
 /** A quest's progress, as far as announcing it goes. */
 export interface ProgressSnapshot {
@@ -63,7 +62,7 @@ export function describeProgress(
 /** A puzzle, as far as announcing it goes. */
 export interface PuzzleSnapshot {
   paused: boolean;
-  status: number;
+  status: Schemas["StopStatus"];
   skipped: boolean;
   solutionText: string | null;
   hints: string[];
@@ -105,7 +104,7 @@ export function describePuzzle(
 }
 
 /** Whether a quest's status means it's over. */
-export function isFinished(status: number): boolean {
+export function isFinished(status: Schemas["QuestStatus"]): boolean {
   return status === QUEST_COMPLETED;
 }
 
@@ -118,26 +117,22 @@ export function isFinished(status: number): boolean {
  * @returns the snapshot
  */
 export function progressSnapshot(
-  quest: { paused: boolean; status: number },
+  quest: { paused: boolean; status: Schemas["QuestStatus"] },
   steps: {
-    name?: string;
-    puzzleName?: string;
+    puzzleName: string;
     displayName?: string;
-    status: number;
+    status: Schemas["StopStatus"];
   }[]
 ): ProgressSnapshot {
   return {
     paused: quest.paused,
     finished: isFinished(quest.status),
     steps: steps
-      .filter((step) => step.status !== STEP_UNAVAILABLE)
-      .map((step) => {
-        const name = step.name ?? step.puzzleName ?? "";
-        return {
-          name,
-          displayName: step.displayName ?? name,
-          solved: step.status === STEP_COMPLETED,
-        };
-      }),
+      .filter((step) => step.status !== STEP_NOT_REACHED)
+      .map((step) => ({
+        name: step.puzzleName,
+        displayName: step.displayName ?? step.puzzleName,
+        solved: step.status === STEP_COMPLETED,
+      })),
   };
 }

@@ -10,7 +10,7 @@ const decoder = vi.hoisted(() => ({ sees: null as string | null }));
 
 vi.mock("./decodeQr", () => ({ decodeQr: () => decoder.sees }));
 
-const PATH = { name: "trail", puzzleName: "riddle" };
+const PATH = { questName: "trail", puzzleName: "riddle" };
 
 function activated() {
   return ok({ activationTime: "2026-11-08T12:00:00.000Z" });
@@ -29,7 +29,11 @@ function cameraAttempt() {
 function show(paused = false) {
   return render(
     <QueryClientProvider client={new QueryClient()}>
-      <Activation path={PATH} paused={paused} />
+      <Activation
+        path={PATH}
+        paused={paused}
+        connectionId={() => "connection-1"}
+      />
     </QueryClientProvider>
   );
 }
@@ -101,8 +105,12 @@ describe("Activation", () => {
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith(
-        "/quests/{name}/puzzles/{puzzleName}/activation",
-        { params: { path: PATH }, body: { activationCode: "riddle-code" } }
+        "/quests/{questName}/puzzles/{puzzleName}/activation",
+        {
+          params: { path: PATH },
+          // So this page isn't sent its own puzzleActivated update.
+          body: { activationCode: "riddle-code", connectionId: "connection-1" },
+        }
       )
     );
   });

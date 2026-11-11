@@ -35,25 +35,29 @@ describe("playing a quest", () => {
       joinCode,
     });
     await api("POST", "/puzzles", admin, {
-      name: riddle,
+      puzzleName: riddle,
       displayName: "The Riddle",
       text: "What has **keys** but opens no locks?",
       solutionKeyword: "piano",
-      solutionDisplayText: "A piano",
+      solutionText: "A piano",
       hints: [
-        { text: "It makes music", timePenalty: 60 },
-        { text: "It is a piano", solutionWarning: true, timePenalty: 300 },
+        { text: "It makes music", timePenaltySeconds: 60 },
+        {
+          text: "It is a piano",
+          solutionWarning: true,
+          timePenaltySeconds: 300,
+        },
       ],
     });
     await api("POST", "/puzzles", admin, {
-      name: finale,
+      puzzleName: finale,
       displayName: "The Finale",
       text: "Say done",
       solutionKeyword: "done",
-      solutionDisplayText: "Done",
+      solutionText: "Done",
     });
     await api("POST", "/quests", admin, {
-      name: questName,
+      questName,
       displayName: "The Quest",
       entrants: [{ kind: "team", name: teamName }],
       puzzles: [

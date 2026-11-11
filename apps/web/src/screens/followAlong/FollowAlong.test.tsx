@@ -18,12 +18,20 @@ vi.mock("../../live/useLiveQuest", async (importOriginal) => ({
   }),
 }));
 
-const STOPPED = { running: false, elapsedMs: 0, penaltyMs: 0, totalMs: 0 };
+const STOPPED = {
+  startTime: null,
+  endTime: null,
+  running: false,
+  clockStart: null,
+  elapsedMs: 0,
+  penaltyMs: 0,
+  totalMs: 0,
+};
 
 const SOLVED_STEP = {
-  name: "riddle",
+  puzzleName: "riddle",
   displayName: "The Riddle",
-  status: 3,
+  status: "completed",
   statusDescription: "Completed",
   skipped: false,
   activationTime: "2026-11-06T18:05:00.000Z",
@@ -31,9 +39,9 @@ const SOLVED_STEP = {
 };
 
 const ACTIVE_STEP = {
-  name: "lantern",
+  puzzleName: "lantern",
   displayName: "The Lantern",
-  status: 2,
+  status: "inProgress",
   statusDescription: "In progress",
   skipped: false,
   activationTime: "2026-11-06T18:15:00.000Z",
@@ -41,9 +49,9 @@ const ACTIVE_STEP = {
 };
 
 const WAITING_STEP = {
-  name: "bridge",
+  puzzleName: "bridge",
   displayName: "The Bridge",
-  status: 1,
+  status: "awaitingActivation",
   statusDescription: "Awaiting activation",
   skipped: false,
   activationTime: null,
@@ -51,9 +59,9 @@ const WAITING_STEP = {
 };
 
 const QUEST = {
-  name: "trail",
+  questName: "trail",
   displayName: "The Trail",
-  status: 1,
+  status: "inProgress",
   statusDescription: "In progress",
   paused: false,
   rank: null as number | null,
@@ -72,16 +80,16 @@ const QUEST = {
 };
 
 const PUZZLE = {
-  quest: { name: "trail", displayName: "The Trail", paused: false },
+  quest: { questName: "trail", displayName: "The Trail", paused: false },
   puzzle: {
-    name: "riddle",
+    puzzleName: "riddle",
     displayName: "The Riddle",
-    status: 2,
+    status: "inProgress",
     statusDescription: "In progress",
     skipped: false,
-    type: 0,
+    type: "text",
     text: "What has **keys**?",
-    hints: [{ text: "It makes music", timePenalty: 60 }],
+    hints: [{ text: "It makes music", timePenaltySeconds: 60 }],
     solutionText: null,
   },
 };
@@ -149,8 +157,8 @@ describe("following a quest", () => {
     show(QUEST_PAGE);
 
     await screen.findByRole("list", { name: copy.stepsReached });
-    expect(get).toHaveBeenCalledWith("/quests/{name}/spectator-view", {
-      params: { path: { name: "trail" } },
+    expect(get).toHaveBeenCalledWith("/quests/{questName}/spectator-view", {
+      params: { path: { questName: "trail" } },
     });
   });
 
@@ -195,7 +203,7 @@ describe("following a quest", () => {
     apiShows(
       spectated({
         ...QUEST,
-        status: 0,
+        status: "notStarted",
         statusDescription: "Not started",
         puzzles: [],
       })
@@ -220,7 +228,7 @@ describe("following a quest", () => {
     apiShows(
       spectated({
         ...QUEST,
-        status: 2,
+        status: "completed",
         progress: { ...QUEST.progress, totalMs: 3_845_000 },
       })
     );
@@ -256,8 +264,8 @@ describe("following a quest", () => {
         {
           ...reds,
           id: "entry-2",
-          entrant: { kind: "user", displayName: "Solo Sam" },
-          status: 0,
+          entrant: { kind: "player", displayName: "Solo Sam" },
+          status: "notStarted",
           statusDescription: "Not started",
           puzzles: [],
           progress: { ...STOPPED, puzzles: [] },
@@ -290,7 +298,7 @@ describe("following a quest", () => {
           ...reds,
           id: "entry-2",
           entrant: { kind: "team", displayName: "The Blues" },
-          status: 2,
+          status: "completed",
           statusDescription: "Completed",
           rank: 1,
           puzzles: [],
@@ -345,7 +353,7 @@ describe("following a quest", () => {
   it("shows the final standings, and each entry's stops, once every one has finished", async () => {
     const finished = spectated({
       ...QUEST,
-      status: 2,
+      status: "completed",
       statusDescription: "Completed",
       rank: 2,
     });
@@ -424,11 +432,11 @@ describe("following a puzzle", () => {
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(get).toHaveBeenCalledWith(
-      "/quests/{name}/puzzles/{puzzleName}/spectator-view",
+      "/quests/{questName}/puzzles/{puzzleName}/spectator-view",
       {
         params: {
-          path: { name: "trail", puzzleName: "riddle" },
-          query: { entry: "entry-1" },
+          path: { questName: "trail", puzzleName: "riddle" },
+          query: { entryId: "entry-1" },
         },
       }
     );
@@ -456,7 +464,11 @@ describe("following a puzzle", () => {
   it("shows the solution once solved", async () => {
     apiShows({
       ...PUZZLE,
-      puzzle: { ...PUZZLE.puzzle, status: 3, solutionText: "A piano" },
+      puzzle: {
+        ...PUZZLE.puzzle,
+        status: "completed",
+        solutionText: "A piano",
+      },
     });
     show(PUZZLE_PAGE);
 

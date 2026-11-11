@@ -114,7 +114,7 @@ async function startAndActivateFirst() {
 
 const QUEST = "/api/v1/quests/quest/spectator-view";
 const puzzlePath = async (puzzle: string, entry?: string) =>
-  `/api/v1/quests/quest/puzzles/${puzzle}/spectator-view?entry=${entry ?? (await entryIdOf("quest"))}`;
+  `/api/v1/quests/quest/puzzles/${puzzle}/spectator-view?entryId=${entry ?? (await entryIdOf("quest"))}`;
 
 /**
  * What no public answer may ever contain, however far the quest has got: who
@@ -154,7 +154,7 @@ describe("following a quest", () => {
     const { body, text } = await seen();
 
     expect(body).toEqual({
-      name: "quest",
+      questName: "quest",
       displayName: "Quest",
       racing: false,
       stopsHidden: false,
@@ -165,11 +165,14 @@ describe("following a quest", () => {
           id: await entryIdOf("quest"),
           rank: null,
           entrant: { kind: "team", displayName: "Team Display" },
-          status: 0,
+          status: "notStarted",
           paused: false,
           puzzles: [],
           progress: expect.objectContaining({
+            startTime: null,
+            endTime: null,
             running: false,
+            clockStart: null,
             elapsedMs: 0,
             puzzles: [],
           }),
@@ -186,9 +189,9 @@ describe("following a quest", () => {
 
     expect(body.entries[0].puzzles).toEqual([
       {
-        name: "riddle",
+        puzzleName: "riddle",
         displayName: "Riddle",
-        status: 2,
+        status: "inProgress",
         statusDescription: expect.any(String),
         skipped: false,
         activationTime: expect.any(String),
@@ -206,10 +209,9 @@ describe("following a quest", () => {
     const { body, text } = await seen();
 
     const [entry] = body.entries;
-    expect(entry.puzzles.map((p: { name: string }) => p.name)).toEqual([
-      "riddle",
-      "lantern",
-    ]);
+    expect(
+      entry.puzzles.map((p: { puzzleName: string }) => p.puzzleName)
+    ).toEqual(["riddle", "lantern"]);
     expect(entry.puzzles[0]).toMatchObject({
       skipped: true,
       solutionText: "A piano",
@@ -246,14 +248,14 @@ describe("following a puzzle", () => {
     const body = JSON.parse(response.text);
     expect(spectatorPuzzleSchema.parse(body)).toEqual(body);
     expect(body).toMatchObject({
-      quest: { name: "quest", displayName: "Quest", paused: false },
+      quest: { questName: "quest", displayName: "Quest", paused: false },
       puzzle: {
-        name: "riddle",
+        puzzleName: "riddle",
         displayName: "Riddle",
-        status: 2,
-        type: 0,
+        status: "inProgress",
+        type: "text",
         text: "What has **keys**?",
-        hints: [{ text: "It makes music", timePenalty: 60 }],
+        hints: [{ text: "It makes music", timePenaltySeconds: 60 }],
         solutionText: null,
       },
     });
@@ -272,7 +274,7 @@ describe("following a puzzle", () => {
     const response = await request(app).get(await puzzlePath("riddle"));
 
     expect(JSON.parse(response.text).puzzle).toMatchObject({
-      status: 3,
+      status: "completed",
       skipped: true,
       solutionText: "A piano",
     });
@@ -367,7 +369,7 @@ describe("a quest several teams race", () => {
       expect.objectContaining({
         id: await entryIdOf("quest", 0),
         entrant: { kind: "team", displayName: "Team Display" },
-        status: 1,
+        status: "inProgress",
         statusDescription: "In progress",
         paused: false,
         rank: null,
@@ -485,11 +487,15 @@ describe("a quest several teams race", () => {
         provisional: true,
       });
       expect(body.entries).toEqual([
-        expect.objectContaining({ rank: 1, status: 2, puzzles: [] }),
+        expect.objectContaining({
+          rank: 1,
+          status: "completed",
+          puzzles: [],
+        }),
         expect.objectContaining({
           entrant: { kind: "team", displayName: "Team Display" },
           rank: null,
-          status: 1,
+          status: "inProgress",
         }),
       ]);
     });
@@ -537,12 +543,23 @@ describe("a quest several teams race", () => {
     expect(body.entries).toEqual([
       expect.objectContaining({
         puzzles: [
-          expect.objectContaining({ name: "riddle", status: 3 }),
-          expect.objectContaining({ name: "lantern", status: 1 }),
+          expect.objectContaining({
+            puzzleName: "riddle",
+            status: "completed",
+          }),
+          expect.objectContaining({
+            puzzleName: "lantern",
+            status: "awaitingActivation",
+          }),
         ],
       }),
       expect.objectContaining({
-        puzzles: [expect.objectContaining({ name: "riddle", status: 1 })],
+        puzzles: [
+          expect.objectContaining({
+            puzzleName: "riddle",
+            status: "awaitingActivation",
+          }),
+        ],
       }),
     ]);
     expect(body.entries[1].progress.puzzles).toHaveLength(1);
@@ -556,11 +573,9 @@ describe("a quest several teams race", () => {
 
     expect(body).toMatchObject({ racing: false, stopsHidden: false });
     for (const entry of body.entries) {
-      expect(entry.puzzles.map((p: { name: string }) => p.name)).toEqual([
-        "riddle",
-        "lantern",
-        "finale",
-      ]);
+      expect(
+        entry.puzzles.map((p: { puzzleName: string }) => p.puzzleName)
+      ).toEqual(["riddle", "lantern", "finale"]);
     }
   });
 
@@ -577,7 +592,7 @@ describe("a quest several teams race", () => {
     const staff = await view(path, "helper");
     expect(staff.status).toBe(200);
     expect(JSON.parse(staff.text).puzzle).toMatchObject({
-      status: 3,
+      status: "completed",
       solutionText: "A piano",
     });
   });
@@ -607,7 +622,9 @@ describe("a quest several teams race", () => {
       await puzzlePath("finale", await entryIdOf("quest", 1))
     );
     expect(solved.status).toBe(200);
-    expect(JSON.parse(solved.text).puzzle).toMatchObject({ status: 3 });
+    expect(JSON.parse(solved.text).puzzle).toMatchObject({
+      status: "completed",
+    });
   });
 
   it("finds no puzzle for an entry the quest doesn't have", async () => {

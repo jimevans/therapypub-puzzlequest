@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AssigneeKind } from "../models/quest.model.js";
+import { entrantKindSchema, toAssigneeKind } from "./enums.js";
 import { displayName, newName, requiredText, wholeNumber } from "./common.js";
 
 /**
@@ -22,10 +22,12 @@ const questPuzzle = z.object({
 });
 
 /** A user or team playing a quest, by name. */
-const entrant = z.object({
-  kind: z.enum(AssigneeKind),
-  name: requiredText.meta({ description: "The user name or team name." }),
-});
+const entrant = z
+  .object({
+    kind: entrantKindSchema,
+    name: requiredText.meta({ description: "The user name or team name." }),
+  })
+  .transform(({ kind, name }) => ({ kind: toAssigneeKind(kind), name }));
 
 /**
  * The users and teams playing a quest, each with its own progress: several
@@ -45,17 +47,22 @@ const visibility = z.enum(["public", "private"]).meta({
 });
 
 /** POST /api/v1/quests */
-export const createQuestBody = z.object({
-  name: newName,
-  displayName: displayName.min(1, "Required"),
-  visibility: visibility.optional(),
-  entrants,
-  puzzles: z.array(questPuzzle).default([]),
-});
-export type CreateQuestBody = z.infer<typeof createQuestBody>;
+export const createQuestBody = z
+  .object({
+    questName: newName,
+    displayName: displayName.min(1, "Required"),
+    visibility: visibility.optional(),
+    entrants,
+    puzzles: z.array(questPuzzle).default([]),
+  })
+  .transform(({ questName, ...definition }) => ({
+    name: questName,
+    ...definition,
+  }));
+export type CreateQuestBody = z.output<typeof createQuestBody>;
 
 /**
- * PATCH /api/v1/quests/{name}. Fields left out keep their stored values; leaving
+ * PATCH /api/v1/quests/{questName}. Fields left out keep their stored values; leaving
  * out the puzzle list keeps the puzzles unchanged.
  */
 export const updateQuestBody = z.object({
@@ -64,50 +71,54 @@ export const updateQuestBody = z.object({
   entrants: entrants.optional(),
   puzzles: z.array(questPuzzle).optional(),
 });
-export type UpdateQuestBody = z.infer<typeof updateQuestBody>;
+export type UpdateQuestBody = z.output<typeof updateQuestBody>;
 
 /**
  * The page's live-update connection, which the live update about the action
  * then leaves out: the page shows the result itself.
  */
-const connectionId = z.string().optional().meta({
+export const connectionIdField = z.string().optional().meta({
   description:
-    "The page's live-update connection, which isn't sent the update about this action.",
+    "The client's live-update connection, which isn't sent the update about this action: the client shows the result itself.",
 });
+const connectionId = connectionIdField;
 
 /**
- * POST /api/v1/quests/{name}/puzzles/{puzzleName}/activation: an activation
- * code, or (as multipart, parsed by multer) a camera frame of its QR code
- * with the frame's size.
+ * POST /api/v1/quests/{questName}/puzzles/{puzzleName}/activation, as JSON:
+ * the activation code, typed.
  */
 export const activatePuzzleBody = z.object({
   activationCode: z.string().optional().meta({
     description:
       "The code, typed, in any letter case; or scan its QR code instead.",
   }),
-  width: wholeNumber
-    .positive()
-    .optional()
-    .meta({ description: "The scanned frame's width, in pixels." }),
-  height: wholeNumber
-    .positive()
-    .optional()
-    .meta({ description: "The scanned frame's height, in pixels." }),
+  connectionId,
 });
 export type ActivatePuzzleBody = z.infer<typeof activatePuzzleBody>;
 
-/** POST /api/v1/quests/{name}/puzzles/{puzzleName}/solution-attempts */
+/**
+ * The same, as multipart (parsed by multer): the text fields sent with a
+ * camera frame of the stop's QR code, the frame's size among them.
+ */
+export const scannedActivationFields = z.object({
+  width: wholeNumber.positive().optional(),
+  height: wholeNumber.positive().optional(),
+  connectionId,
+});
+export type ScannedActivationFields = z.infer<typeof scannedActivationFields>;
+
+/** POST /api/v1/quests/{questName}/puzzles/{puzzleName}/solution-attempts */
 export const solvePuzzleBody = z.object({
   guess: z.string().max(1000, "Must be at most 1000 characters"),
   connectionId,
 });
 export type SolvePuzzleBody = z.infer<typeof solvePuzzleBody>;
 
-/** POST /api/v1/quests/{name}/puzzles/{puzzleName}/hints */
+/** POST /api/v1/quests/{questName}/puzzles/{puzzleName}/hints */
 export const requestHintBody = z.object({ connectionId });
 export type RequestHintBody = z.infer<typeof requestHintBody>;
 
-/** POST /api/v1/quests/{name}/teams/{teamName}/puzzles/{puzzleName}/reset, and for players */
+/** POST /api/v1/quests/{questName}/teams/{teamName}/puzzles/{puzzleName}/reset, and for players */
 export const resetPuzzleBody = z.object({
   /** True to remove the penalties of the puzzle's revealed hints. */
   refundHints: z.boolean().default(false),

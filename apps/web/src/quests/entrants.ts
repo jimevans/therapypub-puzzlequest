@@ -1,14 +1,19 @@
 // Who plays a quest: its entrants, each a team or a player on their own, and
 // each with its own entry, which holds its progress. A quest played by one team
 // has one entry; a race has several.
+import type { Schemas } from "@puzzlequest/api-client";
 import { QUEST_COMPLETED, QUEST_NOT_STARTED } from "./status";
+
+/** A quest's status, as the API gives it. */
+type QuestStatus = Schemas["QuestStatus"];
 
 /** A team or player playing a quest, however much of it the API gives. */
 export interface Entrant {
-  kind: "user" | "team";
-  /** Missing if the user or team has been deleted, or isn't shown. */
-  name?: string;
-  displayName?: string;
+  kind: Schemas["EntrantKind"];
+  /** Null if the user or team has been deleted; missing if it isn't shown. */
+  name?: string | null;
+  /** Null if the user or team has been deleted. */
+  displayName?: string | null;
 }
 
 /** The kind of entrant, in words. */
@@ -43,9 +48,7 @@ export function entrantLabel(entrant: Entrant): string {
  * @returns the key, or undefined if the entrant has been deleted
  */
 export function entrantKey(entrant: Entrant): string | undefined {
-  return entrant.name === undefined
-    ? undefined
-    : `${entrant.kind}:${entrant.name}`;
+  return entrant.name == null ? undefined : `${entrant.kind}:${entrant.name}`;
 }
 
 /** Where entries have got to, as far as the order of a list goes. */
@@ -59,7 +62,7 @@ export type QuestProgressState = "underWay" | "notStarted" | "finished";
  * @returns the state
  */
 export function overallState(
-  entries: readonly { status: number }[]
+  entries: readonly { status: QuestStatus }[]
 ): QuestProgressState {
   if (
     entries.some(
@@ -97,7 +100,7 @@ export function ordinal(rank: number): string {
 interface Placed {
   /** Missing or null until it has finished. */
   rank?: number | null;
-  status: number;
+  status: QuestStatus;
 }
 
 /** Where an entry goes: ranked first, then playing, then not started. */

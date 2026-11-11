@@ -41,7 +41,7 @@ const QUEST = "/api/v1/quests/secret/spectator-view";
 const PUZZLE = "/api/v1/quests/secret/puzzles/riddle/spectator-view";
 
 /** The path of the puzzle as the quest's entry has it. */
-const puzzlePath = async () => `${PUZZLE}?entry=${await entryIdOf("secret")}`;
+const puzzlePath = async () => `${PUZZLE}?entryId=${await entryIdOf("secret")}`;
 const TICKET = "/api/v1/quests/secret/live-tickets";
 
 beforeAll(async () => {
@@ -183,7 +183,7 @@ describe("a private quest", () => {
       .set("Authorization", `Bearer ${sessions.boss}`)
       .send({
         entrants: [
-          { kind: "user", name: "player" },
+          { kind: "player", name: "player" },
           { kind: "team", name: "reds" },
         ],
       })
@@ -310,7 +310,7 @@ describe("those following it", () => {
     await answered;
     const whenClosed = closed(socket);
 
-    await update({ entrants: [{ kind: "user", name: "stranger" }] });
+    await update({ entrants: [{ kind: "player", name: "stranger" }] });
 
     expect(await whenClosed).toBe(4001);
   });

@@ -12,6 +12,7 @@ import {
   describe,
   expect,
   it,
+  vi,
 } from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
@@ -26,6 +27,7 @@ const { QuestModel, QuestPuzzleStatus } =
 const { AuthorizationLevel, UserModel } =
   await import("../../src/models/user.model.js");
 const QuestService = await import("../../src/services/quest.service.js");
+const { questEventBus } = await import("../../src/events/questEventBus.js");
 const { MAXIMUM_ACTIVATION_IMAGE_BYTES, MAXIMUM_PUZZLE_MEDIA_BYTES } =
   await import("../../src/middleware/upload.js");
 const { activationRateLimiter } =
@@ -125,7 +127,7 @@ function renderQrCodePixels(text: string): PixelImage {
   return { data, width: size, height: size };
 }
 
-describe("POST /api/v1/quests/{name}/puzzles/{puzzleName}/activation", () => {
+describe("POST /api/v1/quests/{questName}/puzzles/{puzzleName}/activation", () => {
   let activationCode: string;
 
   beforeEach(async () => {
@@ -201,6 +203,53 @@ describe("POST /api/v1/quests/{name}/puzzles/{puzzleName}/activation", () => {
     expect(quest!.entries[0]!.puzzles[0].status).toBe(
       QuestPuzzleStatus.IN_PROGRESS
     );
+  });
+
+  it("leaves the page that scanned it out of the live update", async () => {
+    const image = renderQrCodePixels(activationCode);
+    const handler = vi.fn();
+    const stop = questEventBus.subscribe(handler);
+    try {
+      const response = await request(app)
+        .post("/api/v1/quests/test-quest/puzzles/colors/activation")
+        .set("Authorization", `Bearer ${signedInToken}`)
+        .field("height", String(image.height))
+        .field("width", String(image.width))
+        .field("connectionId", "scanner-1")
+        .attach("image", image.data, "blob");
+      expect(response.status).toBe(200);
+    } finally {
+      stop();
+    }
+
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({ connectionId: "scanner-1" })
+    );
+  });
+
+  it("reports a scan without its size as unreadable", async () => {
+    const image = renderQrCodePixels(activationCode);
+
+    const response = await request(app)
+      .post("/api/v1/quests/test-quest/puzzles/colors/activation")
+      .set("Authorization", `Bearer ${signedInToken}`)
+      .attach("image", image.data, "blob");
+
+    expect(response.status).toBe(422);
+    expect(JSON.parse(response.text).type).toBe("/problems/unreadable-qr-code");
+  });
+
+  it("reports a scan whose size isn't a size as an invalid request", async () => {
+    const response = await sendImage({
+      data: Buffer.alloc(4),
+      width: 0,
+      height: 1,
+    });
+
+    expect(response.status).toBe(400);
+    expect(JSON.parse(response.text).errors).toEqual([
+      { path: "body.width", message: expect.any(String) },
+    ]);
   });
 
   it("rejects a QR code for a different activation code", async () => {

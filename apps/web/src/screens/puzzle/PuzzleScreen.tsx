@@ -48,15 +48,18 @@ function Solving({
   const [isWarning, setIsWarning] = useState(false);
   const solve = usePuzzleAction(path, async (guess: string) =>
     dataOrThrow(
-      await api.POST("/quests/{name}/puzzles/{puzzleName}/solution-attempts", {
-        params: { path },
-        body: { guess, connectionId: connectionId() },
-      })
+      await api.POST(
+        "/quests/{questName}/puzzles/{puzzleName}/solution-attempts",
+        {
+          params: { path },
+          body: { guess, connectionId: connectionId() },
+        }
+      )
     )
   );
   const reveal = usePuzzleAction(path, async (_: void) =>
     dataOrThrow(
-      await api.POST("/quests/{name}/puzzles/{puzzleName}/hints", {
+      await api.POST("/quests/{questName}/puzzles/{puzzleName}/hints", {
         params: { path },
         body: { connectionId: connectionId() },
       })
@@ -95,8 +98,8 @@ function Solving({
             }}
           >
             Reveal next hint
-            {nextHint.timePenalty > 0 &&
-              ` (${formatPenalty(nextHint.timePenalty)})`}
+            {nextHint.timePenaltySeconds > 0 &&
+              ` (${formatPenalty(nextHint.timePenaltySeconds)})`}
           </Button>
         )}
       </AnswerForm>
@@ -126,7 +129,7 @@ function Solved({ path, view }: { path: PuzzlePath; view: View }) {
       {next ? (
         <LinkButton
           variant="primary"
-          to={`/quest/${encodeURIComponent(path.name)}/puzzle/${encodeURIComponent(next.name)}`}
+          to={`/quest/${encodeURIComponent(path.questName)}/puzzle/${encodeURIComponent(next.puzzleName)}`}
         >
           {copy.goToNextStep(next.displayName)}
         </LinkButton>
@@ -152,7 +155,7 @@ function PuzzleDetails({
   connectionId: () => string | undefined;
 }) {
   const { quest, puzzle } = view;
-  const questPath = `/quest/${encodeURIComponent(path.name)}`;
+  const questPath = `/quest/${encodeURIComponent(path.questName)}`;
   const announcement = useAnnouncement(
     {
       paused: quest.paused,
@@ -185,7 +188,11 @@ function PuzzleDetails({
       <p className={styles.stepNumber}>{copy.stepLabel(puzzle.stopNumber)}</p>
       <h1>{puzzle.displayName}</h1>
       {puzzle.status === STEP_AWAITING_ACTIVATION && (
-        <Activation path={path} paused={quest.paused} />
+        <Activation
+          path={path}
+          paused={quest.paused}
+          connectionId={connectionId}
+        />
       )}
       {puzzle.type !== null && puzzle.text !== null && (
         <PuzzleContent
@@ -204,8 +211,8 @@ function PuzzleDetails({
 }
 
 function PuzzleLoader({ path }: { path: PuzzlePath }) {
-  const { connected, connectionId } = useLiveQuest(path.name);
-  const view = useQuery(puzzleQuery(path.name, path.puzzleName));
+  const { connected, connectionId } = useLiveQuest(path.questName);
+  const view = useQuery(puzzleQuery(path.questName, path.puzzleName));
 
   // Resetting a quest makes its puzzles disappear, so this overrides what's on
   // screen. Any other failure leaves the last known state showing, since a phone
@@ -243,6 +250,9 @@ export function PuzzleScreen() {
   const { name = "", puzzleName = "" } = useParams();
   // A new puzzle starts afresh, without the last one's typing or errors.
   return (
-    <PuzzleLoader key={`${name}/${puzzleName}`} path={{ name, puzzleName }} />
+    <PuzzleLoader
+      key={`${name}/${puzzleName}`}
+      path={{ questName: name, puzzleName }}
+    />
   );
 }

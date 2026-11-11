@@ -140,8 +140,10 @@ describe("skipping a puzzle", () => {
     );
     const view = await playerView();
     expect(view.puzzles[0]).toMatchObject({
+      status: "completed",
+      skipped: true,
       statusDescription: "Skipped",
-      solutionDisplayText: "A piano",
+      solutionText: "A piano",
     });
     expect(view.progress.penaltyMs).toBe(0);
   });
@@ -339,7 +341,7 @@ describe("a skipped puzzle, as the players see the quest", () => {
 
     expect(response.body.entries[0].puzzles[0]).toMatchObject({
       statusDescription: "Skipped",
-      solutionDisplayText: "A piano",
+      solutionText: "A piano",
     });
   });
 });

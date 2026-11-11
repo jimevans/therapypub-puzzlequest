@@ -17,12 +17,20 @@ vi.mock("../../live/useLiveQuest", async (importOriginal) => ({
   }),
 }));
 
-const STOPPED = { running: false, elapsedMs: 0, penaltyMs: 0, totalMs: 0 };
+const STOPPED = {
+  startTime: null,
+  endTime: null,
+  running: false,
+  clockStart: null,
+  elapsedMs: 0,
+  penaltyMs: 0,
+  totalMs: 0,
+};
 
 const SOLVED = {
-  name: "riddle",
+  puzzleName: "riddle",
   displayName: "The Riddle",
-  status: 3,
+  status: "completed",
   statusDescription: "Completed",
   skipped: false,
   activationTime: "2026-11-06T18:05:00.000Z",
@@ -30,9 +38,9 @@ const SOLVED = {
 };
 
 const WAITING = {
-  name: "bridge",
+  puzzleName: "bridge",
   displayName: "The Bridge",
-  status: 1,
+  status: "awaitingActivation",
   statusDescription: "Awaiting activation",
   skipped: false,
   activationTime: null,
@@ -40,9 +48,9 @@ const WAITING = {
 };
 
 const QUEST = {
-  name: "trail",
+  questName: "trail",
   displayName: "The Trail",
-  status: 1,
+  status: "inProgress",
   statusDescription: "In progress",
   paused: false,
   rank: null as number | null,
@@ -103,8 +111,8 @@ describe("Board", () => {
     show();
 
     await screen.findByRole("heading", { name: "The Trail" });
-    expect(get).toHaveBeenCalledWith("/quests/{name}/spectator-view", {
-      params: { path: { name: "trail" } },
+    expect(get).toHaveBeenCalledWith("/quests/{questName}/spectator-view", {
+      params: { path: { questName: "trail" } },
     });
   });
 
@@ -151,7 +159,7 @@ describe("Board", () => {
   });
 
   it("says when the quest hasn't started, with no clock", async () => {
-    apiShows(spectated({ ...QUEST, status: 0, puzzles: [] }));
+    apiShows(spectated({ ...QUEST, status: "notStarted", puzzles: [] }));
     show();
 
     expect(await screen.findByText("Starting soon")).toBeVisible();
@@ -162,7 +170,7 @@ describe("Board", () => {
     apiShows(
       spectated({
         ...QUEST,
-        status: 2,
+        status: "completed",
         puzzles: [SOLVED],
         progress: { ...QUEST.progress, totalMs: 3_845_000 },
       })
@@ -185,7 +193,7 @@ describe("Board", () => {
           ...reds,
           id: "entry-2",
           entrant: { kind: "team", displayName: "The Blues" },
-          status: 2,
+          status: "completed",
           statusDescription: "Completed",
           rank: 1,
           puzzles: [],
@@ -227,7 +235,7 @@ describe("Board", () => {
   it("keeps the final standings up once the race is over, with the winner", async () => {
     const [reds] = spectated({
       ...QUEST,
-      status: 2,
+      status: "completed",
       statusDescription: "Completed",
     }).entries;
     apiShows({

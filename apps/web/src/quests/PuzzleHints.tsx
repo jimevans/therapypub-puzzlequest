@@ -17,7 +17,8 @@ export function PuzzleHints({
         <li key={index} className={styles.hint}>
           <span className={styles.hintHeading}>
             Hint {index + 1}
-            {hint.timePenalty > 0 && `, ${formatPenalty(hint.timePenalty)}`}
+            {hint.timePenaltySeconds > 0 &&
+              `, ${formatPenalty(hint.timePenaltySeconds)}`}
           </span>
           {hint.text}
         </li>

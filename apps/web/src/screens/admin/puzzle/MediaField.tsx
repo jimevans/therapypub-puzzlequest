@@ -1,3 +1,4 @@
+import type { Schemas } from "@puzzlequest/api-client";
 import { useEffect, useRef, useState } from "react";
 import { type Control, useController } from "react-hook-form";
 import { PuzzleContent } from "../../../quests/PuzzleContent";
@@ -11,7 +12,7 @@ import {
 
 interface MediaFieldProps {
   control: Control<PuzzleFormValues>;
-  type: number;
+  type: Schemas["PuzzleType"];
   displayName: string;
   /** The file the puzzle already has, if it can keep it. */
   keptPath: string | undefined;

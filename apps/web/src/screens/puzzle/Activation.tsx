@@ -14,9 +14,12 @@ const RETRY_AFTER_NO_ANSWER_MS = 5000;
 export function Activation({
   path,
   paused,
+  connectionId,
 }: {
   path: PuzzlePath;
   paused: boolean;
+  /** The live-update connection, so this page isn't told of its own action. */
+  connectionId: () => string | undefined;
 }) {
   const [method, setMethod] = useState<"scan" | "type">(
     canScan() ? "scan" : "type"
@@ -27,9 +30,9 @@ export function Activation({
   const lastScan = useRef({ code: "", tryAgainAt: 0 });
   const activate = usePuzzleAction(path, async (activationCode: string) =>
     dataOrThrow(
-      await api.POST("/quests/{name}/puzzles/{puzzleName}/activation", {
+      await api.POST("/quests/{questName}/puzzles/{puzzleName}/activation", {
         params: { path },
-        body: { activationCode },
+        body: { activationCode, connectionId: connectionId() },
       })
     )
   );

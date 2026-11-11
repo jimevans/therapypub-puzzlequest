@@ -23,35 +23,47 @@ vi.mock("../../live/useLiveQuest", async (importOriginal) => ({
   }),
 }));
 
-const STOPPED = { running: false, elapsedMs: 0, penaltyMs: 0, totalMs: 0 };
+const STOPPED = {
+  startTime: null,
+  endTime: null,
+  running: false,
+  clockStart: null,
+  elapsedMs: 0,
+  penaltyMs: 0,
+  totalMs: 0,
+};
 
 const COMPLETED_STEP = {
   puzzleName: "riddle",
   displayName: "The Riddle",
-  status: 3,
+  status: "completed",
   statusDescription: "Completed",
-  nextHintToDisplay: 0,
+  hintsRevealed: 0,
   skipped: false,
   startTime: "2026-11-06T18:00:00.000Z",
   activationTime: "2026-11-06T18:05:00.000Z",
   endTime: "2026-11-06T18:10:00.000Z",
-  solutionDisplayText: "A piano",
+  solutionText: "A piano",
+  hints: [],
 };
 
 const WAITING_STEP = {
   puzzleName: "bridge",
   displayName: "The Bridge",
-  status: 1,
+  status: "awaitingActivation",
   statusDescription: "Awaiting activation",
-  nextHintToDisplay: 0,
+  hintsRevealed: 0,
   skipped: false,
   startTime: "2026-11-06T18:10:00.000Z",
+  activationTime: null,
+  endTime: null,
+  hints: [],
 };
 
 const QUEST = {
-  name: "trail",
+  questName: "trail",
   displayName: "The Trail",
-  status: 1,
+  status: "inProgress",
   statusDescription: "In progress",
   paused: false,
   puzzles: [COMPLETED_STEP, WAITING_STEP],
@@ -74,7 +86,11 @@ const QUEST = {
 
 /** The quest as its player gets it: with their own entry alone. */
 function asPlayed(quest: typeof QUEST) {
-  return withOneEntry(quest, { kind: "user", name: "player" });
+  return withOneEntry(quest, {
+    kind: "player",
+    name: "player",
+    displayName: "The Player",
+  });
 }
 
 /** A finished entry, as the public view of a race shows it. */
@@ -82,13 +98,13 @@ function spectatorEntry(
   id: string,
   displayName: string,
   rank: number | null,
-  status = 2
+  status = "completed"
 ) {
   return {
     id,
     entrant: { kind: "team", displayName },
     status,
-    statusDescription: status === 2 ? "Completed" : "In progress",
+    statusDescription: status === "completed" ? "Completed" : "In progress",
     paused: false,
     rank,
     progress: {
@@ -103,7 +119,7 @@ function spectatorEntry(
 
 /** The public view of the quest when the player's team played it alone. */
 const ALONE = {
-  name: "trail",
+  questName: "trail",
   displayName: "The Trail",
   racing: false,
   stopsHidden: false,
@@ -122,7 +138,9 @@ function apiAnswers(quest: typeof QUEST, spectated: unknown = ALONE) {
     .spyOn(api, "GET")
     .mockImplementation((async (path: string) =>
       ok(
-        path === "/quests/{name}/spectator-view" ? spectated : asPlayed(quest)
+        path === "/quests/{questName}/spectator-view"
+          ? spectated
+          : asPlayed(quest)
       )) as never);
 }
 
@@ -165,8 +183,8 @@ describe("QuestScreen", () => {
     expect(
       await screen.findByRole("heading", { name: "The Trail", level: 1 })
     ).toBeVisible();
-    expect(get).toHaveBeenCalledWith("/quests/{name}", {
-      params: { path: { name: "trail" } },
+    expect(get).toHaveBeenCalledWith("/quests/{questName}", {
+      params: { path: { questName: "trail" } },
     });
   });
 
@@ -281,7 +299,11 @@ describe("QuestScreen", () => {
   });
 
   it("marks the end only once the quest is over", async () => {
-    apiAnswers({ ...QUEST, status: 2, statusDescription: "Completed" });
+    apiAnswers({
+      ...QUEST,
+      status: "completed",
+      statusDescription: "Completed",
+    });
     show();
 
     expect(await screen.findByText(copy.questFinished)).toBeVisible();
@@ -289,7 +311,7 @@ describe("QuestScreen", () => {
 
   it("shows the standings once the player's team has finished a race", async () => {
     const get = apiAnswers(
-      { ...QUEST, status: 2, statusDescription: "Completed" },
+      { ...QUEST, status: "completed", statusDescription: "Completed" },
       {
         ...ALONE,
         racing: true,
@@ -298,7 +320,7 @@ describe("QuestScreen", () => {
         entries: [
           spectatorEntry("entry-2", "The Blues", 1),
           spectatorEntry("entry-1", "The Reds", 2),
-          spectatorEntry("entry-3", "The Greens", null, 1),
+          spectatorEntry("entry-3", "The Greens", null, "inProgress"),
         ],
       }
     );
@@ -312,14 +334,14 @@ describe("QuestScreen", () => {
     expect(
       screen.getByText(/Provisional until every team finishes/)
     ).toBeVisible();
-    expect(get).toHaveBeenCalledWith("/quests/{name}/spectator-view", {
-      params: { path: { name: "trail" } },
+    expect(get).toHaveBeenCalledWith("/quests/{questName}/spectator-view", {
+      params: { path: { questName: "trail" } },
     });
   });
 
   it("shows the final standings, with the winner, once everyone has finished", async () => {
     apiAnswers(
-      { ...QUEST, status: 2, statusDescription: "Completed" },
+      { ...QUEST, status: "completed", statusDescription: "Completed" },
       {
         ...ALONE,
         entries: [
@@ -340,7 +362,7 @@ describe("QuestScreen", () => {
   it("shows no standings for a quest the player's team played alone", async () => {
     const get = apiAnswers({
       ...QUEST,
-      status: 2,
+      status: "completed",
       statusDescription: "Completed",
     });
     show();
@@ -348,7 +370,7 @@ describe("QuestScreen", () => {
     await screen.findByText(copy.questFinished);
     await waitFor(() =>
       expect(get).toHaveBeenCalledWith(
-        "/quests/{name}/spectator-view",
+        "/quests/{questName}/spectator-view",
         expect.anything()
       )
     );
@@ -362,7 +384,7 @@ describe("QuestScreen", () => {
     await screen.findByRole("link", { name: "The Riddle" });
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     expect(get).not.toHaveBeenCalledWith(
-      "/quests/{name}/spectator-view",
+      "/quests/{questName}/spectator-view",
       expect.anything()
     );
   });

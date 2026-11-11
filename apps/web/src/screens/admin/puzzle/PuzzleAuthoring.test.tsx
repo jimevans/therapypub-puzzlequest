@@ -9,22 +9,22 @@ import { PuzzleDetails } from "./PuzzleDetails";
 import { PuzzleEditor } from "./PuzzleEditor";
 
 const RIDDLE = {
-  name: "riddle",
+  puzzleName: "riddle",
   displayName: "The Riddle",
-  type: 0,
+  type: "text",
   text: "Name a **color**",
   solutionKeyword: "red",
-  solutionDisplayText: "Red",
+  solutionText: "Red",
   hints: [
-    { text: "Roses", solutionWarning: false, timePenalty: 30 },
-    { text: "It's red", solutionWarning: true, timePenalty: 300 },
+    { text: "Roses", solutionWarning: false, timePenaltySeconds: 30 },
+    { text: "It's red", solutionWarning: true, timePenaltySeconds: 300 },
   ],
 };
 const PICTURE = {
   ...RIDDLE,
-  name: "picture",
+  puzzleName: "picture",
   displayName: "The Picture",
-  type: 1,
+  type: "image",
   text: "/puzzleData/picture.png",
   hints: [],
 };
@@ -33,9 +33,11 @@ const PICTURE = {
 function apiPuzzles(...puzzles: (typeof RIDDLE)[]) {
   return vi.spyOn(api, "GET").mockImplementation((async (
     path: string,
-    init?: { params: { path: { name: string } } }
+    init?: { params: { path: { puzzleName: string } } }
   ) => {
-    const puzzle = puzzles.find(({ name }) => name === init?.params.path.name);
+    const puzzle = puzzles.find(
+      ({ puzzleName }) => puzzleName === init?.params.path.puzzleName
+    );
     return puzzle ? ok(puzzle) : refusal("not-found", "No such puzzle");
   }) as never);
 }
@@ -150,13 +152,15 @@ describe("creating a puzzle", () => {
     );
     expect(post).toHaveBeenCalledWith("/puzzles", {
       body: {
-        name: "riddle",
+        puzzleName: "riddle",
         displayName: "The Riddle",
-        type: 0,
+        type: "text",
         text: "Name a **color**",
         solutionKeyword: "red",
-        solutionDisplayText: "Red",
-        hints: [{ text: "Roses", solutionWarning: false, timePenalty: 30 }],
+        solutionText: "Red",
+        hints: [
+          { text: "Roses", solutionWarning: false, timePenaltySeconds: 30 },
+        ],
       },
     });
   });
@@ -183,7 +187,7 @@ describe("creating a puzzle", () => {
     const user = userEvent.setup();
     vi.spyOn(api, "POST").mockResolvedValue(
       refusal("already-exists", "A puzzle named riddle already exists", [
-        { path: "body.name", message: "Already taken" },
+        { path: "body.puzzleName", message: "Already taken" },
       ]) as never
     );
     show("/puzzle/new");
@@ -237,7 +241,13 @@ describe("creating a puzzle", () => {
     );
     expect(post.mock.calls[0]).toEqual([
       "/puzzles",
-      { body: expect.objectContaining({ name: "picture", type: 1, text: "" }) },
+      {
+        body: expect.objectContaining({
+          puzzleName: "picture",
+          type: "image",
+          text: "",
+        }),
+      },
     ]);
     expect(post.mock.calls[1]?.[0]).toBe("/puzzle-media");
     const upload = (post.mock.calls[1]?.[1] as { body: FormData }).body;
@@ -248,8 +258,8 @@ describe("creating a puzzle", () => {
     ]);
     expect(upload.get("puzzleName")).toBe("picture");
     expect(upload.get("fileExtension")).toBe("PNG");
-    expect(patch).toHaveBeenCalledWith("/puzzles/{name}", {
-      params: { path: { name: "picture" } },
+    expect(patch).toHaveBeenCalledWith("/puzzles/{puzzleName}", {
+      params: { path: { puzzleName: "picture" } },
       body: { text: "/puzzleData/picture.png" },
     });
   });
@@ -303,8 +313,8 @@ describe("editing a puzzle", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(patch).toHaveBeenCalledTimes(1));
-    expect(patch).toHaveBeenCalledWith("/puzzles/{name}", {
-      params: { path: { name: "picture" } },
+    expect(patch).toHaveBeenCalledWith("/puzzles/{puzzleName}", {
+      params: { path: { puzzleName: "picture" } },
       body: expect.objectContaining({
         displayName: "Renamed",
         text: "/puzzleData/picture.png",
@@ -342,10 +352,12 @@ describe("editing a puzzle", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(patch).toHaveBeenCalled());
-    expect(patch).toHaveBeenCalledWith("/puzzles/{name}", {
-      params: { path: { name: "riddle" } },
+    expect(patch).toHaveBeenCalledWith("/puzzles/{puzzleName}", {
+      params: { path: { puzzleName: "riddle" } },
       body: expect.objectContaining({
-        hints: [{ text: "It's red", solutionWarning: true, timePenalty: 300 }],
+        hints: [
+          { text: "It's red", solutionWarning: true, timePenaltySeconds: 300 },
+        ],
       }),
     });
   });

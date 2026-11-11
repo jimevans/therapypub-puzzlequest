@@ -14,7 +14,9 @@ export const puzzleDefinitionQuery = (name: string) =>
     queryKey: [...PUZZLES_KEY, name],
     queryFn: async () =>
       dataOrThrow(
-        await api.GET("/puzzles/{name}", { params: { path: { name } } })
+        await api.GET("/puzzles/{puzzleName}", {
+          params: { path: { puzzleName: name } },
+        })
       ),
   });
 
@@ -22,7 +24,7 @@ export const puzzleDefinitionQuery = (name: string) =>
 export const MAXIMUM_MEDIA_BYTES = 100 * 1024 * 1024;
 
 /** The files each kind of media puzzle offers to choose. */
-export const MEDIA_ACCEPT: Record<number, string> = {
+export const MEDIA_ACCEPT: Partial<Record<Schemas["PuzzleType"], string>> = {
   [PuzzleType.Image]: "image/*",
   [PuzzleType.Audio]: "audio/*",
   [PuzzleType.Video]: "video/*",
@@ -32,24 +34,21 @@ export interface HintValues {
   text: string;
   solutionWarning: boolean;
   /** Seconds, as typed. */
-  timePenalty: string;
+  timePenaltySeconds: string;
 }
 
 /** What the puzzle editor asks. */
 export interface PuzzleFormValues {
-  /**
-   * The puzzle's name, which is in its address. Not "name": a form's elements
-   * become properties of the form, and one called name would hide form.name.
-   */
+  /** The puzzle's name, which is in its address. */
   puzzleName: string;
   displayName: string;
-  type: number;
+  type: Schemas["PuzzleType"];
   /** A text puzzle's Markdown. */
   text: string;
   /** A media puzzle's new file, if one has been chosen. */
   file: File | null;
   solutionKeyword: string;
-  solutionDisplayText: string;
+  solutionText: string;
   hints: HintValues[];
 }
 
@@ -57,7 +56,7 @@ export interface PuzzleFormValues {
 export const NEW_HINT: HintValues = {
   text: "",
   solutionWarning: false,
-  timePenalty: "0",
+  timePenaltySeconds: "0",
 };
 
 /**
@@ -67,17 +66,17 @@ export const NEW_HINT: HintValues = {
  */
 export function formValuesOf(puzzle?: Puzzle): PuzzleFormValues {
   return {
-    puzzleName: puzzle?.name ?? "",
+    puzzleName: puzzle?.puzzleName ?? "",
     displayName: puzzle?.displayName ?? "",
     type: puzzle?.type ?? PuzzleType.Text,
     text: puzzle?.type === PuzzleType.Text ? puzzle.text : "",
     file: null,
     solutionKeyword: puzzle?.solutionKeyword ?? "",
-    solutionDisplayText: puzzle?.solutionDisplayText ?? "",
+    solutionText: puzzle?.solutionText ?? "",
     hints:
       puzzle?.hints.map((hint) => ({
         ...hint,
-        timePenalty: `${hint.timePenalty}`,
+        timePenaltySeconds: `${hint.timePenaltySeconds}`,
       })) ?? [],
   };
 }
@@ -91,7 +90,7 @@ export function formValuesOf(puzzle?: Puzzle): PuzzleFormValues {
  */
 export function keptMediaPath(
   puzzle: Puzzle | undefined,
-  type: number
+  type: Schemas["PuzzleType"]
 ): string | undefined {
   return puzzle &&
     type !== PuzzleType.Text &&
@@ -99,15 +98,6 @@ export function keptMediaPath(
     puzzle.text !== ""
     ? puzzle.text
     : undefined;
-}
-
-/**
- * Says where a form field is, from where the API said a problem was.
- * @param field the request body's field, such as name or hints.0.text
- * @returns the form's field
- */
-export function formFieldOf(field: string): string {
-  return field === "name" ? "puzzleName" : field;
 }
 
 /**
@@ -151,16 +141,16 @@ export async function savePuzzle(
   values: PuzzleFormValues,
   existing: Puzzle | undefined
 ): Promise<void> {
-  const name = existing?.name ?? values.puzzleName.trim();
+  const name = existing?.puzzleName ?? values.puzzleName.trim();
   const isText = values.type === PuzzleType.Text;
   const fields = {
     displayName: values.displayName,
     type: values.type,
     solutionKeyword: values.solutionKeyword,
-    solutionDisplayText: values.solutionDisplayText,
+    solutionText: values.solutionText,
     hints: values.hints.map((hint) => ({
       ...hint,
-      timePenalty: Number(hint.timePenalty),
+      timePenaltySeconds: Number(hint.timePenaltySeconds),
     })),
   };
   // A media puzzle keeps its file unless there's a new one.
@@ -168,15 +158,15 @@ export async function savePuzzle(
 
   if (existing) {
     dataOrThrow(
-      await api.PATCH("/puzzles/{name}", {
-        params: { path: { name } },
+      await api.PATCH("/puzzles/{puzzleName}", {
+        params: { path: { puzzleName: name } },
         body: text === undefined ? fields : { ...fields, text },
       })
     );
   } else {
     dataOrThrow(
       await api.POST("/puzzles", {
-        body: { ...fields, name, text: text ?? "" },
+        body: { ...fields, puzzleName: name, text: text ?? "" },
       })
     );
   }
@@ -185,8 +175,8 @@ export async function savePuzzle(
     try {
       const path = await uploadMedia(name, values.file);
       dataOrThrow(
-        await api.PATCH("/puzzles/{name}", {
-          params: { path: { name } },
+        await api.PATCH("/puzzles/{puzzleName}", {
+          params: { path: { puzzleName: name } },
           body: { text: path },
         })
       );

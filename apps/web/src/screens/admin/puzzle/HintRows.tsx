@@ -53,7 +53,7 @@ export function HintRows({ control, register }: HintRowsProps) {
                 <div className={styles.hintSettings}>
                   <FormTextField
                     control={control}
-                    name={`hints.${index}.timePenalty`}
+                    name={`hints.${index}.timePenaltySeconds`}
                     rules={{
                       required: "Enter a penalty, or 0",
                       pattern: {

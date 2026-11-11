@@ -1,3 +1,4 @@
+import type { Schemas } from "@puzzlequest/api-client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -18,40 +19,60 @@ vi.mock("../../live/useLiveQuest", async (importOriginal) => ({
   useLiveQuest: () => ({ connected: true, connectionId: () => undefined }),
 }));
 
-const STOPPED = { running: false, elapsedMs: 0, penaltyMs: 0, totalMs: 0 };
+const STOPPED = {
+  startTime: null,
+  endTime: null,
+  running: false,
+  clockStart: null,
+  elapsedMs: 0,
+  penaltyMs: 0,
+  totalMs: 0,
+};
 const HINTS = [
-  { text: "One", solutionWarning: false, timePenalty: 60 },
-  { text: "Two", solutionWarning: true, timePenalty: 300 },
+  { text: "One", solutionWarning: false, timePenaltySeconds: 60 },
+  { text: "Two", solutionWarning: true, timePenaltySeconds: 300 },
 ];
+
+/** The stop statuses, in the order a stop goes through them. */
+const STOP_STATUSES = [
+  "notReached",
+  "awaitingActivation",
+  "inProgress",
+  "completed",
+] as const;
 
 function step(
   puzzleName: string,
-  status: number,
+  stage: number,
   statusDescription: string,
   extra: object = {}
 ) {
   return {
     puzzleName,
     displayName: `The ${puzzleName}`,
-    status,
+    status: STOP_STATUSES[stage],
     statusDescription,
-    nextHintToDisplay: 0,
+    hintsRevealed: 0,
     activationCode: `${puzzleName.toUpperCase()}1`,
+    cardWord: null,
+    activationTime: stage >= 2 ? "2026-11-07T10:02:00.000Z" : null,
+    startTime: stage >= 1 ? "2026-11-07T10:00:00.000Z" : null,
+    endTime: stage === 3 ? "2026-11-07T10:05:00.000Z" : null,
     skipped: false,
-    solutionDisplayText: `${puzzleName} solved`,
+    solutionText: `${puzzleName} solved`,
     hints: HINTS,
     ...extra,
   };
 }
 
 const RUNNING = {
-  name: "trail",
+  questName: "trail",
   displayName: "The Trail",
-  status: 1,
+  status: "inProgress",
   statusDescription: "In progress",
   paused: false,
   puzzles: [
-    step("riddle", 3, "Completed", { nextHintToDisplay: 1 }),
+    step("riddle", 3, "Completed", { hintsRevealed: 1 }),
     step("cipher", 2, "In progress"),
     step("finale", 0, "Unavailable"),
   ],
@@ -72,13 +93,11 @@ const RUNNING = {
 };
 const NOT_STARTED = {
   ...RUNNING,
-  status: 0,
+  status: "notStarted",
   statusDescription: "Not yet started",
-  puzzles: RUNNING.puzzles.map((puzzle) => ({
-    ...puzzle,
-    status: 0,
-    statusDescription: "Unavailable",
-  })),
+  puzzles: ["riddle", "cipher", "finale"].map((name) =>
+    step(name, 0, "Unavailable")
+  ),
   progress: { ...STOPPED, puzzles: [] },
 };
 const REDS = { kind: "team", name: "reds" };
@@ -86,7 +105,7 @@ const REDS = { kind: "team", name: "reds" };
 /** A race: the Reds, running; the Blues, on the first stop; and Sam, alone. */
 const [RED_ENTRY] = withOneEntry(RUNNING).entries;
 const RACE = {
-  name: "trail",
+  questName: "trail",
   displayName: "The Trail",
   entries: [
     RED_ENTRY,
@@ -104,8 +123,8 @@ const RACE = {
     {
       ...RED_ENTRY,
       id: "entry-3",
-      entrant: { kind: "user", name: "sam", displayName: "Sam" },
-      status: 0,
+      entrant: { kind: "player", name: "sam", displayName: "Sam" },
+      status: "notStarted",
       statusDescription: "Not yet started",
       puzzles: NOT_STARTED.puzzles,
       progress: { ...STOPPED, puzzles: [] },
@@ -114,28 +133,28 @@ const RACE = {
 };
 const EVENTS = [
   {
-    type: "QuestStarted",
+    type: "questStarted",
     at: "2026-11-07T10:00:00.000Z",
     actor: "boss",
     entrant: REDS,
   },
   {
-    type: "HintRevealed",
+    type: "hintRevealed",
     at: "2026-11-07T10:03:00.000Z",
     puzzleName: "riddle",
     actor: "player",
-    data: { hintIndex: 0, timePenalty: 60 },
+    data: { hintIndex: 0, timePenaltySeconds: 60 },
     entrant: REDS,
   },
   {
-    type: "PuzzleSolved",
+    type: "puzzleSolved",
     at: "2026-11-07T10:05:00.000Z",
     puzzleName: "riddle",
     actor: "player",
     entrant: REDS,
   },
   {
-    type: "PuzzleActivated",
+    type: "puzzleActivated",
     at: "2026-11-07T10:06:00.000Z",
     puzzleName: "cipher",
     actorDeleted: true,
@@ -154,18 +173,30 @@ const asStored = (quest: typeof RUNNING) => withOneEntry(quest);
  */
 function apiQuest(
   quest:
-    ({ name: string; displayName: string } & Record<string, unknown>) | null,
-  events: unknown[] = EVENTS
+    | ({ questName: string; displayName: string } & Record<string, unknown>)
+    | null,
+  events: object[] = EVENTS
 ) {
   const stored = quest && ("entries" in quest ? quest : withOneEntry(quest));
   return vi.spyOn(api, "GET").mockImplementation((async (path: string) => {
-    if (path === "/quests/{name}") {
+    if (path === "/quests/{questName}") {
       return stored ? ok(stored) : refusal("not-found", "No such quest");
     }
-    if (path === "/quests/{name}/events") {
-      return ok({ items: events, next: null });
+    if (path === "/quests/{questName}/events") {
+      // What an event doesn't say is null, as the API gives it.
+      return ok({
+        items: events.map((event) => ({
+          puzzleName: null,
+          actor: null,
+          actorDeleted: false,
+          entrant: null,
+          data: null,
+          ...event,
+        })),
+        next: null,
+      });
     }
-    return ok({ user: aUser({ userName: "boss", authorizationLevel: 10 }) });
+    return ok({ user: aUser({ userName: "boss", role: "admin" }) });
   }) as never);
 }
 
@@ -308,9 +339,12 @@ describe("the quest console", () => {
     expect(post).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Start" }));
 
-    expect(post).toHaveBeenCalledWith("/quests/{name}/teams/{teamName}/start", {
-      params: { path: { name: "trail", teamName: "reds" } },
-    });
+    expect(post).toHaveBeenCalledWith(
+      "/quests/{questName}/teams/{teamName}/start",
+      {
+        params: { path: { questName: "trail", teamName: "reds" } },
+      }
+    );
     expect(
       screen.queryByRole("button", { name: "Pause" })
     ).not.toBeInTheDocument();
@@ -344,9 +378,12 @@ describe("the quest console", () => {
         screen.getByRole("dialog", { name: "Pause The Trail?" })
       ).getByRole("button", { name: "Pause" })
     );
-    expect(post).toHaveBeenCalledWith("/quests/{name}/teams/{teamName}/pause", {
-      params: { path: { name: "trail", teamName: "reds" } },
-    });
+    expect(post).toHaveBeenCalledWith(
+      "/quests/{questName}/teams/{teamName}/pause",
+      {
+        params: { path: { questName: "trail", teamName: "reds" } },
+      }
+    );
   });
 
   it("gives Pause and Resume their own IDs as the quest changes", async () => {
@@ -386,9 +423,9 @@ describe("the quest console", () => {
     await user.click(screen.getByRole("button", { name: "Resume" }));
 
     expect(post).toHaveBeenCalledWith(
-      "/quests/{name}/teams/{teamName}/resume",
+      "/quests/{questName}/teams/{teamName}/resume",
       {
-        params: { path: { name: "trail", teamName: "reds" } },
+        params: { path: { questName: "trail", teamName: "reds" } },
       }
     );
   });
@@ -409,10 +446,10 @@ describe("the quest console", () => {
     await user.click(within(dialog).getByRole("button", { name: "Reset" }));
 
     expect(post).toHaveBeenCalledWith(
-      "/quests/{name}/teams/{teamName}/puzzles/{puzzleName}/reset",
+      "/quests/{questName}/teams/{teamName}/puzzles/{puzzleName}/reset",
       {
         params: {
-          path: { name: "trail", teamName: "reds", puzzleName: "riddle" },
+          path: { questName: "trail", teamName: "reds", puzzleName: "riddle" },
         },
         body: { refundHints: true },
       }
@@ -437,10 +474,10 @@ describe("the quest console", () => {
     );
 
     expect(post).toHaveBeenCalledWith(
-      "/quests/{name}/teams/{teamName}/puzzles/{puzzleName}/skip",
+      "/quests/{questName}/teams/{teamName}/puzzles/{puzzleName}/skip",
       {
         params: {
-          path: { name: "trail", teamName: "reds", puzzleName: "cipher" },
+          path: { questName: "trail", teamName: "reds", puzzleName: "cipher" },
         },
       }
     );
@@ -502,9 +539,9 @@ describe("the quest console", () => {
     // A quest with one team has no one else to choose.
     expect(within(dialog).queryByLabelText("Send to")).not.toBeInTheDocument();
     expect(post).toHaveBeenCalledWith(
-      "/quests/{name}/teams/{teamName}/text-messages",
+      "/quests/{questName}/teams/{teamName}/text-messages",
       {
-        params: { path: { name: "trail", teamName: "reds" } },
+        params: { path: { questName: "trail", teamName: "reds" } },
         body: {
           message: "Look up",
           expectedResponse: "lighthouse",
@@ -574,7 +611,7 @@ describe("the quest console", () => {
   it("shows the latest activity until asked for all of it", async () => {
     const user = userEvent.setup();
     const many = Array.from({ length: 25 }, (_, index) => ({
-      type: "QuestPaused",
+      type: "questPaused",
       at: new Date(Date.UTC(2026, 10, 7, 10, index)).toISOString(),
       entrant: REDS,
     }));
@@ -605,7 +642,7 @@ describe("the quest console, for a race", () => {
   const RACE_EVENTS = [
     ...EVENTS,
     {
-      type: "PuzzleActivated",
+      type: "puzzleActivated",
       at: "2026-11-07T10:07:00.000Z",
       puzzleName: "riddle",
       actor: "blue",
@@ -646,7 +683,7 @@ describe("the quest console, for a race", () => {
           { ...reds!, rank: null },
           {
             ...blues!,
-            status: 2,
+            status: "completed",
             statusDescription: "Completed",
             rank: 1,
           },
@@ -724,14 +761,17 @@ describe("the quest console, for a race", () => {
       ).getByRole("button", { name: "Skip" })
     );
 
-    expect(post).toHaveBeenCalledWith("/quests/{name}/teams/{teamName}/pause", {
-      params: { path: { name: "trail", teamName: "blues" } },
-    });
     expect(post).toHaveBeenCalledWith(
-      "/quests/{name}/teams/{teamName}/puzzles/{puzzleName}/skip",
+      "/quests/{questName}/teams/{teamName}/pause",
+      {
+        params: { path: { questName: "trail", teamName: "blues" } },
+      }
+    );
+    expect(post).toHaveBeenCalledWith(
+      "/quests/{questName}/teams/{teamName}/puzzles/{puzzleName}/skip",
       {
         params: {
-          path: { name: "trail", teamName: "blues", puzzleName: "riddle" },
+          path: { questName: "trail", teamName: "blues", puzzleName: "riddle" },
         },
       }
     );
@@ -741,7 +781,7 @@ describe("the quest console, for a race", () => {
     const user = userEvent.setup();
     apiQuest(RACE, RACE_EVENTS);
     const post = vi.spyOn(api, "POST").mockResolvedValue(ok(RACE) as never);
-    show("/quest/trail?entry=user:sam");
+    show("/quest/trail?entry=player:sam");
 
     const sam = within(
       await screen.findByRole("region", { name: "Sam (player)" })
@@ -756,8 +796,8 @@ describe("the quest console, for a race", () => {
     );
 
     expect(post).toHaveBeenCalledWith(
-      "/quests/{name}/players/{userName}/start",
-      { params: { path: { name: "trail", userName: "sam" } } }
+      "/quests/{questName}/players/{userName}/start",
+      { params: { path: { questName: "trail", userName: "sam" } } }
     );
   });
 
@@ -778,8 +818,8 @@ describe("the quest console, for a race", () => {
       expect(post).not.toHaveBeenCalled();
       await user.click(within(dialog).getByRole("button", { name: label }));
 
-      expect(post).toHaveBeenCalledWith(`/quests/{name}/${action}`, {
-        params: { path: { name: "trail" } },
+      expect(post).toHaveBeenCalledWith(`/quests/{questName}/${action}`, {
+        params: { path: { questName: "trail" } },
       });
     }
   );
@@ -798,8 +838,8 @@ describe("the quest console, for a race", () => {
       ).getByRole("button", { name: "Resume all" })
     );
 
-    expect(post).toHaveBeenCalledWith("/quests/{name}/resume", {
-      params: { path: { name: "trail" } },
+    expect(post).toHaveBeenCalledWith("/quests/{questName}/resume", {
+      params: { path: { questName: "trail" } },
     });
   });
 
@@ -821,8 +861,8 @@ describe("the quest console, for a race", () => {
     await user.type(within(dialog).getByLabelText("Message"), "Hurry");
     await user.click(within(dialog).getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Message sent.")).toBeVisible();
-    expect(post).toHaveBeenLastCalledWith("/quests/{name}/text-messages", {
-      params: { path: { name: "trail" } },
+    expect(post).toHaveBeenLastCalledWith("/quests/{questName}/text-messages", {
+      params: { path: { questName: "trail" } },
       body: { message: "Hurry" },
     });
 
@@ -836,9 +876,9 @@ describe("the quest console, for a race", () => {
     await user.click(within(dialog).getByRole("button", { name: "Send" }));
     await waitFor(() =>
       expect(post).toHaveBeenLastCalledWith(
-        "/quests/{name}/teams/{teamName}/text-messages",
+        "/quests/{questName}/teams/{teamName}/text-messages",
         {
-          params: { path: { name: "trail", teamName: "blues" } },
+          params: { path: { questName: "trail", teamName: "blues" } },
           body: { message: "Nearly" },
         }
       )
@@ -866,9 +906,9 @@ describe("the quest console, for a race", () => {
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith(
-        "/quests/{name}/players/{userName}/text-messages",
+        "/quests/{questName}/players/{userName}/text-messages",
         {
-          params: { path: { name: "trail", userName: "sam" } },
+          params: { path: { questName: "trail", userName: "sam" } },
           body: { message: "Hi Sam" },
         }
       )
@@ -881,34 +921,34 @@ describe("describing an event", () => {
 
   it.each([
     [
-      { type: "PuzzleStarted", puzzleName: "riddle" },
+      { type: "puzzleStarted", puzzleName: "riddle" },
       "The riddle is next, waiting to be activated",
     ],
-    [{ type: "PuzzleActivated", puzzleName: "riddle" }, "The riddle activated"],
-    [{ type: "PuzzleSkipped", puzzleName: "riddle" }, "The riddle skipped"],
+    [{ type: "puzzleActivated", puzzleName: "riddle" }, "The riddle activated"],
+    [{ type: "puzzleSkipped", puzzleName: "riddle" }, "The riddle skipped"],
     [
-      { type: "PuzzleReset", puzzleName: "riddle", data: { refundedHints: 0 } },
+      { type: "puzzleReset", puzzleName: "riddle", data: { refundedHints: 0 } },
       "The riddle reset",
     ],
     [
-      { type: "PuzzleReset", puzzleName: "riddle", data: { refundedHints: 1 } },
+      { type: "puzzleReset", puzzleName: "riddle", data: { refundedHints: 1 } },
       "The riddle reset, refunding 1 hint's penalty",
     ],
     [
-      { type: "PuzzleReset", puzzleName: "riddle", data: { refundedHints: 2 } },
+      { type: "puzzleReset", puzzleName: "riddle", data: { refundedHints: 2 } },
       "The riddle reset, refunding 2 hints' penalties",
     ],
     [
       {
-        type: "HintRevealed",
+        type: "hintRevealed",
         puzzleName: "riddle",
-        data: { hintIndex: 1, timePenalty: 0 },
+        data: { hintIndex: 1, timePenaltySeconds: 0 },
       },
       "Hint 2 revealed on The riddle",
     ],
-    [{ type: "QuestCompleted" }, "Quest finished"],
-    [{ type: "QuestResumed" }, "Quest resumed"],
-    [{ type: "QuestReset" }, "Quest reset"],
+    [{ type: "questCompleted" }, "Quest finished"],
+    [{ type: "questResumed" }, "Quest resumed"],
+    [{ type: "questReset" }, "Quest reset"],
     [
       { type: "SomethingNew", puzzleName: "riddle" },
       "SomethingNew: The riddle",
@@ -917,7 +957,16 @@ describe("describing an event", () => {
   ])("describes %o", (event, words) => {
     expect(
       describeEvent(
-        { at: "2026-11-07T10:00:00.000Z", entrant: null, ...event },
+        // A type this version doesn't know is described as best it can be.
+        {
+          at: "2026-11-07T10:00:00.000Z",
+          puzzleName: null,
+          actor: null,
+          actorDeleted: false,
+          entrant: null,
+          data: null,
+          ...event,
+        } as Schemas["QuestEvent"],
         label
       )
     ).toBe(words);

@@ -300,58 +300,6 @@ export class QuestPuzzle {
         break;
     }
   }
-
-  /**
-   * Gets an object that will be serialized to JSON as the serialized representation
-   * of this QuestPuzzle.
-   * @returns the object to be serialized to JSON
-   */
-  toJSON(): Record<string, unknown> {
-    const serializableObject: Record<string, unknown> = {
-      puzzleName: this.puzzleName,
-      nextHintToDisplay: this.nextHintToDisplay,
-      status: this.status,
-      activationCode: this.activationCode,
-      startTime: this.startTime,
-      endTime: this.endTime,
-      activationTime: this.activationTime,
-      skipped: this.skipped,
-      statusDescription: this.statusDescription,
-    };
-    if (this.cardWord) {
-      serializableObject.cardWord = this.cardWord;
-    }
-    // If puzzle lookup data is present, flatten certain properties
-    // for rendering.
-    if (this.puzzleDetail) {
-      serializableObject.displayName = this.puzzleDetail.displayName;
-      // serializableObject.type = this.puzzleDetail.type;
-      // serializableObject.text = this.puzzleDetail.text;
-      serializableObject.solutionDisplayText =
-        this.puzzleDetail.solutionDisplayText;
-      serializableObject.hints = this.puzzleDetail.hints;
-    }
-    return serializableObject;
-  }
-
-  /**
-   * Gets the serialized representation of this QuestPuzzle that the players
-   * may see. It leaves out the activation code, which players must get by
-   * scanning the puzzle's QR code; the card word, which they collect on the
-   * printed cards; the hints not yet revealed, which would avoid their time
-   * penalties; and the solution, until the puzzle is solved.
-   * @returns the object to be serialized to JSON
-   */
-  toPlayerJSON(): Record<string, unknown> {
-    const { activationCode, cardWord, ...visible } = this.toJSON();
-    if (this.puzzleDetail) {
-      visible.hints = this.puzzleDetail.hints.slice(0, this.nextHintToDisplay);
-      if (this.status !== QuestPuzzleStatus.COMPLETED) {
-        delete visible.solutionDisplayText;
-      }
-    }
-    return visible;
-  }
 }
 
 /**
@@ -585,12 +533,10 @@ export interface PuzzleSolution {
 export interface PuzzleHintResult {
   /** The text of the hint. */
   hintText: string;
-  /** True if the puzzle has more hints. */
-  moreHints: boolean;
   /** The time penalty for the hint, in seconds. */
   timePenalty: number;
-  /** True if the next hint gives away the solution. */
-  isNextHintSolution: boolean;
+  /** The puzzle's next hint, or null if this was its last. */
+  nextHint: { timePenalty: number; solutionWarning: boolean } | null;
 }
 
 /**
@@ -1131,6 +1077,19 @@ export async function listAssignedQuestsPage(
   };
 }
 
+/** An event from a quest's log, as the log keeps it. */
+export interface LoggedQuestEvent {
+  /** What happened, such as PuzzleSolved (see QuestEvent). */
+  type: string;
+  at: Date;
+  puzzleName?: string | null;
+  actor?: string | null;
+  actorDeleted?: boolean | null;
+  /** Null for events logged before quests had several entries. */
+  entrant?: { kind: AssigneeKind; name?: string | null } | null;
+  data?: Record<string, unknown> | null;
+}
+
 /**
  * Gets a page of what happened in a quest, oldest first, from its event log.
  * The log keeps names as they were, as history.
@@ -1141,19 +1100,7 @@ export async function listAssignedQuestsPage(
 export async function listQuestEventsPage(
   questName: string,
   query: PageQuery
-): Promise<
-  QuestResult<
-    Page<{
-      type: string;
-      at: Date;
-      puzzleName?: string | null;
-      actor?: string | null;
-      actorDeleted?: boolean;
-      entrant: { kind: AssigneeKind; name?: string } | null;
-      data?: unknown;
-    }>
-  >
-> {
+): Promise<QuestResult<Page<LoggedQuestEvent>>> {
   if (!(await QuestModel.exists({ name: questName }))) {
     return {
       status: "error",
@@ -1179,17 +1126,11 @@ export async function listQuestEventsPage(
         ({ type, at, puzzleName, actor, actorDeleted, entrant, data }) => ({
           type,
           at,
-          ...(puzzleName ? { puzzleName } : {}),
-          ...(actor ? { actor } : {}),
-          ...(actorDeleted ? { actorDeleted: true } : {}),
-          // Events logged before quests had several entries have none.
-          entrant: entrant?.kind
-            ? {
-                kind: entrant.kind,
-                ...(entrant.name ? { name: entrant.name } : {}),
-              }
-            : null,
-          ...(data ? { data } : {}),
+          puzzleName,
+          actor,
+          actorDeleted,
+          entrant,
+          data: data as Record<string, unknown> | null | undefined,
         })
       ),
     },
@@ -2395,8 +2336,12 @@ async function describeEvents(
         described.push({
           ...event,
           hintText: puzzle?.hints.at(event.hintIndex)?.text ?? "",
-          moreHints: nextHint !== undefined,
-          isNextHintSolution: nextHint?.solutionWarning ?? false,
+          nextHint: nextHint
+            ? {
+                timePenalty: nextHint.timePenalty,
+                solutionWarning: nextHint.solutionWarning,
+              }
+            : null,
         });
         break;
       }
@@ -2784,9 +2729,8 @@ export async function getPuzzleHint(
     statusCode: 200,
     data: {
       hintText: hint.hintText,
-      moreHints: hint.moreHints,
       timePenalty: hint.timePenalty,
-      isNextHintSolution: hint.isNextHintSolution,
+      nextHint: hint.nextHint,
     },
   };
 }

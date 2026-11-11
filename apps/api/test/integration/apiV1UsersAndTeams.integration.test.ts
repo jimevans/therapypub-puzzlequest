@@ -163,7 +163,7 @@ describe("a user", () => {
       emailVerified: true,
       phone: "",
       sms: false,
-      authorizationLevel: AuthorizationLevel.USER,
+      role: "player",
       teams: [{ teamName: "team-a", displayName: "Team A" }],
     });
   });
@@ -191,25 +191,38 @@ describe("a user", () => {
     });
   });
 
-  it("can't change their own authorization level", async () => {
+  it("can't change their own role", async () => {
     const response = await as("player", "patch", "/users/player").send({
-      authorizationLevel: AuthorizationLevel.ADMIN,
+      role: "admin",
     });
 
     expect(response.status).toBe(403);
     expect(bodyOf(response).detail).toBe(
-      "Only an administrator can change an authorization level"
+      "Only an administrator can change a user's role"
     );
     const stored = await UserModel.findOne({ userName: "player" }).lean();
     expect(stored!.authorizationLevel).toBe(AuthorizationLevel.USER);
   });
 
-  it("has an authorization level an administrator can change", async () => {
+  it("has a role an administrator can change", async () => {
     const response = await as("admin", "patch", "/users/player").send({
-      authorizationLevel: AuthorizationLevel.ADMIN,
+      role: "admin",
     });
 
-    expect(bodyOf(response).authorizationLevel).toBe(AuthorizationLevel.ADMIN);
+    expect(bodyOf(response).role).toBe("admin");
+    const stored = await UserModel.findOne({ userName: "player" }).lean();
+    expect(stored!.authorizationLevel).toBe(AuthorizationLevel.ADMIN);
+  });
+
+  it("is shown as staff when stored at the staff level", async () => {
+    await UserModel.updateOne(
+      { userName: "player" },
+      { authorizationLevel: AuthorizationLevel.STAFF }
+    );
+
+    const response = await as("admin", "get", "/users/player");
+
+    expect(bodyOf(response).role).toBe("staff");
   });
 
   it("isn't given a password by a PATCH, even from an administrator", async () => {

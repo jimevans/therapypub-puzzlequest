@@ -129,7 +129,7 @@ describe("the API's contract", () => {
     expect(
       contract.check({
         method: "GET",
-        path: "/quests/{name}/puzzles/{puzzleName}/qr-code",
+        path: "/quests/{questName}/puzzles/{puzzleName}/qr-code",
         status: 200,
         mediaType: "image/png",
       })

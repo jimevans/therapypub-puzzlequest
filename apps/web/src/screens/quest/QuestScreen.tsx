@@ -28,15 +28,15 @@ function QuestDetails({ quest }: { quest: Schemas["Quest"] }) {
       displayName={quest.displayName}
       entry={entry}
       steps={entry.puzzles.map((step) => ({
-        name: step.puzzleName,
-        displayName: step.displayName ?? step.puzzleName,
+        puzzleName: step.puzzleName,
+        displayName: step.displayName,
         status: step.status,
         statusDescription: step.statusDescription,
         startTime: step.startTime,
         activationTime: step.activationTime,
         endTime: step.endTime,
-        solutionText: step.solutionDisplayText,
-        path: `/quest/${encodeURIComponent(quest.name)}/puzzle/${encodeURIComponent(step.puzzleName)}`,
+        solutionText: step.solutionText,
+        path: `/quest/${encodeURIComponent(quest.questName)}/puzzle/${encodeURIComponent(step.puzzleName)}`,
       }))}
       finish={
         <>
@@ -45,7 +45,7 @@ function QuestDetails({ quest }: { quest: Schemas["Quest"] }) {
             <strong>{formatDuration(entry.progress.totalMs)}</strong>.
           </FinishPanel>
           <Suspense fallback={null}>
-            <RaceStandings questName={quest.name} entryId={entry.id} />
+            <RaceStandings questName={quest.questName} entryId={entry.id} />
           </Suspense>
         </>
       }

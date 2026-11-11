@@ -57,20 +57,20 @@ async function sendText(
 ) {
   if (!entrant) {
     return dataOrThrow(
-      await api.POST("/quests/{name}/text-messages", {
-        params: { path: { name: questName } },
+      await api.POST("/quests/{questName}/text-messages", {
+        params: { path: { questName } },
         body,
       })
     );
   }
   return dataOrThrow(
     entrant.kind === "team"
-      ? await api.POST("/quests/{name}/teams/{teamName}/text-messages", {
-          params: { path: { name: questName, teamName: entrant.name } },
+      ? await api.POST("/quests/{questName}/teams/{teamName}/text-messages", {
+          params: { path: { questName, teamName: entrant.name } },
           body,
         })
-      : await api.POST("/quests/{name}/players/{userName}/text-messages", {
-          params: { path: { name: questName, userName: entrant.name } },
+      : await api.POST("/quests/{questName}/players/{userName}/text-messages", {
+          params: { path: { questName, userName: entrant.name } },
           body,
         })
   );

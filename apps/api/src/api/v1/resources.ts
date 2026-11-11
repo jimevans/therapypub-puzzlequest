@@ -1,12 +1,65 @@
 // The resources the v1 API returns, as schemas for its description and
-// functions that make them from the services' objects.
+// functions that make them from the services' objects. The services work with
+// what is stored, such as numbered statuses; these map it to the API's names
+// and values (see decision 0023), so what is stored never has to change for
+// the API's sake.
 import { z } from "zod";
+import type { Progress, QuestProgress } from "../../domain/quest/index.js";
 import { QuestPuzzleStatus } from "../../models/quest.model.js";
 import type * as QuestService from "../../services/quest.service.js";
 import { rankQuestEntries } from "../../services/quest.service.js";
 import type * as PuzzleService from "../../services/puzzle.service.js";
 import type * as TeamService from "../../services/team.service.js";
 import type * as UserService from "../../services/user.service.js";
+import {
+  entrantKindSchema,
+  puzzleTypeSchema,
+  questEventTypeSchema,
+  questStatusSchema,
+  roleSchema,
+  stopStatusSchema,
+  toEntrantKind,
+  toPuzzleType,
+  toQuestEventType,
+  toQuestStatus,
+  toRole,
+  toStopStatus,
+} from "../../schemas/enums.js";
+import {
+  nextHintSchema,
+  timePenaltySeconds,
+  toNextHint,
+} from "../../schemas/hints.js";
+
+/** A moment, in ISO 8601 format. */
+const time = z.iso.datetime();
+
+/**
+ * Formats a moment that may not have happened.
+ * @param date the moment, if there is one
+ * @returns it in ISO 8601 format, or null
+ */
+function timeOrNull(date: Date | null | undefined): string | null {
+  return date ? date.toISOString() : null;
+}
+
+/** The fields every view has that describe a status in words. */
+const statusDescription = z.string().meta({
+  description:
+    "The status in English words, for display; the wording may change, so act on status instead.",
+});
+
+/** True while an entry is paused. */
+const paused = z.boolean().meta({
+  description:
+    "True while an administrator has paused the entry: its clocks stop, and its players can't activate, guess, or reveal hints until it resumes. Its status stays inProgress.",
+});
+
+/** True if a stop was skipped. */
+const skipped = z.boolean().meta({
+  description:
+    "True if an administrator skipped the stop for the entry, completing it with no penalty, rather than its players solving it.",
+});
 
 /** A team, as a user's list of teams shows it. */
 export const teamSummarySchema = z
@@ -32,12 +85,10 @@ export const userSchema = z
     sms: z
       .boolean()
       .meta({ description: "True if the user accepts text messages." }),
-    authorizationLevel: z.number().int().meta({
-      description:
-        "What the user may do: 1 for a player, 5 for staff, 10 for an administrator.",
-    }),
+    role: roleSchema,
     teams: z.array(teamSummarySchema).optional().meta({
-      description: "The teams the user is a member of, when getting one user.",
+      description:
+        "The teams the user is a member of; only when getting one user.",
     }),
   })
   .meta({ id: "User" });
@@ -62,7 +113,7 @@ export function toUserResource(
     emailVerified: user.emailVerified ?? false,
     phone: user.phone,
     sms: "sms" in user ? user.sms : user.allowSmsMessages,
-    authorizationLevel: user.authorizationLevel,
+    role: toRole(user.authorizationLevel),
     ...(teams
       ? {
           teams: teams.map(({ teamName, displayName }) => ({
@@ -123,14 +174,40 @@ export function toTeamResource(
   };
 }
 
+/** One of a puzzle's hints, as the puzzle defines it. */
+const hintDefinitionSchema = z
+  .object({
+    text: z.string(),
+    solutionWarning: z.boolean().meta({
+      description: "True if the hint gives the solution away.",
+    }),
+    timePenaltySeconds: timePenaltySeconds.meta({
+      description: "Seconds added to the players' time for revealing it.",
+    }),
+  })
+  .meta({ id: "HintDefinition" });
+
+/**
+ * Makes the resources for a puzzle's hints.
+ * @param hints the hints, as stored
+ * @returns the resources
+ */
+function toHintDefinitions(
+  hints: readonly PuzzleService.PuzzleHint[]
+): z.infer<typeof hintDefinitionSchema>[] {
+  return hints.map(({ text, solutionWarning, timePenalty }) => ({
+    text,
+    solutionWarning,
+    timePenaltySeconds: timePenalty,
+  }));
+}
+
 /** A puzzle, with its solution and hints; only administrators see these. */
 export const puzzleSchema = z
   .object({
-    name: z.string(),
+    puzzleName: z.string(),
     displayName: z.string(),
-    type: z.number().int().meta({
-      description: "0 for text, 1 for an image, 2 for audio, 3 for video.",
-    }),
+    type: puzzleTypeSchema,
     text: z.string().meta({
       description:
         "Markdown, for a text puzzle; the media file's path, for the others.",
@@ -139,20 +216,10 @@ export const puzzleSchema = z
       description:
         "The keywords a guess must contain, separated by commas; letter case, spacing, and punctuation don't matter.",
     }),
-    solutionDisplayText: z
+    solutionText: z
       .string()
       .meta({ description: "The solution as shown once it is solved." }),
-    hints: z.array(
-      z.object({
-        text: z.string(),
-        solutionWarning: z.boolean().meta({
-          description: "True if the hint gives the solution away.",
-        }),
-        timePenalty: z.number().int().meta({
-          description: "Seconds added to the players' time for revealing it.",
-        }),
-      })
-    ),
+    hints: z.array(hintDefinitionSchema),
   })
   .meta({ id: "Puzzle" });
 export type PuzzleResource = z.infer<typeof puzzleSchema>;
@@ -164,114 +231,220 @@ export type PuzzleResource = z.infer<typeof puzzleSchema>;
  */
 export function toPuzzleResource(puzzle: PuzzleService.Puzzle): PuzzleResource {
   return {
-    name: puzzle.name,
+    puzzleName: puzzle.name,
     displayName: puzzle.displayName,
-    type: puzzle.type,
+    type: toPuzzleType(puzzle.type),
     text: puzzle.text,
     solutionKeyword: puzzle.solutionKeyword,
-    solutionDisplayText: puzzle.solutionDisplayText,
-    hints: puzzle.hints.map(({ text, solutionWarning, timePenalty }) => ({
-      text,
-      solutionWarning,
-      timePenalty,
-    })),
+    solutionText: puzzle.solutionDisplayText,
+    hints: toHintDefinitions(puzzle.hints),
   };
 }
 
-/** A moment, in ISO 8601 format. */
-const time = z.iso.datetime();
-
 /** How long players have spent on part of a quest. */
-const progressFields = {
-  startTime: time.optional().meta({ description: "When the clock started." }),
-  endTime: time.optional().meta({ description: "When the clock stopped." }),
+const clockFields = {
+  startTime: time.nullable().meta({
+    description: "When the clock started; null until it has.",
+  }),
+  endTime: time.nullable().meta({
+    description: "When the clock stopped; null until it has.",
+  }),
   running: z.boolean().meta({
-    description: "True while the clock runs: started, not stopped or paused.",
-  }),
-  clockStart: time.optional().meta({
     description:
-      "While running, when the clock would have started if there had been no pauses: a page's clock counts up from here.",
+      "True while the clock runs: started, not stopped, and not paused.",
   }),
-  elapsedMs: z.number().meta({
-    description: "Milliseconds on the clock, leaving out paused time.",
+  clockStart: time.nullable().meta({
+    description:
+      "While running, when the clock would have started if there had been no pauses, so a client's clock can count up from here without asking again; null while not running.",
   }),
-  penaltyMs: z.number().meta({
+  elapsedMs: z.number().int().nonnegative().meta({
+    description:
+      "Milliseconds on the clock, leaving out paused time, as of the response.",
+  }),
+  penaltyMs: z.number().int().nonnegative().meta({
     description: "The revealed hints' time penalties, in milliseconds.",
   }),
-  totalMs: z.number().meta({
+  totalMs: z.number().int().nonnegative().meta({
     description: "The score: elapsed time plus penalties. Lower is better.",
   }),
 };
 
+/** How long players have spent on a quest, or on one of its stops. */
+const clockSchema = z.object(clockFields).meta({
+  id: "Clock",
+  description:
+    "How long an entry's players have spent on a quest, or on one of its stops.",
+});
+type ClockResource = z.infer<typeof clockSchema>;
+
+/** How long players have spent on one of a quest's stops. */
+const puzzleClockSchema = z
+  .object({ puzzleName: z.string(), ...clockFields })
+  .meta({
+    id: "PuzzleClock",
+    description: "How long an entry's players have spent on one stop.",
+  });
+
+/** How long players have spent on a quest, stop by stop. */
+const progressSchema = z
+  .object({
+    ...clockFields,
+    puzzles: z.array(puzzleClockSchema).meta({
+      description:
+        "Each stop's clock, in order. Views for players and the public have only the stops reached so far, and none when the view is the standings alone (see SpectatorQuest's stopsHidden).",
+    }),
+  })
+  .meta({
+    id: "Progress",
+    description:
+      "How long an entry's players have spent on a quest, overall and stop by stop.",
+  });
+type ProgressResource = z.infer<typeof progressSchema>;
+
+/**
+ * Makes the resource for a clock.
+ * @param progress the progress, as the rules measure it
+ * @returns the resource
+ */
+function toClock(progress: Progress): ClockResource {
+  return {
+    startTime: timeOrNull(progress.startTime),
+    endTime: timeOrNull(progress.endTime),
+    running: progress.running,
+    clockStart: timeOrNull(progress.clockStart),
+    elapsedMs: progress.elapsedMs,
+    penaltyMs: progress.penaltyMs,
+    totalMs: progress.totalMs,
+  };
+}
+
+/**
+ * Makes the resource for a quest's progress.
+ * @param progress the progress, as the rules measure it
+ * @param include which stops to include; all of them if left out
+ * @returns the resource
+ */
+function toProgress(
+  progress: QuestProgress,
+  include: (puzzleName: string) => boolean = () => true
+): ProgressResource {
+  return {
+    ...toClock(progress),
+    puzzles: progress.puzzles
+      .filter(({ puzzleName }) => include(puzzleName))
+      .map((puzzle) => ({ puzzleName: puzzle.puzzleName, ...toClock(puzzle) })),
+  };
+}
+
 /** An entry's place on its quest's leaderboard. */
-const rankSchema = z.number().int().nullable().meta({
+const rankSchema = z.number().int().positive().nullable().meta({
   description:
     "The entry's place on the leaderboard, from 1, once it has completed the quest: entries are ranked by progress.totalMs, lowest first, and entries with the same total share a rank (1, 2, 2, 4). Null while it hasn't completed. Ranks are provisional until every entry has completed, since one still playing could beat them.",
 });
 
-/** One of a quest's puzzles, with the players' progress on it. */
+/** How many hints of a stop have been revealed. */
+const hintsRevealed = z.number().int().nonnegative().meta({
+  description: "How many of the puzzle's hints the entry has revealed.",
+});
+
+/**
+ * One of a quest's stops, with an entry's progress on it, as getQuest shows
+ * it.
+ */
 const questPuzzleSchema = z
   .object({
     puzzleName: z.string(),
-    displayName: z.string().optional(),
-    status: z.number().int().meta({
-      description:
-        "0 not reached, 1 awaiting activation, 2 in progress, 3 completed.",
-    }),
-    statusDescription: z.string(),
-    nextHintToDisplay: z
-      .number()
-      .int()
-      .meta({ description: "How many hints have been revealed." }),
+    displayName: z.string(),
+    status: stopStatusSchema,
+    statusDescription,
+    hintsRevealed,
     activationCode: z
       .string()
       .optional()
       .meta({ description: "Only for administrators." }),
-    cardWord: z.string().optional().meta({
+    cardWord: z.string().nullable().optional().meta({
       description:
-        "The word or phrase on the stop's QR card, if it has one. Only for administrators.",
+        "The word or phrase on the stop's QR card; null if it has none. Only for administrators: absent for players.",
     }),
-    activationTime: time.nullish(),
-    startTime: time.nullish(),
-    endTime: time.nullish(),
-    skipped: z.boolean(),
-    solutionDisplayText: z.string().optional().meta({
+    activationTime: time.nullable().meta({
+      description: "When the entry activated the stop; null until it has.",
+    }),
+    startTime: time.nullable().meta({
       description:
-        "Shown to the players once the puzzle is completed; always to administrators.",
+        "When the stop became the entry's next, to find and activate; null until it has.",
     }),
-    hints: z
-      .array(
-        z.object({
-          text: z.string(),
-          solutionWarning: z.boolean(),
-          timePenalty: z.number().int(),
-        })
-      )
-      .optional()
-      .meta({
-        description:
-          "The players see the hints they have revealed; administrators see them all.",
-      }),
+    endTime: time.nullable().meta({
+      description: "When the entry completed the stop; null until it has.",
+    }),
+    skipped,
+    solutionText: z.string().optional().meta({
+      description:
+        "The solution as shown once solved. Players see it once the stop is completed; administrators, always.",
+    }),
+    hints: z.array(hintDefinitionSchema).meta({
+      description:
+        "The puzzle's hints: for players, those revealed; for administrators, all of them.",
+    }),
   })
   .meta({ id: "QuestPuzzle" });
+type QuestPuzzleResource = z.infer<typeof questPuzzleSchema>;
+
+/**
+ * Makes the resource for one of a quest's stops, with an entry's progress on
+ * it. Players don't see the activation code, which they get by scanning the
+ * stop's QR code; the card word, which they collect on the printed cards; the
+ * hints not yet revealed, which would avoid their penalties; or the solution,
+ * until the stop is completed.
+ * @param puzzle the stop, with the entry's progress
+ * @param view who it's for
+ * @returns the resource
+ */
+function toQuestPuzzleResource(
+  puzzle: QuestService.QuestPuzzle,
+  view: "admin" | "player"
+): QuestPuzzleResource {
+  const detail = puzzle.puzzleDetail;
+  const hints = detail?.hints ?? [];
+  const showSolution =
+    view === "admin" || puzzle.status === QuestPuzzleStatus.COMPLETED;
+  return {
+    puzzleName: puzzle.puzzleName,
+    displayName: detail?.displayName ?? puzzle.puzzleName,
+    status: toStopStatus(puzzle.status),
+    statusDescription: puzzle.statusDescription,
+    hintsRevealed: puzzle.nextHintToDisplay,
+    ...(view === "admin"
+      ? {
+          activationCode: puzzle.activationCode,
+          cardWord: puzzle.cardWord || null,
+        }
+      : {}),
+    activationTime: timeOrNull(puzzle.activationTime),
+    startTime: timeOrNull(puzzle.startTime),
+    endTime: timeOrNull(puzzle.endTime),
+    skipped: puzzle.skipped,
+    ...(showSolution
+      ? { solutionText: detail?.solutionDisplayText ?? "" }
+      : {}),
+    hints: toHintDefinitions(
+      view === "admin" ? hints : hints.slice(0, puzzle.nextHintToDisplay)
+    ),
+  };
+}
 
 /** Who plays one of a quest's entries. */
 const entrantSchema = z
   .object({
-    kind: z.enum(["user", "team"]),
-    name: z.string().optional().meta({
+    kind: entrantKindSchema,
+    name: z.string().nullable().meta({
       description:
-        "The user name or team name; missing if the user or team has been deleted.",
+        "The user name or team name; null if the user or team has been deleted.",
     }),
-    displayName: z.string().optional(),
+    displayName: z.string().nullable().meta({
+      description: "Null if the user or team has been deleted.",
+    }),
   })
-  .meta({ id: "QuestEntrant" });
-
-/** How long an entry's players have spent on its quest, puzzle by puzzle. */
-const questProgressSchema = z.object({
-  ...progressFields,
-  puzzles: z.array(z.object({ puzzleName: z.string(), ...progressFields })),
-});
+  .meta({ id: "Entrant" });
 
 /**
  * One of a quest's entries: a user or team playing it, with its own
@@ -282,25 +455,26 @@ export const questEntrySchema = z
   .object({
     id: z.string().meta({ description: "The entry's ID." }),
     entrant: entrantSchema,
-    status: z.number().int().meta({
-      description: "0 not started, 1 in progress, 2 completed.",
-    }),
-    statusDescription: z.string(),
-    paused: z.boolean(),
-    textResponse: z.string().optional().meta({
+    status: questStatusSchema,
+    statusDescription,
+    paused,
+    textResponse: z.string().nullable().optional().meta({
       description:
-        "The text message reply the entry is waiting for; only for administrators.",
+        "The text message reply the entry is waiting for, if any; null if none. Only for administrators: absent for players.",
     }),
-    textResponseConfirmation: z.string().optional().meta({
+    textResponseConfirmation: z.string().nullable().optional().meta({
       description:
-        "What is sent back when the reply arrives; only for administrators.",
+        "What is texted back when the reply arrives; null if no reply is awaited. Only for administrators: absent for players.",
     }),
     rank: rankSchema.optional().meta({
       description:
-        "The entry's place on the leaderboard (see SpectatorQuestEntry's rank); only for administrators. Entries stay in entry order.",
+        "The entry's place on the leaderboard (see SpectatorQuestEntry's rank); null while it hasn't completed. Only for administrators: absent for players. Entries stay in the quest's order.",
     }),
-    puzzles: z.array(questPuzzleSchema),
-    progress: questProgressSchema,
+    puzzles: z.array(questPuzzleSchema).meta({
+      description:
+        "The quest's stops, in order, with the entry's progress on each. Players see only those they have reached.",
+    }),
+    progress: progressSchema,
   })
   .meta({ id: "QuestEntry" });
 
@@ -310,10 +484,11 @@ export const questEntrySchema = z
  */
 export const questSchema = z
   .object({
-    name: z.string(),
+    questName: z.string(),
     displayName: z.string(),
     visibility: z.enum(["public", "private"]).optional().meta({
-      description: "Who can follow the quest; only for administrators.",
+      description:
+        "Who can follow the quest: anyone, or only its players, staff, and holders of a share link. Only for administrators.",
     }),
     entries: z.array(questEntrySchema).meta({
       description:
@@ -340,12 +515,12 @@ function ranksOf(
  * @param quest the quest, as seen through the entry
  * @returns the entrant
  */
-function entrantOf(quest: QuestService.Quest) {
+function entrantOf(quest: QuestService.Quest): z.infer<typeof entrantSchema> {
   const { kind, name, displayName } = quest.assignee;
   return {
-    kind,
-    ...(name !== undefined ? { name } : {}),
-    ...(displayName !== undefined ? { displayName } : {}),
+    kind: toEntrantKind(kind),
+    name: name ?? null,
+    displayName: displayName ?? null,
   };
 }
 
@@ -354,6 +529,7 @@ function entrantOf(quest: QuestService.Quest) {
  * @param quest the quest, as seen through the entry
  * @param view who it's for: an administrator sees everything; a player, the
  *  puzzles as players see them, and not the text reply
+ * @param rank the entry's rank, for an administrator
  * @returns the resource
  */
 function toQuestEntryResource(
@@ -364,20 +540,18 @@ function toQuestEntryResource(
   return {
     id: quest.entryId,
     entrant: entrantOf(quest),
-    status: quest.status,
+    status: toQuestStatus(quest.status),
     statusDescription: quest.statusDescription,
     paused: quest.paused,
     ...(view === "admin"
       ? {
-          textResponse: quest.textResponse,
-          textResponseConfirmation: quest.textResponseConfirmation,
-          rank,
+          textResponse: quest.textResponse || null,
+          textResponseConfirmation: quest.textResponseConfirmation || null,
+          rank: rank ?? null,
         }
       : {}),
-    puzzles: quest.puzzles.map((puzzle) =>
-      view === "admin" ? puzzle.toJSON() : puzzle.toPlayerJSON()
-    ),
-    progress: quest.getProgress(),
+    puzzles: quest.puzzles.map((puzzle) => toQuestPuzzleResource(puzzle, view)),
+    progress: toProgress(quest.getProgress()),
   };
 }
 
@@ -397,7 +571,7 @@ export function toQuestResource(
   // A player sees only their own entry, so their rank can't be known here.
   const ranks = view === "admin" ? ranksOf(entries) : undefined;
   return {
-    name: quest.name,
+    questName: quest.name,
     displayName: quest.displayName,
     ...(view === "admin" ? { visibility: quest.visibility } : {}),
     entries: entries.map((entry) =>
@@ -406,28 +580,18 @@ export function toQuestResource(
   };
 }
 
-/** The time spent on a quest, on the puzzles reached so far. */
-const reachedProgressSchema = z.object({
-  ...progressFields,
-  puzzles: z
-    .array(z.object({ puzzleName: z.string(), ...progressFields }))
-    .meta({ description: "The puzzles reached so far, in order." }),
-});
-
 /**
  * A quest in a list of a player's quests. It has the whole quest's progress and
  * nothing puzzle by puzzle, so it can't reveal how long the quest is.
  */
 export const questSummarySchema = z
   .object({
-    name: z.string(),
+    questName: z.string(),
     displayName: z.string(),
-    status: z.number().int().meta({
-      description: "1 in progress, 2 completed.",
-    }),
-    statusDescription: z.string(),
-    paused: z.boolean(),
-    progress: z.object(progressFields),
+    status: questStatusSchema,
+    statusDescription,
+    paused,
+    progress: clockSchema,
   })
   .meta({ id: "QuestSummary" });
 
@@ -437,21 +601,55 @@ export const questSummarySchema = z
  * @returns the resource, built field by field so that nothing else gets in
  */
 export function toQuestSummaryResource(quest: QuestService.Quest) {
-  const { puzzles: _puzzles, ...progress } = quest.getProgress();
   return {
-    name: quest.name,
+    questName: quest.name,
     displayName: quest.displayName,
-    status: quest.status,
+    status: toQuestStatus(quest.status),
     statusDescription: quest.statusDescription,
     paused: quest.paused,
-    progress,
+    progress: toClock(quest.getProgress()),
   };
 }
 
 /** A hint that has been revealed. */
-const revealedHintSchema = z.object({
-  text: z.string(),
-  timePenalty: z.number().int().meta({ description: "In seconds." }),
+const revealedHintSchema = z
+  .object({
+    text: z.string(),
+    timePenaltySeconds: timePenaltySeconds.meta({
+      description: "Seconds it added to the players' time.",
+    }),
+  })
+  .meta({ id: "RevealedHint" });
+
+/**
+ * Makes the resources for the hints of a puzzle an entry has revealed.
+ * @param puzzle the stop, with the entry's progress
+ * @param detail the puzzle's definition
+ * @returns the resources
+ */
+function revealedHintsOf(
+  puzzle: QuestService.QuestPuzzle,
+  detail: PuzzleService.Puzzle
+): z.infer<typeof revealedHintSchema>[] {
+  return detail.hints
+    .slice(0, puzzle.nextHintToDisplay)
+    .map(({ text, timePenalty }) => ({
+      text,
+      timePenaltySeconds: timePenalty,
+    }));
+}
+
+/** The stop after one, once the players have reached it. */
+export const nextStopSchema = z
+  .object({ puzzleName: z.string(), displayName: z.string() })
+  .meta({
+    id: "NextStop",
+    description: "The stop after this one, which the players have reached.",
+  });
+
+/** A puzzle's type, which players don't see until they activate it. */
+const puzzleTypeOrNull = puzzleTypeSchema.nullable().meta({
+  description: "Null until the puzzle is activated.",
 });
 
 /**
@@ -462,31 +660,24 @@ const revealedHintSchema = z.object({
 export const playerPuzzleSchema = z
   .object({
     quest: z.object({
-      name: z.string(),
+      questName: z.string(),
       displayName: z.string(),
-      status: z.number().int().meta({
-        description: "0 not started, 1 in progress, 2 completed.",
-      }),
-      statusDescription: z.string(),
-      paused: z.boolean(),
-      progress: reachedProgressSchema,
+      status: questStatusSchema,
+      statusDescription,
+      paused,
+      progress: progressSchema,
     }),
     puzzle: z.object({
-      name: z.string(),
+      puzzleName: z.string(),
       displayName: z.string(),
-      status: z.number().int().meta({
-        description: "1 awaiting activation, 2 in progress, 3 completed.",
-      }),
-      statusDescription: z.string(),
-      skipped: z.boolean(),
-      stopNumber: z.number().int().meta({
+      status: stopStatusSchema,
+      statusDescription,
+      skipped,
+      stopNumber: z.number().int().positive().meta({
         description:
-          "The puzzle's place in the quest, counting from 1. How many stops are left is never shown.",
+          "The stop's place in the quest, counting from 1. How many stops are left is never shown.",
       }),
-      type: z.number().int().nullable().meta({
-        description:
-          "0 text, 1 image, 2 audio, 3 video; null until the puzzle is activated.",
-      }),
+      type: puzzleTypeOrNull,
       text: z.string().nullable().meta({
         description:
           "The puzzle's Markdown, or the path of its media; null until the puzzle is activated.",
@@ -494,29 +685,18 @@ export const playerPuzzleSchema = z
       hints: z
         .array(revealedHintSchema)
         .meta({ description: "The hints revealed so far." }),
-      nextHint: z
-        .object({
-          timePenalty: z.number().int().meta({ description: "In seconds." }),
-          solutionWarning: z.boolean().meta({
-            description: "True if the hint gives the solution away.",
-          }),
-        })
-        .nullable()
-        .meta({
-          description:
-            "What revealing the next hint would cost; null if the puzzle isn't in progress or has no more hints.",
-        }),
+      nextHint: nextHintSchema.nullable().meta({
+        description:
+          "What revealing the next hint would cost; null if the puzzle isn't in progress or has no more hints.",
+      }),
       solutionText: z.string().nullable().meta({
         description: "Null until the puzzle is completed.",
       }),
     }),
-    next: z
-      .object({ name: z.string(), displayName: z.string() })
-      .nullable()
-      .meta({
-        description:
-          "The puzzle after this one, once the players have reached it; otherwise null.",
-      }),
+    next: nextStopSchema.nullable().meta({
+      description:
+        "The stop after this one, once the players have reached it; otherwise null.",
+    }),
   })
   .meta({ id: "PlayerPuzzle" });
 
@@ -536,48 +716,37 @@ export function toPlayerPuzzleResource(
     status > QuestPuzzleStatus.UNAVAILABLE;
   const reached = quest.puzzles.filter(isReached);
   const reachedNames = new Set(reached.map(({ puzzleName }) => puzzleName));
-  const progress = quest.getProgress();
   const stopIndex = reached.findIndex(
     ({ puzzleName }) => puzzleName === puzzle.puzzleName
   );
   const next = reached.at(stopIndex + 1);
   const activated = puzzle.status >= QuestPuzzleStatus.IN_PROGRESS;
-  const nextHint =
-    puzzle.status === QuestPuzzleStatus.IN_PROGRESS
-      ? detail.hints[puzzle.nextHintToDisplay]
-      : undefined;
   return {
     quest: {
-      name: quest.name,
+      questName: quest.name,
       displayName: quest.displayName,
-      status: quest.status,
+      status: toQuestStatus(quest.status),
       statusDescription: quest.statusDescription,
       paused: quest.paused,
-      progress: {
-        ...progress,
-        puzzles: progress.puzzles.filter(({ puzzleName }) =>
-          reachedNames.has(puzzleName)
-        ),
-      },
+      progress: toProgress(quest.getProgress(), (name) =>
+        reachedNames.has(name)
+      ),
     },
     puzzle: {
-      name: puzzle.puzzleName,
+      puzzleName: puzzle.puzzleName,
       displayName: detail.displayName,
-      status: puzzle.status,
+      status: toStopStatus(puzzle.status),
       statusDescription: puzzle.statusDescription,
       skipped: puzzle.skipped,
       stopNumber: stopIndex + 1,
-      type: activated ? detail.type : null,
+      type: activated ? toPuzzleType(detail.type) : null,
       text: activated ? detail.text : null,
-      hints: detail.hints
-        .slice(0, puzzle.nextHintToDisplay)
-        .map(({ text, timePenalty }) => ({ text, timePenalty })),
-      nextHint: nextHint
-        ? {
-            timePenalty: nextHint.timePenalty,
-            solutionWarning: nextHint.solutionWarning,
-          }
-        : null,
+      hints: revealedHintsOf(puzzle, detail),
+      nextHint: toNextHint(
+        puzzle.status === QuestPuzzleStatus.IN_PROGRESS
+          ? detail.hints[puzzle.nextHintToDisplay]
+          : undefined
+      ),
       solutionText:
         puzzle.status === QuestPuzzleStatus.COMPLETED
           ? detail.solutionDisplayText
@@ -585,12 +754,32 @@ export function toPlayerPuzzleResource(
     },
     next: next
       ? {
-          name: next.puzzleName,
+          puzzleName: next.puzzleName,
           displayName: next.puzzleDetail?.displayName ?? next.puzzleName,
         }
       : null,
   };
 }
+
+/** One of a quest's stops that an entry has reached, as the public sees it. */
+const spectatorStopSchema = z
+  .object({
+    puzzleName: z.string(),
+    displayName: z.string(),
+    status: stopStatusSchema.meta({
+      description:
+        "Never notReached: the public sees only the stops an entry has reached.",
+    }),
+    statusDescription,
+    skipped,
+    activationTime: time.nullable().meta({
+      description: "When the entry activated the stop; null until it has.",
+    }),
+    solutionText: z.string().nullable().meta({
+      description: "Null until the stop is completed.",
+    }),
+  })
+  .meta({ id: "SpectatorStop" });
 
 /**
  * One of a quest's entries as the public sees it: who plays it, by display
@@ -603,42 +792,29 @@ export const spectatorQuestEntrySchema = z
       description:
         "The entry's ID, for following one of its puzzles with getSpectatorPuzzle.",
     }),
-    entrant: z.object({
-      kind: z.enum(["user", "team"]),
-      displayName: z.string().optional().meta({
-        description: "Missing if the user or team has been deleted.",
-      }),
-    }),
-    status: z.number().int().meta({
-      description: "0 not started, 1 in progress, 2 completed.",
-    }),
-    statusDescription: z.string(),
-    paused: z.boolean(),
-    rank: rankSchema,
-    progress: reachedProgressSchema.meta({
-      description:
-        "The entry's time; its puzzles are empty when the quest's stopsHidden is true, leaving the totals: the standings.",
-    }),
-    puzzles: z
-      .array(
-        z.object({
-          name: z.string(),
-          displayName: z.string(),
-          status: z.number().int().meta({
-            description: "1 awaiting activation, 2 in progress, 3 completed.",
-          }),
-          statusDescription: z.string(),
-          skipped: z.boolean(),
-          activationTime: time.nullable(),
-          solutionText: z.string().nullable().meta({
-            description: "Null until the puzzle is completed.",
-          }),
-        })
-      )
+    entrant: z
+      .object({
+        kind: entrantKindSchema,
+        displayName: z.string().nullable().meta({
+          description: "Null if the user or team has been deleted.",
+        }),
+      })
       .meta({
-        description:
-          "The puzzles the entry has reached, in order; empty when the quest's stopsHidden is true.",
+        id: "SpectatorEntrant",
+        description: "Who plays the entry, by display name only.",
       }),
+    status: questStatusSchema,
+    statusDescription,
+    paused,
+    rank: rankSchema,
+    progress: progressSchema.meta({
+      description:
+        "The entry's time, with the stops it has reached; no stops when the quest's stopsHidden is true, leaving the totals: the standings.",
+    }),
+    puzzles: z.array(spectatorStopSchema).meta({
+      description:
+        "The stops the entry has reached, in order; empty when the quest's stopsHidden is true.",
+    }),
   })
   .meta({ id: "SpectatorQuestEntry" });
 
@@ -649,7 +825,7 @@ export const spectatorQuestEntrySchema = z
  */
 export const spectatorQuestSchema = z
   .object({
-    name: z.string(),
+    questName: z.string(),
     displayName: z.string(),
     racing: z.boolean().meta({
       description:
@@ -675,20 +851,6 @@ export const spectatorQuestSchema = z
   .meta({ id: "SpectatorQuest" });
 
 /**
- * Leaves the stops out of an entry's progress when the viewer sees only the
- * standings.
- * @param progress the entry's progress
- * @param stopsHidden true to leave the stops out
- * @returns the progress
- */
-function standingsOrAll<P extends { readonly puzzles: readonly unknown[] }>(
-  progress: P,
-  stopsHidden: boolean
-): P {
-  return stopsHidden ? { ...progress, puzzles: [] as const } : progress;
-}
-
-/**
  * Makes a quest's public resource.
  * @param spectated the quest as seen through each of the entries the viewer
  *  may see, from getSpectatedQuest, in leaderboard order, holding only reached
@@ -705,7 +867,7 @@ export function toSpectatorQuestResource({
 }: QuestService.SpectatedQuest) {
   const [{ quest }] = entries;
   return {
-    name: quest.name,
+    questName: quest.name,
     displayName: quest.displayName,
     racing,
     stopsHidden,
@@ -714,23 +876,22 @@ export function toSpectatorQuestResource({
     entries: entries.map(({ quest: entry, progress, rank }) => ({
       id: entry.entryId,
       entrant: {
-        kind: entry.assignee.kind,
-        ...(entry.assignee.displayName !== undefined
-          ? { displayName: entry.assignee.displayName }
-          : {}),
+        kind: toEntrantKind(entry.assignee.kind),
+        displayName: entry.assignee.displayName ?? null,
       },
-      status: entry.status,
+      status: toQuestStatus(entry.status),
       statusDescription: entry.statusDescription,
       paused: entry.paused,
       rank,
-      progress: standingsOrAll(progress, stopsHidden),
+      // The standings alone leave the stops out.
+      progress: toProgress(progress, () => !stopsHidden),
       puzzles: (stopsHidden ? [] : entry.puzzles).map((puzzle) => ({
-        name: puzzle.puzzleName,
+        puzzleName: puzzle.puzzleName,
         displayName: puzzle.puzzleDetail?.displayName ?? puzzle.puzzleName,
-        status: puzzle.status,
+        status: toStopStatus(puzzle.status),
         statusDescription: puzzle.statusDescription,
         skipped: puzzle.skipped,
-        activationTime: puzzle.activationTime ?? null,
+        activationTime: timeOrNull(puzzle.activationTime),
         solutionText:
           puzzle.status === QuestPuzzleStatus.COMPLETED
             ? (puzzle.puzzleDetail?.solutionDisplayText ?? null)
@@ -747,21 +908,20 @@ export function toSpectatorQuestResource({
 export const spectatorPuzzleSchema = z
   .object({
     quest: z.object({
-      name: z.string(),
+      questName: z.string(),
       displayName: z.string(),
-      paused: z.boolean(),
+      paused,
     }),
     puzzle: z.object({
-      name: z.string(),
+      puzzleName: z.string(),
       displayName: z.string(),
-      status: z.number().int().meta({
-        description: "2 in progress, 3 completed.",
+      status: stopStatusSchema.meta({
+        description:
+          "inProgress or completed: the puzzle is shown only once activated.",
       }),
-      statusDescription: z.string(),
-      skipped: z.boolean(),
-      type: z.number().int().meta({
-        description: "0 text, 1 image, 2 audio, 3 video.",
-      }),
+      statusDescription,
+      skipped,
+      type: puzzleTypeSchema,
       text: z.string().meta({
         description: "The puzzle's Markdown, or the path of its media.",
       }),
@@ -789,21 +949,19 @@ export function toSpectatorPuzzleResource(
 ) {
   return {
     quest: {
-      name: quest.name,
+      questName: quest.name,
       displayName: quest.displayName,
       paused: quest.paused,
     },
     puzzle: {
-      name: puzzle.puzzleName,
+      puzzleName: puzzle.puzzleName,
       displayName: detail.displayName,
-      status: puzzle.status,
+      status: toStopStatus(puzzle.status),
       statusDescription: puzzle.statusDescription,
       skipped: puzzle.skipped,
-      type: detail.type,
+      type: toPuzzleType(detail.type),
       text: detail.text,
-      hints: detail.hints
-        .slice(0, puzzle.nextHintToDisplay)
-        .map(({ text, timePenalty }) => ({ text, timePenalty })),
+      hints: revealedHintsOf(puzzle, detail),
       solutionText:
         puzzle.status === QuestPuzzleStatus.COMPLETED
           ? detail.solutionDisplayText
@@ -815,26 +973,25 @@ export function toSpectatorPuzzleResource(
 /** Something that happened in a quest, from its event log. */
 export const questEventSchema = z
   .object({
-    type: z.string().meta({
-      description:
-        "What happened: QuestStarted, PuzzleActivated, PuzzleSolved, PuzzleStarted, HintRevealed, QuestCompleted, QuestReset, QuestPaused, QuestResumed, PuzzleSkipped, or PuzzleReset.",
-    }),
+    type: questEventTypeSchema,
     at: time,
-    puzzleName: z.string().optional(),
-    actor: z.string().optional().meta({
-      description:
-        "The user name of whoever acted; missing when the system did, such as on an incoming call, or when they have since deleted their account.",
+    puzzleName: z.string().nullable().meta({
+      description: "The puzzle it happened to; null for the whole quest's.",
     }),
-    actorDeleted: z.boolean().optional().meta({
+    actor: z.string().nullable().meta({
+      description:
+        "The user name of whoever acted; null when the system did, such as on an incoming call, or when they have since deleted their account (see actorDeleted).",
+    }),
+    actorDeleted: z.boolean().meta({
       description:
         "True when whoever acted has since deleted their account, which took their name out of the log.",
     }),
     entrant: z
       .object({
-        kind: z.enum(["user", "team"]),
-        name: z.string().optional().meta({
+        kind: entrantKindSchema,
+        name: z.string().nullable().meta({
           description:
-            "The user name or team name as it was at the time; missing if the user has since deleted their account, or the team was already deleted.",
+            "The user name or team name as it was at the time; null if the user has since deleted their account, or the team was already deleted.",
         }),
       })
       .nullable()
@@ -842,12 +999,45 @@ export const questEventSchema = z
         description:
           "The user or team whose entry it happened in; null for events logged before quests had several entries.",
       }),
-    data: z
-      .record(z.string(), z.unknown())
-      .optional()
-      .meta({ description: "Details particular to the type." }),
+    data: z.record(z.string(), z.unknown()).nullable().meta({
+      description:
+        "Details particular to the type, or null if it has none: for hintRevealed, the hint's hintIndex (from 0) and timePenaltySeconds; for puzzleReset, refundedHints, how many revealed hints' penalties were refunded.",
+    }),
   })
   .meta({ id: "QuestEvent" });
+export type QuestEventResource = z.infer<typeof questEventSchema>;
+
+/**
+ * Makes the resource for an event from a quest's log.
+ * @param event the event, as the log keeps it
+ * @returns the resource
+ */
+export function toQuestEventResource(
+  event: QuestService.LoggedQuestEvent
+): QuestEventResource {
+  const { timePenalty, ...data } = event.data ?? {};
+  return {
+    type: toQuestEventType(event.type),
+    at: event.at.toISOString(),
+    puzzleName: event.puzzleName || null,
+    actor: event.actor || null,
+    actorDeleted: event.actorDeleted ?? false,
+    entrant: event.entrant?.kind
+      ? {
+          kind: toEntrantKind(event.entrant.kind),
+          name: event.entrant.name || null,
+        }
+      : null,
+    data: event.data
+      ? {
+          ...data,
+          ...(timePenalty !== undefined
+            ? { timePenaltySeconds: timePenalty }
+            : {}),
+        }
+      : null,
+  };
+}
 
 /**
  * Gets the path of a resource in the v1 API.
@@ -862,20 +1052,18 @@ export function resourcePath(...segments: string[]): string {
 const staffEntryFields = {
   id: z.string().meta({ description: "The entry's ID." }),
   entrant: entrantSchema,
-  status: z.number().int().meta({
-    description: "0 not started, 1 in progress, 2 completed.",
-  }),
-  statusDescription: z.string(),
-  paused: z.boolean(),
+  status: questStatusSchema,
+  statusDescription,
+  paused,
   rank: rankSchema.meta({
     description:
-      "The entry's place on the leaderboard (see SpectatorQuestEntry's rank). Entries stay in the quest's order.",
+      "The entry's place on the leaderboard (see SpectatorQuestEntry's rank); null while it hasn't completed. Entries stay in the quest's order.",
   }),
 };
 
 /** One of a quest's entries in the list staff see, without its puzzles. */
 export const staffQuestEntrySummarySchema = z
-  .object({ ...staffEntryFields, progress: z.object(progressFields) })
+  .object({ ...staffEntryFields, progress: clockSchema })
   .meta({ id: "StaffQuestEntrySummary" });
 
 /**
@@ -885,11 +1073,40 @@ export const staffQuestEntrySummarySchema = z
  */
 export const staffQuestSummarySchema = z
   .object({
-    name: z.string(),
+    questName: z.string(),
     displayName: z.string(),
     entries: z.array(staffQuestEntrySummarySchema),
   })
   .meta({ id: "StaffQuestSummary" });
+
+/** One of a quest's stops, with an entry's progress on it, as staff see it. */
+const staffStopSchema = z
+  .object({
+    puzzleName: z.string(),
+    displayName: z.string(),
+    status: stopStatusSchema,
+    statusDescription,
+    activationCode: z.string().meta({
+      description:
+        "The code that unlocks the stop, which staff show the players as a QR code.",
+    }),
+    skipped,
+    hintsRevealed,
+    hintCount: z.number().int().nonnegative().meta({
+      description: "How many hints the puzzle has.",
+    }),
+    activationTime: time.nullable().meta({
+      description: "When the entry activated the stop; null until it has.",
+    }),
+    startTime: time.nullable().meta({
+      description:
+        "When the stop became the entry's next, to find and activate; null until it has.",
+    }),
+    endTime: time.nullable().meta({
+      description: "When the entry completed the stop; null until it has.",
+    }),
+  })
+  .meta({ id: "StaffStop" });
 
 /**
  * One of a quest's entries as staff see it: every stop, in order, reached or
@@ -898,28 +1115,8 @@ export const staffQuestSummarySchema = z
 export const staffQuestEntrySchema = z
   .object({
     ...staffEntryFields,
-    progress: questProgressSchema,
-    puzzles: z.array(
-      z.object({
-        name: z.string(),
-        displayName: z.string(),
-        status: z.number().int().meta({
-          description:
-            "0 not reached, 1 awaiting activation, 2 in progress, 3 completed.",
-        }),
-        statusDescription: z.string(),
-        activationCode: z.string().meta({
-          description:
-            "The code that unlocks the stop, which staff show the players as a QR code.",
-        }),
-        skipped: z.boolean(),
-        hintsRevealed: z.number().int(),
-        hintCount: z.number().int(),
-        activationTime: time.nullable(),
-        startTime: time.nullable(),
-        endTime: time.nullable(),
-      })
-    ),
+    progress: progressSchema,
+    puzzles: z.array(staffStopSchema),
   })
   .meta({ id: "StaffQuestEntry" });
 
@@ -932,7 +1129,7 @@ export const staffQuestEntrySchema = z
  */
 export const staffQuestSchema = z
   .object({
-    name: z.string(),
+    questName: z.string(),
     displayName: z.string(),
     entries: z.array(staffQuestEntrySchema),
   })
@@ -941,6 +1138,7 @@ export const staffQuestSchema = z
 /**
  * Makes the fields of an entry that every staff view has.
  * @param quest the quest, as seen through the entry
+ * @param ranks each entry's rank
  * @returns the fields
  */
 function staffEntryOf(
@@ -950,7 +1148,7 @@ function staffEntryOf(
   return {
     id: quest.entryId,
     entrant: entrantOf(quest),
-    status: quest.status,
+    status: toQuestStatus(quest.status),
     statusDescription: quest.statusDescription,
     paused: quest.paused,
     rank: ranks.get(quest) ?? null,
@@ -969,12 +1167,12 @@ export function toStaffQuestSummaryResource(
   const [quest] = entries;
   const ranks = ranksOf(entries);
   return {
-    name: quest.name,
+    questName: quest.name,
     displayName: quest.displayName,
-    entries: entries.map((entry) => {
-      const { puzzles: _puzzles, ...progress } = entry.getProgress();
-      return { ...staffEntryOf(entry, ranks), progress };
-    }),
+    entries: entries.map((entry) => ({
+      ...staffEntryOf(entry, ranks),
+      progress: toClock(entry.getProgress()),
+    })),
   };
 }
 
@@ -988,23 +1186,23 @@ export function toStaffQuestResource(entries: readonly QuestService.Quest[]) {
   const [quest] = entries;
   const ranks = ranksOf(entries);
   return {
-    name: quest.name,
+    questName: quest.name,
     displayName: quest.displayName,
     entries: entries.map((entry) => ({
       ...staffEntryOf(entry, ranks),
-      progress: entry.getProgress(),
+      progress: toProgress(entry.getProgress()),
       puzzles: entry.puzzles.map((puzzle) => ({
-        name: puzzle.puzzleName,
+        puzzleName: puzzle.puzzleName,
         displayName: puzzle.puzzleDetail?.displayName ?? puzzle.puzzleName,
-        status: puzzle.status,
+        status: toStopStatus(puzzle.status),
         statusDescription: puzzle.statusDescription,
         activationCode: puzzle.activationCode,
         skipped: puzzle.skipped,
         hintsRevealed: puzzle.nextHintToDisplay,
         hintCount: puzzle.puzzleDetail?.hints.length ?? 0,
-        activationTime: puzzle.activationTime ?? null,
-        startTime: puzzle.startTime ?? null,
-        endTime: puzzle.endTime ?? null,
+        activationTime: timeOrNull(puzzle.activationTime),
+        startTime: timeOrNull(puzzle.startTime),
+        endTime: timeOrNull(puzzle.endTime),
       })),
     })),
   };

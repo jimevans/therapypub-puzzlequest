@@ -156,7 +156,7 @@ describe("the current session", () => {
         emailVerified: true,
         phone: "+15551230001",
         sms: true,
-        authorizationLevel: AuthorizationLevel.USER,
+        role: "player",
       },
     });
   });
@@ -254,7 +254,7 @@ describe("the OpenAPI document", () => {
       "puzzleActivated",
       "puzzleSolved",
       "puzzleStarted",
-      "hintRequested",
+      "hintRevealed",
       "questUpdated",
       "questsChanged",
     ]);

@@ -13,13 +13,16 @@ import { UsersList } from "./UsersList";
 
 const QUEST = withOneEntry(
   {
-    name: "trail",
+    questName: "trail",
     displayName: "The Trail",
-    status: 1,
+    status: "inProgress",
     statusDescription: "In progress",
     paused: false,
     puzzles: [],
     progress: {
+      startTime: null,
+      endTime: null,
+      clockStart: null,
       running: false,
       elapsedMs: 0,
       penaltyMs: 0,
@@ -32,25 +35,27 @@ const QUEST = withOneEntry(
 const [ENTRY] = QUEST.entries;
 const ORPHAN = {
   ...QUEST,
-  name: "orphan",
+  questName: "orphan",
   displayName: "The Orphan",
-  entries: [{ ...ENTRY, entrant: { kind: "user" } }],
+  entries: [
+    { ...ENTRY, entrant: { kind: "player", name: null, displayName: null } },
+  ],
 };
 const PUZZLE = {
-  name: "riddle",
+  puzzleName: "riddle",
   displayName: "The Riddle",
-  type: 1,
+  type: "image",
   text: "",
   solutionKeyword: "x",
-  solutionDisplayText: "X",
-  hints: [{ text: "h", solutionWarning: false, timePenalty: 1 }],
+  solutionText: "X",
+  hints: [{ text: "h", solutionWarning: false, timePenaltySeconds: 1 }],
 };
 const BOSS = aUser({
   id: "2",
   userName: "boss",
   displayName: "The Boss",
   email: "boss@example.com",
-  authorizationLevel: 10,
+  role: "admin",
 });
 const PLAYER = aUser();
 const TEAM = {
@@ -158,14 +163,14 @@ describe("the quests list", () => {
             entrant(1),
             {
               ...entrant(2),
-              status: 2,
+              status: "completed",
               statusDescription: "Completed",
             },
           ],
         },
         {
           ...QUEST,
-          name: "big",
+          questName: "big",
           displayName: "The Big Race",
           entries: [1, 2, 3, 4].map(entrant),
         },
@@ -276,8 +281,8 @@ describe("the quests list", () => {
       await userEvent.click(screen.getByRole("button", { name: "Delete" }));
 
       await waitFor(() =>
-        expect(del).toHaveBeenCalledWith("/quests/{name}", {
-          params: { path: { name: "trail" } },
+        expect(del).toHaveBeenCalledWith("/quests/{questName}", {
+          params: { path: { questName: "trail" } },
         })
       );
       await waitFor(() =>

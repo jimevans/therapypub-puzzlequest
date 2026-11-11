@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { ApiError, messageOf } from "../../../api";
 import { fieldErrorsOf } from "../../../fieldErrors";
 import { questQuery } from "../../../quests/queries";
+import type { EntrantValues } from "./questForm";
 import { Banner } from "../../../ui/Banner";
 import { Button } from "../../../ui/Button";
 import { FormTextField } from "../../../ui/FormTextField";
@@ -42,7 +43,7 @@ function EntrantsField({
       validate: (entrants) => entrants.length > 0 || "Add a team or a player",
     },
   });
-  // The team or player chosen to add, as "team:name" or "user:name".
+  // The team or player chosen to add, as "team:name" or "player:name".
   const [choice, setChoice] = useState("");
   const added = new Set(fields.map((field) => `${field.kind}:${field.name}`));
   const errorId = "entrants-error";
@@ -54,7 +55,12 @@ function EntrantsField({
       kind === "team"
         ? `${teams.data?.find((team) => team.teamName === name)?.displayName ?? name} (team)`
         : `${users.data?.find((user) => user.userName === name)?.displayName ?? name} (player)`;
-    append({ kind: kind as "user" | "team", name, label, started: false });
+    append({
+      kind: kind as EntrantValues["kind"],
+      name,
+      label,
+      started: false,
+    });
     setChoice("");
   };
 
@@ -151,9 +157,12 @@ function EntrantsField({
               </optgroup>
               <optgroup label="Players">
                 {users.data
-                  .filter((user) => !added.has(`user:${user.userName}`))
+                  .filter((user) => !added.has(`player:${user.userName}`))
                   .map((user) => (
-                    <option key={user.userName} value={`user:${user.userName}`}>
+                    <option
+                      key={user.userName}
+                      value={`player:${user.userName}`}
+                    >
                       {user.displayName} ({user.userName})
                     </option>
                   ))}
@@ -213,7 +222,7 @@ function EditorForm({ quest }: { quest?: Quest }) {
         }}
       >
         {quest ? (
-          <p>Name: {quest.name}</p>
+          <p>Name: {quest.questName}</p>
         ) : (
           <FormTextField
             control={control}
@@ -363,7 +372,9 @@ function EditorForm({ quest }: { quest?: Quest }) {
           >
             {save.isPending ? "Saving…" : "Save"}
           </Button>
-          <Link to={quest ? questPath(quest.name) : "/quests"}>Cancel</Link>
+          <Link to={quest ? questPath(quest.questName) : "/quests"}>
+            Cancel
+          </Link>
         </div>
       </form>
       <PuzzlePicker
@@ -373,7 +384,7 @@ function EditorForm({ quest }: { quest?: Quest }) {
         onAdd={(puzzles) => {
           append(
             puzzles.map((puzzle) => ({
-              puzzleName: puzzle.name,
+              puzzleName: puzzle.puzzleName,
               displayName: puzzle.displayName,
               cardWord: "",
             }))
@@ -411,7 +422,7 @@ export function QuestEditor() {
         // Editing starts from the quest as it was when the editor opened, and
         // isn't replaced when the data is fetched again, so nothing typed is
         // lost. The key starts afresh if the editor moves to another quest.
-        <EditorForm key={quest.data.name} quest={quest.data} />
+        <EditorForm key={quest.data.questName} quest={quest.data} />
       ) : (
         quest.isError && <Banner tone="danger">{messageOf(quest.error)}</Banner>
       )}

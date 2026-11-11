@@ -11,7 +11,7 @@ import { entryIdOf, userIdsOf } from "../references.js";
 
 const { createApp } = await import("../../src/createApp.js");
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
-const { QuestModel, QuestPuzzleStatus, QuestStatus } =
+const { QuestModel, QuestPuzzleStatus } =
   await import("../../src/models/quest.model.js");
 const { AuthorizationLevel, TeamModel, UserModel } =
   await import("../../src/models/user.model.js");
@@ -108,10 +108,10 @@ function bodyOf(response: request.Response) {
 }
 
 /** Each entry's entrant and status, as an administrator sees the quest. */
-async function statuses(): Promise<[string, number][]> {
+async function statuses(): Promise<[string, string][]> {
   const quest = bodyOf(await as("admin", "get", "/quests/race"));
   return quest.entries.map(
-    (entry: { entrant: { name: string }; status: number }) => [
+    (entry: { entrant: { name: string }; status: string }) => [
       entry.entrant.name,
       entry.status,
     ]
@@ -153,7 +153,7 @@ describe("a quest several entrants race", () => {
     expect(quest.entries).toHaveLength(3);
     expect(
       quest.entries.map(
-        (entry: { id: string; entrant: object; status: number }) => [
+        (entry: { id: string; entrant: object; status: string }) => [
           entry.id,
           entry.entrant,
           entry.status,
@@ -163,17 +163,17 @@ describe("a quest several entrants race", () => {
       [
         await entryIdOf("race", 0),
         { kind: "team", name: "reds", displayName: "The Reds" },
-        QuestStatus.NOT_STARTED,
+        "notStarted",
       ],
       [
         await entryIdOf("race", 1),
         { kind: "team", name: "blues", displayName: "The Blues" },
-        QuestStatus.NOT_STARTED,
+        "notStarted",
       ],
       [
         await entryIdOf("race", 2),
-        { kind: "user", name: "solo", displayName: "solo" },
-        QuestStatus.NOT_STARTED,
+        { kind: "player", name: "solo", displayName: "solo" },
+        "notStarted",
       ],
     ]);
     // One activation code for each stop, the same for every entrant.
@@ -226,7 +226,7 @@ describe("a quest several entrants race", () => {
     expect(quest.entries[0]).toMatchObject({
       id: await entryIdOf("race", 1),
       entrant: { kind: "team", name: "blues" },
-      puzzles: [{ puzzleName: "first", status: 1 }],
+      puzzles: [{ puzzleName: "first", status: "awaitingActivation" }],
     });
     expect(response.text).not.toMatch(/reds|solo|second|third/);
   });
@@ -270,9 +270,9 @@ describe("a quest several entrants race", () => {
     const red = bodyOf(await as("red1", "get", "/quests/race/puzzles/first"));
     const blue = bodyOf(await as("blue1", "get", "/quests/race/puzzles/first"));
 
-    expect(red.puzzle.status).toBe(QuestPuzzleStatus.COMPLETED);
-    expect(red.next).toEqual({ name: "second", displayName: "SECOND" });
-    expect(blue.puzzle.status).toBe(QuestPuzzleStatus.AWAITING_ACTIVATION);
+    expect(red.puzzle.status).toBe("completed");
+    expect(red.next).toEqual({ puzzleName: "second", displayName: "SECOND" });
+    expect(blue.puzzle.status).toBe("awaitingActivation");
     expect(blue.next).toBeNull();
     expect(
       (await as("blue1", "get", "/quests/race/puzzles/second")).status
@@ -286,7 +286,7 @@ describe("a quest several entrants race", () => {
     const response = await as("blue1", "get", "/users/blue1/quests");
 
     expect(bodyOf(response).items).toEqual([
-      expect.objectContaining({ name: "race", status: 1 }),
+      expect.objectContaining({ questName: "race", status: "inProgress" }),
     ]);
     expect(bodyOf(response).items[0].progress.elapsedMs).toBeGreaterThanOrEqual(
       0
@@ -339,9 +339,9 @@ describe("running a whole quest", () => {
 
     expect(response.status).toBe(200);
     expect(await statuses()).toEqual([
-      ["reds", QuestStatus.IN_PROGRESS],
-      ["blues", QuestStatus.IN_PROGRESS],
-      ["solo", QuestStatus.IN_PROGRESS],
+      ["reds", "inProgress"],
+      ["blues", "inProgress"],
+      ["solo", "inProgress"],
     ]);
     // The blues' progress was kept.
     expect((await storedProgress())[1][0]).toBe(QuestPuzzleStatus.COMPLETED);
@@ -381,9 +381,9 @@ describe("running a whole quest", () => {
 
     expect(response.status).toBe(200);
     expect(await statuses()).toEqual([
-      ["reds", QuestStatus.NOT_STARTED],
-      ["blues", QuestStatus.NOT_STARTED],
-      ["solo", QuestStatus.NOT_STARTED],
+      ["reds", "notStarted"],
+      ["blues", "notStarted"],
+      ["solo", "notStarted"],
     ]);
   });
 });
@@ -393,9 +393,9 @@ describe("running one entrant's entry", () => {
     await as("admin", "post", "/quests/race/teams/reds/start").expect(200);
     await as("admin", "post", "/quests/race/players/solo/start").expect(200);
     expect(await statuses()).toEqual([
-      ["reds", QuestStatus.IN_PROGRESS],
-      ["blues", QuestStatus.NOT_STARTED],
-      ["solo", QuestStatus.IN_PROGRESS],
+      ["reds", "inProgress"],
+      ["blues", "notStarted"],
+      ["solo", "inProgress"],
     ]);
 
     const paused = bodyOf(
@@ -421,9 +421,9 @@ describe("running one entrant's entry", () => {
     await as("admin", "post", "/quests/race/players/solo/reset").expect(200);
 
     expect(await statuses()).toEqual([
-      ["reds", QuestStatus.NOT_STARTED],
-      ["blues", QuestStatus.NOT_STARTED],
-      ["solo", QuestStatus.NOT_STARTED],
+      ["reds", "notStarted"],
+      ["blues", "notStarted"],
+      ["solo", "notStarted"],
     ]);
   });
 
@@ -479,7 +479,7 @@ describe("a quest's entrants", () => {
 
   it("must include at least one", async () => {
     const created = await as("admin", "post", "/quests").send({
-      name: "empty",
+      questName: "empty",
       displayName: "Empty",
       entrants: [],
     });
@@ -493,11 +493,11 @@ describe("a quest's entrants", () => {
 
   it("can't include a player twice, as a user and in a team", async () => {
     const response = await as("admin", "post", "/quests").send({
-      name: "overlap",
+      questName: "overlap",
       displayName: "Overlap",
       entrants: [
         { kind: "team", name: "reds" },
-        { kind: "user", name: "red2" },
+        { kind: "player", name: "red2" },
       ],
     });
 
@@ -549,7 +549,7 @@ describe("a quest's entrants", () => {
 
     const response = await update({
       entrants: [
-        { kind: "user", name: "solo" },
+        { kind: "player", name: "solo" },
         { kind: "team", name: "reds" },
       ],
     });
@@ -557,8 +557,8 @@ describe("a quest's entrants", () => {
     expect(response.status).toBe(200);
     // In the order given; the reds' entry, progress and all.
     expect(await statuses()).toEqual([
-      ["solo", QuestStatus.NOT_STARTED],
-      ["reds", QuestStatus.IN_PROGRESS],
+      ["solo", "notStarted"],
+      ["reds", "inProgress"],
     ]);
     expect((await storedProgress())[1][0]).toBe(QuestPuzzleStatus.COMPLETED);
   });
@@ -569,7 +569,7 @@ describe("a quest's entrants", () => {
     const response = await update({
       entrants: [
         { kind: "team", name: "blues" },
-        { kind: "user", name: "solo" },
+        { kind: "player", name: "solo" },
       ],
     });
 
@@ -594,7 +594,7 @@ describe("a quest's entrants", () => {
         await update({
           entrants: [
             { kind: "team", name: "blues" },
-            { kind: "user", name: "solo" },
+            { kind: "player", name: "solo" },
           ],
         })
       ).status
@@ -609,20 +609,22 @@ describe("a quest's entrants", () => {
       entrants: [
         { kind: "team", name: "reds" },
         { kind: "team", name: "blues" },
-        { kind: "user", name: "solo" },
-        { kind: "user", name: "loner" },
+        { kind: "player", name: "solo" },
+        { kind: "player", name: "loner" },
       ],
     });
 
     expect(response.status).toBe(200);
     const loner = bodyOf(response).entries[3];
     expect(loner).toMatchObject({
-      entrant: { kind: "user", name: "loner" },
-      status: QuestStatus.NOT_STARTED,
+      entrant: { kind: "player", name: "loner" },
+      status: "notStarted",
       statusDescription: "Not yet started",
     });
-    expect(loner.puzzles.map((p: { status: number }) => p.status)).toEqual([
-      0, 0, 0,
+    expect(loner.puzzles.map((p: { status: string }) => p.status)).toEqual([
+      "notReached",
+      "notReached",
+      "notReached",
     ]);
     expect((await storedProgress())[0][0]).toBe(QuestPuzzleStatus.COMPLETED);
   });

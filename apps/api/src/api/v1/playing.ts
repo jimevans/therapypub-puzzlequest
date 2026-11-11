@@ -13,19 +13,32 @@ import {
   uploadActivationImage,
 } from "../../middleware/upload.js";
 import {
+  type ActivatePuzzleBody,
+  type ScannedActivationFields,
   activatePuzzleBody,
+  connectionIdField,
   requestHintBody,
+  scannedActivationFields,
   solvePuzzleBody,
 } from "../../schemas/quest.schemas.js";
+import {
+  nextHintSchema,
+  timePenaltySeconds,
+  toNextHint,
+} from "../../schemas/hints.js";
 import * as QuestService from "../../services/quest.service.js";
 import * as UserService from "../../services/user.service.js";
 import { Problems, sendProblem, sendServiceProblem } from "../problems.js";
-import { playerPuzzleSchema, toPlayerPuzzleResource } from "./resources.js";
+import {
+  nextStopSchema,
+  playerPuzzleSchema,
+  toPlayerPuzzleResource,
+} from "./resources.js";
 import { defineRoute } from "./route.js";
 
 /** The path parameters naming a quest and one of its puzzles. */
 const questPuzzleParams = z.object({
-  name: z.string().meta({ description: "The quest's name." }),
+  questName: z.string().meta({ description: "The quest's name." }),
   puzzleName: z.string().meta({ description: "The puzzle's name." }),
 });
 
@@ -34,14 +47,17 @@ const scannedActivation = z.object({
   width: z
     .number()
     .int()
+    .positive()
     .meta({ description: "The frame's width, in pixels." }),
   height: z
     .number()
     .int()
+    .positive()
     .meta({ description: "The frame's height, in pixels." }),
   image: z.file().meta({
     description: `The frame's raw RGBA pixels, four bytes each, at most ${MAXIMUM_ACTIVATION_IMAGE_BYTES / 1024 / 1024} MB.`,
   }),
+  connectionId: connectionIdField,
 });
 
 /** The problems any action of a quest's players can report. */
@@ -56,7 +72,7 @@ const playingProblems = [
 export const playingRoutes = [
   defineRoute({
     method: "get",
-    path: "/quests/{name}/puzzles/{puzzleName}",
+    path: "/quests/{questName}/puzzles/{puzzleName}",
     operationId: "getPlayerPuzzle",
     summary: "See a puzzle as its players do",
     description:
@@ -69,9 +85,9 @@ export const playingRoutes = [
     },
     problems: [Problems.notFound, Problems.wrongState],
     async handle(req, res) {
-      const { name, puzzleName } = req.params;
+      const { questName, puzzleName } = req.params;
       const found = await QuestService.getQuestAndPuzzle(
-        name,
+        questName,
         puzzleName,
         UserService.requireLoggedInUser(req.user)
       );
@@ -87,7 +103,7 @@ export const playingRoutes = [
         sendProblem(
           res,
           Problems.notFound,
-          `No puzzle named ${puzzleName} found for quest ${name}`
+          `No puzzle named ${puzzleName} found for quest ${questName}`
         );
         return;
       }
@@ -96,11 +112,11 @@ export const playingRoutes = [
   }),
   defineRoute({
     method: "post",
-    path: "/quests/{name}/puzzles/{puzzleName}/activation",
+    path: "/quests/{questName}/puzzles/{puzzleName}/activation",
     operationId: "activatePuzzle",
     summary: "Activate a puzzle",
     description:
-      "Starts the puzzle the players have found, with its activation code: typed, as JSON, or scanned, as a multipart camera frame of its QR code. Failed attempts are limited for each player.",
+      "Starts the puzzle the players have found, with its activation code: typed, as JSON, or scanned, as a multipart camera frame of its QR code. Failed attempts are limited for each player. Send connectionId, either way, so the client isn't sent its own puzzleActivated update.",
     tags: ["Playing"],
     access: "signedIn",
     // Checked after authorization, so a refused request's image isn't read.
@@ -109,6 +125,7 @@ export const playingRoutes = [
       params: questPuzzleParams,
       body: activatePuzzleBody,
       multipart: scannedActivation,
+      multipartFields: scannedActivationFields,
     },
     responses: {
       200: {
@@ -128,12 +145,13 @@ export const playingRoutes = [
       Problems.tooManyRequests,
     ],
     async handle(req, res) {
-      const { width, height } = req.body;
-      let activationCode = req.body.activationCode;
+      // A scan's fields were validated by scannedActivationFields instead.
+      const body = req.body as ActivatePuzzleBody & ScannedActivationFields;
+      let activationCode = body.activationCode;
       if (req.file) {
         activationCode =
-          width && height
-            ? readQRCode(req.file.buffer, width, height)
+          body.width && body.height
+            ? readQRCode(req.file.buffer, body.width, body.height)
             : undefined;
         if (!activationCode) {
           sendProblem(
@@ -157,11 +175,11 @@ export const playingRoutes = [
       }
       const user = UserService.requireLoggedInUser(req.user);
       const activated = await QuestService.activatePuzzle(
-        req.params.name,
+        req.params.questName,
         req.params.puzzleName,
         await user.getAssigneeIds(),
         activationCode,
-        { actor: user.userName }
+        { actor: user.userName, connectionId: body.connectionId }
       );
       if (activated.status === "error") {
         sendServiceProblem(res, activated);
@@ -172,7 +190,7 @@ export const playingRoutes = [
   }),
   defineRoute({
     method: "post",
-    path: "/quests/{name}/puzzles/{puzzleName}/solution-attempts",
+    path: "/quests/{questName}/puzzles/{puzzleName}/solution-attempts",
     operationId: "attemptSolution",
     summary: "Guess a puzzle's solution",
     description:
@@ -187,14 +205,14 @@ export const playingRoutes = [
         body: z
           .object({
             solutionText: z.string(),
-            nextPuzzle: z
-              .object({ name: z.string(), displayName: z.string() })
-              .nullable()
-              .meta({
-                description:
-                  "The puzzle now waiting to be found and activated; null after the last.",
-              }),
-            questComplete: z.boolean(),
+            nextPuzzle: nextStopSchema.nullable().meta({
+              description:
+                "The stop now waiting to be found and activated; null after the last.",
+            }),
+            questComplete: z.boolean().meta({
+              description:
+                "True if it was the quest's last puzzle: the entry has completed the quest.",
+            }),
           })
           .meta({ id: "Solution" }),
       },
@@ -207,7 +225,7 @@ export const playingRoutes = [
     async handle(req, res) {
       const user = UserService.requireLoggedInUser(req.user);
       const solved = await QuestService.finishPuzzle(
-        req.params.name,
+        req.params.questName,
         req.params.puzzleName,
         await user.getAssigneeIds(),
         req.body.guess,
@@ -222,7 +240,7 @@ export const playingRoutes = [
         solutionText: solution.solutionText,
         nextPuzzle: solution.nextPuzzleName
           ? {
-              name: solution.nextPuzzleName,
+              puzzleName: solution.nextPuzzleName,
               displayName:
                 solution.nextPuzzleDisplayName ?? solution.nextPuzzleName,
             }
@@ -233,11 +251,11 @@ export const playingRoutes = [
   }),
   defineRoute({
     method: "post",
-    path: "/quests/{name}/puzzles/{puzzleName}/hints",
+    path: "/quests/{questName}/puzzles/{puzzleName}/hints",
     operationId: "revealHint",
     summary: "Reveal a puzzle's next hint",
     description:
-      "Each hint adds its time penalty to the players' score. The answer says whether the next hint gives the solution away, so a page can warn first.",
+      "Each hint adds its time penalty to the players' time. The answer says what the next hint would cost and whether it gives the solution away, so a client can warn first.",
     tags: ["Playing"],
     access: "signedIn",
     request: { params: questPuzzleParams, body: requestHintBody },
@@ -247,12 +265,13 @@ export const playingRoutes = [
         body: z
           .object({
             text: z.string(),
-            timePenalty: z
-              .number()
-              .int()
-              .meta({ description: "Seconds added to the players' score." }),
-            moreHints: z.boolean(),
-            isNextHintSolution: z.boolean(),
+            timePenaltySeconds: timePenaltySeconds.meta({
+              description: "Seconds added to the players' time.",
+            }),
+            nextHint: nextHintSchema.nullable().meta({
+              description:
+                "What revealing the next hint would cost; null if this was the last.",
+            }),
           })
           .meta({ id: "Hint" }),
       },
@@ -261,7 +280,7 @@ export const playingRoutes = [
     async handle(req, res) {
       const user = UserService.requireLoggedInUser(req.user);
       const revealed = await QuestService.getPuzzleHint(
-        req.params.name,
+        req.params.questName,
         req.params.puzzleName,
         await user.getAssigneeIds(),
         { actor: user.userName, connectionId: req.body.connectionId }
@@ -278,9 +297,12 @@ export const playingRoutes = [
         );
         return;
       }
-      const { hintText, timePenalty, moreHints, isNextHintSolution } =
-        revealed.data;
-      res.json({ text: hintText, timePenalty, moreHints, isNextHintSolution });
+      const { hintText, timePenalty, nextHint } = revealed.data;
+      res.json({
+        text: hintText,
+        timePenaltySeconds: timePenalty,
+        nextHint: toNextHint(nextHint),
+      });
     },
   }),
 ];

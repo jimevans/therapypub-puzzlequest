@@ -31,16 +31,16 @@ describe("a private quest", () => {
       password: PASSWORD,
     });
     await api("POST", "/puzzles", admin, {
-      name: riddle,
+      puzzleName: riddle,
       displayName: "A Riddle",
       solutionKeyword: "piano",
-      solutionDisplayText: "A piano",
+      solutionText: "A piano",
     });
     await api("POST", "/quests", admin, {
-      name: questName,
+      questName,
       displayName: "A Private Quest",
       visibility: "private",
-      entrants: [{ kind: "user", name: player }],
+      entrants: [{ kind: "player", name: player }],
       puzzles: [{ puzzleName: riddle }],
     });
     await api("POST", `/quests/${questName}/start`, admin);

@@ -105,17 +105,17 @@ describe("the web app", () => {
       player = await sessionToken(userName);
       for (const name of [first, second, hidden]) {
         await api("POST", "/puzzles", admin, {
-          name,
+          puzzleName: name,
           displayName: `Puzzle ${name}`,
           text: "Say **yes**",
           solutionKeyword: "yes",
-          solutionDisplayText: "Yes",
+          solutionText: "Yes",
         });
       }
       await api("POST", "/quests", admin, {
-        name: questName,
+        questName,
         displayName: "The Web Quest",
-        entrants: [{ kind: "user", name: userName }],
+        entrants: [{ kind: "player", name: userName }],
         puzzles: [
           { puzzleName: first, activationCode: "first-code" },
           { puzzleName: second, activationCode: "second-code" },

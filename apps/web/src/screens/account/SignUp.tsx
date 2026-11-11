@@ -27,18 +27,18 @@ function SignUpForm({ forAdministrator }: { forAdministrator: boolean }) {
         sms: false,
         password: "",
         confirmPassword: "",
-        authorizationLevel: 1,
+        role: "player",
       },
     });
   const signUp = useMutation({
     mutationFn: async ({
       confirmPassword: _confirmPassword,
-      authorizationLevel,
+      role,
       ...details
     }: AccountFormValues) => {
       dataOrThrow(
         await api.POST("/users", {
-          body: forAdministrator ? { ...details, authorizationLevel } : details,
+          body: forAdministrator ? { ...details, role } : details,
         })
       );
       // An administrator stays who they are. Anyone else carries straight on as
@@ -113,7 +113,7 @@ function SignUpForm({ forAdministrator }: { forAdministrator: boolean }) {
           control={control}
           register={register}
           isEditing={false}
-          canChooseLevel={forAdministrator}
+          canChooseRole={forAdministrator}
         />
         <Button
           id="sign-up"

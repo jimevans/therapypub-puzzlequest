@@ -8,7 +8,7 @@ import { Problems, sendProblem } from "../problems.js";
 import { defineRoute } from "./route.js";
 
 const questParams = z.object({
-  name: z.string().meta({ description: "The quest's name." }),
+  questName: z.string().meta({ description: "The quest's name." }),
 });
 
 const linkParams = questParams.extend({
@@ -42,8 +42,9 @@ const shareLinkSchema = z
   .object({
     id: z.string(),
     label: z.string(),
-    createdBy: z.string().optional().meta({
-      description: "Who made it. Missing if their account has been deleted.",
+    createdBy: z.string().nullable().meta({
+      description:
+        "The display name of whoever made it; null if their account has been deleted.",
     }),
     createdAt: z.iso.datetime(),
     expiresAt: z.iso.datetime(),
@@ -58,7 +59,10 @@ const shareLinksSchema = z
     visibility: z.enum(["public", "private"]).meta({
       description: "A public quest can be followed without a link.",
     }),
-    canSetExpiry: z.boolean(),
+    canSetExpiry: z.boolean().meta({
+      description:
+        "Whether the user asking may choose when a new link expires; only staff may.",
+    }),
     links: z.array(shareLinkSchema),
   })
   .meta({ id: "ShareLinks" });
@@ -79,11 +83,11 @@ const NOT_FOUND = "No such quest";
 export const shareLinkRoutes = [
   defineRoute({
     method: "get",
-    path: "/quests/{name}/share-links",
+    path: "/quests/{questName}/share-links",
     operationId: "listShareLinks",
     summary: "List a quest's share links",
     description:
-      "For the quest's assigned player or team members, and staff. Anyone else finds no such quest.",
+      "For the quest's players (in any of its entries), and staff. Anyone else finds no such quest.",
     tags: ["Spectating"],
     access: "signedIn",
     request: { params: questParams },
@@ -94,7 +98,7 @@ export const shareLinkRoutes = [
     async handle(req, res) {
       const user = UserService.requireLoggedInUser(req.user);
       const quest = await ShareLinkService.findManagedQuest(
-        req.params.name,
+        req.params.questName,
         user
       );
       if (!quest) {
@@ -106,16 +110,19 @@ export const shareLinkRoutes = [
         visibility: quest.visibility,
         canSetExpiry: user.isStaff(),
         links: links.map((link) => ({
-          ...link,
+          id: link.id,
+          label: link.label,
+          createdBy: link.createdBy ?? null,
           createdAt: link.createdAt.toISOString(),
           expiresAt: link.expiresAt.toISOString(),
+          canRevoke: link.canRevoke,
         })),
       });
     },
   }),
   defineRoute({
     method: "post",
-    path: "/quests/{name}/share-links",
+    path: "/quests/{questName}/share-links",
     operationId: "createShareLink",
     summary: "Make a share link",
     description:
@@ -130,7 +137,7 @@ export const shareLinkRoutes = [
     async handle(req, res) {
       const user = UserService.requireLoggedInUser(req.user);
       const quest = await ShareLinkService.findManagedQuest(
-        req.params.name,
+        req.params.questName,
         user
       );
       if (!quest) {
@@ -159,7 +166,7 @@ export const shareLinkRoutes = [
   }),
   defineRoute({
     method: "delete",
-    path: "/quests/{name}/share-links/{linkId}",
+    path: "/quests/{questName}/share-links/{linkId}",
     operationId: "revokeShareLink",
     summary: "Revoke a share link",
     description:
@@ -172,7 +179,7 @@ export const shareLinkRoutes = [
     async handle(req, res) {
       const user = UserService.requireLoggedInUser(req.user);
       const quest = await ShareLinkService.findManagedQuest(
-        req.params.name,
+        req.params.questName,
         user
       );
       if (!quest) {

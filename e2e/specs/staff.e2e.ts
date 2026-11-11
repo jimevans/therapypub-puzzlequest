@@ -30,7 +30,7 @@ describe("staff", () => {
       displayName: "A Helper",
       email: `${helper}@example.com`,
       password: PASSWORD,
-      authorizationLevel: 5,
+      role: "staff",
     });
     await api("POST", "/users", undefined, {
       userName: player,
@@ -40,24 +40,24 @@ describe("staff", () => {
     });
     playerToken = await sessionToken(player);
     await api("POST", "/puzzles", admin, {
-      name: riddle,
+      puzzleName: riddle,
       displayName: "The Staffed Riddle",
       text: "What has **keys**?",
       solutionKeyword: "piano",
-      solutionDisplayText: "A grand piano",
-      hints: [{ text: "It makes music", timePenalty: 60 }],
+      solutionText: "A grand piano",
+      hints: [{ text: "It makes music", timePenaltySeconds: 60 }],
     });
     await api("POST", "/puzzles", admin, {
-      name: finale,
+      puzzleName: finale,
       displayName: "The Staffed Finale",
       text: "Say done",
       solutionKeyword: "done",
-      solutionDisplayText: "All done",
+      solutionText: "All done",
     });
     await api("POST", "/quests", admin, {
-      name: questName,
+      questName,
       displayName: "The Staffed Quest",
-      entrants: [{ kind: "user", name: player }],
+      entrants: [{ kind: "player", name: player }],
       puzzles: [
         { puzzleName: riddle, activationCode: "staffed-riddle-code" },
         { puzzleName: finale, activationCode: "staffed-finale-code" },

@@ -126,7 +126,7 @@ function entriesOf(quest: Quest): EntryOf[] {
       // A deleted team or player has no name, but its entry still has an ID.
       key: entrantKey(entry.entrant) ?? `entry:${entry.id}`,
       label: entrantLabel(entry.entrant),
-      ref: name === undefined ? undefined : { kind, name },
+      ref: name == null ? undefined : { kind, name },
     };
   });
 }
@@ -414,7 +414,7 @@ function EntryStops({
         <p>This quest has no puzzles yet. Edit it to add some.</p>
       ) : (
         <StopsTable
-          questName={quest.name}
+          questName={quest.questName}
           entry={entry}
           onSkip={
             ref &&
@@ -511,14 +511,14 @@ interface Resetting {
 }
 
 function Console({ quest }: { quest: Quest }) {
-  const action = useQuestAction(quest.name);
+  const action = useQuestAction(quest.questName);
   const [search] = useSearchParams();
   const [asking, setAsking] = useState<Asking | null>(null);
   const [resetting, setResetting] = useState<Resetting | null>(null);
   // Whose players to text at first, or null while not texting.
   const [texting, setTexting] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const encodedName = encodeURIComponent(quest.name);
+  const encodedName = encodeURIComponent(quest.questName);
   const entries = entriesOf(quest);
   const single = entries.length === 1;
   // In a race, the entrant chosen to look at closely, if any.
@@ -582,7 +582,7 @@ function Console({ quest }: { quest: Quest }) {
 
       <dl className={styles.summary}>
         <dt>Name</dt>
-        <dd>{quest.name}</dd>
+        <dd>{quest.questName}</dd>
         {single && chosen && (
           <EntryFacts entry={chosen.entry} label={chosen.label} />
         )}
@@ -599,7 +599,7 @@ function Console({ quest }: { quest: Quest }) {
           <a
             id="run-book"
             href={`/api/v1/quests/${encodedName}/run-book`}
-            download={`${quest.name}.pdf`}
+            download={`${quest.questName}.pdf`}
           >
             Run book (PDF)
           </a>
@@ -608,7 +608,7 @@ function Console({ quest }: { quest: Quest }) {
           <a
             id="qr-cards"
             href={`/api/v1/quests/${encodedName}/qr-cards`}
-            download={`${quest.name}-qr-cards.pdf`}
+            download={`${quest.questName}-qr-cards.pdf`}
           >
             QR cards to print (PDF)
           </a>
@@ -632,7 +632,7 @@ function Console({ quest }: { quest: Quest }) {
               setResetting(chosenPuzzle);
             }}
           />
-          <ShareLinksSection questName={quest.name} />
+          <ShareLinksSection questName={quest.questName} />
           <ActivityLog quest={quest} />
         </>
       ) : (
@@ -682,7 +682,7 @@ function Console({ quest }: { quest: Quest }) {
               />
             </section>
           )}
-          <ShareLinksSection questName={quest.name} />
+          <ShareLinksSection questName={quest.questName} />
         </>
       )}
 
@@ -718,7 +718,7 @@ function Console({ quest }: { quest: Quest }) {
         }}
       />
       <TextMessageDialog
-        questName={quest.name}
+        questName={quest.questName}
         recipients={recipients}
         defaultRecipient={texting ?? ""}
         isOpen={texting !== null}

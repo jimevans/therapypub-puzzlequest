@@ -18,7 +18,6 @@ import {
   type Puzzle,
   type PuzzleFormValues,
   UploadFailedError,
-  formFieldOf,
   formValuesOf,
   keptMediaPath,
   puzzleDefinitionQuery,
@@ -91,7 +90,7 @@ function EditorForm({ puzzle }: { puzzle?: Puzzle }) {
     onSettled: () => queryClient.invalidateQueries({ queryKey: PUZZLES_KEY }),
     // The changes are saved, so there's nothing to ask about leaving.
     onSuccess: (_, values) =>
-      navigate(puzzlePath(puzzle?.name ?? values.puzzleName.trim()), {
+      navigate(puzzlePath(puzzle?.puzzleName ?? values.puzzleName.trim()), {
         state: LEAVING_SAVED,
       }),
     onError: async (error, values) => {
@@ -107,7 +106,7 @@ function EditorForm({ puzzle }: { puzzle?: Puzzle }) {
         return;
       }
       fieldErrorsOf(error).forEach(({ field, message }) =>
-        setError(formFieldOf(field) as keyof PuzzleFormValues, { message })
+        setError(field as keyof PuzzleFormValues, { message })
       );
     },
   });
@@ -115,7 +114,7 @@ function EditorForm({ puzzle }: { puzzle?: Puzzle }) {
     save.error &&
     (save.error instanceof UploadFailedError ||
       fieldErrorsOf(save.error).length === 0);
-  const cancelPath = puzzle ? puzzlePath(puzzle.name) : "/puzzles";
+  const cancelPath = puzzle ? puzzlePath(puzzle.puzzleName) : "/puzzles";
 
   return (
     <>
@@ -141,7 +140,7 @@ function EditorForm({ puzzle }: { puzzle?: Puzzle }) {
         }}
       >
         {puzzle ? (
-          <p>Name: {puzzle.name}</p>
+          <p>Name: {puzzle.puzzleName}</p>
         ) : (
           <FormTextField
             control={control}
@@ -171,7 +170,6 @@ function EditorForm({ puzzle }: { puzzle?: Puzzle }) {
             id="puzzle-type"
             className={styles.select}
             {...register("type", {
-              valueAsNumber: true,
               // A file chosen for one kind of puzzle can't be another kind.
               onChange: () => setValue("file", null),
             })}
@@ -206,7 +204,7 @@ function EditorForm({ puzzle }: { puzzle?: Puzzle }) {
         />
         <FormTextField
           control={control}
-          name="solutionDisplayText"
+          name="solutionText"
           rules={{ required: "Enter the solution as players see it" }}
           id="solution-display-text"
           label="Solution as shown"
@@ -255,7 +253,7 @@ export function PuzzleEditor() {
         // Editing starts from the puzzle as it was when the editor opened, and
         // isn't replaced when the data is fetched again, so nothing typed is
         // lost. The key starts afresh if the editor moves to another puzzle.
-        <EditorForm key={puzzle.data.name} puzzle={puzzle.data} />
+        <EditorForm key={puzzle.data.puzzleName} puzzle={puzzle.data} />
       ) : (
         puzzle.isError && (
           <Banner tone="danger">{messageOf(puzzle.error)}</Banner>

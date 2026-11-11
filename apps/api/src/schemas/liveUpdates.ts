@@ -3,6 +3,7 @@
 // message it sends against these schemas, so a message can't drift from
 // what the pages expect, and the API's description documents them.
 import { z } from "zod";
+import { nextHintSchema, timePenaltySeconds } from "./hints.js";
 
 /** A moment, in ISO 8601 format. */
 const time = z.iso.datetime();
@@ -42,10 +43,10 @@ const puzzleSolved = z.object({
   ...aboutPuzzle,
   solutionText: z.string(),
   endTime: time,
-  questComplete: z
-    .literal(true)
-    .optional()
-    .meta({ description: "Present when it was the quest's last puzzle." }),
+  questComplete: z.boolean().meta({
+    description:
+      "True when it was the quest's last puzzle: the entry has completed the quest.",
+  }),
 });
 
 /**
@@ -60,13 +61,17 @@ const puzzleStarted = z.object({
 });
 
 /** A hint was revealed; its penalty adds to the players' time. */
-const hintRequested = z.object({
-  message: z.literal("hintRequested"),
+const hintRevealed = z.object({
+  message: z.literal("hintRevealed"),
   ...aboutPuzzle,
   hintText: z.string(),
-  moreHints: z.boolean(),
-  timePenalty: z.number().int().meta({ description: "In seconds." }),
-  isNextHintSolution: z.boolean(),
+  timePenaltySeconds: timePenaltySeconds.meta({
+    description: "Seconds the hint adds to the players' time.",
+  }),
+  nextHint: nextHintSchema.nullable().meta({
+    description:
+      "What revealing the puzzle's next hint would cost; null if it has no more.",
+  }),
 });
 
 /**
@@ -96,7 +101,7 @@ export const liveUpdateSchema = z
     puzzleActivated,
     puzzleSolved,
     puzzleStarted,
-    hintRequested,
+    hintRevealed,
     questUpdated,
     questsChanged,
   ])
@@ -123,7 +128,7 @@ export const liveUpdateSubscriptionSchema = z
       questName: z.string().min(1),
       ticket: ticket.meta({
         description:
-          "A ticket from POST /quests/{name}/live-tickets, which can be used once.",
+          "A ticket from POST /quests/{questName}/live-tickets, which can be used once.",
       }),
     }),
     z.strictObject({

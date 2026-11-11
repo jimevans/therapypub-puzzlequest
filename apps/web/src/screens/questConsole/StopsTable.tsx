@@ -99,8 +99,8 @@ export function StopsTable({
                 </td>
                 <td className={adminStyles.secondary}>
                   {puzzle.hints
-                    ? `${puzzle.nextHintToDisplay} of ${puzzle.hints.length}`
-                    : puzzle.nextHintToDisplay}
+                    ? `${puzzle.hintsRevealed} of ${puzzle.hints.length}`
+                    : puzzle.hintsRevealed}
                 </td>
                 <td className={`${adminStyles.secondary} ${styles.time}`}>
                   {clock?.startTime ? (
@@ -109,9 +109,7 @@ export function StopsTable({
                     "–"
                   )}
                 </td>
-                <td className={adminStyles.secondary}>
-                  {puzzle.solutionDisplayText}
-                </td>
+                <td className={adminStyles.secondary}>{puzzle.solutionText}</td>
                 <td className={adminStyles.rowActions}>
                   <Button
                     aria-label={`QR code for ${label}`}

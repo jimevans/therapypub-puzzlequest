@@ -25,7 +25,7 @@ describe("an administrator creating a user", () => {
     await $("#password").setValue(PASSWORD);
     await $("#password-confirm").setValue(PASSWORD);
     await $("#email").setValue(`${created}@example.com`);
-    await $("#auth-level").selectByAttribute("value", "1");
+    await $("#role").selectByAttribute("value", "player");
     await $("#sign-up").click();
 
     await browser.waitUntil(

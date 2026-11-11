@@ -1,3 +1,4 @@
+import { toNextHint } from "../schemas/hints.js";
 import type { QuestUpdate } from "../schemas/liveUpdates.js";
 import { notifyPlayersOf } from "../services/playerUpdates.service.js";
 import * as WebSocketService from "../services/websocket.service.js";
@@ -49,7 +50,7 @@ export function sendLiveUpdates(activity: QuestActivity): void {
           puzzleName: event.puzzleName,
           solutionText: event.solutionText,
           endTime: event.at.toISOString(),
-          ...(questComplete ? { questComplete: true as const } : {}),
+          questComplete,
         });
         break;
       case "PuzzleStarted":
@@ -78,14 +79,13 @@ export function sendLiveUpdates(activity: QuestActivity): void {
         break;
       case "HintRevealed":
         notify({
-          message: "hintRequested",
+          message: "hintRevealed",
           questName,
           entryId,
           puzzleName: event.puzzleName,
           hintText: event.hintText,
-          moreHints: event.moreHints,
-          timePenalty: event.timePenalty,
-          isNextHintSolution: event.isNextHintSolution,
+          timePenaltySeconds: event.timePenalty,
+          nextHint: toNextHint(event.nextHint),
         });
         break;
     }

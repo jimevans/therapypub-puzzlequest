@@ -18,7 +18,7 @@ const PLAYER = {
   emailVerified: true,
   phone: "+13125550142",
   sms: false,
-  authorizationLevel: 1,
+  role: "player",
   teams: [{ teamName: "red", displayName: "The Reds" }],
 };
 const ADMIN = {
@@ -26,7 +26,7 @@ const ADMIN = {
   id: "2",
   userName: "boss",
   displayName: "The Boss",
-  authorizationLevel: 10,
+  role: "admin",
 };
 
 /** Has the API create the account, then answer signing in as it. */
@@ -136,9 +136,7 @@ describe("signing up", () => {
         sms: false,
       }),
     });
-    expect(post.mock.calls[0]?.[1]).not.toHaveProperty(
-      "body.authorizationLevel"
-    );
+    expect(post.mock.calls[0]?.[1]).not.toHaveProperty("body.role");
     expect(post.mock.calls[0]?.[1]).not.toHaveProperty("body.confirmPassword");
     expect(post).toHaveBeenNthCalledWith(2, "/sessions", {
       body: { userName: "newbie", password: "a long enough password" },
@@ -241,9 +239,7 @@ describe("signing up", () => {
     show("/user/register");
 
     await screen.findByLabelText("User name");
-    expect(
-      screen.queryByLabelText("Authorization level")
-    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Role")).not.toBeInTheDocument();
   });
 
   it("tells a signed-in player to sign out first", async () => {
@@ -257,7 +253,7 @@ describe("signing up", () => {
   });
 
   describe("by an administrator", () => {
-    it("creates the user with a level, without signing in as them", async () => {
+    it("creates the user with a role, without signing in as them", async () => {
       apiKnows(ADMIN);
       const post = apiSignsUp();
       show("/user/register");
@@ -266,16 +262,13 @@ describe("signing up", () => {
         await screen.findByRole("heading", { name: "Create a user" })
       ).toBeVisible();
       await fillIn();
-      await userEvent.selectOptions(
-        screen.getByLabelText("Authorization level"),
-        "10"
-      );
+      await userEvent.selectOptions(screen.getByLabelText("Role"), "admin");
       await submit();
 
       await waitFor(() => expect(assign).toHaveBeenCalledWith("/"));
       expect(post).toHaveBeenCalledTimes(1);
       expect(post).toHaveBeenCalledWith("/users", {
-        body: expect.objectContaining({ authorizationLevel: 10 }),
+        body: expect.objectContaining({ role: "admin" }),
       });
     });
   });
@@ -309,7 +302,7 @@ describe("a profile", () => {
     show("/user/player");
 
     await screen.findByRole("heading", { name: "The Player", level: 1 });
-    expect(screen.queryByText("Authorization level")).not.toBeInTheDocument();
+    expect(screen.queryByText("Role")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Send password reset email" })
     ).not.toBeInTheDocument();
@@ -639,21 +632,21 @@ describe("editing a profile", () => {
     });
   });
 
-  it("lets an administrator change the level", async () => {
+  it("lets an administrator change the role", async () => {
     apiKnows(ADMIN);
     const patch = vi.spyOn(api, "PATCH").mockResolvedValue(ok(PLAYER) as never);
     show("/user/player/edit");
 
     await userEvent.selectOptions(
-      await screen.findByLabelText("Authorization level"),
-      "10"
+      await screen.findByLabelText("Role"),
+      "admin"
     );
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/users/{userName}", {
         params: { path: { userName: "player" } },
-        body: expect.objectContaining({ authorizationLevel: 10 }),
+        body: expect.objectContaining({ role: "admin" }),
       })
     );
   });

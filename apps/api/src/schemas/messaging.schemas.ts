@@ -2,7 +2,7 @@ import { z } from "zod";
 import { requiredText } from "./common.js";
 
 /**
- * POST /api/v1/quests/{name}/text-messages. A reply to wait for needs the
+ * POST /api/v1/quests/{questName}/text-messages. A reply to wait for needs the
  * confirmation to send back when it arrives.
  */
 export const sendTextBody = z

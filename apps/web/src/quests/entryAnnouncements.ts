@@ -2,6 +2,7 @@
 // screens that show several: each team's or player's progress, said as
 // announcements.ts says one entry's, with whose it was. Kept apart from it, so
 // that screens showing one entry don't download this.
+import type { Schemas } from "@puzzlequest/api-client";
 import {
   type ProgressSnapshot,
   describeProgress,
@@ -26,7 +27,7 @@ export function entriesSnapshot(
     id: string;
     name: string;
     paused: boolean;
-    status: number;
+    status: Schemas["QuestStatus"];
     steps: Parameters<typeof progressSnapshot>[1];
   }[]
 ): EntriesSnapshot {

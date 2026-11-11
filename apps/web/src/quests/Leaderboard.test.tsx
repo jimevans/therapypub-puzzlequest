@@ -3,7 +3,14 @@ import { describe, expect, it } from "vitest";
 import { Leaderboard } from "./Leaderboard";
 import { ordinal } from "./entrants";
 
-const STOPPED = { running: false, elapsedMs: 0, penaltyMs: 0, totalMs: 0 };
+const STOPPED = {
+  endTime: null,
+  running: false,
+  clockStart: null,
+  elapsedMs: 0,
+  penaltyMs: 0,
+  totalMs: 0,
+};
 
 function entry(
   id: string,
@@ -14,7 +21,7 @@ function entry(
   return {
     id,
     entrant: { kind: "team" as const, displayName },
-    status: rank === null ? 1 : 2,
+    status: rank === null ? ("inProgress" as const) : ("completed" as const),
     statusDescription: rank === null ? "In progress" : "Completed",
     paused: false,
     rank,
@@ -148,7 +155,10 @@ describe("Leaderboard", () => {
           ...RACING,
           entries: [
             entry("a", "The Reds", null),
-            { ...entry("b", "Sam", null), entrant: { kind: "user" } },
+            {
+              ...entry("b", "Sam", null),
+              entrant: { kind: "player" as const, displayName: null },
+            },
           ],
         }}
         ownEntryId="b"

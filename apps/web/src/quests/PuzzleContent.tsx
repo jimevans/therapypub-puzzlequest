@@ -1,3 +1,4 @@
+import type { Schemas } from "@puzzlequest/api-client";
 import { Suspense, lazy } from "react";
 import styles from "./PuzzleContent.module.css";
 
@@ -15,19 +16,19 @@ export function preloadPuzzleText(): void {
 }
 
 /**
- * What a puzzle shows, as the API numbers it. It's here, rather than in a file
+ * What a puzzle shows, as the API names it. It's here, rather than in a file
  * of its own, so that the player's puzzle screen doesn't download it separately.
  */
 export const PuzzleType = {
-  Text: 0,
-  Image: 1,
-  Audio: 2,
-  Video: 3,
-} as const;
+  Text: "text",
+  Image: "image",
+  Audio: "audio",
+  Video: "video",
+} as const satisfies Record<string, Schemas["PuzzleType"]>;
 
 interface PuzzleContentProps {
   displayName: string;
-  type: number;
+  type: Schemas["PuzzleType"];
   /** The puzzle's Markdown, or the path of its media. */
   text: string;
 }

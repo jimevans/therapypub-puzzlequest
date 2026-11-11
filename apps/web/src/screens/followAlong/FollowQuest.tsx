@@ -34,10 +34,10 @@ type Entry = SpectatorQuest["entries"][number];
 function stepsOf(quest: SpectatorQuest, entry: Entry): QuestStep[] {
   return entry.puzzles.map((step) => {
     const clock = entry.progress.puzzles.find(
-      ({ puzzleName }) => puzzleName === step.name
+      ({ puzzleName }) => puzzleName === step.puzzleName
     );
     return {
-      name: step.name,
+      puzzleName: step.puzzleName,
       displayName: step.displayName,
       status: step.status,
       statusDescription: step.statusDescription,
@@ -49,7 +49,7 @@ function stepsOf(quest: SpectatorQuest, entry: Entry): QuestStep[] {
       path:
         step.status === STEP_AWAITING_ACTIVATION
           ? null
-          : `/monitor/quest/${encodeURIComponent(quest.name)}/puzzle/${encodeURIComponent(step.name)}?entry=${encodeURIComponent(entry.id)}`,
+          : `/monitor/quest/${encodeURIComponent(quest.questName)}/puzzle/${encodeURIComponent(step.puzzleName)}?entry=${encodeURIComponent(entry.id)}`,
     };
   });
 }

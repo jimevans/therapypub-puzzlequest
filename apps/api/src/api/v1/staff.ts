@@ -14,7 +14,7 @@ import {
 import { defineRoute } from "./route.js";
 
 const questParams = z.object({
-  name: z.string().meta({ description: "The quest's name." }),
+  questName: z.string().meta({ description: "The quest's name." }),
 });
 
 export const staffRoutes = [
@@ -44,7 +44,7 @@ export const staffRoutes = [
   }),
   defineRoute({
     method: "get",
-    path: "/quests/{name}/staff-view",
+    path: "/quests/{questName}/staff-view",
     operationId: "getStaffQuest",
     summary: "Follow a quest as staff",
     description:
@@ -57,7 +57,7 @@ export const staffRoutes = [
     },
     problems: [Problems.notFound],
     async handle(req, res) {
-      const found = await QuestService.getQuestEntries(req.params.name);
+      const found = await QuestService.getQuestEntries(req.params.questName);
       if (found.status === "error") {
         sendServiceProblem(res, found);
         return;

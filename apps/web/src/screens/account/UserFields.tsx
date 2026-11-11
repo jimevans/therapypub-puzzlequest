@@ -3,7 +3,7 @@ import type { Control, UseFormRegister } from "react-hook-form";
 import { Button } from "../../ui/Button";
 import { FormTextField } from "../../ui/FormTextField";
 import styles from "./Account.module.css";
-import { AUTHORIZATION_LEVELS, type AccountFormValues } from "./accountForm";
+import { ROLES, type AccountFormValues } from "./accountForm";
 
 /**
  * Consent to text messages, in words that are part of what players agree to, so
@@ -29,7 +29,7 @@ interface UserFieldsProps {
   /** Editing an existing user, whose new email address must be verified. */
   isEditing: boolean;
   /** Only an administrator may choose an authorization level. */
-  canChooseLevel: boolean;
+  canChooseRole: boolean;
 }
 
 /** The details of a user, as both signing up and editing a profile ask them. */
@@ -37,7 +37,7 @@ export function UserFields({
   control,
   register,
   isEditing,
-  canChooseLevel,
+  canChooseRole,
 }: UserFieldsProps) {
   const [showConsent, setShowConsent] = useState(false);
   return (
@@ -84,15 +84,11 @@ export function UserFields({
         )}
       </div>
       {showConsent && <SmsConsent />}
-      {canChooseLevel && (
+      {canChooseRole && (
         <div className={styles.field}>
-          <label htmlFor="auth-level">Authorization level</label>
-          <select
-            id="auth-level"
-            className={styles.select}
-            {...register("authorizationLevel", { valueAsNumber: true })}
-          >
-            {AUTHORIZATION_LEVELS.map(({ value, label }) => (
+          <label htmlFor="role">Role</label>
+          <select id="role" className={styles.select} {...register("role")}>
+            {ROLES.map(({ value, label }) => (
               <option key={value} value={value}>
                 {label}
               </option>

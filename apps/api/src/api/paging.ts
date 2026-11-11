@@ -64,12 +64,37 @@ export const pageQuery = z.object({
 });
 export type PageQuery = z.output<typeof pageQuery>;
 
+/** The named page schemas made so far, by their items' schemas. */
+const namedPages = new WeakMap<z.ZodType, z.ZodType>();
+
 /**
- * The schema of a page of a list.
+ * The schema of a page of a list. When the items' schema is named, the page's
+ * is too, after it (a page of Quest is a QuestPage), so that generated
+ * clients have one type for each kind of page.
  * @param item the schema of the list's items
  * @returns the schema
  */
 export function pageSchema<T extends z.ZodType>(item: T) {
+  const cached = namedPages.get(item);
+  if (cached) {
+    return cached as ReturnType<typeof makePageSchema<T>>;
+  }
+  const page = makePageSchema(item);
+  const itemId = z.globalRegistry.get(item)?.id;
+  if (!itemId) {
+    return page;
+  }
+  const named = page.meta({ id: `${itemId}Page` });
+  namedPages.set(item, named);
+  return named;
+}
+
+/**
+ * Makes the schema of a page of a list.
+ * @param item the schema of the list's items
+ * @returns the schema
+ */
+function makePageSchema<T extends z.ZodType>(item: T) {
   return z.object({
     items: z.array(item).meta({ description: "The page's items." }),
     next: z.string().nullable().meta({

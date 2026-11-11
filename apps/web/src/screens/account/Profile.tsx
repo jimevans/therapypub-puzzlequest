@@ -10,7 +10,7 @@ import { ChangePassword } from "./ChangePassword";
 import { DeleteAccount } from "./DeleteAccount";
 import { EmailReminder } from "./EmailReminder";
 import { Teams } from "./Teams";
-import { AUTHORIZATION_LEVELS, formatPhone } from "./accountForm";
+import { ROLES, formatPhone } from "./accountForm";
 import { userQuery } from "./userQuery";
 
 /** For an administrator helping a user who can't sign in. */
@@ -74,9 +74,7 @@ export function Profile() {
 
   const details = user.data;
   const isSelf = viewer?.userName === details.userName;
-  const level = AUTHORIZATION_LEVELS.find(
-    ({ value }) => value === details.authorizationLevel
-  );
+  const role = ROLES.find(({ value }) => value === details.role);
   return (
     <>
       <title>{`${details.displayName} · PuzzleQuest`}</title>
@@ -98,8 +96,8 @@ export function Profile() {
         <dd>{details.sms ? "Allowed" : "Not allowed"}</dd>
         {isAdministrator(viewer) && (
           <>
-            <dt>Authorization level</dt>
-            <dd>{level?.label ?? details.authorizationLevel}</dd>
+            <dt>Role</dt>
+            <dd>{role?.label ?? details.role}</dd>
           </>
         )}
       </dl>

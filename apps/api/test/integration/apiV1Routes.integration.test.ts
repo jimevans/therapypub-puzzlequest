@@ -162,10 +162,12 @@ describe("a route's description", () => {
     ).toEqual(["200", "401", "403", "404", "500"]);
   });
 
-  it("describes a page of a list", () => {
-    const page =
+  it("describes a page of a list, named after its items", () => {
+    expect(
       document.paths["/things"].get.responses["200"].content["application/json"]
-        .schema;
+        .schema
+    ).toEqual({ $ref: "#/components/schemas/ThingPage" });
+    const page = document.components.schemas.ThingPage;
     expect(page.properties.items).toMatchObject({
       type: "array",
       items: { $ref: "#/components/schemas/Thing" },

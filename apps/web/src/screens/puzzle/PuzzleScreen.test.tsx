@@ -17,9 +17,14 @@ vi.mock("../../live/useLiveQuest", async (importOriginal) => ({
   }),
 }));
 
-const PATHS = { params: { path: { name: "trail", puzzleName: "riddle" } } };
+const PATHS = {
+  params: { path: { questName: "trail", puzzleName: "riddle" } },
+};
 const PROGRESS = {
+  startTime: "2026-11-08T11:55:00.000Z",
+  endTime: null,
   running: false,
+  clockStart: null,
   elapsedMs: 300_000,
   penaltyMs: 0,
   totalMs: 300_000,
@@ -29,21 +34,21 @@ const PROGRESS = {
 function viewOf(puzzle = {}, rest = {}) {
   return {
     quest: {
-      name: "trail",
+      questName: "trail",
       displayName: "The Trail",
-      status: 1,
+      status: "inProgress",
       statusDescription: "In progress",
       paused: false,
       progress: PROGRESS,
     },
     puzzle: {
-      name: "riddle",
+      puzzleName: "riddle",
       displayName: "The Riddle",
-      status: 2,
+      status: "inProgress",
       statusDescription: "In progress",
       skipped: false,
       stopNumber: 2,
-      type: 0,
+      type: "text",
       text: "What has **keys**?",
       hints: [],
       nextHint: null,
@@ -55,8 +60,8 @@ function viewOf(puzzle = {}, rest = {}) {
   };
 }
 
-const AWAITING = { status: 1, type: null, text: null };
-const SOLVED = { status: 3, solutionText: "A piano" };
+const AWAITING = { status: "awaitingActivation", type: null, text: null };
+const SOLVED = { status: "completed", solutionText: "A piano" };
 
 const ACTIVATED = { activationTime: "2026-11-08T12:00:00.000Z" };
 const SOLUTION = {
@@ -66,9 +71,8 @@ const SOLUTION = {
 };
 const HINT = {
   text: "It has hammers",
-  timePenalty: 90,
-  moreHints: false,
-  isNextHintSolution: false,
+  timePenaltySeconds: 90,
+  nextHint: null,
 };
 
 function apiShows(view: unknown) {
@@ -129,7 +133,7 @@ describe("PuzzleScreen", () => {
 
       await shown();
       expect(get).toHaveBeenCalledWith(
-        "/quests/{name}/puzzles/{puzzleName}",
+        "/quests/{questName}/puzzles/{puzzleName}",
         PATHS
       );
     });
@@ -204,8 +208,15 @@ describe("PuzzleScreen", () => {
 
       await waitFor(() =>
         expect(post).toHaveBeenCalledWith(
-          "/quests/{name}/puzzles/{puzzleName}/activation",
-          { ...PATHS, body: { activationCode: "bridge-code" } }
+          "/quests/{questName}/puzzles/{puzzleName}/activation",
+          {
+            ...PATHS,
+            // So the page isn't sent its own puzzleActivated update.
+            body: {
+              activationCode: "bridge-code",
+              connectionId: "connection-1",
+            },
+          }
         )
       );
     });
@@ -310,7 +321,7 @@ describe("PuzzleScreen", () => {
     });
 
     it("shows an image puzzle", async () => {
-      apiShows(viewOf({ type: 1, text: "/puzzleData/a.png" }));
+      apiShows(viewOf({ type: "image", text: "/puzzleData/a.png" }));
       show();
 
       expect(
@@ -319,7 +330,7 @@ describe("PuzzleScreen", () => {
     });
 
     it("gives an audio puzzle controls, so it can be played", async () => {
-      apiShows(viewOf({ type: 2, text: "/puzzleData/a.mp3" }));
+      apiShows(viewOf({ type: "audio", text: "/puzzleData/a.mp3" }));
       show();
 
       await shown();
@@ -329,7 +340,7 @@ describe("PuzzleScreen", () => {
     });
 
     it("plays a video puzzle in the page, with controls", async () => {
-      apiShows(viewOf({ type: 3, text: "/puzzleData/a.mp4" }));
+      apiShows(viewOf({ type: "video", text: "/puzzleData/a.mp4" }));
       show();
 
       await shown();
@@ -354,7 +365,7 @@ describe("PuzzleScreen", () => {
 
       expect(await screen.findByText("A piano")).toBeVisible();
       expect(post).toHaveBeenCalledWith(
-        "/quests/{name}/puzzles/{puzzleName}/solution-attempts",
+        "/quests/{questName}/puzzles/{puzzleName}/solution-attempts",
         { ...PATHS, body: { guess: "a piano", connectionId: "connection-1" } }
       );
     });
@@ -413,8 +424,8 @@ describe("PuzzleScreen", () => {
       apiShows(
         viewOf({
           hints: [
-            { text: "It makes music", timePenalty: 60 },
-            { text: "It's free", timePenalty: 0 },
+            { text: "It makes music", timePenaltySeconds: 60 },
+            { text: "It's free", timePenaltySeconds: 0 },
           ],
         })
       );
@@ -428,7 +439,7 @@ describe("PuzzleScreen", () => {
     it("says what the next hint costs, and reveals it at once", async () => {
       const post = apiAnswersAction(ok(HINT));
       apiShows(
-        viewOf({ nextHint: { timePenalty: 90, solutionWarning: false } })
+        viewOf({ nextHint: { timePenaltySeconds: 90, solutionWarning: false } })
       );
       show();
 
@@ -438,7 +449,7 @@ describe("PuzzleScreen", () => {
 
       await waitFor(() =>
         expect(post).toHaveBeenCalledWith(
-          "/quests/{name}/puzzles/{puzzleName}/hints",
+          "/quests/{questName}/puzzles/{puzzleName}/hints",
           { ...PATHS, body: { connectionId: "connection-1" } }
         )
       );
@@ -458,7 +469,9 @@ describe("PuzzleScreen", () => {
       async function askForIt() {
         const post = apiAnswersAction(ok(HINT));
         apiShows(
-          viewOf({ nextHint: { timePenalty: 300, solutionWarning: true } })
+          viewOf({
+            nextHint: { timePenaltySeconds: 300, solutionWarning: true },
+          })
         );
         show();
         await userEvent.click(
@@ -499,7 +512,7 @@ describe("PuzzleScreen", () => {
     it("stops the player while the quest is paused", async () => {
       apiShows(
         viewOf(
-          { nextHint: { timePenalty: 60, solutionWarning: false } },
+          { nextHint: { timePenaltySeconds: 60, solutionWarning: false } },
           { quest: pausedQuest() }
         )
       );
@@ -540,7 +553,9 @@ describe("PuzzleScreen", () => {
 
     it("links on to the next puzzle", async () => {
       apiShows(
-        viewOf(SOLVED, { next: { name: "a/b", displayName: "The Bridge" } })
+        viewOf(SOLVED, {
+          next: { puzzleName: "a/b", displayName: "The Bridge" },
+        })
       );
       show();
 
@@ -564,9 +579,9 @@ describe("PuzzleScreen", () => {
       apiShows(
         viewOf(SOLVED, {
           quest: {
-            name: "trail",
+            questName: "trail",
             displayName: "The Trail",
-            status: 2,
+            status: "completed",
             statusDescription: "Completed",
             paused: false,
             progress: { ...PROGRESS, totalMs: 3_845_000 },
@@ -585,9 +600,9 @@ describe("PuzzleScreen", () => {
 
 function pausedQuest() {
   return {
-    name: "trail",
+    questName: "trail",
     displayName: "The Trail",
-    status: 1,
+    status: "inProgress",
     statusDescription: "Paused",
     paused: true,
     progress: PROGRESS,

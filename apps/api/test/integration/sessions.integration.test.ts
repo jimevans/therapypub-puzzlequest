@@ -289,7 +289,7 @@ describe("changes to a user", () => {
     await request(app)
       .patch("/api/v1/users/player")
       .set("Authorization", `Bearer ${admin}`)
-      .send({ authorizationLevel: AuthorizationLevel.ADMIN });
+      .send({ role: "admin" });
 
     expect(await SessionService.findSession(player)).toBeNull();
     expect(await SessionService.findSession(admin)).not.toBeNull();

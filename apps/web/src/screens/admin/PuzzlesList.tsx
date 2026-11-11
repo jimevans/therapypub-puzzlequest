@@ -21,9 +21,11 @@ export function PuzzlesList() {
   const puzzles = useQuery(allPuzzlesQuery);
   const flow = useDeletion<Puzzle>({
     queryKey: PUZZLES_KEY,
-    remove: async ({ name }) =>
+    remove: async ({ puzzleName }) =>
       dataOrThrow(
-        await api.DELETE("/puzzles/{name}", { params: { path: { name } } })
+        await api.DELETE("/puzzles/{puzzleName}", {
+          params: { path: { puzzleName } },
+        })
       ),
   });
 
@@ -52,13 +54,13 @@ export function PuzzlesList() {
           </thead>
           <tbody>
             {puzzles.data.map((puzzle) => (
-              <tr key={puzzle.name} data-puzzle-name={puzzle.name}>
+              <tr key={puzzle.puzzleName} data-puzzle-name={puzzle.puzzleName}>
                 <td>
-                  <Link to={`/puzzle/${encodeURIComponent(puzzle.name)}`}>
+                  <Link to={`/puzzle/${encodeURIComponent(puzzle.puzzleName)}`}>
                     {puzzle.displayName}
                   </Link>
                 </td>
-                <td className={styles.secondary}>{puzzle.name}</td>
+                <td className={styles.secondary}>{puzzle.puzzleName}</td>
                 <td>{puzzleTypeLabel(puzzle.type)}</td>
                 <td className={styles.secondary}>{puzzle.hints.length}</td>
                 <td className={styles.rowActions}>

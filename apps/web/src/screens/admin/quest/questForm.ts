@@ -1,13 +1,17 @@
 import type { Schemas } from "@puzzlequest/api-client";
 import { api, dataOrThrow } from "../../../api";
 import { entrantLabel } from "../../../quests/entrants";
-import { QUEST_COMPLETED, QUEST_NOT_STARTED } from "../../../quests/status";
+import {
+  QUEST_COMPLETED,
+  QUEST_NOT_STARTED,
+  STEP_NOT_REACHED,
+} from "../../../quests/status";
 
 export type Quest = Schemas["Quest"];
 
 /** A team or player playing the quest, as the editor holds it. */
 export interface EntrantValues {
-  kind: "user" | "team";
+  kind: Schemas["EntrantKind"];
   /** The user name or team name. */
   name: string;
   /** What to call it on screen, such as "The Reds (team)". */
@@ -34,10 +38,7 @@ export interface StopValues {
 
 /** What the quest editor asks. */
 export interface QuestFormValues {
-  /**
-   * The quest's name, which is in its address. Not "name": a form's elements
-   * become properties of the form, and one called name would hide form.name.
-   */
+  /** The quest's name, which is in its address. */
   questName: string;
   displayName: string;
   /** Whether only its players, staff, and those given a link can follow it. */
@@ -54,13 +55,13 @@ export interface QuestFormValues {
  */
 export function formValuesOf(quest?: Quest): QuestFormValues {
   return {
-    questName: quest?.name ?? "",
+    questName: quest?.questName ?? "",
     displayName: quest?.displayName ?? "",
     isPrivate: quest?.visibility === "private",
     // A deleted team or player has no name to send, so it can't stay.
     entrants:
       quest?.entries.flatMap(({ entrant, status }) =>
-        entrant.name === undefined
+        entrant.name == null
           ? []
           : [
               {
@@ -106,7 +107,8 @@ export function reachedCount(quest: Quest | undefined): number {
     ...(quest?.entries ?? []).map((entry) =>
       entry.status === QUEST_NOT_STARTED
         ? 0
-        : entry.puzzles.filter((puzzle) => puzzle.status !== 0).length
+        : entry.puzzles.filter((puzzle) => puzzle.status !== STEP_NOT_REACHED)
+            .length
     )
   );
 }
@@ -125,13 +127,11 @@ export function isCompleted(quest: Quest | undefined): boolean {
 
 /**
  * Says which form field a problem the API reported is about.
- * @param field the request body's field, such as name or puzzles.0.puzzleName
+ * @param field the request body's field, such as questName or
+ *  puzzles.0.puzzleName
  * @returns the form's field
  */
 export function formFieldOf(field: string): keyof QuestFormValues {
-  if (field === "name") {
-    return "questName";
-  }
   if (field === "visibility") {
     return "isPrivate";
   }
@@ -163,8 +163,8 @@ export async function saveQuest(
   const visibility = values.isPrivate ? "private" : "public";
   if (existing) {
     dataOrThrow(
-      await api.PATCH("/quests/{name}", {
-        params: { path: { name: existing.name } },
+      await api.PATCH("/quests/{questName}", {
+        params: { path: { questName: existing.questName } },
         body: {
           displayName: values.displayName,
           visibility,
@@ -173,13 +173,13 @@ export async function saveQuest(
         },
       })
     );
-    return existing.name;
+    return existing.questName;
   }
   const name = values.questName.trim();
   dataOrThrow(
     await api.POST("/quests", {
       body: {
-        name,
+        questName: name,
         displayName: values.displayName,
         visibility,
         entrants,

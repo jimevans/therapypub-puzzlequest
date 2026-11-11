@@ -136,7 +136,13 @@ one is in your way, raise it rather than working around it.
 **An API route:**
 
 1. Define it with `defineRoute` in the right file under `apps/api/src/api/v1/`,
-   with zod schemas for its request and responses.
+   with zod schemas for its request and responses, following the API's
+   conventions ([decision 0023](docs/decisions/0023-api-conventions.md)):
+   `questName`, `puzzleName`, `teamName`, and `userName` for names; camelCase
+   string enums; `null` for a value that isn't set, and a field left out only
+   when the caller may not see it; units in names; and shared shapes as named
+   schemas. Stored values are mapped to the API's in `resources.ts` and the
+   request schemas, never changed in the database for the API's sake.
 2. Give it a row in the authorization matrix.
 3. Test it through the app (`apps/api/test/integration/`), including the
    problems it can report.

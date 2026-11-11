@@ -1,7 +1,8 @@
+import type { Schemas } from "@puzzlequest/api-client";
 import { PuzzleType } from "../../quests/PuzzleContent";
 
 /** The kinds of puzzle an author can choose, in the order to offer them. */
-export const PUZZLE_TYPES = [
+export const PUZZLE_TYPES: { value: Schemas["PuzzleType"]; label: string }[] = [
   { value: PuzzleType.Text, label: "Text" },
   { value: PuzzleType.Image, label: "Image" },
   { value: PuzzleType.Audio, label: "Audio" },
@@ -10,9 +11,9 @@ export const PUZZLE_TYPES = [
 
 /**
  * Names a kind of puzzle.
- * @param type the API's number for it
- * @returns its name, such as "Image"
+ * @param type the API's name for it
+ * @returns its name in words, such as "Image"
  */
-export function puzzleTypeLabel(type: number): string {
+export function puzzleTypeLabel(type: Schemas["PuzzleType"]): string {
   return PUZZLE_TYPES.find(({ value }) => value === type)?.label ?? `${type}`;
 }

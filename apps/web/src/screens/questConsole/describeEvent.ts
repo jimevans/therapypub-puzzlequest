@@ -16,36 +16,37 @@ export function describeEvent(
   const puzzle = event.puzzleName ? puzzleLabel(event.puzzleName) : "A puzzle";
   const data = event.data ?? {};
   switch (event.type) {
-    case "QuestStarted":
+    case "questStarted":
       return "Quest started";
-    case "PuzzleStarted":
+    case "puzzleStarted":
       return `${puzzle} is next, waiting to be activated`;
-    case "PuzzleActivated":
+    case "puzzleActivated":
       return `${puzzle} activated`;
-    case "PuzzleSolved":
+    case "puzzleSolved":
       return `${puzzle} solved`;
-    case "HintRevealed": {
+    case "hintRevealed": {
       const hint =
         typeof data.hintIndex === "number" ? ` ${data.hintIndex + 1}` : "";
       const penalty =
-        typeof data.timePenalty === "number" && data.timePenalty > 0
-          ? `, adding ${formatDuration(data.timePenalty * 1000)}`
+        typeof data.timePenaltySeconds === "number" &&
+        data.timePenaltySeconds > 0
+          ? `, adding ${formatDuration(data.timePenaltySeconds * 1000)}`
           : "";
       return `Hint${hint} revealed on ${puzzle}${penalty}`;
     }
-    case "QuestCompleted":
+    case "questCompleted":
       return "Quest finished";
-    case "PuzzleSkipped":
+    case "puzzleSkipped":
       return `${puzzle} skipped`;
-    case "PuzzleReset":
+    case "puzzleReset":
       return typeof data.refundedHints === "number" && data.refundedHints > 0
         ? `${puzzle} reset, refunding ${data.refundedHints === 1 ? "1 hint's penalty" : `${data.refundedHints} hints' penalties`}`
         : `${puzzle} reset`;
-    case "QuestPaused":
+    case "questPaused":
       return "Quest paused";
-    case "QuestResumed":
+    case "questResumed":
       return "Quest resumed";
-    case "QuestReset":
+    case "questReset":
       return "Quest reset";
     default:
       return event.puzzleName ? `${event.type}: ${puzzle}` : event.type;

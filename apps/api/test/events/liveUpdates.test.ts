@@ -77,7 +77,7 @@ describe("sendLiveUpdates", () => {
           puzzleName: "p1",
           solutionText: "Red",
           endTime: AT.toISOString(),
-          questComplete: undefined,
+          questComplete: false,
         },
         ["solver"],
         AUDIENCE,
@@ -133,8 +133,7 @@ describe("sendLiveUpdates", () => {
           hintIndex: 0,
           timePenalty: 60,
           hintText: "Look up",
-          moreHints: true,
-          isNextHintSolution: false,
+          nextHint: { timePenalty: 300, solutionWarning: true },
           at: AT,
         },
       ],
@@ -142,14 +141,13 @@ describe("sendLiveUpdates", () => {
 
     expect(notifyQuestFollowers).toHaveBeenCalledExactlyOnceWith(
       {
-        message: "hintRequested",
+        message: "hintRevealed",
         questName: "q1",
         entryId: "entry-1",
         puzzleName: "p1",
         hintText: "Look up",
-        moreHints: true,
-        timePenalty: 60,
-        isNextHintSolution: false,
+        timePenaltySeconds: 60,
+        nextHint: { timePenaltySeconds: 300, solutionWarning: true },
       },
       ["asker"],
       AUDIENCE
@@ -209,8 +207,7 @@ describe("sendLiveUpdates", () => {
           hintIndex: 0,
           timePenalty: 60,
           hintText: "Look up",
-          moreHints: false,
-          isNextHintSolution: false,
+          nextHint: null,
           at: AT,
         },
         { type: "PuzzleSolved", puzzleName: "p1", solutionText: "Red", at: AT },
@@ -229,7 +226,7 @@ describe("sendLiveUpdates", () => {
       .mock.calls.map((call) => call[0]);
     expect(sent.map((message) => message.message)).toEqual([
       "puzzleActivated",
-      "hintRequested",
+      "hintRevealed",
       "puzzleSolved",
       "puzzleStarted",
       "questUpdated",

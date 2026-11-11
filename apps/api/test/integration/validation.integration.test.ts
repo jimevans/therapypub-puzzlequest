@@ -112,7 +112,7 @@ describe("invalid input", () => {
 
   it("reports a quest assigned to something other than a user or team", async () => {
     const response = await send("post", "/api/v1/quests").send({
-      name: "quest",
+      questName: "quest",
       displayName: "Quest",
       entrants: [{ kind: "group", name: "player" }],
     });
@@ -125,8 +125,8 @@ describe("invalid input", () => {
 
   it("reports a missing field", async () => {
     const response = await send("post", "/api/v1/quests").send({
-      name: "quest",
-      entrants: [{ kind: "user", name: "player" }],
+      questName: "quest",
+      entrants: [{ kind: "player", name: "player" }],
     });
 
     expect(response.status).toBe(400);
@@ -195,44 +195,52 @@ describe("phone numbers", () => {
   });
 });
 
-describe("authorization levels", () => {
-  it("can make a user staff", async () => {
+describe("roles", () => {
+  it("can make a user staff, stored as the staff authorization level", async () => {
     const response = await send("patch", "/api/v1/users/player").send({
-      authorizationLevel: 5,
+      role: "staff",
     });
 
     expect(response.status).toBe(200);
+    expect(response.body.role).toBe("staff");
     expect((await storedUser("player")).authorizationLevel).toBe(5);
   });
 
-  it("no longer include Guest", async () => {
-    const response = await send("patch", "/api/v1/users/player").send({
-      authorizationLevel: 0,
-    });
-
-    expect(response.status).toBe(400);
-    expect(response.body.errors).toContainEqual({
-      path: "body.authorizationLevel",
-      message: "Must be a known authorization level",
-    });
-  });
-});
-
-describe("values pages send as text", () => {
-  it("are converted to numbers", async () => {
-    await send("patch", "/api/v1/users/player").send({
-      authorizationLevel: "10",
-    });
+  it("can make a user an administrator, stored as the administrator level", async () => {
+    await send("patch", "/api/v1/users/player").send({ role: "admin" });
 
     expect((await storedUser("player")).authorizationLevel).toBe(10);
   });
 
+  it("no longer include Guest", async () => {
+    const response = await send("patch", "/api/v1/users/player").send({
+      role: "guest",
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body.errors).toContainEqual({
+      path: "body.role",
+      message: "Must be a known role",
+    });
+  });
+
+  it("aren't the stored authorization levels", async () => {
+    const response = await send("patch", "/api/v1/users/player").send({
+      role: 10,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await storedUser("player")).authorizationLevel).toBe(1);
+  });
+});
+
+describe("values pages send as text", () => {
   it("are converted in nested fields too", async () => {
     const response = await send("post", "/api/v1/puzzles").send({
-      name: "riddle",
+      puzzleName: "riddle",
       solutionKeyword: "piano",
-      solutionDisplayText: "A piano",
-      hints: [{ text: "It makes music", timePenalty: "60" }],
+      solutionText: "A piano",
+      hints: [{ text: "It makes music", timePenaltySeconds: "60" }],
     });
 
     expect(response.status).toBe(201);
@@ -279,6 +287,7 @@ describe("fields a request adds", () => {
 
     await send("patch", "/api/v1/quests/first").send({
       name: "second",
+      questName: "second",
       displayName: "Renamed",
     });
 

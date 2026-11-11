@@ -163,8 +163,8 @@ describe("share links", () => {
     expect(within(dialog).getByLabelText("Board link")).toHaveValue(
       `${location.origin}/monitor/quest/trail/board#share=secret`
     );
-    expect(post).toHaveBeenCalledWith("/quests/{name}/share-links", {
-      params: { path: { name: "trail" } },
+    expect(post).toHaveBeenCalledWith("/quests/{questName}/share-links", {
+      params: { path: { questName: "trail" } },
       body: { label: "Lobby" },
     });
 

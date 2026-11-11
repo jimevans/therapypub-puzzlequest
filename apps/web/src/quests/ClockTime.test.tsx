@@ -45,6 +45,7 @@ describe("ClockTime", () => {
       <ClockTime
         clock={{
           running: false,
+          clockStart: null,
           elapsedMs: 300_000,
           penaltyMs: 60_000,
           totalMs: 360_000,
@@ -63,6 +64,7 @@ describe("ClockTime", () => {
   it("picks up the right time when the clock starts again", () => {
     const stopped = {
       running: false,
+      clockStart: null,
       elapsedMs: 60_000,
       penaltyMs: 0,
       totalMs: 60_000,

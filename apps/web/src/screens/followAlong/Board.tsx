@@ -43,7 +43,7 @@ export function Board() {
     <main
       className={styles.board}
       data-live-updates={connected ? "connected" : "connecting"}
-      data-quest-name={quest.data?.name}
+      data-quest-name={quest.data?.questName}
     >
       <FocusOnNavigate />
       <title>
