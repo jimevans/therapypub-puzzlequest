@@ -24,36 +24,3 @@
 .finished {
   margin: 0;
 }
-
-.standings {
-  width: 100%;
-  border-collapse: collapse;
-  overflow-wrap: anywhere;
-}
-
-.standings caption {
-  margin-bottom: var(--space-2);
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 700;
-  text-align: left;
-}
-
-.standings th,
-.standings td {
-  padding: var(--space-2) var(--space-3) var(--space-2) 0;
-  border-bottom: 1px solid var(--rule);
-  text-align: left;
-  vertical-align: baseline;
-}
-
-.standings thead th {
-  color: var(--ink-soft);
-  font-size: var(--text-small);
-  font-weight: 600;
-}
-
-.time {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}

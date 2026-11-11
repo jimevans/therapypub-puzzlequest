@@ -77,8 +77,53 @@ function asPlayed(quest: typeof QUEST) {
   return withOneEntry(quest, { kind: "user", name: "player" });
 }
 
-function apiAnswers(quest: typeof QUEST) {
-  return vi.spyOn(api, "GET").mockResolvedValue(ok(asPlayed(quest)) as never);
+/** A finished entry, as the public view of a race shows it. */
+function spectatorEntry(
+  id: string,
+  displayName: string,
+  rank: number | null,
+  status = 2
+) {
+  return {
+    id,
+    entrant: { kind: "team", displayName },
+    status,
+    statusDescription: status === 2 ? "Completed" : "In progress",
+    paused: false,
+    rank,
+    progress: {
+      ...STOPPED,
+      startTime: "2026-11-06T18:00:00.000Z",
+      totalMs: rank === 1 ? 300_000 : 600_000,
+      puzzles: [],
+    },
+    puzzles: [],
+  };
+}
+
+/** The public view of the quest when the player's team played it alone. */
+const ALONE = {
+  name: "trail",
+  displayName: "The Trail",
+  racing: false,
+  stopsHidden: false,
+  rivalsHidden: false,
+  provisional: false,
+  entries: [spectatorEntry("entry-1", "The Reds", 1)],
+};
+
+/**
+ * Has the API answer with the player's quest, and its public view.
+ * @param quest the quest, with the player's entry's progress beside it
+ * @param spectated the quest's public view
+ */
+function apiAnswers(quest: typeof QUEST, spectated: unknown = ALONE) {
+  return vi
+    .spyOn(api, "GET")
+    .mockImplementation((async (path: string) =>
+      ok(
+        path === "/quests/{name}/spectator-view" ? spectated : asPlayed(quest)
+      )) as never);
 }
 
 function show(
@@ -240,6 +285,86 @@ describe("QuestScreen", () => {
     show();
 
     expect(await screen.findByText(copy.questFinished)).toBeVisible();
+  });
+
+  it("shows the standings once the player's team has finished a race", async () => {
+    const get = apiAnswers(
+      { ...QUEST, status: 2, statusDescription: "Completed" },
+      {
+        ...ALONE,
+        racing: true,
+        stopsHidden: true,
+        provisional: true,
+        entries: [
+          spectatorEntry("entry-2", "The Blues", 1),
+          spectatorEntry("entry-1", "The Reds", 2),
+          spectatorEntry("entry-3", "The Greens", null, 1),
+        ],
+      }
+    );
+    show();
+
+    const table = await screen.findByRole("table", { name: "Standings" });
+    const rows = within(table).getAllByRole("row");
+    expect(rows[1]).toHaveTextContent("1stThe BluesCompleted5:00");
+    expect(rows[2]).toHaveTextContent("2ndThe Reds Your teamCompleted10:00");
+    expect(rows[3]).toHaveTextContent("The GreensIn progress");
+    expect(
+      screen.getByText(/Provisional until every team finishes/)
+    ).toBeVisible();
+    expect(get).toHaveBeenCalledWith("/quests/{name}/spectator-view", {
+      params: { path: { name: "trail" } },
+    });
+  });
+
+  it("shows the final standings, with the winner, once everyone has finished", async () => {
+    apiAnswers(
+      { ...QUEST, status: 2, statusDescription: "Completed" },
+      {
+        ...ALONE,
+        entries: [
+          spectatorEntry("entry-1", "The Reds", 1),
+          spectatorEntry("entry-2", "The Blues", 2),
+        ],
+      }
+    );
+    show();
+
+    const table = await screen.findByRole("table", { name: "Final standings" });
+    expect(within(table).getAllByRole("row")[1]).toHaveTextContent(
+      "1stThe Reds Winner Your teamCompleted"
+    );
+    expect(screen.queryByText(/Provisional/)).not.toBeInTheDocument();
+  });
+
+  it("shows no standings for a quest the player's team played alone", async () => {
+    const get = apiAnswers({
+      ...QUEST,
+      status: 2,
+      statusDescription: "Completed",
+    });
+    show();
+
+    await screen.findByText(copy.questFinished);
+    await waitFor(() =>
+      expect(get).toHaveBeenCalledWith(
+        "/quests/{name}/spectator-view",
+        expect.anything()
+      )
+    );
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("says nothing of rivals before the player's team finishes", async () => {
+    const get = apiAnswers(QUEST);
+    show();
+
+    await screen.findByRole("link", { name: "The Riddle" });
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(get).not.toHaveBeenCalledWith(
+      "/quests/{name}/spectator-view",
+      expect.anything()
+    );
   });
 
   it("shows when live updates are connected", async () => {

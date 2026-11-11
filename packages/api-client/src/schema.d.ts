@@ -1045,7 +1045,7 @@ export interface paths {
         };
         /**
          * Follow a quest
-         * @description What anyone may see of a quest: each entry's progress and the puzzles it has reached, with who plays it by display name only. How many puzzles it has is never shown. An entry that hasn't started shows its status, with no puzzles. While the quest is a race that not every entry has finished (racing), anyone but staff and administrators sees only the standings, with no stops (stopsHidden), so rivals can't read each other's puzzles and answers. A private quest is not found, except by its players (in any of its entries), its staff, and holders of a share link.
+         * @description What anyone may see of a quest: each entry's progress and the puzzles it has reached, with who plays it by display name only. How many puzzles it has is never shown. An entry that hasn't started shows its status, with no puzzles. While the quest is a race that not every entry has finished (racing), anyone but staff and administrators sees only the standings, with no stops (stopsHidden), so rivals can't read each other's puzzles and answers; and a signed-in player whose own entry hasn't completed the quest sees only that entry (rivalsHidden), until it has. The entries come in leaderboard order, each with its rank once it has completed, and the ranks are provisional until every entry has. A private quest is not found, except by its players (in any of its entries), its staff, and holders of a share link.
          */
         get: operations["getSpectatorQuest"];
         put?: never;
@@ -1306,6 +1306,8 @@ export interface components {
             textResponse?: string;
             /** @description What is sent back when the reply arrives; only for administrators. */
             textResponseConfirmation?: string;
+            /** @description The entry's place on the leaderboard (see SpectatorQuestEntry's rank); only for administrators. Entries stay in entry order. */
+            rank?: number | null;
             puzzles: components["schemas"]["QuestPuzzle"][];
             progress: {
                 /**
@@ -1534,9 +1536,13 @@ export interface components {
             displayName: string;
             /** @description True while the quest is a race that not every entry has finished: it has several entries, and not all have completed it. The same for every viewer. */
             racing: boolean;
-            /** @description True if this view is the standings alone: while racing, for anyone but staff and administrators, every entry's puzzles and progress.puzzles are empty, so rivals can't read each other's puzzles and answers. Each entry's entrant, status, pause, and progress totals are still shown. */
+            /** @description True if this view is the standings alone: while racing, for anyone but staff and administrators, every entry's puzzles and progress.puzzles are empty, so rivals can't read each other's puzzles and answers. Each entry's entrant, status, pause, rank, and progress totals are still shown. */
             stopsHidden: boolean;
-            /** @description The users and teams playing the quest, in order, each with its own progress. */
+            /** @description True if this view leaves out every entry but the viewer's own: while racing, for a signed-in player (not staff or an administrator) whose own entry hasn't completed the quest. They see the whole leaderboard once it has. */
+            rivalsHidden: boolean;
+            /** @description True while the ranks shown could still change: some entry has a rank, and some hasn't completed the quest yet, so could still beat it. Once every entry has completed, the ranks are final. Never true while rivalsHidden is. */
+            provisional: boolean;
+            /** @description The users and teams playing the quest, each with its own progress, in leaderboard order: those that completed it, by rank; then those playing; then those yet to start; each of the last two in the quest's order. */
             entries: components["schemas"]["SpectatorQuestEntry"][];
         };
         SpectatorQuestEntry: {
@@ -1552,6 +1558,8 @@ export interface components {
             status: number;
             statusDescription: string;
             paused: boolean;
+            /** @description The entry's place on the leaderboard, from 1, once it has completed the quest: entries are ranked by progress.totalMs, lowest first, and entries with the same total share a rank (1, 2, 2, 4). Null while it hasn't completed. Ranks are provisional until every entry has completed, since one still playing could beat them. */
+            rank: number | null;
             /** @description The entry's time; its puzzles are empty when the quest's stopsHidden is true, leaving the totals: the standings. */
             progress: {
                 /**
@@ -1686,6 +1694,8 @@ export interface components {
             status: number;
             statusDescription: string;
             paused: boolean;
+            /** @description The entry's place on the leaderboard (see SpectatorQuestEntry's rank). Entries stay in the quest's order. */
+            rank: number | null;
             progress: {
                 /**
                  * Format: date-time
@@ -1725,6 +1735,8 @@ export interface components {
             status: number;
             statusDescription: string;
             paused: boolean;
+            /** @description The entry's place on the leaderboard (see SpectatorQuestEntry's rank). Entries stay in the quest's order. */
+            rank: number | null;
             progress: {
                 /**
                  * Format: date-time

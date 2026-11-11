@@ -102,7 +102,7 @@ export const spectatingRoutes = [
     operationId: "getSpectatorQuest",
     summary: "Follow a quest",
     description:
-      "What anyone may see of a quest: each entry's progress and the puzzles it has reached, with who plays it by display name only. How many puzzles it has is never shown. An entry that hasn't started shows its status, with no puzzles. While the quest is a race that not every entry has finished (racing), anyone but staff and administrators sees only the standings, with no stops (stopsHidden), so rivals can't read each other's puzzles and answers. A private quest is not found, except by its players (in any of its entries), its staff, and holders of a share link.",
+      "What anyone may see of a quest: each entry's progress and the puzzles it has reached, with who plays it by display name only. How many puzzles it has is never shown. An entry that hasn't started shows its status, with no puzzles. While the quest is a race that not every entry has finished (racing), anyone but staff and administrators sees only the standings, with no stops (stopsHidden), so rivals can't read each other's puzzles and answers; and a signed-in player whose own entry hasn't completed the quest sees only that entry (rivalsHidden), until it has. The entries come in leaderboard order, each with its rank once it has completed, and the ranks are provisional until every entry has. A private quest is not found, except by its players (in any of its entries), its staff, and holders of a share link.",
     tags: ["Spectating"],
     access: "public",
     acceptsShareLink: true,

@@ -2,8 +2,7 @@ import type { Schemas } from "@puzzlequest/api-client";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { ApiError } from "../../api";
-import { copy } from "../../copy";
-import { entrantName } from "../../quests/entrants";
+import { Leaderboard } from "../../quests/Leaderboard";
 import { useLiveQuest } from "../../live/useLiveQuest";
 import { spectatorQuestQuery } from "../../quests/queries";
 import { FocusOnNavigate } from "../../ui/FocusOnNavigate";
@@ -12,33 +11,18 @@ import { BoardEntry } from "./BoardEntry";
 
 /**
  * The quest's entries: its one team or player filling the screen, or, in a
- * race, each of them.
+ * race, the leaderboard, which stays up once the race is over.
  */
 function Entries({ quest }: { quest: Schemas["SpectatorQuest"] }) {
   const [only] = quest.entries;
-  if (quest.entries.length === 1 && only) {
-    return (
-      <BoardEntry title={quest.displayName} entry={only} compact={false} />
-    );
+  // A player still racing sees one entry, their own, but it's still a race.
+  if (quest.entries.length === 1 && only && !quest.racing) {
+    return <BoardEntry title={quest.displayName} entry={only} />;
   }
   return (
     <>
       <h1 className={styles.raceName}>{quest.displayName}</h1>
-      {quest.stopsHidden && (
-        <p id="stops-hidden" className={styles.note}>
-          {copy.stopsHiddenInRace}
-        </p>
-      )}
-      <div className={styles.entries}>
-        {quest.entries.map((entry) => (
-          <BoardEntry
-            key={entry.id}
-            title={entrantName(entry.entrant)}
-            entry={entry}
-            compact
-          />
-        ))}
-      </div>
+      <Leaderboard quest={quest} className={styles.leaderboard} />
     </>
   );
 }

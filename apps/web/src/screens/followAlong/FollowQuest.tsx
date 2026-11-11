@@ -4,8 +4,8 @@ import { Link, useParams } from "react-router";
 import { ApiError } from "../../api";
 import { copy } from "../../copy";
 import { useLiveQuest } from "../../live/useLiveQuest";
-import { ClockTime } from "../../quests/ClockTime";
 import { FinishPanel } from "../../quests/FinishPanel";
+import { Leaderboard } from "../../quests/Leaderboard";
 import { NotAvailable } from "../../quests/NotAvailable";
 import {
   EntryProgress,
@@ -106,7 +106,8 @@ function SingleEntry({
 
 /**
  * A race under way, for anyone but staff: who's playing, how they're doing,
- * and their times, but none of their stops, which rivals mustn't see.
+ * and their times, but none of their stops, which rivals mustn't see. A
+ * player still racing sees only their own team, until it finishes.
  */
 function Standings({ quest }: { quest: SpectatorQuest }) {
   const announcement = useEntriesAnnouncement(quest);
@@ -115,35 +116,12 @@ function Standings({ quest }: { quest: SpectatorQuest }) {
       <title>{`${quest.displayName} · PuzzleQuest`}</title>
       <h1>{quest.displayName}</h1>
       <Announcement message={announcement} />
-      <p id="stops-hidden">{copy.stopsHiddenInRace}</p>
-      <table id="standings" className={styles.standings}>
-        <caption>Standings</caption>
-        <thead>
-          <tr>
-            <th scope="col">Team or player</th>
-            <th scope="col">Status</th>
-            <th scope="col">Time</th>
-          </tr>
-        </thead>
-        <tbody>
-          {quest.entries.map((entry) => (
-            <tr key={entry.id} data-entry-id={entry.id}>
-              <th scope="row">{entrantName(entry.entrant)}</th>
-              <td>
-                {entry.statusDescription}
-                {entry.paused && ", paused"}
-              </td>
-              <td className={styles.time}>
-                {entry.progress.startTime ? (
-                  <ClockTime clock={entry.progress} show="total" />
-                ) : (
-                  "–"
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {!quest.rivalsHidden && <p id="stops-hidden">{copy.stopsHiddenInRace}</p>}
+      <Leaderboard
+        quest={quest}
+        // Then the one entry shown is the player's own.
+        ownEntryId={quest.rivalsHidden ? quest.entries[0]?.id : undefined}
+      />
     </>
   );
 }
@@ -159,6 +137,7 @@ function EveryEntry({ quest }: { quest: SpectatorQuest }) {
       <title>{`${quest.displayName} · PuzzleQuest`}</title>
       <h1>{quest.displayName}</h1>
       <Announcement message={announcement} />
+      <Leaderboard quest={quest} />
       {quest.entries.map((entry) => {
         const name = entrantName(entry.entrant);
         const headingId = `entry-${entry.id}`;
@@ -199,7 +178,8 @@ function EveryEntry({ quest }: { quest: SpectatorQuest }) {
 
 function QuestDetails({ quest }: { quest: SpectatorQuest }) {
   const [only] = quest.entries;
-  if (quest.entries.length === 1 && only) {
+  // A player still racing sees one entry, their own, but it's still a race.
+  if (quest.entries.length === 1 && only && !quest.racing) {
     return <SingleEntry quest={quest} entry={only} />;
   }
   return quest.stopsHidden ? (

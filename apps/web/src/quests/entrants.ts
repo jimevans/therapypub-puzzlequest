@@ -72,3 +72,59 @@ export function overallState(
     ? "notStarted"
     : "finished";
 }
+
+// A race's leaderboard: the API ranks the entries that have finished, and
+// these say and sort the ranks.
+
+const ordinals = new Intl.PluralRules("en", { type: "ordinal" });
+const SUFFIXES: Record<string, string> = {
+  one: "st",
+  two: "nd",
+  few: "rd",
+  other: "th",
+};
+
+/**
+ * Says a rank as a place, such as "1st" or "22nd".
+ * @param rank the rank, from 1
+ * @returns the place
+ */
+export function ordinal(rank: number): string {
+  return `${rank}${SUFFIXES[ordinals.select(rank)] ?? "th"}`;
+}
+
+/** What placing an entry on the leaderboard needs. */
+interface Placed {
+  /** Missing or null until it has finished. */
+  rank?: number | null;
+  status: number;
+}
+
+/** Where an entry goes: ranked first, then playing, then not started. */
+function placeOf({ rank, status }: Placed): number {
+  if (rank != null) {
+    return 0;
+  }
+  return status === QUEST_NOT_STARTED ? 2 : 1;
+}
+
+/**
+ * Puts entries in leaderboard order, as the public view has them: those
+ * ranked, by rank, then those playing, then those yet to start, each of those
+ * in the order given.
+ * @param items the entries, or things holding them, in the quest's order
+ * @param entryOf gets an item's entry
+ * @returns a sorted copy
+ */
+export function inLeaderboardOrder<Item>(
+  items: readonly Item[],
+  entryOf: (item: Item) => Placed
+): Item[] {
+  // Sorting is stable, so entries that compare equal keep their order.
+  return [...items].sort((a, b) => {
+    const [first, second] = [entryOf(a), entryOf(b)];
+    return (
+      placeOf(first) - placeOf(second) || (first.rank ?? 0) - (second.rank ?? 0)
+    );
+  });
+}

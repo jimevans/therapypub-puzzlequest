@@ -121,37 +121,28 @@
   }
 }
 
-/* A race: each team or player, smaller, side by side where there's room. */
+/* A race: the leaderboard, large enough to read across the room, in the
+   board's colors. */
 .raceName {
   font-size: 1.6em;
 }
 
-.note {
-  color: var(--on-ink-soft);
-  font-size: 0.8em;
-}
-
-.entries {
-  display: grid;
+.leaderboard {
+  --ink-soft: var(--on-ink-soft);
+  --rule: var(--color-gray-700);
+  --paper-soft: var(--color-gray-700);
   flex: 1;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22em), 1fr));
-  gap: 3vh 4vw;
-  align-content: center;
-}
-
-.compact {
-  justify-content: flex-start;
-  gap: 1vh;
-}
-
-.compact .name {
-  font-size: 1.4em;
-}
-
-.compact .clock {
-  font-size: 3em;
-}
-
-.compact .step {
   font-size: 1.1em;
+}
+
+.leaderboard table caption {
+  font-size: 1.2em;
+}
+
+.leaderboard table thead th {
+  font-size: 0.6em;
+}
+
+.leaderboard p {
+  font-size: 0.6em;
 }

@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { QuestPuzzleStatus } from "../../models/quest.model.js";
 import type * as QuestService from "../../services/quest.service.js";
+import { rankQuestEntries } from "../../services/quest.service.js";
 import type * as PuzzleService from "../../services/puzzle.service.js";
 import type * as TeamService from "../../services/team.service.js";
 import type * as UserService from "../../services/user.service.js";
@@ -202,6 +203,12 @@ const progressFields = {
   }),
 };
 
+/** An entry's place on its quest's leaderboard. */
+const rankSchema = z.number().int().nullable().meta({
+  description:
+    "The entry's place on the leaderboard, from 1, once it has completed the quest: entries are ranked by progress.totalMs, lowest first, and entries with the same total share a rank (1, 2, 2, 4). Null while it hasn't completed. Ranks are provisional until every entry has completed, since one still playing could beat them.",
+});
+
 /** One of a quest's puzzles, with the players' progress on it. */
 const questPuzzleSchema = z
   .object({
@@ -288,6 +295,10 @@ export const questEntrySchema = z
       description:
         "What is sent back when the reply arrives; only for administrators.",
     }),
+    rank: rankSchema.optional().meta({
+      description:
+        "The entry's place on the leaderboard (see SpectatorQuestEntry's rank); only for administrators. Entries stay in entry order.",
+    }),
     puzzles: z.array(questPuzzleSchema),
     progress: questProgressSchema,
   })
@@ -312,6 +323,19 @@ export const questSchema = z
   .meta({ id: "Quest" });
 
 /**
+ * Ranks a quest's entries, for views that keep them in entry order.
+ * @param entries the quest, as seen through each of its entries
+ * @returns each entry's rank
+ */
+function ranksOf(
+  entries: readonly QuestService.Quest[]
+): Map<QuestService.Quest, number | null> {
+  return new Map(
+    rankQuestEntries(entries).entries.map(({ quest, rank }) => [quest, rank])
+  );
+}
+
+/**
  * Says who plays an entry, without the user's or team's ID.
  * @param quest the quest, as seen through the entry
  * @returns the entrant
@@ -334,7 +358,8 @@ function entrantOf(quest: QuestService.Quest) {
  */
 function toQuestEntryResource(
   quest: QuestService.Quest,
-  view: "admin" | "player"
+  view: "admin" | "player",
+  rank: number | null | undefined
 ) {
   return {
     id: quest.entryId,
@@ -346,6 +371,7 @@ function toQuestEntryResource(
       ? {
           textResponse: quest.textResponse,
           textResponseConfirmation: quest.textResponseConfirmation,
+          rank,
         }
       : {}),
     puzzles: quest.puzzles.map((puzzle) =>
@@ -368,11 +394,15 @@ export function toQuestResource(
   view: "admin" | "player"
 ) {
   const [quest] = entries;
+  // A player sees only their own entry, so their rank can't be known here.
+  const ranks = view === "admin" ? ranksOf(entries) : undefined;
   return {
     name: quest.name,
     displayName: quest.displayName,
     ...(view === "admin" ? { visibility: quest.visibility } : {}),
-    entries: entries.map((entry) => toQuestEntryResource(entry, view)),
+    entries: entries.map((entry) =>
+      toQuestEntryResource(entry, view, ranks?.get(entry))
+    ),
   };
 }
 
@@ -584,6 +614,7 @@ export const spectatorQuestEntrySchema = z
     }),
     statusDescription: z.string(),
     paused: z.boolean(),
+    rank: rankSchema,
     progress: reachedProgressSchema.meta({
       description:
         "The entry's time; its puzzles are empty when the quest's stopsHidden is true, leaving the totals: the standings.",
@@ -626,11 +657,19 @@ export const spectatorQuestSchema = z
     }),
     stopsHidden: z.boolean().meta({
       description:
-        "True if this view is the standings alone: while racing, for anyone but staff and administrators, every entry's puzzles and progress.puzzles are empty, so rivals can't read each other's puzzles and answers. Each entry's entrant, status, pause, and progress totals are still shown.",
+        "True if this view is the standings alone: while racing, for anyone but staff and administrators, every entry's puzzles and progress.puzzles are empty, so rivals can't read each other's puzzles and answers. Each entry's entrant, status, pause, rank, and progress totals are still shown.",
+    }),
+    rivalsHidden: z.boolean().meta({
+      description:
+        "True if this view leaves out every entry but the viewer's own: while racing, for a signed-in player (not staff or an administrator) whose own entry hasn't completed the quest. They see the whole leaderboard once it has.",
+    }),
+    provisional: z.boolean().meta({
+      description:
+        "True while the ranks shown could still change: some entry has a rank, and some hasn't completed the quest yet, so could still beat it. Once every entry has completed, the ranks are final. Never true while rivalsHidden is.",
     }),
     entries: z.array(spectatorQuestEntrySchema).meta({
       description:
-        "The users and teams playing the quest, in order, each with its own progress.",
+        "The users and teams playing the quest, each with its own progress, in leaderboard order: those that completed it, by rank; then those playing; then those yet to start; each of the last two in the quest's order.",
     }),
   })
   .meta({ id: "SpectatorQuest" });
@@ -651,23 +690,28 @@ function standingsOrAll<P extends { readonly puzzles: readonly unknown[] }>(
 
 /**
  * Makes a quest's public resource.
- * @param spectated the quest as seen through each of its entries, from
- *  getSpectatedQuest, holding only reached puzzles (there is at least one),
- *  and whether the viewer sees only the standings
+ * @param spectated the quest as seen through each of the entries the viewer
+ *  may see, from getSpectatedQuest, in leaderboard order, holding only reached
+ *  puzzles (there is at least one), and whether the viewer sees only the
+ *  standings
  * @returns the resource
  */
 export function toSpectatorQuestResource({
   entries,
   racing,
   stopsHidden,
+  rivalsHidden,
+  provisional,
 }: QuestService.SpectatedQuest) {
-  const [quest] = entries;
+  const [{ quest }] = entries;
   return {
     name: quest.name,
     displayName: quest.displayName,
     racing,
     stopsHidden,
-    entries: entries.map((entry) => ({
+    rivalsHidden,
+    provisional,
+    entries: entries.map(({ quest: entry, progress, rank }) => ({
       id: entry.entryId,
       entrant: {
         kind: entry.assignee.kind,
@@ -678,7 +722,8 @@ export function toSpectatorQuestResource({
       status: entry.status,
       statusDescription: entry.statusDescription,
       paused: entry.paused,
-      progress: standingsOrAll(entry.getProgress(), stopsHidden),
+      rank,
+      progress: standingsOrAll(progress, stopsHidden),
       puzzles: (stopsHidden ? [] : entry.puzzles).map((puzzle) => ({
         name: puzzle.puzzleName,
         displayName: puzzle.puzzleDetail?.displayName ?? puzzle.puzzleName,
@@ -822,6 +867,10 @@ const staffEntryFields = {
   }),
   statusDescription: z.string(),
   paused: z.boolean(),
+  rank: rankSchema.meta({
+    description:
+      "The entry's place on the leaderboard (see SpectatorQuestEntry's rank). Entries stay in the quest's order.",
+  }),
 };
 
 /** One of a quest's entries in the list staff see, without its puzzles. */
@@ -894,13 +943,17 @@ export const staffQuestSchema = z
  * @param quest the quest, as seen through the entry
  * @returns the fields
  */
-function staffEntryOf(quest: QuestService.Quest) {
+function staffEntryOf(
+  quest: QuestService.Quest,
+  ranks: Map<QuestService.Quest, number | null>
+) {
   return {
     id: quest.entryId,
     entrant: entrantOf(quest),
     status: quest.status,
     statusDescription: quest.statusDescription,
     paused: quest.paused,
+    rank: ranks.get(quest) ?? null,
   };
 }
 
@@ -914,12 +967,13 @@ export function toStaffQuestSummaryResource(
   entries: readonly QuestService.Quest[]
 ) {
   const [quest] = entries;
+  const ranks = ranksOf(entries);
   return {
     name: quest.name,
     displayName: quest.displayName,
     entries: entries.map((entry) => {
       const { puzzles: _puzzles, ...progress } = entry.getProgress();
-      return { ...staffEntryOf(entry), progress };
+      return { ...staffEntryOf(entry, ranks), progress };
     }),
   };
 }
@@ -932,11 +986,12 @@ export function toStaffQuestSummaryResource(
  */
 export function toStaffQuestResource(entries: readonly QuestService.Quest[]) {
   const [quest] = entries;
+  const ranks = ranksOf(entries);
   return {
     name: quest.name,
     displayName: quest.displayName,
     entries: entries.map((entry) => ({
-      ...staffEntryOf(entry),
+      ...staffEntryOf(entry, ranks),
       progress: entry.getProgress(),
       puzzles: entry.puzzles.map((puzzle) => ({
         name: puzzle.puzzleName,

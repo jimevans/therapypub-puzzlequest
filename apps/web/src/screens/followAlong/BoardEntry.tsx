@@ -11,50 +11,35 @@ import { ProgressTrail } from "../../ui/ProgressTrail";
 import styles from "./Board.module.css";
 
 /**
- * One entry on the board: its name, clock, and how far it has got. A quest
- * with one entry shows it filling the screen, under the quest's name; a race
- * lists each, smaller, under its team's or player's name. While a race is
- * under way the board gets no stops, so then each shows its time alone.
+ * A quest's one entry on the board, filling the screen under the quest's
+ * name: its clock, and how far it has got. (A race shows the leaderboard
+ * instead.)
  */
 export function BoardEntry({
   title,
   entry,
-  compact,
 }: {
-  /** The quest's name, or, in a race, the entrant's. */
+  /** The quest's name. */
   title: string;
   entry: Schemas["SpectatorQuestEntry"];
-  /** Whether it's one of several, so smaller and without the IDs. */
-  compact: boolean;
 }) {
   const completed = entry.status === QUEST_COMPLETED;
   const stepNumber = entry.puzzles.length;
   const step = entry.puzzles.at(-1);
-  const Heading = compact ? "h2" : "h1";
   return (
-    <section
-      className={`${styles.entry} ${compact ? styles.compact : ""}`}
-      data-entry-id={entry.id}
-    >
+    <section className={styles.entry} data-entry-id={entry.id}>
       {/* Paused goes beside the name, so that showing it moves nothing else,
           and pushes nothing off the bottom of the screen. */}
       <div className={styles.heading}>
-        <Heading className={styles.name}>{title}</Heading>
+        <h1 className={styles.name}>{title}</h1>
         {entry.paused && (
-          <p
-            id={compact ? undefined : "paused-banner"}
-            className={styles.paused}
-            role="status"
-          >
+          <p id="paused-banner" className={styles.paused} role="status">
             Paused by the puzzle master
           </p>
         )}
       </div>
       {entry.status === QUEST_NOT_STARTED ? (
-        <p
-          id={compact ? undefined : "board-not-started"}
-          className={styles.notStarted}
-        >
+        <p id="board-not-started" className={styles.notStarted}>
           Starting soon
         </p>
       ) : (

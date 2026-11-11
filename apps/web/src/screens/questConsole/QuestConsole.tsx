@@ -11,7 +11,12 @@ import {
   describeEntries,
   entriesSnapshot,
 } from "../../quests/entryAnnouncements";
-import { entrantKey, entrantLabel } from "../../quests/entrants";
+import {
+  entrantKey,
+  entrantLabel,
+  inLeaderboardOrder,
+  ordinal,
+} from "../../quests/entrants";
 import {
   QUEST_COMPLETED,
   QUEST_NOT_STARTED,
@@ -452,6 +457,7 @@ function EntrantsTable({
         <table id="entrants-table" className={adminStyles.table}>
           <thead>
             <tr>
+              <th scope="col">Rank</th>
               <th scope="col">Entrant</th>
               <th scope="col">Status</th>
               <th scope="col">Time</th>
@@ -459,34 +465,38 @@ function EntrantsTable({
             </tr>
           </thead>
           <tbody>
-            {entries.map(({ entry, key, label }) => (
-              <tr key={entry.id} data-entrant={key}>
-                <th scope="row">
-                  {/* The choice is in the address, so it can be linked to;
+            {/* In leaderboard order: the API keeps the quest's own. */}
+            {inLeaderboardOrder(entries, ({ entry }) => entry).map(
+              ({ entry, key, label }) => (
+                <tr key={entry.id} data-entrant={key}>
+                  <td>{entry.rank ? ordinal(entry.rank) : "–"}</td>
+                  <th scope="row">
+                    {/* The choice is in the address, so it can be linked to;
                       keeping the scroll position, as a tab would. */}
-                  <Link
-                    to={{ search: `?entry=${encodeURIComponent(key)}` }}
-                    preventScrollReset
-                    aria-current={key === chosen ? "true" : undefined}
-                    className={key === chosen ? styles.chosen : undefined}
-                  >
-                    {label}
-                  </Link>
-                </th>
-                <td>
-                  {entry.statusDescription}
-                  {entry.paused && ", paused"}
-                </td>
-                <td className={styles.time}>
-                  {entry.progress.startTime ? (
-                    <ClockTime clock={entry.progress} show="total" />
-                  ) : (
-                    "–"
-                  )}
-                </td>
-                <td>{currentStop(entry)}</td>
-              </tr>
-            ))}
+                    <Link
+                      to={{ search: `?entry=${encodeURIComponent(key)}` }}
+                      preventScrollReset
+                      aria-current={key === chosen ? "true" : undefined}
+                      className={key === chosen ? styles.chosen : undefined}
+                    >
+                      {label}
+                    </Link>
+                  </th>
+                  <td>
+                    {entry.statusDescription}
+                    {entry.paused && ", paused"}
+                  </td>
+                  <td className={styles.time}>
+                    {entry.progress.startTime ? (
+                      <ClockTime clock={entry.progress} show="total" />
+                    ) : (
+                      "–"
+                    )}
+                  </td>
+                  <td>{currentStop(entry)}</td>
+                </tr>
+              )
+            )}
           </tbody>
         </table>
       </div>

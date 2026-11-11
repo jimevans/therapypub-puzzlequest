@@ -620,8 +620,9 @@ describe("the quest console, for a race", () => {
     const table = await screen.findByRole("table");
     const rows = within(table).getAllByRole("row");
     expect(rows).toHaveLength(4);
+    expect(rows[0]).toHaveTextContent("RankEntrantStatusTimeCurrent stop");
     expect(rows[1]).toHaveTextContent(
-      "The Reds (team)In progress11:00Stop 2: The cipher"
+      "–The Reds (team)In progress11:00Stop 2: The cipher"
     );
     expect(rows[2]).toHaveTextContent(
       "The Blues (team)In progress2:00Stop 1: The riddle"
@@ -634,6 +635,32 @@ describe("the quest console, for a race", () => {
     expect(
       screen.queryByRole("heading", { name: "Stops" })
     ).not.toBeInTheDocument();
+  });
+
+  it("ranks those who have finished, putting the table in leaderboard order", async () => {
+    const [reds, blues, sam] = RACE.entries;
+    apiQuest(
+      {
+        ...RACE,
+        entries: [
+          { ...reds!, rank: null },
+          {
+            ...blues!,
+            status: 2,
+            statusDescription: "Completed",
+            rank: 1,
+          },
+          { ...sam!, rank: null },
+        ],
+      },
+      RACE_EVENTS
+    );
+    show();
+
+    const rows = within(await screen.findByRole("table")).getAllByRole("row");
+    expect(rows[1]).toHaveTextContent("1stThe Blues (team)Completed");
+    expect(rows[2]).toHaveTextContent("–The Reds (team)In progress");
+    expect(rows[3]).toHaveTextContent("–Sam (player)Not yet started");
   });
 
   it("shows the team chosen: its stops, its actions, and its activity", async () => {

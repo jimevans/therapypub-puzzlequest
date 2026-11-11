@@ -17,6 +17,7 @@ import {
   isPaused,
   pause,
   parseSolutionKeywords,
+  rankEntries,
   reset,
   resetPuzzle,
   resume,
@@ -1288,10 +1289,56 @@ export async function getQuestAndPuzzle(
   return { status: "success", statusCode: 200, data: { quest, puzzle } };
 }
 
+/** One of a quest's entries in its place on the leaderboard. */
+export interface RankedEntry {
+  /** The quest, as seen through the entry. */
+  quest: Quest;
+  /** The entry's progress, measured when it was ranked. */
+  progress: QuestProgress;
+  /** Its rank once it has completed the quest; null until then. */
+  rank: number | null;
+}
+
+/**
+ * Ranks a quest's entries for its leaderboard (see rankEntries): those that
+ * completed it by their scores, then those playing, then those yet to start.
+ * @param entries the quest, as seen through each of its entries
+ * @param now the time to measure running clocks to
+ * @returns the entries in leaderboard order, and whether the ranks are
+ *  provisional: some entry has one, and another could still beat it
+ */
+export function rankQuestEntries(
+  entries: readonly Quest[],
+  now: Date = new Date()
+): { entries: RankedEntry[]; provisional: boolean } {
+  const standings = rankEntries(
+    entries.map((quest) => {
+      const progress = quest.getProgress(now);
+      return {
+        quest,
+        progress,
+        status: quest.status as QuestStatus,
+        totalMs: progress.totalMs,
+      };
+    })
+  );
+  return {
+    entries: standings.entries.map(({ entry, rank }) => ({
+      quest: entry.quest,
+      progress: entry.progress,
+      rank,
+    })),
+    provisional: standings.provisional,
+  };
+}
+
 /** A quest as someone following it from outside may see it. */
 export interface SpectatedQuest {
-  /** The quest, as seen through each of its entries, with reached puzzles. */
-  entries: Quest[];
+  /**
+   * The entries the viewer may see, in leaderboard order, each with its
+   * reached puzzles, progress, and rank.
+   */
+  entries: RankedEntry[];
   /** True while the quest is a race not every entry has finished. */
   racing: boolean;
   /**
@@ -1299,6 +1346,16 @@ export interface SpectatedQuest {
    * quest is racing, for anyone but staff and administrators.
    */
   stopsHidden: boolean;
+  /**
+   * True if the viewer sees only their own entry: while the quest is racing,
+   * for a player (not staff) whose entry hasn't completed it.
+   */
+  rivalsHidden: boolean;
+  /**
+   * True while the ranks shown could still change: some entry shown has a
+   * rank, and some entry hasn't completed. Never while rivals are hidden.
+   */
+  provisional: boolean;
 }
 
 /**
@@ -1306,6 +1363,9 @@ export interface SpectatedQuest {
  * each has reached, because a player can look at anything public, and players
  * must never learn how long a quest is. While teams race, only staff may see
  * the stops: a rival could otherwise read the leaders' puzzles and answers.
+ * And a player still racing sees only their own entry, not how their rivals
+ * stand, until their entry completes the quest. The entries are in leaderboard
+ * order, with their ranks.
  * @param questName the name of the quest
  * @param viewer who's asking, or null if they aren't signed in
  * @param shareToken the share link's token they hold, if any
@@ -1340,15 +1400,42 @@ export async function getSpectatedQuest(
     };
   }
   const racing = isRacing(entries);
+  const staff = viewer?.isStaff() ?? false;
+  const standings = rankQuestEntries(entries);
+  const own =
+    racing && viewer !== null && !staff
+      ? await ownEntries(standings.entries, viewer)
+      : [];
+  // A player who plays and is still racing; a share link they hold doesn't
+  // change who they are.
+  const rivalsHidden = own.some(
+    ({ quest }) => quest.status !== QuestStatus.COMPLETED
+  );
   return {
     status: "success",
     statusCode: 200,
     data: {
-      entries,
+      entries: rivalsHidden ? own : standings.entries,
       racing,
-      stopsHidden: racing && !(viewer?.isStaff() ?? false),
+      stopsHidden: racing && !staff,
+      rivalsHidden,
+      provisional: !rivalsHidden && standings.provisional,
     },
   };
+}
+
+/**
+ * Finds the entries a user plays, theirs or their team's.
+ * @param entries the quest's entries
+ * @param user the user
+ * @returns their entries, in the order given
+ */
+async function ownEntries<E extends { quest: Quest }>(
+  entries: readonly E[],
+  user: User
+): Promise<E[]> {
+  const assigneeIds = await user.getAssigneeIds();
+  return entries.filter(({ quest }) => assigneeIds.includes(quest.assignee.id));
 }
 
 /**
@@ -1407,7 +1494,9 @@ export async function getSpectatedQuestPuzzle(
   if (found.status === "error") {
     return found;
   }
-  const quest = found.data.entries.find((entry) => entry.entryId === entryId);
+  const quest = found.data.entries.find(
+    (entry) => entry.quest.entryId === entryId
+  )?.quest;
   const puzzle = quest?.getPuzzle(puzzleName);
   // A puzzle deleted after it was added to the quest has no details. While
   // teams race, only staff may see the stops.

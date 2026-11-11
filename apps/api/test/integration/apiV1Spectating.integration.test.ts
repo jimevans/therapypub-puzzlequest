@@ -158,9 +158,12 @@ describe("following a quest", () => {
       displayName: "Quest",
       racing: false,
       stopsHidden: false,
+      rivalsHidden: false,
+      provisional: false,
       entries: [
         expect.objectContaining({
           id: await entryIdOf("quest"),
+          rank: null,
           entrant: { kind: "team", displayName: "Team Display" },
           status: 0,
           paused: false,
@@ -309,7 +312,7 @@ describe("a quest several teams race", () => {
       },
     ]);
     await TeamModel.create({
-      teamName: "rivals",
+      teamName: "rival-team",
       displayName: "Rival Crew",
       joinCode: "rival-code",
       memberIds: await userIdsOf("rival"),
@@ -319,7 +322,7 @@ describe("a quest several teams race", () => {
         name: "quest",
         entrants: [
           { kind: "team", name: "the-team" },
-          { kind: "team", name: "rivals" },
+          { kind: "team", name: "rival-team" },
         ],
       })
     ).toEqual({ status: "success", statusCode: 200 });
@@ -348,47 +351,183 @@ describe("a quest several teams race", () => {
     }
   }
 
-  it.each([[undefined], ["player"], ["rival"]])(
-    "shows %s only the standings, with no stops, until everyone finishes",
-    async (userName) => {
+  it("shows the public only the standings, with no stops, until everyone finishes", async () => {
+    const response = await view(QUEST);
+
+    expect(response.status).toBe(200);
+    const body = JSON.parse(response.text);
+    expect(spectatorQuestSchema.parse(body)).toEqual(body);
+    expect(body).toMatchObject({
+      racing: true,
+      stopsHidden: true,
+      rivalsHidden: false,
+      provisional: false,
+    });
+    expect(body.entries).toEqual([
+      expect.objectContaining({
+        id: await entryIdOf("quest", 0),
+        entrant: { kind: "team", displayName: "Team Display" },
+        status: 1,
+        statusDescription: "In progress",
+        paused: false,
+        rank: null,
+        puzzles: [],
+        progress: expect.objectContaining({
+          running: true,
+          totalMs: expect.any(Number),
+          puzzles: [],
+        }),
+      }),
+      expect.objectContaining({
+        id: await entryIdOf("quest", 1),
+        entrant: { kind: "team", displayName: "Rival Crew" },
+        rank: null,
+        puzzles: [],
+        progress: expect.objectContaining({ puzzles: [] }),
+      }),
+    ]);
+    expectNoneOf(response.text, [
+      ...ALWAYS_HIDDEN,
+      /rival-team/,
+      /Rival Person/,
+      /riddle/i,
+      /lantern/i,
+      /finale/i,
+      /A piano/,
+    ]);
+  });
+
+  it.each([
+    ["player", 0, "Team Display", "Rival Crew"],
+    ["rival", 1, "Rival Crew", "Team Display"],
+  ])(
+    "shows %s, still racing, only their own entry, with no stops",
+    async (userName, index, own, other) => {
       const response = await view(QUEST, userName);
 
       expect(response.status).toBe(200);
       const body = JSON.parse(response.text);
       expect(spectatorQuestSchema.parse(body)).toEqual(body);
-      expect(body).toMatchObject({ racing: true, stopsHidden: true });
+      expect(body).toMatchObject({
+        racing: true,
+        stopsHidden: true,
+        rivalsHidden: true,
+        provisional: false,
+      });
       expect(body.entries).toEqual([
         expect.objectContaining({
-          id: await entryIdOf("quest", 0),
-          entrant: { kind: "team", displayName: "Team Display" },
-          status: 1,
-          statusDescription: "In progress",
-          paused: false,
+          id: await entryIdOf("quest", index),
+          entrant: { kind: "team", displayName: own },
+          rank: null,
           puzzles: [],
-          progress: expect.objectContaining({
-            running: true,
-            totalMs: expect.any(Number),
-            puzzles: [],
-          }),
-        }),
-        expect.objectContaining({
-          id: await entryIdOf("quest", 1),
-          entrant: { kind: "team", displayName: "Rival Crew" },
-          puzzles: [],
-          progress: expect.objectContaining({ puzzles: [] }),
         }),
       ]);
-      expectNoneOf(response.text, [
-        ...ALWAYS_HIDDEN,
-        /rivals/,
-        /Rival Person/,
-        /riddle/i,
-        /lantern/i,
-        /finale/i,
-        /A piano/,
-      ]);
+      expect(response.text).not.toContain(other);
+      expectNoneOf(response.text, [...ALWAYS_HIDDEN, /riddle/i, /A piano/]);
     }
   );
+
+  describe("once one team has finished", () => {
+    beforeEach(async () => {
+      // The rivals catch up and finish first.
+      for (const puzzleName of ["riddle", "lantern", "finale"]) {
+        await QuestService.skipQuestPuzzle(
+          "quest",
+          puzzleName,
+          {},
+          { entrant: { kind: "team", name: "rival-team" } }
+        );
+      }
+    });
+
+    it("ranks it first, provisionally, for the public, staff, and share links", async () => {
+      const link = await request(app)
+        .post("/api/v1/quests/quest/share-links")
+        .set("Authorization", `Bearer ${sessions.helper}`)
+        .send({ label: "Lobby" });
+      expect(link.status).toBe(201);
+      const shared = request(app)
+        .get(QUEST)
+        .set("X-Share-Token", JSON.parse(link.text).token);
+
+      for (const response of [
+        await view(QUEST),
+        await view(QUEST, "helper"),
+        await shared,
+      ]) {
+        const body = JSON.parse(response.text);
+        expect(body).toMatchObject({
+          racing: true,
+          rivalsHidden: false,
+          provisional: true,
+        });
+        expect(
+          body.entries.map(
+            (entry: { entrant: { displayName: string }; rank: unknown }) => [
+              entry.entrant.displayName,
+              entry.rank,
+            ]
+          )
+        ).toEqual([
+          ["Rival Crew", 1],
+          ["Team Display", null],
+        ]);
+      }
+    });
+
+    it("shows its player the whole leaderboard, still without stops", async () => {
+      const body = JSON.parse((await view(QUEST, "rival")).text);
+
+      expect(body).toMatchObject({
+        racing: true,
+        stopsHidden: true,
+        rivalsHidden: false,
+        provisional: true,
+      });
+      expect(body.entries).toEqual([
+        expect.objectContaining({ rank: 1, status: 2, puzzles: [] }),
+        expect.objectContaining({
+          entrant: { kind: "team", displayName: "Team Display" },
+          rank: null,
+          status: 1,
+        }),
+      ]);
+    });
+
+    it("still shows a player racing only their own entry", async () => {
+      const body = JSON.parse((await view(QUEST, "player")).text);
+
+      expect(body).toMatchObject({ rivalsHidden: true, provisional: false });
+      expect(body.entries).toEqual([
+        expect.objectContaining({
+          entrant: { kind: "team", displayName: "Team Display" },
+          rank: null,
+        }),
+      ]);
+    });
+
+    it("gives final ranks, by total time, once everyone has finished", async () => {
+      await finishEveryone();
+
+      for (const userName of [undefined, "player", "rival"]) {
+        const body = JSON.parse((await view(QUEST, userName)).text);
+        expect(body).toMatchObject({
+          racing: false,
+          stopsHidden: false,
+          rivalsHidden: false,
+          provisional: false,
+        });
+        const [first, second] = body.entries;
+        expect(first.progress.totalMs).toBeLessThanOrEqual(
+          second.progress.totalMs
+        );
+        expect(first.rank).toBe(1);
+        expect(second.rank).toBe(
+          second.progress.totalMs === first.progress.totalMs ? 1 : 2
+        );
+      }
+    });
+  });
 
   it("shows staff every entry's reached stops", async () => {
     const response = await view(QUEST, "helper");
@@ -407,7 +546,7 @@ describe("a quest several teams race", () => {
       }),
     ]);
     expect(body.entries[1].progress.puzzles).toHaveLength(1);
-    expectNoneOf(response.text, [/rivals/, /finale/i]);
+    expectNoneOf(response.text, [/rival-team/, /finale/i]);
   });
 
   it("shows everyone the stops once every entry has finished", async () => {
@@ -457,7 +596,7 @@ describe("a quest several teams race", () => {
       "finale",
       false,
       {},
-      { entrant: { kind: "team", name: "rivals" } }
+      { entrant: { kind: "team", name: "rival-team" } }
     );
     // The rivals are still racing on the finale, so the stops are hidden.
     expect((await view(QUEST)).status).toBe(200);

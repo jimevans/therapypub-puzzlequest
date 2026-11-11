@@ -55,7 +55,7 @@ export default [
   onTopOfFirstLoad(
     "The quest screen",
     "src/screens/quest/QuestPage.tsx",
-    "5 KB"
+    "6 KB"
   ),
   onTopOfFirstLoad(
     "The puzzle screen",
@@ -65,7 +65,7 @@ export default [
   onTopOfFirstLoad(
     "Following a quest",
     "src/screens/followAlong/FollowQuest.tsx",
-    "6 KB"
+    "7 KB"
   ),
   onTopOfFirstLoad(
     "Following a puzzle",

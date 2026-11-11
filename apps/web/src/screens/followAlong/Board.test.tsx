@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
@@ -45,6 +45,7 @@ const QUEST = {
   status: 1,
   statusDescription: "In progress",
   paused: false,
+  rank: null as number | null,
   puzzles: [SOLVED, WAITING],
   progress: {
     ...STOPPED,
@@ -60,6 +61,8 @@ function spectated(quest: typeof QUEST) {
     ...withOneEntry(quest, { kind: "team", displayName: "The Reds" }),
     racing: false,
     stopsHidden: false,
+    rivalsHidden: false,
+    provisional: false,
   };
 }
 
@@ -170,22 +173,36 @@ describe("Board", () => {
     expect(screen.getByText("1:04:05")).toBeVisible();
   });
 
-  it("lists each team in a race, with their times but no stops", async () => {
+  it("shows the leaderboard during a race, provisional, with no stops", async () => {
     const [reds] = spectated(QUEST).entries;
     apiShows({
-      name: "trail",
-      displayName: "The Trail",
+      ...spectated(QUEST),
       racing: true,
       stopsHidden: true,
+      provisional: true,
       entries: [
-        { ...reds, puzzles: [] },
         {
           ...reds,
           id: "entry-2",
           entrant: { kind: "team", displayName: "The Blues" },
+          status: 2,
+          statusDescription: "Completed",
+          rank: 1,
+          puzzles: [],
+          progress: {
+            ...QUEST.progress,
+            startTime: "2026-11-06T18:00:00.000Z",
+            totalMs: 240_000,
+          },
+        },
+        {
+          ...reds,
           paused: true,
           puzzles: [],
-          progress: { ...QUEST.progress, elapsedMs: 0, totalMs: 420_000 },
+          progress: {
+            ...QUEST.progress,
+            startTime: "2026-11-06T18:00:00.000Z",
+          },
         },
       ],
     });
@@ -194,19 +211,46 @@ describe("Board", () => {
     expect(
       await screen.findByRole("heading", { name: "The Trail", level: 1 })
     ).toBeVisible();
-    expect(
-      screen.getByRole("heading", { name: "The Reds", level: 2 })
-    ).toBeVisible();
-    expect(
-      screen.getByRole("heading", { name: "The Blues", level: 2 })
-    ).toBeVisible();
-    expect(screen.getByText("5:00")).toBeVisible();
-    expect(screen.getByText("7:00")).toBeVisible();
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Paused by the puzzle master"
+    const table = screen.getByRole("table", { name: "Standings" });
+    const rows = within(table).getAllByRole("row");
+    expect(rows[1]).toHaveTextContent("1stThe BluesCompleted4:00");
+    expect(rows[2]).toHaveTextContent(
+      "Not ranked yetThe RedsIn progress, paused5:00"
     );
-    expect(screen.getByText(copy.stopsHiddenInRace)).toBeVisible();
+    expect(
+      screen.getByText(/Provisional until every team finishes/)
+    ).toBeVisible();
+    expect(screen.queryByText("Winner")).not.toBeInTheDocument();
     expect(screen.queryByText(/The Bridge/)).not.toBeInTheDocument();
+  });
+
+  it("keeps the final standings up once the race is over, with the winner", async () => {
+    const [reds] = spectated({
+      ...QUEST,
+      status: 2,
+      statusDescription: "Completed",
+    }).entries;
+    apiShows({
+      ...spectated(QUEST),
+      entries: [
+        {
+          ...reds,
+          id: "entry-2",
+          entrant: { kind: "team", displayName: "The Blues" },
+          rank: 1,
+        },
+        { ...reds, rank: 2 },
+      ],
+    });
+    show();
+
+    const table = await screen.findByRole("table", { name: "Final standings" });
+    const [, winner, second] = within(table).getAllByRole("row");
+    expect(winner).toHaveTextContent("1stThe Blues WinnerCompleted");
+    expect(winner).toHaveAttribute("data-winner", "true");
+    expect(second).toHaveTextContent("2ndThe RedsCompleted");
+    expect(second).not.toHaveAttribute("data-winner");
+    expect(screen.queryByText(/Provisional/)).not.toBeInTheDocument();
   });
 
   it("says when the quest isn't available", async () => {

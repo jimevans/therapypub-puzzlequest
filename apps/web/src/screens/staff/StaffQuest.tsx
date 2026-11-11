@@ -17,7 +17,11 @@ import {
   describeEntries,
   entriesSnapshot,
 } from "../../quests/entryAnnouncements";
-import { entrantLabel } from "../../quests/entrants";
+import {
+  entrantLabel,
+  inLeaderboardOrder,
+  ordinal,
+} from "../../quests/entrants";
 import { Announcement, useAnnouncement } from "../../ui/Announcement";
 import { ShareLinksSection } from "../../quests/ShareLinksSection";
 import { Banner } from "../../ui/Banner";
@@ -139,6 +143,7 @@ function EntryView({
   const details = (
     <>
       <p className={styles.intro}>
+        {!single && entry.rank !== null && `${ordinal(entry.rank)} · `}
         {entrantLabel(entry.entrant)} · {entry.statusDescription}
         {entry.progress.startTime && (
           <>
@@ -216,7 +221,8 @@ function QuestView({ quest }: { quest: StaffQuest }) {
     <>
       <h1>{quest.displayName}</h1>
       <Announcement message={announcement} />
-      {quest.entries.map((entry) => (
+      {/* In a race, the teams in leaderboard order. */}
+      {inLeaderboardOrder(quest.entries, (entry) => entry).map((entry) => (
         <EntryView
           key={entry.id}
           entry={entry}
