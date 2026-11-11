@@ -53,6 +53,38 @@ jobs:
       # WebdriverIO over WebDriver BiDi, in the runner's Chrome and Firefox.
       - run: npm run test:e2e
 
+  # Version 1.0's promise to apps: the API only gains things. A pull request
+  # whose API description would break a client written against its base fails
+  # (decision 0023). The live-update messages, which no route refers to, are
+  # checked by a test in packages/api-client instead.
+  api-compatibility:
+    name: API compatibility
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Get the base branch's API description
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: git show "origin/$BASE_REF:packages/api-client/openapi.json" > "$RUNNER_TEMP/base-openapi.json"
+      # oasdiff's own image, run directly: the oasdiff GitHub Action reports
+      # usage to oasdiff.com and offers to upload the description; the tool
+      # itself sends nothing unless asked to (--open). oasdiff-levels.txt
+      # allows a response's enumerations to gain values, which 1.0 promises
+      # it may (clients treat unknown values sensibly); its format allows no
+      # comments, so the reason is here.
+      - name: Check for breaking changes
+        run: >-
+          docker run --rm
+          -v "$RUNNER_TEMP:/base:ro" -v "$PWD:/work:ro" -w /work
+          tufin/oasdiff:v1.35.0@sha256:82b1840a77335562bb11ce95f77ad31745a0c6f3a770929333ed1c5ef466e400
+          breaking /base/base-openapi.json packages/api-client/openapi.json
+          --fail-on ERR
+          --severity-levels .github/oasdiff-levels.txt
+
   audit:
     name: Dependency audit
     runs-on: ubuntu-latest

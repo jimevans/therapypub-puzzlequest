@@ -42,6 +42,13 @@ the API's description), and `e2e` (browser tests).
 account`, `fix: leave the health check to the server`.
 - The pull request's description says what changed and why, what was tested,
   and anything the person deploying it must do.
+- A change that players, staff, administrators, or an app's developers would
+  notice gets a line in `CHANGELOG.md`, under "Unreleased". A release moves
+  those lines under its version number, sets that number in every
+  `package.json` (`npm version X.Y.Z --workspaces --include-workspace-root
+--no-git-tag-version`), and is tagged `vX.Y.Z` on `main` once merged. The
+  API's own version (`API_VERSION`) changes only when the API does: its minor
+  number when it gains something.
 
 ## Before opening a pull request
 
@@ -102,6 +109,13 @@ one is in your way, raise it rather than working around it.
 - **Routes are kept for native apps.** The API serves future iOS and Android
   apps as well as the web, so a route the web app no longer uses isn't
   removed without asking.
+- **Version 1 only grows.** Apps written against `/api/v1` keep working, so
+  a change may add routes, optional request fields, response fields,
+  enumerated values, and live-update messages, but not remove, rename, or
+  narrow anything, or make a request field required. CI compares each pull
+  request's API description with its base branch's (oasdiff), and a test
+  compares the live updates with `packages/api-client/live-updates.json`.
+  A change that must break goes in a new version, `/api/v2`, alongside v1.
 
 ### Security
 
@@ -146,7 +160,10 @@ one is in your way, raise it rather than working around it.
 2. Give it a row in the authorization matrix.
 3. Test it through the app (`apps/api/test/integration/`), including the
    problems it can report.
-4. Run `npm run generate:api`, and commit the regenerated client.
+4. Run `npm run generate:api`, and commit the regenerated client. If a
+   live-update message gained something, record it with
+   `npm run accept-live-updates --workspace=@puzzlequest/api-client`.
+5. Add a line to `CHANGELOG.md`'s "Unreleased" section.
 
 **A screen:**
 
