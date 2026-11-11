@@ -20,7 +20,7 @@ import {
 import { type AnyRoute, problemsOf } from "./route.js";
 
 /** The version of the v1 API's description, for clients' caches. */
-export const API_VERSION = "1.0.0";
+export const API_VERSION = "1.0.1";
 
 /** The API's description, with the problem types it reports. */
 const DESCRIPTION = `PuzzleQuest's API, for its web pages and for apps. This description is at \`/api/v1/openapi.json\`, and shown as a reference at \`/api/v1/docs\`.
@@ -31,7 +31,7 @@ Lists come a page at a time: \`?limit=\` (default 50, at most 200) and \`?after=
 
 Names and values follow the same conventions throughout. Things are named in paths and bodies as \`questName\`, \`puzzleName\`, \`teamName\`, and \`userName\`; a quest's stop is named by its puzzle's \`puzzleName\`. Enumerated values, such as statuses, roles, and event types, are camelCase strings. A field whose value isn't set, such as a time that hasn't come yet, is present with the value \`null\`; a field is absent only when the caller isn't allowed to see it, as each such field's description says. Units are in names: \`timePenaltySeconds\`, \`elapsedMs\`.
 
-Version 1.0 can gain fields, enumerated values, problem types, and live-update messages without a new version. Clients must ignore fields they don't recognise, and treat a value they don't recognise sensibly, such as an unknown status as unknown, rather than failing; the schemas here describe this version's responses exactly.
+Version 1.0 can gain fields, enumerated values, problem types, and live-update messages without a new version. Clients must ignore fields they don't recognise, and treat a value they don't recognise sensibly, such as an unknown status as unknown, rather than failing. So the response schemas here don't forbid fields they don't list, though this version sends only the fields they list.
 
 Clients follow a quest as it happens over the live-update websocket, \`/api/v1/updates\`. Anyone may connect. A client sends a \`LiveUpdateSubscription\` naming the quest, with a ticket from \`POST /quests/{questName}/live-tickets\`; the server answers with its connection's ID, then sends a \`LiveUpdate\` for each change to that quest, naming the puzzle concerned where there is one. A client sends its connection's ID as \`connectionId\` with its own actions, so their updates aren't sent back to it. Each update names the entry whose progress changed (\`entryId\`). While a quest is a race that not every entry has finished, a connection is sent an update's content only if its ticket was issued to staff, an administrator, or a player of that entry; every other connection is sent \`questUpdated\` with the entry's ID instead, and fetches what it shows again. Starting and resetting a quest send no update to its followers. A player's home screen instead names the user, with a ticket from \`POST /users/{userName}/live-tickets\`, and is sent \`questsChanged\` whenever the list of quests they play should be fetched again, starting and resetting included. Both messages are described under the schemas. Updates can be missed, so a client should fetch what it follows again each time it connects.
 
@@ -172,6 +172,41 @@ function withoutUnusedSchemas<
 }
 
 /**
+ * Leaves the server's messages open to new fields. zod-openapi renders each
+ * response's object as allowing no other fields, but version 1 may add
+ * fields, so a client generated from that would reject a later version's
+ * responses. The server's own tests still check that it sends exactly the
+ * fields described (`createContract` in the API client closes them again).
+ * @param document the document
+ * @param closed the components that stay closed: messages clients send,
+ *   whose extra fields the server really refuses
+ * @returns the document
+ */
+function withOpenResponses<
+  D extends { components?: { schemas?: Record<string, unknown> } },
+>(document: D, closed: readonly string[]): D {
+  const open = (schema: unknown): void => {
+    if (Array.isArray(schema)) {
+      schema.forEach(open);
+    } else if (typeof schema === "object" && schema !== null) {
+      const object = schema as Record<string, unknown>;
+      if (object.additionalProperties === false) {
+        delete object.additionalProperties;
+      }
+      Object.values(object).forEach(open);
+    }
+  };
+  for (const [name, schema] of Object.entries(
+    document.components?.schemas ?? {}
+  )) {
+    if (!closed.includes(name)) {
+      open(schema);
+    }
+  }
+  return document;
+}
+
+/**
  * Creates the OpenAPI document describing routes.
  * @param routes the v1 routes
  * @returns the document
@@ -224,8 +259,8 @@ export function createOpenApiDocument(
       },
     },
   });
-  return withoutUnusedSchemas(document, [
-    "LiveUpdate",
-    "LiveUpdateSubscription",
-  ]);
+  return withOpenResponses(
+    withoutUnusedSchemas(document, ["LiveUpdate", "LiveUpdateSubscription"]),
+    ["LiveUpdateSubscription"]
+  );
 }

@@ -8,6 +8,15 @@ description at `/api/v1/openapi.json`.
 
 ## Unreleased
 
+## 1.0.1 — 2026-11-11
+
+### The API
+
+- The API's description no longer says responses can't have fields it
+  doesn't list. Version 1 may add fields, and a client generated from 1.0.0's
+  description (such as with Apple's Swift OpenAPI Generator) would have
+  rejected them. What the API sends is unchanged.
+
 ## 1.0.0 — 2026-11-11
 
 The first stable release. What PuzzleQuest does at 1.0:

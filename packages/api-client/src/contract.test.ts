@@ -51,6 +51,43 @@ describe("the API's contract", () => {
     );
   });
 
+  it("refuses a field the description doesn't list, though clients may get one", () => {
+    // Published, a response allows fields it doesn't list, for later versions.
+    const schemas = description.components.schemas as Record<
+      string,
+      { additionalProperties?: unknown }
+    >;
+    expect(schemas.Team!.additionalProperties).toBeUndefined();
+    // Checked, it's exactly what this version sends: a leak is caught, even
+    // in a nested object.
+    const team = { teamName: "reds", displayName: "Reds" };
+    expect(
+      contract.check({
+        method: "GET",
+        path: "/teams/{teamName}",
+        status: 200,
+        mediaType: "application/json",
+        body: { ...team, secret: "x" },
+      })
+    ).toBe(
+      "GET /teams/{teamName} 200 doesn't match its description: the body must NOT have additional properties (secret)"
+    );
+    expect(
+      contract.check({
+        method: "GET",
+        path: "/teams/{teamName}",
+        status: 200,
+        mediaType: "application/json",
+        body: {
+          ...team,
+          members: [{ userName: "alex", displayName: "Alex", phone: "+1" }],
+        },
+      })
+    ).toBe(
+      "GET /teams/{teamName} 200 doesn't match its description: /members/0 must NOT have additional properties (phone)"
+    );
+  });
+
   it("refuses a problem of a type the response doesn't list", () => {
     expect(
       contract.check({

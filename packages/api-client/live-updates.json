@@ -12,8 +12,10 @@
             "type": "string"
           }
         },
-        "required": ["message", "connectionId"],
-        "additionalProperties": false
+        "required": [
+          "message",
+          "connectionId"
+        ]
       },
       {
         "type": "object",
@@ -43,8 +45,7 @@
           "entryId",
           "puzzleName",
           "activationTime"
-        ],
-        "additionalProperties": false
+        ]
       },
       {
         "type": "object",
@@ -82,8 +83,7 @@
           "solutionText",
           "endTime",
           "questComplete"
-        ],
-        "additionalProperties": false
+        ]
       },
       {
         "type": "object",
@@ -117,8 +117,7 @@
           "puzzleName",
           "displayName",
           "startTime"
-        ],
-        "additionalProperties": false
+        ]
       },
       {
         "type": "object",
@@ -158,8 +157,10 @@
                     "type": "boolean"
                   }
                 },
-                "required": ["timePenaltySeconds", "solutionWarning"],
-                "additionalProperties": false
+                "required": [
+                  "timePenaltySeconds",
+                  "solutionWarning"
+                ]
               },
               {
                 "type": "null"
@@ -175,8 +176,7 @@
           "hintText",
           "timePenaltySeconds",
           "nextHint"
-        ],
-        "additionalProperties": false
+        ]
       },
       {
         "type": "object",
@@ -192,8 +192,11 @@
             "type": "string"
           }
         },
-        "required": ["message", "questName", "entryId"],
-        "additionalProperties": false
+        "required": [
+          "message",
+          "questName",
+          "entryId"
+        ]
       },
       {
         "type": "object",
@@ -203,8 +206,9 @@
             "const": "questsChanged"
           }
         },
-        "required": ["message"],
-        "additionalProperties": false
+        "required": [
+          "message"
+        ]
       }
     ],
     "type": "object"
@@ -227,7 +231,11 @@
             "minLength": 1
           }
         },
-        "required": ["message", "questName", "ticket"],
+        "required": [
+          "message",
+          "questName",
+          "ticket"
+        ],
         "additionalProperties": false
       },
       {
@@ -246,7 +254,11 @@
             "minLength": 1
           }
         },
-        "required": ["message", "userName", "ticket"],
+        "required": [
+          "message",
+          "userName",
+          "ticket"
+        ],
         "additionalProperties": false
       }
     ]
