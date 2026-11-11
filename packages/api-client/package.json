@@ -1,6 +1,6 @@
 {
   "name": "@puzzlequest/api-client",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "A typed client for the PuzzleQuest API, generated from its OpenAPI description",
   "private": true,
   "type": "module",
@@ -13,7 +13,8 @@
     "generate": "openapi-typescript openapi.json --output src/schema.d.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "typecheck": "node ../../node_modules/typescript-native/bin/tsc -p ."
+    "typecheck": "node ../../node_modules/typescript-native/bin/tsc -p .",
+    "accept-live-updates": "node scripts/accept-live-updates.js"
   },
   "dependencies": {
     "openapi-fetch": "^0.17.0"

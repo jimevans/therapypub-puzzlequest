@@ -51,6 +51,13 @@ them:
 ## Consequences
 
 - Deploying 1.0 needed no data migration; production's data works as it is.
+- Version 1 only grows, and CI holds it to that: each pull request's API
+  description is compared with its base branch's by
+  [oasdiff](https://github.com/oasdiff/oasdiff), failing on any breaking
+  change except a response's enumeration gaining a value (which clients
+  tolerate, above); and the live-update messages, which no route refers to,
+  are compared with `packages/api-client/live-updates.json` by a test. A
+  change that must break goes in `/api/v2`, alongside v1.
 - Generated Swift and Kotlin clients get real enums and one type per shape.
 - A change to the wire format is a change to the mapping, not to storage, and
   storage can change without changing the API.
