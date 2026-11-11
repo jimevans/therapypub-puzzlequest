@@ -320,6 +320,7 @@ describe("createQuest", () => {
       status: "error",
       statusCode: 400,
       reason: "invalid-quest",
+      field: "entrants",
       message:
         "Quest definition must contain at least one user or team to play it",
     });
@@ -341,6 +342,7 @@ describe("createQuest", () => {
         status: "error",
         statusCode: 400,
         reason: "invalid-quest",
+        field: "entrants",
         message: `No ${kind} with name ${name} found`,
       });
       expect(await QuestModel.countDocuments({ name: "orphan" })).toBe(0);

@@ -968,6 +968,7 @@ async function findEntrants(
     status: "error",
     statusCode: 400,
     reason: "invalid-quest",
+    field: "entrants",
     message,
   });
   if (!entrants.length) {
@@ -1711,6 +1712,7 @@ export async function updateQuest(
         status: "error",
         statusCode: 400,
         reason: "wrong-state",
+        field: "entrants",
         message: `${labels.join(", ")} ${started.length === 1 ? "has" : "have"} started quest ${questDefinition.name}, so can't be removed from it; reset ${started.length === 1 ? "it" : "them"} first`,
       };
     }

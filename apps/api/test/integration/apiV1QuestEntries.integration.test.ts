@@ -475,6 +475,8 @@ describe("a quest's entrants", () => {
       detail: expect.stringMatching(
         /^Player red2 would be in two of the quest's entrants, team reds and user red2/
       ),
+      // About the entrants, so a form can show it beside them.
+      errors: [{ path: "body.entrants", message: expect.any(String) }],
     });
     expect(await QuestModel.exists({ name: "overlap" })).toBeNull();
   });
@@ -544,6 +546,13 @@ describe("a quest's entrants", () => {
       type: "/problems/wrong-state",
       detail:
         "team reds has started quest race, so can't be removed from it; reset it first",
+      errors: [
+        {
+          path: "body.entrants",
+          message:
+            "team reds has started quest race, so can't be removed from it; reset it first",
+        },
+      ],
     });
     expect(await statuses()).toHaveLength(3);
 
