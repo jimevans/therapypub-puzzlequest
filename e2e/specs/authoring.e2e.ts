@@ -143,7 +143,9 @@ describe("authoring", () => {
     await browser.url("/quest/new");
     await $("#quest-name").setValue(questName);
     await $("#display-name").setValue("An Authored Quest");
-    await $("#assignee").selectByAttribute("value", `user:${player}`);
+    await $("#entrant-choice").selectByAttribute("value", `user:${player}`);
+    await $("#add-entrant").click();
+    await expect($(`#entrants [data-entrant="user:${player}"]`)).toExist();
 
     await $("#add-puzzles").click();
     for (const puzzle of [textPuzzle, imagePuzzle]) {
@@ -169,10 +171,14 @@ describe("authoring", () => {
     await moving.click();
     await browser.keys(" ");
     await expect(moving).toHaveAttribute("aria-pressed", "true");
-    const announced = $('[id^="DndLiveRegion"]');
+    // The entrants and the stops are each a list with its own live region.
+    const announced = async () =>
+      (
+        await $$('[id^="DndLiveRegion"]').map((region) => region.getText())
+      ).join(" ");
     await browser.waitUntil(async () => {
       await browser.keys("ArrowUp");
-      return (await announced.getText()).includes("over position 1 of 2");
+      return (await announced()).includes("over position 1 of 2");
     });
     await browser.keys(" ");
     await browser.waitUntil(
@@ -209,18 +215,22 @@ describe("authoring", () => {
     await expect($("#stops")).toBeDisplayed();
 
     const quest = await api("GET", `/quests/${questName}`, admin);
-    expect(quest.assignee).toMatchObject({ kind: "user", name: player });
+    expect(quest.entries).toHaveLength(1);
+    expect(quest.entries[0].entrant).toMatchObject({
+      kind: "user",
+      name: player,
+    });
     expect(
-      quest.puzzles.map((p: { puzzleName: string }) => p.puzzleName)
+      quest.entries[0].puzzles.map((p: { puzzleName: string }) => p.puzzleName)
     ).toEqual([textPuzzle, imagePuzzle]);
   });
 
-  it("lists the quest on the admin page, with who it's assigned to", async () => {
+  it("lists the quest on the admin page, with who plays it", async () => {
     await browser.url("/quests");
 
     await expect($(`a[href="/quest/${questName}"]`)).toExist();
     await expect($(`[data-quest-name="${questName}"]`)).toHaveText(
-      expect.stringContaining(`${player} (user)`)
+      expect.stringContaining("Author's Player")
     );
     await expectAccessible();
   });

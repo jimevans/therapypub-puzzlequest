@@ -21,15 +21,27 @@ const questPuzzle = z.object({
     }),
 });
 
-/** The user or team a quest is assigned to, by name. */
-const assignee = z.object({
+/** A user or team playing a quest, by name. */
+const entrant = z.object({
   kind: z.enum(AssigneeKind),
-  name: requiredText,
+  name: requiredText.meta({ description: "The user name or team name." }),
 });
+
+/**
+ * The users and teams playing a quest, each with its own progress: several
+ * race one another through the same stops.
+ */
+const entrants = z
+  .array(entrant)
+  .min(1, "At least one user or team must play the quest")
+  .meta({
+    description:
+      "The users and teams playing the quest, in order; at least one. Each has its own progress through the same stops. A player may be in only one of them, as a user or in a team. On a change, those already playing keep their progress, new ones start out not started, and those left out are removed, which is allowed only before they start.",
+  });
 
 const visibility = z.enum(["public", "private"]).meta({
   description:
-    "Who can follow the quest: anyone, or only its players and staff. New quests are public.",
+    "Who can follow the quest: anyone, or only its players (in any of its entries) and staff. New quests are public.",
 });
 
 /** POST /api/v1/quests */
@@ -37,7 +49,7 @@ export const createQuestBody = z.object({
   name: newName,
   displayName: displayName.min(1, "Required"),
   visibility: visibility.optional(),
-  assignee,
+  entrants,
   puzzles: z.array(questPuzzle).default([]),
 });
 export type CreateQuestBody = z.infer<typeof createQuestBody>;
@@ -49,7 +61,7 @@ export type CreateQuestBody = z.infer<typeof createQuestBody>;
 export const updateQuestBody = z.object({
   displayName: displayName.min(1, "Required").optional(),
   visibility: visibility.optional(),
-  assignee: assignee.optional(),
+  entrants: entrants.optional(),
   puzzles: z.array(questPuzzle).optional(),
 });
 export type UpdateQuestBody = z.infer<typeof updateQuestBody>;
@@ -95,7 +107,7 @@ export type SolvePuzzleBody = z.infer<typeof solvePuzzleBody>;
 export const requestHintBody = z.object({ connectionId });
 export type RequestHintBody = z.infer<typeof requestHintBody>;
 
-/** POST /api/v1/quests/{name}/puzzles/{puzzleName}/reset */
+/** POST /api/v1/quests/{name}/teams/{teamName}/puzzles/{puzzleName}/reset, and for players */
 export const resetPuzzleBody = z.object({
   /** True to remove the penalties of the puzzle's revealed hints. */
   refundHints: z.boolean().default(false),

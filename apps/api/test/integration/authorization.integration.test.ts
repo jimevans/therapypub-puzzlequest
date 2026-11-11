@@ -173,8 +173,37 @@ const ROUTES: [string, string, Policy][] = [
   ["post", "/api/v1/quests/:name/reset", ADMIN],
   ["post", "/api/v1/quests/:name/pause", ADMIN],
   ["post", "/api/v1/quests/:name/resume", ADMIN],
-  ["post", "/api/v1/quests/:name/puzzles/:puzzleName/skip", ADMIN],
-  ["post", "/api/v1/quests/:name/puzzles/:puzzleName/reset", ADMIN],
+  ["post", "/api/v1/quests/:name/teams/:teamName/start", ADMIN],
+  ["post", "/api/v1/quests/:name/teams/:teamName/reset", ADMIN],
+  ["post", "/api/v1/quests/:name/teams/:teamName/pause", ADMIN],
+  ["post", "/api/v1/quests/:name/teams/:teamName/resume", ADMIN],
+  [
+    "post",
+    "/api/v1/quests/:name/teams/:teamName/puzzles/:puzzleName/skip",
+    ADMIN,
+  ],
+  [
+    "post",
+    "/api/v1/quests/:name/teams/:teamName/puzzles/:puzzleName/reset",
+    ADMIN,
+  ],
+  ["post", "/api/v1/quests/:name/text-messages", ADMIN],
+  ["post", "/api/v1/quests/:name/teams/:teamName/text-messages", ADMIN],
+  ["post", "/api/v1/quests/:name/players/:userName/start", ADMIN],
+  ["post", "/api/v1/quests/:name/players/:userName/reset", ADMIN],
+  ["post", "/api/v1/quests/:name/players/:userName/pause", ADMIN],
+  ["post", "/api/v1/quests/:name/players/:userName/resume", ADMIN],
+  [
+    "post",
+    "/api/v1/quests/:name/players/:userName/puzzles/:puzzleName/skip",
+    ADMIN,
+  ],
+  [
+    "post",
+    "/api/v1/quests/:name/players/:userName/puzzles/:puzzleName/reset",
+    ADMIN,
+  ],
+  ["post", "/api/v1/quests/:name/players/:userName/text-messages", ADMIN],
   ["get", "/api/v1/quests/:name/puzzles/:puzzleName/qr-code", STAFF],
   ["get", "/api/v1/quests/:name/events", ADMIN],
   ["get", "/api/v1/quests/:name/run-book", ADMIN],
@@ -195,7 +224,6 @@ const ROUTES: [string, string, Policy][] = [
     QUEST_PLAYER,
   ],
   ["post", "/api/v1/quests/:name/puzzles/:puzzleName/hints", QUEST_PLAYER],
-  ["post", "/api/v1/quests/:name/text-messages", ADMIN],
   ["post", "/api/v1/webhooks/twilio/voice", TWILIO],
   ["post", "/api/v1/webhooks/twilio/messages", TWILIO],
 
@@ -260,18 +288,20 @@ beforeEach(async () => {
     SessionModel.deleteMany({}),
   ]);
   await UserModel.create(
-    (["admin", "staff", "player", "other"] as const).map((userName) => ({
-      userName,
-      displayName: userName,
-      email: `${userName}@example.com`,
-      password: "hash",
-      authorizationLevel:
-        userName === "admin"
-          ? AuthorizationLevel.ADMIN
-          : userName === "staff"
-            ? AuthorizationLevel.STAFF
-            : AuthorizationLevel.USER,
-    }))
+    (["admin", "staff", "player", "other", "solo"] as const).map(
+      (userName) => ({
+        userName,
+        displayName: userName,
+        email: `${userName}@example.com`,
+        password: "hash",
+        authorizationLevel:
+          userName === "admin"
+            ? AuthorizationLevel.ADMIN
+            : userName === "staff"
+              ? AuthorizationLevel.STAFF
+              : AuthorizationLevel.USER,
+      })
+    )
   );
   await TeamModel.create({
     teamName: "team-a",
@@ -289,7 +319,11 @@ beforeEach(async () => {
   await QuestService.createQuest({
     name: "quest",
     displayName: "Quest",
-    assignee: { kind: "team", name: "team-a" },
+    // A second entrant, playing on their own, for the per-player routes.
+    entrants: [
+      { kind: "team", name: "team-a" },
+      { kind: "user", name: "solo" },
+    ],
     puzzles: [{ puzzleName: "riddle" }],
   });
   await QuestService.startQuest("quest");
@@ -313,8 +347,14 @@ beforeEach(async () => {
 function send(method: string, routePath: string, role: Role) {
   // Puzzle routes use :name for the puzzle; quest routes, for the quest.
   const isPuzzleRoute = /^\/(api\/(v1\/)?)?puzzles?\//.test(routePath);
+  // A quest's per-player routes name the quest's player entrant.
+  const isEntrantRoute = routePath.includes("/players/:userName");
   const path = routePath.replace(/:(\w+)/g, (_, name) =>
-    name === "name" && isPuzzleRoute ? "riddle" : PARAMS[name]
+    name === "name" && isPuzzleRoute
+      ? "riddle"
+      : name === "userName" && isEntrantRoute
+        ? "solo"
+        : PARAMS[name]
   );
   const pending = (request(app) as any)[method](path) as request.Test;
   if (role !== "anonymous") {

@@ -137,7 +137,7 @@ describe("POST /api/v1/quests/{name}/puzzles/{puzzleName}/activation", () => {
     });
     await QuestService.createQuest({
       name: "test-quest",
-      assignee: { kind: "user", name: "player" },
+      entrants: [{ kind: "user", name: "player" }],
       puzzles: [{ puzzleName: "colors" }],
     });
     await QuestService.startQuest("test-quest");

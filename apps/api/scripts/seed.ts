@@ -235,7 +235,7 @@ export async function seed(reset: boolean): Promise<void> {
     {
       name: "harbor-walk",
       displayName: "The Harbor Walk",
-      assignee: { kind: "team", name: "reds" },
+      entrants: [{ kind: "team", name: "reds" }],
       puzzles: [
         { puzzleName: "lighthouse", activationCode: "HARBOR1" },
         { puzzleName: "skyline", activationCode: "HARBOR2" },
@@ -245,7 +245,7 @@ export async function seed(reset: boolean): Promise<void> {
     {
       name: "old-town",
       displayName: "Old Town",
-      assignee: { kind: "user", name: "drew" },
+      entrants: [{ kind: "user", name: "drew" }],
       puzzles: [
         { puzzleName: "keys", activationCode: "OLDTOWN1" },
         { puzzleName: "lighthouse", activationCode: "OLDTOWN2" },
@@ -254,7 +254,7 @@ export async function seed(reset: boolean): Promise<void> {
     {
       name: "museum-mile",
       displayName: "The Museum Mile",
-      assignee: { kind: "user", name: "casey" },
+      entrants: [{ kind: "user", name: "casey" }],
       puzzles: [
         { puzzleName: "chime", activationCode: "MUSEUM1" },
         { puzzleName: "keys", activationCode: "MUSEUM2" },
@@ -263,7 +263,7 @@ export async function seed(reset: boolean): Promise<void> {
     {
       name: "first-steps",
       displayName: "First Steps",
-      assignee: { kind: "user", name: "drew" },
+      entrants: [{ kind: "user", name: "drew" }],
       puzzles: [{ puzzleName: "keys", activationCode: "FIRST1" }],
     },
   ];

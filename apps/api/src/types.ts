@@ -28,6 +28,11 @@ export type ServiceResult<T> =
       message: string;
       /** Why it failed, for the API to report it precisely. */
       reason?: ServiceErrorReason;
+      /**
+       * The request body's field the problem is about, such as entrants, so a
+       * form can show the message beside it.
+       */
+      field?: string;
       data?: undefined;
     };
 

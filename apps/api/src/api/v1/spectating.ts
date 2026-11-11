@@ -1,5 +1,6 @@
 // Following a quest from outside it: what anyone may see, without signing in,
-// unless the quest is private, when only its players and staff may.
+// unless the quest is private, when only its players (in any of its entries)
+// and staff may.
 // Players can open these too, so they show nothing more than a player can see.
 import type { Request } from "express";
 import { z } from "zod";
@@ -23,6 +24,14 @@ const questParams = z.object({
 
 const questPuzzleParams = questParams.extend({
   puzzleName: z.string().meta({ description: "The puzzle's name." }),
+});
+
+/** Whose progress on a puzzle to show. */
+const spectatorPuzzleQuery = z.object({
+  entry: z.string().min(1).meta({
+    description:
+      "The ID of the entry whose progress to show, from the quest's spectator view.",
+  }),
 });
 
 /**
@@ -51,7 +60,7 @@ export const spectatingRoutes = [
     operationId: "createLiveTicket",
     summary: "Get a ticket to follow a quest's live updates",
     description:
-      "A ticket lets one connection to the live-update websocket, /api/v1/updates, follow the quest. It expires within a minute and can be used once, so ask for a new one for each connection. A private quest gives one only to its players, its staff, and holders of a share link, and is otherwise not found.",
+      "A ticket lets one connection to the live-update websocket, /api/v1/updates, follow the quest, every entry of it. It expires within a minute and can be used once, so ask for a new one for each connection. A private quest gives one only to its players (in any of its entries), its staff, and holders of a share link, and is otherwise not found.",
     tags: ["Spectating"],
     access: "public",
     acceptsShareLink: true,
@@ -74,7 +83,8 @@ export const spectatingRoutes = [
       const shareToken = shareTokenOf(req);
       const issued = await issueLiveTicket(
         req.params.name,
-        shareToken && (await findValidShareLink(shareToken, req.params.name))
+        shareToken && (await findValidShareLink(shareToken, req.params.name)),
+        UserService.getLoggedInUser(req.user)?.id
       );
       if (!issued) {
         sendProblem(res, Problems.notFound, "The quest no longer exists");
@@ -92,7 +102,7 @@ export const spectatingRoutes = [
     operationId: "getSpectatorQuest",
     summary: "Follow a quest",
     description:
-      "What anyone may see of a quest: its progress and the puzzles its players have reached. How many puzzles it has is never shown. A quest that hasn't started shows its name and status, with no puzzles. A private quest is not found, except by its players, its staff, and holders of a share link.",
+      "What anyone may see of a quest: each entry's progress and the puzzles it has reached, with who plays it by display name only. How many puzzles it has is never shown. An entry that hasn't started shows its status, with no puzzles. While the quest is a race that not every entry has finished (racing), anyone but staff and administrators sees only the standings, with no stops (stopsHidden), so rivals can't read each other's puzzles and answers. A private quest is not found, except by its players (in any of its entries), its staff, and holders of a share link.",
     tags: ["Spectating"],
     access: "public",
     acceptsShareLink: true,
@@ -120,11 +130,11 @@ export const spectatingRoutes = [
     operationId: "getSpectatorPuzzle",
     summary: "Follow a puzzle",
     description:
-      "What anyone may see of a puzzle once its players have activated it: what it asks, the hints revealed, and the solution, once solved. A puzzle not yet activated is not found.",
+      "What anyone may see of a puzzle once an entry's players have activated it: what it asks, the hints that entry revealed, and the solution, once that entry solved it. A puzzle the entry hasn't activated, or an entry the quest doesn't have, is not found; so is every puzzle while the quest is a race that not every entry has finished, except for staff and administrators.",
     tags: ["Spectating"],
     access: "public",
     acceptsShareLink: true,
-    request: { params: questPuzzleParams },
+    request: { params: questPuzzleParams, query: spectatorPuzzleQuery },
     responses: {
       200: { description: "The puzzle.", body: spectatorPuzzleSchema },
     },
@@ -133,6 +143,7 @@ export const spectatingRoutes = [
       const found = await QuestService.getSpectatedQuestPuzzle(
         req.params.name,
         req.params.puzzleName,
+        req.query.entry,
         UserService.getLoggedInUser(req.user),
         shareTokenOf(req)
       );

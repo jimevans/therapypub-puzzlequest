@@ -14,6 +14,7 @@ import {
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
+import { entryIdOf } from "../references.js";
 import WebSocket from "ws";
 import { QuestPuzzleStatus } from "../../src/domain/quest/state.js";
 import { startSessions } from "../sessions.js";
@@ -38,6 +39,9 @@ let clients: WebSocket[] = [];
 const LINKS = "/api/v1/quests/secret/share-links";
 const QUEST = "/api/v1/quests/secret/spectator-view";
 const PUZZLE = "/api/v1/quests/secret/puzzles/riddle/spectator-view";
+
+/** The path of the puzzle as the quest's entry has it. */
+const puzzlePath = async () => `${PUZZLE}?entry=${await entryIdOf("secret")}`;
 const TICKET = "/api/v1/quests/secret/live-tickets";
 
 beforeAll(async () => {
@@ -99,7 +103,7 @@ beforeEach(async () => {
       name,
       displayName: name,
       visibility: "private",
-      assignee: { kind: "team", name: "reds" },
+      entrants: [{ kind: "team", name: "reds" }],
       puzzles: [{ puzzleName: "riddle", activationCode: `${name}-code` }],
     });
   }
@@ -229,7 +233,9 @@ describe("holding a link", () => {
     const { token } = await makeLink();
 
     expect((await holding(request(app).get(QUEST), token)).status).toBe(200);
-    expect((await holding(request(app).get(PUZZLE), token)).status).toBe(200);
+    expect(
+      (await holding(request(app).get(await puzzlePath()), token)).status
+    ).toBe(200);
     expect((await holding(request(app).post(TICKET), token)).status).toBe(201);
   });
 

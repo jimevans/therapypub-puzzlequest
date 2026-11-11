@@ -17,4 +17,7 @@ export const copy = {
   /** Tells screen readers a step has been reached. */
   stepReached: (stepNumber: number, displayName: string) =>
     `${stepLabel(stepNumber)} reached: ${displayName}.`,
+  /** Says why a race shows only who's playing and their times. */
+  stopsHiddenInRace:
+    "It's a race: each team's stops will show here once every team has finished.",
 };

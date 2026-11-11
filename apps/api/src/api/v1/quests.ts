@@ -1,7 +1,7 @@
-// Quests: managing them, running them (start, reset, pause, resume), the
-// administrator's rescue actions on their puzzles, texting their players,
-// and their event logs. Playing them (activating, solving, hints) is still
-// on the older API.
+// Quests: managing them, running them (start, reset, pause, resume) as a
+// whole or for one of their entrants, the administrator's rescue actions on
+// an entrant's puzzles, texting an entrant's players, and their event logs.
+// Playing them (activating, solving, hints) is in playing.ts.
 import PDFDocument from "pdfkit";
 import { z } from "zod";
 import { sendTextBody } from "../../schemas/messaging.schemas.js";
@@ -17,7 +17,12 @@ import * as UserService from "../../services/user.service.js";
 import type { ServiceResult } from "../../types.js";
 import { pageQuery, pageSchema } from "../paging.js";
 import { Problems, type ProblemType, sendServiceProblem } from "../problems.js";
-import { questEventSchema, questSchema, resourcePath } from "./resources.js";
+import {
+  questEventSchema,
+  questSchema,
+  resourcePath,
+  toQuestResource,
+} from "./resources.js";
 import { type AnyRoute, defineRoute } from "./route.js";
 
 /** The path parameter naming a quest. */
@@ -31,6 +36,55 @@ const questPuzzleParams = questParams.extend({
 });
 
 /**
+ * The two kinds of entrant, and how an administrator's per-entrant addresses
+ * name them: /quests/{name}/teams/{teamName}/… for a team, and
+ * /quests/{name}/players/{userName}/… for a user playing on their own.
+ */
+const ENTRANT_ADDRESSES = [
+  {
+    kind: "team",
+    segment: "teams",
+    param: "teamName",
+    noun: "Team",
+    description: "The team's name.",
+  },
+  {
+    kind: "user",
+    segment: "players",
+    param: "userName",
+    noun: "Player",
+    description: "The user name of the player playing on their own.",
+  },
+] as const;
+
+/** How one of the per-entrant addresses names its entrant. */
+type EntrantAddress = (typeof ENTRANT_ADDRESSES)[number];
+
+/**
+ * The path parameters naming a quest and one of its entrants.
+ * @param address how the address names the entrant
+ * @returns the parameters' schema
+ */
+function entrantParams(address: EntrantAddress) {
+  return questParams.extend({
+    [address.param]: z.string().meta({ description: address.description }),
+  });
+}
+
+/**
+ * Gets the entrant a request's path names.
+ * @param address how the address names the entrant
+ * @param params the request's path parameters
+ * @returns the entrant
+ */
+function entrantOf(
+  address: EntrantAddress,
+  params: Record<string, string>
+): QuestService.EntrantRef {
+  return { kind: address.kind, name: params[address.param] };
+}
+
+/**
  * Sends a quest, as an administrator sees it.
  * @param res the response
  * @param name the quest's name
@@ -41,57 +95,255 @@ async function sendQuest(
   name: string,
   status = 200
 ): Promise<void> {
-  const found = await QuestService.getQuestByQuestName(name);
+  const found = await QuestService.getQuestEntries(name);
   if (found.status === "error") {
     sendServiceProblem(res, found);
     return;
   }
-  res.status(status).json(found.data.toJSON());
+  res.status(status).json(toQuestResource(found.data, "admin"));
 }
 
 /**
  * Defines one of the administrator's actions on a quest, which answers with
  * the quest as it is afterwards.
- * @param action the action's path segment and operation
- * @param summary what it does
- * @param description more about what it does
+ * @param route the action's path below /quests/{name}, its operation, what it
+ *  does, its request's schemas, and the problems it can report
  * @param run runs the action
- * @param problems the problems it can report
  * @returns the route
  */
-function questAction(
-  action: { path: string; operationId: string },
-  summary: string,
-  description: string,
+function questAction<P extends z.ZodObject, B extends z.ZodType>(
+  route: {
+    path: string;
+    operationId: string;
+    summary: string;
+    description: string;
+    params: P;
+    body?: B;
+    problems?: ProblemType[];
+  },
   run: (
-    name: string,
+    params: z.output<P>,
+    body: z.output<B>,
     actor: string | undefined
-  ) => Promise<ServiceResult<unknown>>,
-  problems: ProblemType[] = [Problems.notFound, Problems.wrongState]
+  ) => Promise<ServiceResult<unknown>>
 ): AnyRoute {
   return defineRoute({
     method: "post",
-    path: `/quests/{name}/${action.path}`,
-    operationId: action.operationId,
-    summary,
-    description,
+    path: `/quests/{name}/${route.path}`,
+    operationId: route.operationId,
+    summary: route.summary,
+    description: route.description,
     tags: ["Running quests"],
     access: "admin",
-    request: { params: questParams },
+    request: {
+      params: route.params,
+      ...(route.body ? { body: route.body } : {}),
+    },
     responses: { 200: { description: "The quest.", body: questSchema } },
-    problems: [...problems, Problems.tryAgain],
+    problems: [
+      ...(route.problems ?? [Problems.notFound, Problems.wrongState]),
+      Problems.tryAgain,
+    ],
     async handle(req, res) {
-      const result = await run(req.params.name, req.user?.userName);
+      const result = await run(
+        req.params as z.output<P>,
+        req.body as z.output<B>,
+        req.user?.userName
+      );
       if (result.status === "error") {
         sendServiceProblem(res, result);
         return;
       }
-      await sendQuest(res, req.params.name);
+      await sendQuest(res, req.params.name as string);
     },
   });
 }
 
+/** What each action on a whole quest or one entrant's entry does. */
+const ENTRY_ACTIONS = [
+  {
+    action: "start",
+    run: QuestService.startQuest,
+    summary: "Start",
+    whole:
+      "Starts every entry not yet started, making the first puzzle available to activate; entries already started are left as they are.",
+    one: "Makes the first puzzle available to activate, for this entrant only.",
+    call: " A player's phone call to the quest's number starts their own entry.",
+  },
+  {
+    action: "reset",
+    run: QuestService.resetQuest,
+    summary: "Reset",
+    whole:
+      "Returns every entry to not started, clearing the players' progress and pauses.",
+    one: "Returns the entrant's entry to not started, clearing its progress and pauses; other entries are left as they are.",
+    call: " The event log keeps what happened.",
+  },
+  {
+    action: "pause",
+    run: QuestService.pauseQuest,
+    summary: "Pause",
+    whole:
+      "Pauses every entry in progress and not already paused, stopping its clocks; its players can't activate, guess, or reveal hints until it resumes, and the paused time doesn't count.",
+    one: "Stops the entrant's clocks; its players can't activate, guess, or reveal hints until it resumes, and the paused time doesn't count.",
+    call: "",
+  },
+  {
+    action: "resume",
+    run: QuestService.resumeQuest,
+    summary: "Resume",
+    whole: "Resumes every paused entry, starting its clocks again.",
+    one: "Starts the entrant's clocks again.",
+    call: "",
+  },
+] as const;
+
+/** The actions on a whole quest: every entry the rules allow. */
+const wholeQuestActions = ENTRY_ACTIONS.map(
+  ({ action, run, summary, whole, call }) =>
+    questAction(
+      {
+        path: action,
+        operationId: `${action}Quest`,
+        summary: `${summary} a quest, for every entrant`,
+        description: `${whole} Answers wrong-state only if no entry could be changed.${call}`,
+        params: questParams,
+      },
+      ({ name }, _body, actor) => run(name, { actor }, "all")
+    )
+);
+
+/**
+ * The administrator's actions on one entrant's entry, for teams and for
+ * players playing on their own.
+ */
+const entrantRoutes = ENTRANT_ADDRESSES.flatMap((address) => {
+  const params = entrantParams(address);
+  const puzzleParams = params.extend({
+    puzzleName: z.string().meta({ description: "The puzzle's name." }),
+  });
+  const notEntrant = `Not found if the ${address.kind} isn't one of the quest's entrants.`;
+  const entry = (raw: Record<string, string>) => ({
+    entrant: entrantOf(address, raw),
+  });
+  return [
+    ...ENTRY_ACTIONS.map(({ action, run, summary, one, call }) =>
+      questAction(
+        {
+          path: `${address.segment}/{${address.param}}/${action}`,
+          operationId: `${action}${address.noun}Entry`,
+          summary: `${summary} a ${address.kind === "team" ? "team" : "player"}'s entry in a quest`,
+          description: `${one}${call} ${notEntrant}`,
+          params,
+        },
+        (raw, _body, actor) => run(raw.name, { actor }, entry(raw))
+      )
+    ),
+    questAction(
+      {
+        path: `${address.segment}/{${address.param}}/puzzles/{puzzleName}/skip`,
+        operationId: `skip${address.noun}Puzzle`,
+        summary: `Skip a puzzle for a ${address.kind === "team" ? "team" : "player"}`,
+        description: `Completes a puzzle the entrant has reached, with no penalty; they see its solution, and the next puzzle becomes available. Allowed while the entry is paused. ${notEntrant}`,
+        params: puzzleParams,
+      },
+      (raw, _body, actor) =>
+        QuestService.skipQuestPuzzle(
+          raw.name,
+          raw.puzzleName,
+          { actor },
+          entry(raw)
+        )
+    ),
+    questAction(
+      {
+        path: `${address.segment}/{${address.param}}/puzzles/{puzzleName}/reset`,
+        operationId: `reset${address.noun}Puzzle`,
+        summary: `Reset a ${address.kind === "team" ? "team" : "player"}'s solved puzzle`,
+        description: `Returns a completed puzzle to in progress for the entrant, so they solve it again, and every later puzzle to not reached. For a puzzle that accepted a wrong answer: pause the entry, correct the puzzle, reset it here, and resume. Allowed while the entry is paused. ${notEntrant}`,
+        params: puzzleParams,
+        body: resetPuzzleBody,
+      },
+      (raw, body, actor) =>
+        QuestService.resetQuestPuzzle(
+          raw.name,
+          raw.puzzleName,
+          body.refundHints,
+          { actor },
+          entry(raw)
+        )
+    ),
+    defineRoute({
+      method: "post",
+      path: `/quests/{name}/${address.segment}/{${address.param}}/text-messages`,
+      operationId: `send${address.noun}TextMessage`,
+      summary: `Text a ${address.kind === "team" ? "team's members" : "player"}`,
+      description: `Texts the message to the entrant's players who accept text messages, a few seconds apart, as carriers require; the entry must be in progress. With an expected response, the entry waits for that reply and texts the confirmation back when it arrives. ${notEntrant}`,
+      tags: ["Running quests"],
+      access: "admin",
+      request: { params, body: sendTextBody },
+      responses: { 204: { description: "Sent." } },
+      problems: [
+        Problems.notFound,
+        Problems.wrongState,
+        Problems.noRecipients,
+        Problems.messagingFailed,
+      ],
+      async handle(req, res) {
+        const raw = req.params as Record<string, string>;
+        const { message, expectedResponse, responseConfirmation } = req.body;
+        const sent = await MessagingService.sendQuestTextMessage(
+          raw.name,
+          entrantOf(address, raw),
+          message,
+          expectedResponse && responseConfirmation
+            ? { expectedResponse, responseConfirmation }
+            : undefined
+        );
+        if (sent.status === "error") {
+          sendServiceProblem(res, sent);
+          return;
+        }
+        res.status(204).end();
+      },
+    }),
+  ];
+});
+
 export const questRoutes = [
+  defineRoute({
+    method: "post",
+    path: "/quests/{name}/text-messages",
+    operationId: "sendQuestTextMessage",
+    summary: "Text every entrant's players",
+    description:
+      "Texts the message to the players of every entry in progress who accept text messages, each number once, a few seconds apart, as carriers require. With an expected response, each of those entries waits for that reply and texts the confirmation back when it arrives. To text one team or player, use its own address.",
+    tags: ["Running quests"],
+    access: "admin",
+    request: { params: questParams, body: sendTextBody },
+    responses: { 204: { description: "Sent." } },
+    problems: [
+      Problems.notFound,
+      Problems.wrongState,
+      Problems.noRecipients,
+      Problems.messagingFailed,
+    ],
+    async handle(req, res) {
+      const { message, expectedResponse, responseConfirmation } = req.body;
+      const sent = await MessagingService.sendQuestTextMessageToAll(
+        req.params.name,
+        message,
+        expectedResponse && responseConfirmation
+          ? { expectedResponse, responseConfirmation }
+          : undefined
+      );
+      if (sent.status === "error") {
+        sendServiceProblem(res, sent);
+        return;
+      }
+      res.status(204).end();
+    },
+  }),
   defineRoute({
     method: "get",
     path: "/quests",
@@ -106,7 +358,7 @@ export const questRoutes = [
     async handle(req, res) {
       const page = await QuestService.listQuestsPage(req.query);
       res.json({
-        items: page.items.map((quest) => quest.toJSON()),
+        items: page.items.map((entries) => toQuestResource(entries, "admin")),
         next: page.next,
       });
     },
@@ -117,7 +369,7 @@ export const questRoutes = [
     operationId: "createQuest",
     summary: "Create a quest",
     description:
-      "Assigns it to a user or team, with its puzzles in order; each puzzle gets an activation code unless one is given.",
+      "With the users and teams playing it (at least one; a player may be in only one of them), and its puzzles in order; each puzzle gets an activation code unless one is given, the same for every entrant.",
     tags: ["Quests"],
     access: "admin",
     request: { body: createQuestBody },
@@ -145,7 +397,7 @@ export const questRoutes = [
     operationId: "getQuest",
     summary: "Get a quest",
     description:
-      "An administrator sees all of it. A player sees a quest assigned to them or their team once it has started, with only the puzzles they have reached; any other quest is not found.",
+      "An administrator sees all of it, with every entry. A player sees only their own entry (theirs or their team's) once it has started, with only the puzzles they have reached; a quest they don't play is not found.",
     tags: ["Quests"],
     access: "signedIn",
     request: { params: questParams },
@@ -153,16 +405,13 @@ export const questRoutes = [
     problems: [Problems.notFound],
     async handle(req, res) {
       const user = UserService.requireLoggedInUser(req.user);
-      const found = await QuestService.getQuestByQuestName(
-        req.params.name,
-        user
-      );
+      const found = await QuestService.getQuestEntries(req.params.name, user);
       if (found.status === "error") {
         sendServiceProblem(res, found);
         return;
       }
       res.json(
-        user.isAdmin() ? found.data.toJSON() : found.data.toPlayerJSON()
+        toQuestResource(found.data, user.isAdmin() ? "admin" : "player")
       );
     },
   }),
@@ -172,7 +421,7 @@ export const questRoutes = [
     operationId: "updateQuest",
     summary: "Change a quest",
     description:
-      "Changes the fields given. Once the quest has started, the puzzles the players have reached stay in place at the start of the list; a completed quest's puzzles can't change until it is reset. Progress changes only through the actions.",
+      "Changes the fields given. Once an entry has started, the puzzles it has reached stay in place at the start of the list; once any entry has completed the quest, its puzzles can't change until that entry is reset. Entrants already playing keep their progress; new ones start out not started; one left out is removed, but only before it starts (reset it first). Progress changes only through the actions.",
     tags: ["Quests"],
     access: "admin",
     request: { params: questParams, body: updateQuestBody },
@@ -215,81 +464,8 @@ export const questRoutes = [
       res.status(204).end();
     },
   }),
-  questAction(
-    { path: "start", operationId: "startQuest" },
-    "Start a quest",
-    "Makes its first puzzle available to activate. A player's phone call to the quest's number does the same.",
-    (name, actor) => QuestService.startQuest(name, { actor })
-  ),
-  questAction(
-    { path: "reset", operationId: "resetQuest" },
-    "Reset a quest",
-    "Returns it to not started, clearing the players' progress and pauses. The event log keeps what happened.",
-    (name, actor) => QuestService.resetQuest(name, { actor })
-  ),
-  questAction(
-    { path: "pause", operationId: "pauseQuest" },
-    "Pause a quest",
-    "Stops its clocks; the players can't activate, guess, or reveal hints until it resumes, and the paused time doesn't count.",
-    (name, actor) => QuestService.pauseQuest(name, { actor })
-  ),
-  questAction(
-    { path: "resume", operationId: "resumeQuest" },
-    "Resume a paused quest",
-    "Starts its clocks again.",
-    (name, actor) => QuestService.resumeQuest(name, { actor })
-  ),
-  defineRoute({
-    method: "post",
-    path: "/quests/{name}/puzzles/{puzzleName}/skip",
-    operationId: "skipQuestPuzzle",
-    summary: "Skip a puzzle for the players",
-    description:
-      "Completes a puzzle the players have reached, with no penalty; they see its solution, and the next puzzle becomes available. Allowed while the quest is paused.",
-    tags: ["Running quests"],
-    access: "admin",
-    request: { params: questPuzzleParams },
-    responses: { 200: { description: "The quest.", body: questSchema } },
-    problems: [Problems.notFound, Problems.wrongState, Problems.tryAgain],
-    async handle(req, res) {
-      const skipped = await QuestService.skipQuestPuzzle(
-        req.params.name,
-        req.params.puzzleName,
-        { actor: req.user?.userName }
-      );
-      if (skipped.status === "error") {
-        sendServiceProblem(res, skipped);
-        return;
-      }
-      await sendQuest(res, req.params.name);
-    },
-  }),
-  defineRoute({
-    method: "post",
-    path: "/quests/{name}/puzzles/{puzzleName}/reset",
-    operationId: "resetQuestPuzzle",
-    summary: "Reset a solved puzzle",
-    description:
-      "Returns a completed puzzle to in progress, so the players solve it again, and every later puzzle to not reached. For a puzzle that accepted a wrong answer: pause the quest, correct the puzzle, reset it here, and resume. Allowed while the quest is paused.",
-    tags: ["Running quests"],
-    access: "admin",
-    request: { params: questPuzzleParams, body: resetPuzzleBody },
-    responses: { 200: { description: "The quest.", body: questSchema } },
-    problems: [Problems.notFound, Problems.wrongState, Problems.tryAgain],
-    async handle(req, res) {
-      const reset = await QuestService.resetQuestPuzzle(
-        req.params.name,
-        req.params.puzzleName,
-        req.body.refundHints,
-        { actor: req.user?.userName }
-      );
-      if (reset.status === "error") {
-        sendServiceProblem(res, reset);
-        return;
-      }
-      await sendQuest(res, req.params.name);
-    },
-  }),
+  ...wholeQuestActions,
+  ...entrantRoutes,
   defineRoute({
     method: "get",
     path: "/quests/{name}/puzzles/{puzzleName}/qr-code",
@@ -374,12 +550,13 @@ export const questRoutes = [
     },
     problems: [Problems.notFound],
     async handle(req, res) {
-      const found = await QuestService.getQuestByQuestName(req.params.name);
+      const found = await QuestService.getQuestEntries(req.params.name);
       if (found.status === "error") {
         sendServiceProblem(res, found);
         return;
       }
-      const quest = found.data;
+      // Every entry plays the same stops, with the same codes.
+      const [quest] = found.data;
       const pdf = new PDFDocument({ autoFirstPage: false });
       const chunks: Buffer[] = [];
       pdf.on("data", (chunk: Buffer) => chunks.push(chunk));
@@ -407,7 +584,7 @@ export const questRoutes = [
     operationId: "listQuestEvents",
     summary: "List what happened in a quest",
     description:
-      "The quest's event log, oldest first. It keeps names as they were at the time, and survives resetting the quest.",
+      "The quest's event log, oldest first, for every entry: each event says whose entry it happened in. It keeps names as they were at the time, and survives resetting the quest.",
     tags: ["Running quests"],
     access: "admin",
     request: { params: questParams, query: pageQuery },
@@ -428,39 +605,6 @@ export const questRoutes = [
         return;
       }
       res.json(page.data);
-    },
-  }),
-  defineRoute({
-    method: "post",
-    path: "/quests/{name}/text-messages",
-    operationId: "sendQuestTextMessage",
-    summary: "Text the players",
-    description:
-      "Texts the message to the quest's players who accept text messages, a few seconds apart, as carriers require. With an expected response, the quest waits for that reply and texts the confirmation back when it arrives.",
-    tags: ["Running quests"],
-    access: "admin",
-    request: { params: questParams, body: sendTextBody },
-    responses: { 204: { description: "Sent." } },
-    problems: [
-      Problems.notFound,
-      Problems.wrongState,
-      Problems.noRecipients,
-      Problems.messagingFailed,
-    ],
-    async handle(req, res) {
-      const { message, expectedResponse, responseConfirmation } = req.body;
-      const sent = await MessagingService.sendQuestTextMessage(
-        req.params.name,
-        message,
-        expectedResponse && responseConfirmation
-          ? { expectedResponse, responseConfirmation }
-          : undefined
-      );
-      if (sent.status === "error") {
-        sendServiceProblem(res, sent);
-        return;
-      }
-      res.status(204).end();
     },
   }),
 ];

@@ -48,8 +48,14 @@ export interface QuestActivity extends QuestActionOrigin {
   questName: string;
   /** What happened. */
   events: readonly PublishedQuestEvent[];
-  /** Whom the quest is assigned to, if anyone. */
-  assignee?: AssigneeRef;
+  /** The entry the events happened in, and the user or team playing it. */
+  entry: { id: string; assignee: AssigneeRef };
+  /**
+   * True if, after the action, the quest is a race that not every entry has
+   * finished: several entries, not all completed. Only staff and the entry's
+   * own players are then sent what happened.
+   */
+  racing: boolean;
 }
 
 /** Receives quest activity. */

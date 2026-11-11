@@ -57,7 +57,7 @@ describe("staff", () => {
     await api("POST", "/quests", admin, {
       name: questName,
       displayName: "The Staffed Quest",
-      assignee: { kind: "user", name: player },
+      entrants: [{ kind: "user", name: player }],
       puzzles: [
         { puzzleName: riddle, activationCode: "staffed-riddle-code" },
         { puzzleName: finale, activationCode: "staffed-finale-code" },

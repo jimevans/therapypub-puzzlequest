@@ -33,10 +33,16 @@ export function createRoutes(queryClient: QueryClient): RouteObject[] {
    */
   const prefetch =
     <Data, Key extends QueryKey>(
-      query: (params: Params) => FetchQueryOptions<Data, Error, Data, Key>
+      query: (
+        params: Params,
+        search: URLSearchParams
+      ) => FetchQueryOptions<Data, Error, Data, Key> | undefined
     ) =>
-    ({ params }: { params: Params }) => {
-      void queryClient.prefetchQuery(query(params));
+    ({ params, request }: { params: Params; request: Request }) => {
+      const options = query(params, new URL(request.url).searchParams);
+      if (options) {
+        void queryClient.prefetchQuery(options);
+      }
       return null;
     };
 
@@ -79,9 +85,13 @@ export function createRoutes(queryClient: QueryClient): RouteObject[] {
         },
         {
           path: "/monitor/quest/:name/puzzle/:puzzleName",
-          loader: prefetch(({ name = "", puzzleName = "" }) =>
-            spectatorPuzzleQuery(name, puzzleName)
-          ),
+          // The entry whose progress to show is in the address's query.
+          loader: prefetch(({ name = "", puzzleName = "" }, search) => {
+            const entry = search.get("entry");
+            return entry === null
+              ? undefined
+              : spectatorPuzzleQuery(name, puzzleName, entry);
+          }),
           lazy: async () => ({
             Component: (await import("../screens/followAlong/FollowPuzzle"))
               .FollowPuzzle,

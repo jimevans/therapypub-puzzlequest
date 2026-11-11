@@ -150,7 +150,7 @@ describe("a team's members and a quest's assignee", () => {
         (
           await QuestService.createQuest({
             name,
-            assignee: { kind, name: assigneeName },
+            entrants: [{ kind, name: assigneeName }],
           })
         ).status
       ).toBe("success");
@@ -184,8 +184,8 @@ describe("a team's members and a quest's assignee", () => {
 
     const team = await TeamModel.findOne({ teamName: "team" }).lean();
     expect(team!.memberIds).toEqual([]);
-    const solo = await QuestService.getQuestByQuestName("solo");
-    expect(solo.data!.assignee).toEqual({
+    const [solo] = (await QuestService.getQuestEntries("solo")).data!;
+    expect(solo.assignee).toEqual({
       kind: "user",
       id: expect.any(String),
     });
@@ -212,14 +212,14 @@ describe("a quest's puzzles", () => {
     });
     await QuestService.createQuest({
       name: "quest",
-      assignee: { kind: "user", name: "player" },
+      entrants: [{ kind: "user", name: "player" }],
       puzzles: [{ puzzleName: "riddle" }],
     });
     await QuestService.startQuest("quest");
 
     await PuzzleModel.updateOne({ name: "riddle" }, { name: "enigma" });
 
-    const quest = (await QuestService.getQuestByQuestName("quest")).data!;
+    const [quest] = (await QuestService.getQuestEntries("quest")).data!;
     expect(quest.puzzles.map((puzzle) => puzzle.puzzleName)).toEqual([
       "enigma",
     ]);

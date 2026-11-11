@@ -8,7 +8,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
 import { startSessions } from "../sessions.js";
-import { assigneeIdsOf } from "../references.js";
+import { assigneeIdsOf, entryIdOf } from "../references.js";
 
 const { createApp } = await import("../../src/createApp.js");
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
@@ -75,7 +75,7 @@ beforeEach(async () => {
   await QuestService.createQuest({
     name: "quest",
     displayName: "Quest",
-    assignee: { kind: "user", name: "player" },
+    entrants: [{ kind: "user", name: "player" }],
     puzzles: [
       { puzzleName: "first", activationCode: "code-1" },
       { puzzleName: "second", activationCode: "code-2" },
@@ -110,7 +110,12 @@ async function playSome() {
   await QuestService.finishPuzzle("quest", "first", player, "first");
   await QuestService.activatePuzzle("quest", "second", player, "code-2");
   await QuestService.getPuzzleHint("quest", "second", player);
-  await QuestService.setExpectedTextResponse("quest", "reply", "Thanks");
+  await QuestService.setExpectedTextResponse(
+    "quest",
+    await entryIdOf("quest"),
+    "reply",
+    "Thanks"
+  );
 }
 
 describe("a quest, as its player sees it", () => {
@@ -123,9 +128,12 @@ describe("a quest, as its player sees it", () => {
 
     const quest = bodyOf(await as("player", "get", "/quests/quest"));
 
-    expect(quest).not.toHaveProperty("textResponse");
-    expect(quest).not.toHaveProperty("textResponseConfirmation");
-    const [solved, current, ...rest] = quest.puzzles;
+    expect(quest).not.toHaveProperty("visibility");
+    expect(quest.entries).toHaveLength(1);
+    const [entry] = quest.entries;
+    expect(entry).not.toHaveProperty("textResponse");
+    expect(entry).not.toHaveProperty("textResponseConfirmation");
+    const [solved, current, ...rest] = entry.puzzles;
     expect(rest).toEqual([]);
     expect(solved).toMatchObject({
       puzzleName: "first",
@@ -137,7 +145,7 @@ describe("a quest, as its player sees it", () => {
     expect(current.hints).toEqual([
       { text: "first hint", solutionWarning: false, timePenalty: 60 },
     ]);
-    for (const puzzle of quest.puzzles) {
+    for (const puzzle of entry.puzzles) {
       expect(puzzle).not.toHaveProperty("activationCode");
     }
   });
@@ -157,18 +165,21 @@ describe("a quest, as an administrator sees it", () => {
     await playSome();
 
     const quest = bodyOf(await as("admin", "get", "/quests/quest"));
+    const [entry] = quest.entries;
 
-    expect(quest.textResponse).toBe("reply");
+    expect(quest.visibility).toBe("public");
+    expect(entry.textResponse).toBe("reply");
     expect(
-      quest.puzzles.map((p: { activationCode: string }) => p.activationCode)
+      entry.puzzles.map((p: { activationCode: string }) => p.activationCode)
     ).toEqual(["code-1", "code-2", "code-3"]);
-    expect(quest.puzzles[1]).toMatchObject({
+    expect(entry.puzzles[1]).toMatchObject({
       solutionDisplayText: "second solution",
       hints: [expect.anything(), expect.anything()],
     });
-    expect(quest.assignee).toEqual({
+    expect(entry.id).toBe(await entryIdOf("quest"));
+    // Named, never by the user's or team's own ID.
+    expect(entry.entrant).toEqual({
       kind: "user",
-      id: expect.stringMatching(/^[0-9a-f]{24}$/),
       name: "player",
       displayName: "player",
     });
@@ -180,7 +191,7 @@ describe("listing quests", () => {
     await QuestService.createQuest({
       name: "later",
       displayName: "Later",
-      assignee: { kind: "user", name: "other" },
+      entrants: [{ kind: "user", name: "other" }],
     });
 
     const first = bodyOf(await as("admin", "get", "/quests?limit=1"));
@@ -189,7 +200,7 @@ describe("listing quests", () => {
     );
 
     expect(first.items.map((q: { name: string }) => q.name)).toEqual(["quest"]);
-    expect(first.items[0].puzzles[0].displayName).toBe("FIRST");
+    expect(first.items[0].entries[0].puzzles[0].displayName).toBe("FIRST");
     expect(second).toEqual({
       items: [expect.objectContaining({ name: "later" })],
       next: null,
@@ -211,7 +222,7 @@ describe("managing a quest", () => {
     const response = await as("admin", "post", "/quests").send({
       name: "new-quest",
       displayName: "New Quest",
-      assignee: { kind: "user", name: "other" },
+      entrants: [{ kind: "user", name: "other" }],
       puzzles: [{ puzzleName: "first" }],
     });
 
@@ -219,8 +230,15 @@ describe("managing a quest", () => {
     expect(response.headers.location).toBe("/api/v1/quests/new-quest");
     expect(bodyOf(response)).toMatchObject({
       name: "new-quest",
-      statusDescription: "Not yet started",
-      puzzles: [{ puzzleName: "first", activationCode: expect.any(String) }],
+      entries: [
+        {
+          entrant: { kind: "user", name: "other" },
+          statusDescription: "Not yet started",
+          puzzles: [
+            { puzzleName: "first", activationCode: expect.any(String) },
+          ],
+        },
+      ],
     });
   });
 
@@ -228,7 +246,7 @@ describe("managing a quest", () => {
     const response = await as("admin", "post", "/quests").send({
       name: "new-quest",
       displayName: "New Quest",
-      assignee: { kind: "user", name: "other" },
+      entrants: [{ kind: "user", name: "other" }],
       puzzles: [{ puzzleName: "nothing" }],
     });
 
@@ -253,25 +271,25 @@ describe("managing a quest", () => {
   it("changes one, answering with it", async () => {
     const response = await as("admin", "patch", "/quests/quest").send({
       displayName: "Renamed",
-      assignee: { kind: "user", name: "other" },
+      entrants: [{ kind: "user", name: "other" }],
     });
 
     expect(response.status).toBe(200);
     expect(bodyOf(response)).toMatchObject({
       displayName: "Renamed",
-      assignee: { kind: "user", name: "other" },
+      entries: [{ entrant: { kind: "user", name: "other" } }],
     });
   });
 
   it("keeps the display name when it's left out of a change", async () => {
     const response = await as("admin", "patch", "/quests/quest").send({
-      assignee: { kind: "user", name: "other" },
+      entrants: [{ kind: "user", name: "other" }],
     });
 
     expect(response.status).toBe(200);
     expect(bodyOf(response)).toMatchObject({
       displayName: "Quest",
-      assignee: { kind: "user", name: "other" },
+      entries: [{ entrant: { kind: "user", name: "other" } }],
     });
   });
 
@@ -283,7 +301,7 @@ describe("managing a quest", () => {
 
 describe("a stop's card word", () => {
   const words = async () =>
-    bodyOf(await as("admin", "get", "/quests/quest")).puzzles.map(
+    bodyOf(await as("admin", "get", "/quests/quest")).entries[0].puzzles.map(
       (puzzle: { cardWord?: string }) => puzzle.cardWord
     );
 
@@ -338,8 +356,12 @@ describe("running a quest", () => {
 
     expect(response.status).toBe(200);
     expect(bodyOf(response)).toMatchObject({
-      statusDescription: "In progress",
-      puzzles: [{ statusDescription: "Awaiting activation" }, {}, {}],
+      entries: [
+        {
+          statusDescription: "In progress",
+          puzzles: [{ statusDescription: "Awaiting activation" }, {}, {}],
+        },
+      ],
     });
   });
 
@@ -357,7 +379,9 @@ describe("running a quest", () => {
 
     const response = await as("admin", "post", "/quests/quest/reset");
 
-    expect(bodyOf(response).statusDescription).toBe("Not yet started");
+    expect(bodyOf(response).entries[0].statusDescription).toBe(
+      "Not yet started"
+    );
   });
 
   it("is a problem for a quest that doesn't exist", async () => {
@@ -382,12 +406,14 @@ describe("a quest's event log", () => {
       await as("admin", "get", `/quests/quest/events?after=${first.next}`)
     );
 
+    const entrant = { kind: "user", name: "player" };
     expect(first.items).toEqual([
-      { type: "QuestStarted", at: expect.any(String) },
+      { type: "QuestStarted", at: expect.any(String), entrant },
       {
         type: "PuzzleStarted",
         puzzleName: "first",
         at: expect.any(String),
+        entrant,
       },
     ]);
     expect(second.items.map((event: { type: string }) => event.type)).toEqual([

@@ -97,6 +97,9 @@ export interface QuestAssignee {
 
 /** The properties a Quest is created from: a stored quest, or a request. */
 export type QuestProperties = Pick<Quest, "name" | "displayName" | "status"> & {
+  /** The entry this is the quest as seen through, and its place in the list. */
+  entryId?: string | Types.ObjectId;
+  entryIndex?: number;
   assignee: Omit<QuestAssignee, "id"> & { id: string | Types.ObjectId };
 } & Partial<
     Pick<Quest, "textResponse" | "textResponseConfirmation" | "visibility">
@@ -121,18 +124,46 @@ type QuestDocument = InstanceType<typeof QuestModel>;
 type EntryDocument = QuestDocument["entries"][number];
 
 /**
- * Gets a quest's entry. Every quest has exactly one for now: competitive
- * quests, with several, are being built.
- * @param quest the quest document
- * @returns the entry
+ * Gets the user or team playing an entry. Every entry has one; the schema
+ * can't say so of a nested object.
+ * @param entry the entry
+ * @returns the user or team
  */
-function entryOf(quest: QuestDocument): EntryDocument {
-  const [entry] = quest.entries;
-  if (!entry) {
-    throw new Error(`Quest ${quest.name} has no entry`);
+function assigneeOf(entry: EntryDocument): {
+  kind: AssigneeKind;
+  id: Types.ObjectId;
+} {
+  if (!entry.assignee) {
+    throw new Error(`Entry ${entry._id.toString()} has no user or team`);
   }
-  return entry;
+  return entry.assignee;
 }
+
+/**
+ * Whether a quest is a race not every entry has finished: it has several
+ * entries, and not all have completed it. While it is, only staff and each
+ * entry's own players may see that entry's stops (see decision 0011).
+ * @param entries the quest's entries, stored or as loaded
+ * @returns true if so
+ */
+export function isRacing(entries: readonly { status: number }[]): boolean {
+  return (
+    entries.length > 1 &&
+    entries.some((entry) => entry.status !== QuestStatus.COMPLETED)
+  );
+}
+
+/** A user or team playing a quest, by name, as requests name it. */
+export interface EntrantRef {
+  kind: AssigneeKind;
+  name: string;
+}
+
+/**
+ * Which of a quest's entries an administrator's action applies to: the entry
+ * of a named user or team, an entry by its ID, or every entry.
+ */
+export type EntryTarget = { entrant: EntrantRef } | { entryId: string } | "all";
 
 /**
  * A new stop: a puzzle, with a generated activation code.
@@ -323,13 +354,24 @@ export class QuestPuzzle {
 }
 
 /**
- * A data class describing a quest.
+ * A quest as seen through one of its entries: the quest's definition, with
+ * the entry's player or team and progress. A quest is loaded as one of these
+ * for each of its entries, in the entries' order.
  */
 export class Quest {
   /**
    * Gets or sets the unique name of the quest.
    */
   name: string;
+
+  /**
+   * The ID of the entry this quest is seen through: a quest is loaded once
+   * for each user or team playing it, with that entry's progress.
+   */
+  entryId: string;
+
+  /** The entry's place in the quest's list of entries, from 0. */
+  entryIndex: number;
 
   /**
    * Gets or sets the display name of this quest.
@@ -380,6 +422,8 @@ export class Quest {
    */
   constructor(questDefinition: QuestProperties) {
     this.name = questDefinition.name;
+    this.entryId = questDefinition.entryId?.toString() ?? "";
+    this.entryIndex = questDefinition.entryIndex ?? 0;
     this.displayName = questDefinition.displayName;
     this.visibility = questDefinition.visibility ?? "public";
     this.assignee = {
@@ -468,76 +512,7 @@ export class Quest {
       now
     );
   }
-
-  /**
-   * Gets an object that will be serialized to JSON as the serialized representation
-   * of this Quest.
-   * @returns the object to be serialized to JSON
-   */
-  toJSON(): QuestJSON {
-    return {
-      name: this.name,
-      displayName: this.displayName,
-      visibility: this.visibility,
-      assignee: this.assignee,
-      status: this.status,
-      statusDescription: this.statusDescription,
-      textResponse: this.textResponse,
-      textResponseConfirmation: this.textResponseConfirmation,
-      paused: this.paused,
-      puzzles: this.puzzles,
-      progress: this.getProgress(),
-    };
-  }
-
-  /**
-   * Gets the serialized representation of this Quest that the players may
-   * see. It leaves out the text reply the quest is waiting for, and shows
-   * each puzzle as its players may see it.
-   * @returns the object to be serialized to JSON
-   */
-  toPlayerJSON(): QuestPlayerJSON {
-    return {
-      name: this.name,
-      displayName: this.displayName,
-      assignee: this.assignee,
-      status: this.status,
-      statusDescription: this.statusDescription,
-      paused: this.paused,
-      puzzles: this.puzzles.map((puzzle) => puzzle.toPlayerJSON()),
-      progress: this.getProgress(),
-    };
-  }
 }
-
-/** The JSON representation of a Quest. */
-export type QuestJSON = Pick<
-  Quest,
-  | "name"
-  | "displayName"
-  | "visibility"
-  | "assignee"
-  | "status"
-  | "statusDescription"
-  | "textResponse"
-  | "textResponseConfirmation"
-  | "paused"
-  | "puzzles"
-> & {
-  /** How long the players have spent on the quest. */
-  progress: QuestProgress;
-};
-
-/** The JSON representation of a Quest that its players may see. */
-export type QuestPlayerJSON = Pick<
-  Quest,
-  | "name"
-  | "displayName"
-  | "assignee"
-  | "status"
-  | "statusDescription"
-  | "paused"
-> & { puzzles: Record<string, unknown>[]; progress: QuestProgress };
 
 /**
  * Options for querying quests. Every option is optional.
@@ -567,8 +542,13 @@ export interface QuestDefinition {
   displayName?: string;
   /** Who can follow the quest; new quests are public unless this says not. */
   visibility?: QuestVisibility;
-  /** The user or team the quest is assigned to, by name. */
-  assignee?: { kind: AssigneeKind; name: string };
+  /**
+   * The users and teams playing the quest, by name, in order; at least one.
+   * On an update, those already playing keep their progress, those new to it
+   * start out not started, and those left out are removed, which is allowed
+   * only before they start.
+   */
+  entrants?: EntrantRef[];
   /**
    * The puzzles in the quest, in order. An activation code may be given to
    * set or change a puzzle's code; otherwise one is generated. A card word
@@ -737,6 +717,8 @@ function createFindResultProjectionParameter(
 ): object {
   const projectParams: Record<string, unknown> = {
     name: true,
+    entryId: true,
+    entryIndex: true,
     displayName: true,
     visibility: true,
     assignee: true,
@@ -775,9 +757,10 @@ export async function findQuests(
   // Each entry's progress is merged into the quest's own shape: who plays it,
   // its status, and each stop with the entry's progress on it.
   pipelineStages.push(
-    { $unwind: "$entries" },
+    { $unwind: { path: "$entries", includeArrayIndex: "entryIndex" } },
     {
       $addFields: {
+        entryId: "$entries._id",
         assignee: "$entries.assignee",
         status: "$entries.status",
         textResponse: "$entries.textResponse",
@@ -816,7 +799,7 @@ export async function findQuests(
       },
     },
     { $match: createFindProgressMatchParameter(queryOptions) },
-    { $sort: { _id: 1 } }
+    { $sort: { _id: 1, entryIndex: 1 } }
   );
   // Quests refer to their puzzles by ID; the puzzles' details, including
   // their names, are looked up.
@@ -915,38 +898,175 @@ async function describeAssignees(quests: Quest[]): Promise<void> {
   }
 }
 
-/**
- * Finds the user or team to assign a quest to, by name.
- * @param assignee the kind and name of the user or team
- * @returns the assignee as stored, or an error result if there is no such
- *  user or team
- */
-async function findAssignee(assignee: {
+/** A user or team found to play a quest. */
+interface FoundEntrant {
   kind: AssigneeKind;
+  id: Types.ObjectId;
   name: string;
-}): Promise<{ kind: AssigneeKind; id: Types.ObjectId } | QuestErrorResult> {
-  const found =
-    assignee.kind === "user"
-      ? await UserModel.findOne({ userName: assignee.name }, { _id: 1 }).lean()
-      : await TeamModel.findOne({ teamName: assignee.name }, { _id: 1 }).lean();
-  if (!found) {
-    return {
-      status: "error",
-      statusCode: 400,
-      reason: "invalid-quest",
-      message: `No ${assignee.kind} with name ${assignee.name} found`,
-    };
-  }
-  return { kind: assignee.kind, id: found._id };
 }
 
 /**
- * Gets a page of the quests, in the order they were created, with their
- * puzzles' details.
- * @param query the page wanted
- * @returns the page of quests
+ * Describes a user or team playing a quest, for messages: "team harbor" or
+ * "user pat".
+ * @param entrant the user or team
+ * @returns the description
  */
-export async function listQuestsPage(query: PageQuery): Promise<Page<Quest>> {
+function entrantLabel(entrant: { kind: AssigneeKind; name: string }): string {
+  return `${entrant.kind} ${entrant.name}`;
+}
+
+/**
+ * Looks up the names of users and teams playing quests, for messages.
+ * @param assignees the users and teams, as entries store them
+ * @returns their descriptions, such as "team harbor", in the same order; one
+ *  that has been deleted is described by its ID
+ */
+async function entrantLabelsOf(
+  assignees: readonly { kind: AssigneeKind; id: Types.ObjectId }[]
+): Promise<string[]> {
+  const [users, teams] = await Promise.all([
+    UserModel.find(
+      {
+        _id: {
+          $in: assignees.filter((a) => a.kind === "user").map((a) => a.id),
+        },
+      },
+      { userName: 1 }
+    ).lean(),
+    TeamModel.find(
+      {
+        _id: {
+          $in: assignees.filter((a) => a.kind === "team").map((a) => a.id),
+        },
+      },
+      { teamName: 1 }
+    ).lean(),
+  ]);
+  const names = new Map<string, string>([
+    ...users.map((user) => [user._id.toString(), user.userName] as const),
+    ...teams.map((team) => [team._id.toString(), team.teamName] as const),
+  ]);
+  return assignees.map((assignee) =>
+    entrantLabel({
+      kind: assignee.kind,
+      name: names.get(assignee.id.toString()) ?? assignee.id.toString(),
+    })
+  );
+}
+
+/**
+ * Finds the users and teams to play a quest, by name, and checks them: there
+ * must be at least one, each must exist and appear once, and no player may
+ * be in two of them, as a user and in a team, or in two teams.
+ * @param entrants the kinds and names of the users and teams
+ * @returns the entrants as stored, in the same order, or an error result
+ */
+async function findEntrants(
+  entrants: readonly EntrantRef[]
+): Promise<FoundEntrant[] | QuestErrorResult> {
+  const invalid = (message: string): QuestErrorResult => ({
+    status: "error",
+    statusCode: 400,
+    reason: "invalid-quest",
+    field: "entrants",
+    message,
+  });
+  if (!entrants.length) {
+    return invalid(
+      "Quest definition must contain at least one user or team to play it"
+    );
+  }
+  const labels = entrants.map(entrantLabel);
+  const repeated = labels.filter(
+    (label, index) => labels.indexOf(label) !== index
+  );
+  if (repeated.length) {
+    return invalid(
+      `A user or team may play a quest only once: ${[...new Set(repeated)].join(", ")}`
+    );
+  }
+  const found: (FoundEntrant & { playerIds: Types.ObjectId[] })[] = [];
+  for (const entrant of entrants) {
+    if (entrant.kind === "user") {
+      const user = await UserModel.findOne(
+        { userName: entrant.name },
+        { _id: 1 }
+      ).lean();
+      if (!user) {
+        return invalid(`No user with name ${entrant.name} found`);
+      }
+      found.push({ ...entrant, id: user._id, playerIds: [user._id] });
+    } else {
+      const team = await TeamModel.findOne(
+        { teamName: entrant.name },
+        { _id: 1, memberIds: 1 }
+      ).lean();
+      if (!team) {
+        return invalid(`No team with name ${entrant.name} found`);
+      }
+      found.push({ ...entrant, id: team._id, playerIds: team.memberIds });
+    }
+  }
+  // Each player's entrant, so a player in two of them is found.
+  const entrantOfPlayer = new Map<string, FoundEntrant>();
+  for (const entrant of found) {
+    for (const playerId of entrant.playerIds) {
+      const other = entrantOfPlayer.get(playerId.toString());
+      if (other) {
+        const player = await UserModel.findById(playerId, {
+          userName: 1,
+        }).lean();
+        return invalid(
+          `Player ${player?.userName ?? playerId.toString()} would be in two of the quest's entrants, ${entrantLabel(other)} and ${entrantLabel(entrant)}; a player may be in only one`
+        );
+      }
+      entrantOfPlayer.set(playerId.toString(), entrant);
+    }
+  }
+  return found.map(({ kind, id, name }) => ({ kind, id, name }));
+}
+
+/**
+ * Finds the ID of a user or team, by name.
+ * @param entrant the kind and name of the user or team
+ * @returns the ID, or undefined if there is no such user or team
+ */
+async function findEntrantId(
+  entrant: EntrantRef
+): Promise<Types.ObjectId | undefined> {
+  const found =
+    entrant.kind === "user"
+      ? await UserModel.findOne({ userName: entrant.name }, { _id: 1 }).lean()
+      : await TeamModel.findOne({ teamName: entrant.name }, { _id: 1 }).lean();
+  return found?._id;
+}
+
+/**
+ * Groups quests, as findQuests returns them (one for each entry, sorted by
+ * quest), into one list of entries for each quest.
+ * @param rows the quests, one for each entry
+ * @returns each quest's entries, in order
+ */
+export function groupEntriesByQuest(rows: readonly Quest[]): Quest[][] {
+  const groups: Quest[][] = [];
+  for (const row of rows) {
+    const last = groups.at(-1);
+    if (last && last[0].name === row.name) {
+      last.push(row);
+    } else {
+      groups.push([row]);
+    }
+  }
+  return groups;
+}
+
+/**
+ * Gets a page of the quests, in the order they were created, each as its
+ * entries, with their puzzles' details.
+ * @param query the page wanted
+ * @returns the page of quests, each a list of its entries
+ */
+export async function listQuestsPage(query: PageQuery): Promise<Page<Quest[]>> {
   const page = await findPage(
     (conditions) => QuestModel.find(conditions, { _id: 1 }).lean(),
     query
@@ -958,12 +1078,13 @@ export async function listQuestsPage(query: PageQuery): Promise<Page<Quest>> {
     { questIds: page.items.map((quest) => quest._id) },
     true
   );
-  return { items: found.data ?? [], next: page.next };
+  return { items: groupEntriesByQuest(found.data ?? []), next: page.next };
 }
 
 /**
- * Gets a page of the quests assigned to any of the given users and teams, once
- * they have started, as a player sees them listed.
+ * Gets a page of the quests that any of the given users and teams play, once
+ * their entries have started, as a player sees them listed: each quest as
+ * their entry, and no one else's.
  * @param assigneeIds the IDs of the users and teams
  * @param query the page wanted
  * @returns the page of quests
@@ -994,10 +1115,19 @@ export async function listAssignedQuestsPage(
     return { items: [], next: null };
   }
   const found = await findQuests(
-    { questIds: page.items.map((quest) => quest._id) },
+    {
+      questIds: page.items.map((quest) => quest._id),
+      assigneeIds,
+      questStatus: QuestStatus.IN_PROGRESS,
+    },
     true
   );
-  return { items: found.data ?? [], next: page.next };
+  // A player in two of a quest's entries, which saving the quest prevents
+  // but joining a team later can cause, sees the first.
+  return {
+    items: groupEntriesByQuest(found.data ?? []).map(([first]) => first),
+    next: page.next,
+  };
 }
 
 /**
@@ -1018,6 +1148,7 @@ export async function listQuestEventsPage(
       puzzleName?: string | null;
       actor?: string | null;
       actorDeleted?: boolean;
+      entrant: { kind: AssigneeKind; name?: string } | null;
       data?: unknown;
     }>
   >
@@ -1044,12 +1175,19 @@ export async function listQuestEventsPage(
     data: {
       next: page.next,
       items: page.items.map(
-        ({ type, at, puzzleName, actor, actorDeleted, data }) => ({
+        ({ type, at, puzzleName, actor, actorDeleted, entrant, data }) => ({
           type,
           at,
           ...(puzzleName ? { puzzleName } : {}),
           ...(actor ? { actor } : {}),
           ...(actorDeleted ? { actorDeleted: true } : {}),
+          // Events logged before quests had several entries have none.
+          entrant: entrant?.kind
+            ? {
+                kind: entrant.kind,
+                ...(entrant.name ? { name: entrant.name } : {}),
+              }
+            : null,
           ...(data ? { data } : {}),
         })
       ),
@@ -1058,38 +1196,54 @@ export async function listQuestEventsPage(
 }
 
 /**
- * Gets a quest with the specified name.
- * @param questName the name of the quest to retrieve
- * @param user the user and teams for which to retrieve quests; omit for no filtering
- * @returns a Promise resolving to a result containing the array of quests matching
- *  the parameters or an error result if no quests are found.
+ * Gets a quest's entries: each as the quest seen through it, in order. An
+ * administrator, or a caller giving no user, gets every entry. Any other user
+ * gets only their own entry, or their team's, once it has started, with only
+ * the puzzles it has reached; a quest they don't play is not found.
+ * @param questName the name of the quest
+ * @param user who's asking; omit for no filtering
+ * @returns a result containing the entries, or an error result if none are
+ *  found
  */
-export async function getQuestByQuestName(
+export async function getQuestEntries(
   questName: string,
   user?: User | null
-): Promise<QuestResult> {
+): Promise<QuestResult<Quest[]>> {
   const queryOptions: QuestQueryOptions = { questName: questName };
   if (user && !user.isAdmin()) {
-    // If the user is a regular user on a quest, only return
-    // the quest if it is in progress or completed, and only
-    // return puzzles that are awaiting activation, in progress,
-    // or completed.
     queryOptions.assigneeIds = await user.getAssigneeIds();
     queryOptions.questStatus = QuestStatus.IN_PROGRESS;
     queryOptions.puzzleStatus = QuestPuzzleStatus.AWAITING_ACTIVATION;
   }
-  const queryResult = await findQuests(queryOptions, true);
-  if (queryResult.status === "error") {
-    return queryResult;
-  }
-  return { status: "success", statusCode: 200, data: queryResult.data[0] };
+  return findQuests(queryOptions, true);
 }
 
 /**
- * Gets a quest and one of its puzzles.
+ * The error for a player who is in two of a quest's entries, which saving the
+ * quest prevents, but which joining a team later can cause.
+ * @param questName the name of the quest
+ * @param labels the entries' entrants, such as "team harbor"
+ * @returns the error result
+ */
+function severalEntriesError(
+  questName: string,
+  labels: readonly string[]
+): QuestErrorResult {
+  return {
+    status: "error",
+    statusCode: 409,
+    reason: "wrong-state",
+    message: `You play quest ${questName} in more than one of its entrants (${labels.join(" and ")}), so which one you're acting for isn't clear; ask the puzzle master to correct the quest`,
+  };
+}
+
+/**
+ * Gets a quest, as seen through the asking player's own entry, and one of its
+ * puzzles. An administrator who doesn't play the quest sees it through its
+ * first entry.
  * @param questName the name of the quest
  * @param puzzleName the name of the puzzle in the quest
- * @param user the user and teams for which to retrieve quests; omit for no filtering
+ * @param user the user asking; omit for the first entry, unfiltered
  * @returns a result containing the quest and the puzzle, or an error result
  *  if either isn't found (or the user may not see it)
  */
@@ -1098,11 +1252,30 @@ export async function getQuestAndPuzzle(
   puzzleName: string,
   user?: User | null
 ): Promise<QuestResult<{ quest: Quest; puzzle: QuestPuzzle }>> {
-  const queryResult = await getQuestByQuestName(questName, user);
+  const queryResult = await getQuestEntries(questName, user);
   if (queryResult.status === "error") {
     return queryResult;
   }
-  const quest = queryResult.data;
+  let entries = queryResult.data;
+  if (!user || user.isAdmin()) {
+    const assigneeIds = user ? await user.getAssigneeIds() : [];
+    const own = entries.filter((entry) =>
+      assigneeIds.includes(entry.assignee.id)
+    );
+    entries = own.length ? own : entries.slice(0, 1);
+  }
+  if (entries.length > 1) {
+    return severalEntriesError(
+      questName,
+      entries.map(({ assignee }) =>
+        entrantLabel({
+          kind: assignee.kind,
+          name: assignee.name ?? assignee.id,
+        })
+      )
+    );
+  }
+  const quest = entries[0];
   const puzzle = quest.getPuzzle(puzzleName);
   if (puzzle === null) {
     return {
@@ -1115,18 +1288,35 @@ export async function getQuestAndPuzzle(
   return { status: "success", statusCode: 200, data: { quest, puzzle } };
 }
 
+/** A quest as someone following it from outside may see it. */
+export interface SpectatedQuest {
+  /** The quest, as seen through each of its entries, with reached puzzles. */
+  entries: Quest[];
+  /** True while the quest is a race not every entry has finished. */
+  racing: boolean;
+  /**
+   * True if the viewer may see only the standings, not the stops: while the
+   * quest is racing, for anyone but staff and administrators.
+   */
+  stopsHidden: boolean;
+}
+
 /**
- * Gets a quest as the public may see it: with only the puzzles its players
- * have reached, because a player can look at anything public, and players
- * must never learn how long a quest is.
+ * Gets a quest's entries as the public may see them: with only the puzzles
+ * each has reached, because a player can look at anything public, and players
+ * must never learn how long a quest is. While teams race, only staff may see
+ * the stops: a rival could otherwise read the leaders' puzzles and answers.
  * @param questName the name of the quest
- * @returns a result containing the quest, or an error result if it isn't found
+ * @param viewer who's asking, or null if they aren't signed in
+ * @param shareToken the share link's token they hold, if any
+ * @returns a result containing the entries, or an error result if the quest
+ *  isn't found or they may not follow it
  */
 export async function getSpectatedQuest(
   questName: string,
   viewer: User | null = null,
   shareToken?: string
-): Promise<QuestResult> {
+): Promise<QuestResult<SpectatedQuest>> {
   const found = await findQuests(
     { questName, puzzleStatus: QuestPuzzleStatus.AWAITING_ACTIVATION },
     true
@@ -1134,9 +1324,9 @@ export async function getSpectatedQuest(
   if (found.status === "error") {
     return found;
   }
-  const quest = found.data[0];
+  const entries = found.data;
   const allowed =
-    (await mayFollow(quest, viewer)) ||
+    (await mayFollow(entries, viewer)) ||
     (shareToken !== undefined &&
       (await findValidShareLink(shareToken, questName)) !== undefined);
   if (!allowed) {
@@ -1149,37 +1339,61 @@ export async function getSpectatedQuest(
       message: `no quests found matching ${createFindErrorMessage({ questName })}`,
     };
   }
-  return { status: "success", statusCode: 200, data: quest };
+  const racing = isRacing(entries);
+  return {
+    status: "success",
+    statusCode: 200,
+    data: {
+      entries,
+      racing,
+      stopsHidden: racing && !(viewer?.isStaff() ?? false),
+    },
+  };
 }
 
 /**
  * Whether someone may follow a quest from outside it.
- * @param quest the quest
+ * @param entries the quest's entries
  * @param viewer who's asking, or null if they aren't signed in
- * @returns true if the quest is public, or they're staff or it's assigned to
- *  them or their team
+ * @returns true if the quest is public, or they're staff or play it in any
+ *  of its entries
  */
-async function mayFollow(quest: Quest, viewer: User | null): Promise<boolean> {
-  if (quest.visibility === "public") {
+async function mayFollow(
+  entries: readonly Quest[],
+  viewer: User | null
+): Promise<boolean> {
+  if (entries[0]?.visibility === "public") {
     return true;
   }
-  return viewer !== null && isQuestMember(quest.assignee.id, viewer);
+  if (viewer === null) {
+    return false;
+  }
+  for (const entry of entries) {
+    if (await isQuestMember(entry.assignee.id, viewer)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
- * Gets one of a quest's puzzles as the public may see it, once its players
- * have activated it. The answer is the same whether a puzzle isn't in the
- * quest or hasn't been activated, so a name can't be tried to learn which.
+ * Gets one of a quest's puzzles as the public may see it, once an entry's
+ * players have activated it, and unless the quest is a race not every entry
+ * has finished, when only staff may. The answer is the same whether a puzzle isn't in
+ * the quest or the entry hasn't activated it, so a name can't be tried to
+ * learn which.
  * @param questName the name of the quest
  * @param puzzleName the name of the puzzle
+ * @param entryId the ID of the entry whose progress to show
  * @param viewer who's asking, or null if they aren't signed in
  * @param shareToken the share link's token they hold, if any
- * @returns a result containing the quest, the puzzle, and its definition, or
+ * @returns a result containing the entry, the puzzle, and its definition, or
  *  an error result if they aren't found
  */
 export async function getSpectatedQuestPuzzle(
   questName: string,
   puzzleName: string,
+  entryId: string,
   viewer: User | null = null,
   shareToken?: string
 ): Promise<
@@ -1193,15 +1407,21 @@ export async function getSpectatedQuestPuzzle(
   if (found.status === "error") {
     return found;
   }
-  const quest = found.data;
-  const puzzle = quest.getPuzzle(puzzleName);
-  // A puzzle deleted after it was added to the quest has no details.
-  if (!puzzle?.puzzleDetail || puzzle.status < QuestPuzzleStatus.IN_PROGRESS) {
+  const quest = found.data.entries.find((entry) => entry.entryId === entryId);
+  const puzzle = quest?.getPuzzle(puzzleName);
+  // A puzzle deleted after it was added to the quest has no details. While
+  // teams race, only staff may see the stops.
+  if (
+    found.data.stopsHidden ||
+    !quest ||
+    !puzzle?.puzzleDetail ||
+    puzzle.status < QuestPuzzleStatus.IN_PROGRESS
+  ) {
     return {
       status: "error",
       statusCode: 404,
       reason: "not-found",
-      message: `No puzzle named ${puzzleName} found for quest ${questName}`,
+      message: `No puzzle named ${puzzleName} found for that entry of quest ${questName}`,
     };
   }
   return {
@@ -1212,10 +1432,10 @@ export async function getSpectatedQuestPuzzle(
 }
 
 /**
- * Gets one of a quest's puzzles.
+ * Gets one of a quest's puzzles, as the asking player's entry has it.
  * @param questName the name of the quest
  * @param puzzleName the name of the puzzle in the quest to retrieve
- * @param user the user and teams for which to retrieve quests; omit for no filtering
+ * @param user the user asking; omit for the first entry, unfiltered
  * @returns a result containing the puzzle, or an error result if it isn't
  *  found (or the user may not see it)
  */
@@ -1288,6 +1508,24 @@ function puzzleIdOf(
 }
 
 /**
+ * A new entry for a user or team, not yet started, with fresh progress on
+ * each of the quest's stops.
+ * @param entrant the user or team
+ * @param stops the quest's stops
+ * @returns the entry
+ */
+function newEntry(
+  entrant: Pick<FoundEntrant, "kind" | "id">,
+  stops: readonly { puzzleId: Types.ObjectId }[]
+) {
+  return {
+    assignee: { kind: entrant.kind, id: entrant.id },
+    status: QuestStatus.NOT_STARTED,
+    puzzles: stops.map((stop) => freshProgress(stop.puzzleId)),
+  };
+}
+
+/**
  * Creates a quest in the data store.
  * @param questDefinition the definition of the quest to create.
  * @returns a response object containing a status, status code, and data
@@ -1311,17 +1549,9 @@ export async function createQuest(
       message: "Quest definition must contain a name or display name",
     };
   }
-  if (!questDefinition.assignee) {
-    return {
-      status: "error",
-      statusCode: 400,
-      reason: "invalid-quest",
-      message: "Quest definition must contain a user or team to assign it to",
-    };
-  }
-  const assignee = await findAssignee(questDefinition.assignee);
-  if ("status" in assignee) {
-    return assignee;
+  const entrants = await findEntrants(questDefinition.entrants ?? []);
+  if ("status" in entrants) {
+    return entrants;
   }
   const questExists = (await QuestModel.find({ name: questName })).length !== 0;
   if (questExists) {
@@ -1332,14 +1562,7 @@ export async function createQuest(
       message: `Quest with name ${questName} already exists`,
     };
   }
-  const quest = new QuestModel({
-    name: questName,
-    displayName: questDefinition.displayName || questName,
-    visibility: questDefinition.visibility ?? "public",
-    puzzles: [],
-    entries: [{ assignee, status: QuestStatus.NOT_STARTED, puzzles: [] }],
-  });
-
+  const stops: ReturnType<typeof createStop>[] = [];
   if (questDefinition.puzzles) {
     const puzzleNames = questDefinition.puzzles.map(
       (puzzleDefinition) => puzzleDefinition.puzzleName
@@ -1348,7 +1571,7 @@ export async function createQuest(
     if ("status" in ids) {
       return ids;
     }
-    quest.puzzles.push(
+    stops.push(
       ...questDefinition.puzzles.map(
         ({ puzzleName, activationCode, cardWord }) => ({
           ...createStop(puzzleIdOf(ids, puzzleName)),
@@ -1358,11 +1581,14 @@ export async function createQuest(
         })
       )
     );
-    entryOf(quest).set(
-      "puzzles",
-      quest.puzzles.map((stop) => freshProgress(stop.puzzleId))
-    );
   }
+  const quest = new QuestModel({
+    name: questName,
+    displayName: questDefinition.displayName || questName,
+    visibility: questDefinition.visibility ?? "public",
+    puzzles: stops,
+    entries: entrants.map((entrant) => newEntry(entrant, stops)),
+  });
   try {
     await quest.save();
   } catch (err) {
@@ -1394,13 +1620,49 @@ export async function deleteQuest(
 }
 
 /**
- * Updates a quest's name, assignee, and puzzle list. Progress can't be
+ * Checks a new puzzle list against every entry of a quest: the puzzles any
+ * entry has reached stay in place, and any entry having completed the quest
+ * keeps the list as it is.
+ * @param quest the quest document
+ * @param puzzleNames the new list of puzzle names, in order
+ * @returns an error result if the change isn't allowed; otherwise undefined
+ */
+async function checkPuzzleListForEntries(
+  quest: QuestDocument,
+  puzzleNames: readonly string[]
+): Promise<QuestErrorResult | undefined> {
+  const currentNames = await puzzleNamesOf(quest);
+  for (const entry of quest.entries) {
+    const check = checkPuzzleListChange(
+      toQuestState(quest, entry, currentNames),
+      puzzleNames
+    );
+    if (!check.ok) {
+      const [entrant] = await entrantLabelsOf([assigneeOf(entry)]);
+      return {
+        status: "error",
+        statusCode: 400,
+        reason: "wrong-state",
+        message:
+          check.error === "QUEST_COMPLETED"
+            ? `Quest ${quest.name} is completed by ${entrant}, so its puzzles can't change until that entry is reset`
+            : `Puzzle ${check.puzzleName} has already been reached by ${entrant}, so it must stay in its place at the start of the quest`,
+      };
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Updates a quest's name, entrants, and puzzle list. Progress can't be
  * edited: the status and each puzzle's progress and times change only
  * through the game's actions, such as starting or resetting the quest, and
- * are ignored here. Once the quest has started, the puzzles the players have
- * reached stay in place (see checkPuzzleListChange). Puzzles already in the
- * quest keep their progress; puzzles new to it start out unavailable. A
- * puzzle's activation code can be changed by giving it.
+ * are ignored here. Once an entry has started, the puzzles it has reached
+ * stay in place (see checkPuzzleListChange). Puzzles already in the quest
+ * keep every entry's progress; puzzles new to it start out unavailable. A
+ * puzzle's activation code can be changed by giving it. Entrants already
+ * playing keep their progress; new ones start out not started; one left out
+ * is removed, but only before it starts.
  * @param questDefinition quest definition containing the updated data
  * @returns a response object containing a status, status code, and data
  */
@@ -1416,11 +1678,11 @@ export async function updateQuest(
   if (puzzleIds && "status" in puzzleIds) {
     return puzzleIds;
   }
-  const assignee = questDefinition.assignee
-    ? await findAssignee(questDefinition.assignee)
+  const entrants = questDefinition.entrants
+    ? await findEntrants(questDefinition.entrants)
     : undefined;
-  if (assignee && "status" in assignee) {
-    return assignee;
+  if (entrants && "status" in entrants) {
+    return entrants;
   }
   for (let attempt = 0; attempt < MAX_QUEST_ACTION_ATTEMPTS; attempt++) {
     const foundQuest = await loadQuest(questDefinition.name);
@@ -1432,39 +1694,42 @@ export async function updateQuest(
         message: `No quest with quest name ${questDefinition.name} found`,
       };
     }
-    const entry = entryOf(foundQuest);
+    const formerAssignees = foundQuest.entries.map(assigneeOf);
+    const wanted = entrants
+      ? new Set(entrants.map((entrant) => entrant.id.toString()))
+      : undefined;
+    const removed = wanted
+      ? foundQuest.entries.filter(
+          (entry) => !wanted.has(assigneeOf(entry).id.toString())
+        )
+      : [];
+    const started = removed.filter(
+      (entry) => entry.status !== QuestStatus.NOT_STARTED
+    );
+    if (started.length) {
+      const labels = await entrantLabelsOf(started.map(assigneeOf));
+      return {
+        status: "error",
+        statusCode: 400,
+        reason: "wrong-state",
+        field: "entrants",
+        message: `${labels.join(", ")} ${started.length === 1 ? "has" : "have"} started quest ${questDefinition.name}, so can't be removed from it; reset ${started.length === 1 ? "it" : "them"} first`,
+      };
+    }
     const visibility = questDefinition.visibility ?? foundQuest.visibility;
     // Those following it may no longer be allowed to. A ticket is only checked
     // on subscribing, so they have to subscribe again to find out.
     const fewerMayFollow =
       visibility === "private" &&
-      (foundQuest.visibility !== "private" ||
-        (assignee !== undefined && !assignee.id.equals(entry.assignee?.id)));
-    const formerAssignee = entry.assignee
-      ? { kind: entry.assignee.kind, id: entry.assignee.id }
-      : undefined;
+      (foundQuest.visibility !== "private" || removed.length > 0);
     foundQuest.visibility = visibility;
     if (questDefinition.displayName) {
       foundQuest.displayName = questDefinition.displayName;
     }
-    if (assignee) {
-      entry.assignee = assignee;
-    }
     if (questDefinition.puzzles && puzzleNames && puzzleIds) {
-      const check = checkPuzzleListChange(
-        toQuestState(foundQuest, entry, await puzzleNamesOf(foundQuest)),
-        puzzleNames
-      );
-      if (!check.ok) {
-        return {
-          status: "error",
-          statusCode: 400,
-          reason: "wrong-state",
-          message:
-            check.error === "QUEST_COMPLETED"
-              ? `Quest ${questDefinition.name} is completed, so its puzzles can't change until it is reset`
-              : `Puzzle ${check.puzzleName} has already been reached by the players, so it must stay in its place at the start of the quest`,
-        };
+      const refused = await checkPuzzleListForEntries(foundQuest, puzzleNames);
+      if (refused) {
+        return refused;
       }
       const existingPuzzles = new Map(
         foundQuest.puzzles.map((puzzle) => [
@@ -1509,6 +1774,25 @@ export async function updateQuest(
         })
       );
     }
+    if (entrants) {
+      // Entrants already playing keep their entries, progress and all; new
+      // ones start with fresh progress on every stop. The order is the one
+      // given.
+      const existing = new Map(
+        foundQuest.entries.map((entry) => [
+          assigneeOf(entry).id.toString(),
+          entry.toObject(),
+        ])
+      );
+      foundQuest.set(
+        "entries",
+        entrants.map(
+          (entrant) =>
+            existing.get(entrant.id.toString()) ??
+            newEntry(entrant, foundQuest.puzzles)
+        )
+      );
+    }
     try {
       await foundQuest.save();
     } catch (err) {
@@ -1521,7 +1805,10 @@ export async function updateQuest(
       disconnectQuestFollowers(questDefinition.name);
     }
     // Its name or its players may have changed.
-    await notifyPlayersOf([formerAssignee, entry.assignee]);
+    await notifyPlayersOf([
+      ...formerAssignees,
+      ...foundQuest.entries.map(assigneeOf),
+    ]);
     return { status: "success", statusCode: 200 };
   }
   return questChangingError(questDefinition.name);
@@ -1532,9 +1819,10 @@ type QuestErrorResult = Extract<QuestResult<never>, { status: "error" }>;
 
 /**
  * How many times an action is tried when another change to the same quest
- * (usually a teammate's) is saved between loading the quest and saving it.
+ * (a teammate's, or another team's in a race) is saved between loading the
+ * quest and saving it.
  */
-const MAX_QUEST_ACTION_ATTEMPTS = 3;
+const MAX_QUEST_ACTION_ATTEMPTS = 8;
 
 /** A player acting on a quest. */
 interface QuestActor {
@@ -1545,8 +1833,31 @@ interface QuestActor {
 }
 
 /**
+ * The entries an action applies to: the acting player's own, or for an
+ * administrator, one user's or team's (by ID), one entry, or every entry.
+ */
+type ActionTarget =
+  | { player: QuestActor }
+  | { entrant: EntrantRef; id: Types.ObjectId | undefined }
+  | { entryId: string }
+  | "all";
+
+/** What an action changed in one entry. */
+interface EntryChange {
+  /** The entry's ID. */
+  entryId: string;
+  /** The user or team playing in the entry. */
+  assignee: AssigneeRef;
+  /** The entry's new state. */
+  state: QuestState;
+  /** What happened. */
+  events: readonly QuestEvent[];
+}
+
+/**
  * The outcome of applying an action to a quest: a service error (such as no
- * quest found), the rules refusing the action, or the action saved.
+ * quest found), the rules refusing the action (for every entry it was
+ * applied to), or the action saved.
  * @template R the puzzle rules the action used
  */
 type QuestActionOutcome<R> =
@@ -1554,12 +1865,12 @@ type QuestActionOutcome<R> =
   | { status: "refused"; error: QuestErrorCode; state: QuestState }
   | {
       status: "applied";
-      state: QuestState;
-      events: readonly QuestEvent[];
+      /** Each entry the rules allowed the action for, in order. */
+      changes: EntryChange[];
+      /** Whether the quest is a race not every entry has finished, after it. */
+      racing: boolean;
       now: Date;
       rules: R;
-      /** Whom the quest is assigned to, if anyone. */
-      assignee?: AssigneeRef;
     };
 
 /**
@@ -1696,12 +2007,81 @@ async function noRules(): Promise<{ rules: undefined }> {
 }
 
 /**
- * Applies an action to a quest: loads the quest, checks that the player may
- * act on it, applies the rules, and saves the result. If another change to
- * the quest is saved first, the action starts over with the updated quest,
- * so the two can't overwrite each other.
+ * Finds the entries of a quest an action applies to.
+ * @param quest the quest document
+ * @param target the entries the action applies to
+ * @returns the entries, in the quest's order, or an error result if the
+ *  player plays in none or several, or there is no such entry
+ */
+async function entriesFor(
+  quest: QuestDocument,
+  target: ActionTarget
+): Promise<EntryDocument[] | QuestErrorResult> {
+  if (target === "all") {
+    return [...quest.entries];
+  }
+  if ("player" in target) {
+    const { assigneeIds, action } = target.player;
+    const own = quest.entries.filter((entry) =>
+      assigneeIds.includes(assigneeOf(entry).id.toString())
+    );
+    if (!own.length) {
+      return {
+        status: "error",
+        statusCode: 403,
+        reason: "forbidden",
+        message: `User is not authorized to ${action} for quest ${quest.name}`,
+      };
+    }
+    if (own.length > 1) {
+      return severalEntriesError(
+        quest.name,
+        await entrantLabelsOf(own.map(assigneeOf))
+      );
+    }
+    return own;
+  }
+  const entry =
+    "entryId" in target
+      ? quest.entries.find((each) => each._id.toString() === target.entryId)
+      : target.id &&
+        quest.entries.find((each) => assigneeOf(each).id.equals(target.id));
+  if (!entry) {
+    return {
+      status: "error",
+      statusCode: 404,
+      reason: "not-found",
+      message:
+        "entryId" in target
+          ? `Quest ${quest.name} has no entry ${target.entryId}`
+          : `${entrantLabel(target.entrant)} isn't playing quest ${quest.name}`,
+    };
+  }
+  return [entry];
+}
+
+/**
+ * Gets the action target for an administrator's entry target, finding a
+ * named user's or team's ID.
+ * @param target the entries an administrator's action applies to
+ * @returns the action's target
+ */
+async function toActionTarget(target: EntryTarget): Promise<ActionTarget> {
+  if (target === "all" || "entryId" in target) {
+    return target;
+  }
+  return { entrant: target.entrant, id: await findEntrantId(target.entrant) };
+}
+
+/**
+ * Applies an action to a quest: loads the quest, finds the entries it
+ * applies to (checking that a player may act on their own), applies the
+ * rules to each, and saves the result once. An entry the rules refuse the
+ * action for is left as it is; if they refuse it for every entry, the action
+ * is refused. If another change to the quest is saved first, the action
+ * starts over with the updated quest, so the two can't overwrite each other.
  * @param questName the name of the quest
- * @param actor the player acting, or null for an administrative action
+ * @param target the entries the action applies to
  * @param loadRules loads what the rules need; called once, after the player
  *  is authorized
  * @param transition applies the rules
@@ -1709,7 +2089,7 @@ async function noRules(): Promise<{ rules: undefined }> {
  */
 async function applyQuestAction<R>(
   questName: string,
-  actor: QuestActor | null,
+  target: ActionTarget,
   loadRules: () => Promise<{ rules: R } | QuestErrorResult>,
   transition: (state: QuestState, now: Date, rules: R) => TransitionResult
 ): Promise<QuestActionOutcome<R>> {
@@ -1724,15 +2104,9 @@ async function applyQuestAction<R>(
         message: `No quest with quest name ${questName} found`,
       };
     }
-    const entry = entryOf(quest);
-    const assigneeId = entry.assignee?.id.toString();
-    if (actor && !(assigneeId && actor.assigneeIds.includes(assigneeId))) {
-      return {
-        status: "error",
-        statusCode: 403,
-        reason: "forbidden",
-        message: `User is not authorized to ${actor.action} for quest ${questName}`,
-      };
+    const entries = await entriesFor(quest, target);
+    if ("status" in entries) {
+      return entries;
     }
     if (!loaded) {
       const rulesResult = await loadRules();
@@ -1742,12 +2116,38 @@ async function applyQuestAction<R>(
       loaded = rulesResult;
     }
     const now = new Date(Date.now());
-    const state = toQuestState(quest, entry, await puzzleNamesOf(quest));
-    const result = transition(state, now, loaded.rules);
-    if (!result.ok) {
-      return { status: "refused", error: result.error, state };
+    const puzzleNames = await puzzleNamesOf(quest);
+    const changes: EntryChange[] = [];
+    let refusal: { error: QuestErrorCode; state: QuestState } | undefined;
+    for (const entry of entries) {
+      const state = toQuestState(quest, entry, puzzleNames);
+      const result = transition(state, now, loaded.rules);
+      if (!result.ok) {
+        refusal ??= { error: result.error, state };
+        continue;
+      }
+      applyQuestState(quest, entry, result.state);
+      changes.push({
+        entryId: entry._id.toString(),
+        assignee: {
+          kind: assigneeOf(entry).kind,
+          id: assigneeOf(entry).id.toString(),
+        },
+        state: result.state,
+        events: result.events,
+      });
     }
-    applyQuestState(quest, entry, result.state);
+    if (!changes.length) {
+      if (!refusal) {
+        return {
+          status: "error",
+          statusCode: 400,
+          reason: "wrong-state",
+          message: `Quest ${questName} has no entrants`,
+        };
+      }
+      return { status: "refused", ...refusal };
+    }
     try {
       await quest.save();
     } catch (err) {
@@ -1758,18 +2158,10 @@ async function applyQuestAction<R>(
     }
     return {
       status: "applied",
-      state: result.state,
-      events: result.events,
+      changes,
+      racing: isRacing(quest.entries),
       now,
       rules: loaded.rules,
-      ...(entry.assignee
-        ? {
-            assignee: {
-              kind: entry.assignee.kind,
-              id: entry.assignee.id.toString(),
-            },
-          }
-        : {}),
     };
   }
   return questChangingError(questName);
@@ -1927,40 +2319,55 @@ async function describeEvents(
 }
 
 /**
- * Describes an action's events and publishes them.
+ * Describes an action's events and publishes them, one activity for each
+ * entry it changed.
  * @param questName the name of the quest
  * @param origin who or what caused the action
- * @param applied the action's events, and whom the quest is assigned to
+ * @param applied what the action changed in each entry, and whether the
+ *  quest is a race afterwards
  * @param puzzle the puzzle the action was on, if any
- * @returns the published events
+ * @returns the published events, for each entry in turn
  */
 async function publishActivity(
   questName: string,
   origin: QuestActionOrigin,
-  applied: { events: readonly QuestEvent[]; assignee?: AssigneeRef },
+  { changes, racing }: { changes: readonly EntryChange[]; racing: boolean },
   puzzle?: PuzzleService.Puzzle
-): Promise<PublishedQuestEvent[]> {
-  const described = await describeEvents(applied.events, puzzle);
-  await questEventBus.publish({
-    ...origin,
-    questName,
-    events: described,
-    ...(applied.assignee ? { assignee: applied.assignee } : {}),
-  });
-  return described;
+): Promise<PublishedQuestEvent[][]> {
+  const published: PublishedQuestEvent[][] = [];
+  for (const change of changes) {
+    const described = await describeEvents(change.events, puzzle);
+    await questEventBus.publish({
+      ...origin,
+      questName,
+      entry: { id: change.entryId, assignee: change.assignee },
+      racing,
+      events: described,
+    });
+    published.push(described);
+  }
+  return published;
 }
 
 /**
- * Starts a quest, making the first puzzle available for activation.
+ * Starts a quest, making the first puzzle available for activation: for one
+ * entry, or for every entry not yet started.
  * @param name the name of the quest to start
  * @param origin who or what started the quest
+ * @param target the entries to start; every entry, if left out
  * @returns a response object containing a status, status code, and data
  */
 export async function startQuest(
   name: string,
-  origin: QuestActionOrigin = {}
+  origin: QuestActionOrigin = {},
+  target: EntryTarget = "all"
 ): Promise<QuestResult<undefined>> {
-  const outcome = await applyQuestAction(name, null, noRules, start);
+  const outcome = await applyQuestAction(
+    name,
+    await toActionTarget(target),
+    noRules,
+    start
+  );
   if (outcome.status === "refused") {
     return {
       status: "error",
@@ -1980,16 +2387,23 @@ export async function startQuest(
 }
 
 /**
- * Resets a quest to its initial state.
+ * Resets a quest to its initial state: one entry, or every entry.
  * @param questName the name of the quest
  * @param origin who reset the quest
+ * @param target the entries to reset; every entry, if left out
  * @returns a response object containing a status, status code, and data
  */
 export async function resetQuest(
   questName: string,
-  origin: QuestActionOrigin = {}
+  origin: QuestActionOrigin = {},
+  target: EntryTarget = "all"
 ): Promise<QuestResult<undefined>> {
-  const outcome = await applyQuestAction(questName, null, noRules, reset);
+  const outcome = await applyQuestAction(
+    questName,
+    await toActionTarget(target),
+    noRules,
+    reset
+  );
   if (outcome.status === "error") {
     return outcome;
   }
@@ -2002,16 +2416,24 @@ export async function resetQuest(
 
 /**
  * Pauses a quest in progress, stopping its clocks; its players can't act
- * until it resumes.
+ * until it resumes. Pausing every entry pauses those in progress and not
+ * already paused.
  * @param questName the name of the quest
  * @param origin who paused the quest
+ * @param target the entries to pause; every entry, if left out
  * @returns a response object containing a status, status code, and data
  */
 export async function pauseQuest(
   questName: string,
-  origin: QuestActionOrigin = {}
+  origin: QuestActionOrigin = {},
+  target: EntryTarget = "all"
 ): Promise<QuestResult<undefined>> {
-  const outcome = await applyQuestAction(questName, null, noRules, pause);
+  const outcome = await applyQuestAction(
+    questName,
+    await toActionTarget(target),
+    noRules,
+    pause
+  );
   if (outcome.status === "refused") {
     return {
       status: "error",
@@ -2031,16 +2453,24 @@ export async function pauseQuest(
 }
 
 /**
- * Resumes a paused quest, restarting its clocks.
+ * Resumes a paused quest, restarting its clocks. Resuming every entry
+ * resumes those paused.
  * @param questName the name of the quest
  * @param origin who resumed the quest
+ * @param target the entries to resume; every entry, if left out
  * @returns a response object containing a status, status code, and data
  */
 export async function resumeQuest(
   questName: string,
-  origin: QuestActionOrigin = {}
+  origin: QuestActionOrigin = {},
+  target: EntryTarget = "all"
 ): Promise<QuestResult<undefined>> {
-  const outcome = await applyQuestAction(questName, null, noRules, resume);
+  const outcome = await applyQuestAction(
+    questName,
+    await toActionTarget(target),
+    noRules,
+    resume
+  );
   if (outcome.status === "refused") {
     return {
       status: "error",
@@ -2057,21 +2487,24 @@ export async function resumeQuest(
 }
 
 /**
- * Completes a puzzle the players are stuck on, without a penalty; the next
- * puzzle becomes available, or the quest is complete.
+ * Completes a puzzle an entry's players are stuck on, without a penalty; the
+ * next puzzle becomes available, or the entry's quest is complete.
  * @param questName the name of the quest
  * @param puzzleName the name of the puzzle
  * @param origin who skipped the puzzle
+ * @param target the entries to skip it for; every entry that can, if left
+ *  out
  * @returns a response object containing a status, status code, and data
  */
 export async function skipQuestPuzzle(
   questName: string,
   puzzleName: string,
-  origin: QuestActionOrigin = {}
+  origin: QuestActionOrigin = {},
+  target: EntryTarget = "all"
 ): Promise<QuestResult<undefined>> {
   const outcome = await applyQuestAction(
     questName,
-    null,
+    await toActionTarget(target),
     noRules,
     (state, now) => skipPuzzle(state, puzzleName, now)
   );
@@ -2086,24 +2519,27 @@ export async function skipQuestPuzzle(
 }
 
 /**
- * Undoes a puzzle's completion, so the players solve it again; the puzzles
- * after it are no longer reached.
+ * Undoes a puzzle's completion, so an entry's players solve it again; the
+ * puzzles after it are no longer reached.
  * @param questName the name of the quest
  * @param puzzleName the name of the puzzle
  * @param refundHints true to remove the penalties of the puzzle's revealed
  *  hints
  * @param origin who reset the puzzle
+ * @param target the entries to reset it for; every entry that can, if left
+ *  out
  * @returns a response object containing a status, status code, and data
  */
 export async function resetQuestPuzzle(
   questName: string,
   puzzleName: string,
   refundHints: boolean,
-  origin: QuestActionOrigin = {}
+  origin: QuestActionOrigin = {},
+  target: EntryTarget = "all"
 ): Promise<QuestResult<undefined>> {
   const outcome = await applyQuestAction(
     questName,
-    null,
+    await toActionTarget(target),
     noRules,
     (state, now) => resetPuzzle(state, puzzleName, refundHints, now)
   );
@@ -2118,7 +2554,8 @@ export async function resetQuestPuzzle(
 }
 
 /**
- * Activates a puzzle in the quest, moving it from "awaiting activation" to "in progress"
+ * Activates a puzzle in the player's entry, moving it from "awaiting
+ * activation" to "in progress".
  * @param questName the name of the quest for which to activate the puzzle
  * @param puzzleName the name of the puzzle within the quest to activate
  * @param assigneeIds the IDs of the user and the user's teams, for the user requesting activation
@@ -2135,7 +2572,7 @@ export async function activatePuzzle(
 ): Promise<QuestResult<{ activationTime: Date }>> {
   const outcome = await applyQuestAction(
     questName,
-    { assigneeIds, action: "activate puzzles" },
+    { player: { assigneeIds, action: "activate puzzles" } },
     noRules,
     (state, now) => activate(state, puzzleName, activationCode, now)
   );
@@ -2154,7 +2591,8 @@ export async function activatePuzzle(
 }
 
 /**
- * Finishes the specified puzzle, if the provided solution is correct.
+ * Finishes the specified puzzle in the player's entry, if the provided
+ * solution is correct.
  * @param questName the name of the quest containing the puzzle to finish
  * @param puzzleName the name of the puzzle to finish
  * @param assigneeIds the IDs of the user and the user's teams, for the user attempting to solve
@@ -2171,7 +2609,7 @@ export async function finishPuzzle(
 ): Promise<QuestResult<PuzzleSolution>> {
   const outcome = await applyQuestAction(
     questName,
-    { assigneeIds, action: "solve puzzles" },
+    { player: { assigneeIds, action: "solve puzzles" } },
     () => loadPuzzleRules(puzzleName),
     (state, now, puzzle) =>
       submitSolution(
@@ -2189,7 +2627,7 @@ export async function finishPuzzle(
     return outcome;
   }
 
-  const events = await publishActivity(
+  const [events] = await publishActivity(
     questName,
     origin,
     outcome,
@@ -2211,7 +2649,7 @@ export async function finishPuzzle(
 }
 
 /**
- * Gets the next hint in the named puzzle for the specified quest.
+ * Reveals the next hint of a puzzle in the player's entry.
  * @param questName the name of the quest
  * @param puzzleName the name of the puzzle for which to get the next hint
  * @param assigneeIds the IDs of the user and the user's teams, for the user attempting to solve
@@ -2227,7 +2665,7 @@ export async function getPuzzleHint(
 ): Promise<QuestResult<PuzzleHintResult | false>> {
   const outcome = await applyQuestAction(
     questName,
-    { assigneeIds, action: "request puzzle hints" },
+    { player: { assigneeIds, action: "request puzzle hints" } },
     () => loadPuzzleRules(puzzleName),
     (state, now, puzzle) =>
       revealHint(state, puzzleName, toPuzzleRules(puzzle), now)
@@ -2242,7 +2680,7 @@ export async function getPuzzleHint(
     return outcome;
   }
 
-  const events = await publishActivity(
+  const [events] = await publishActivity(
     questName,
     origin,
     outcome,
@@ -2405,26 +2843,46 @@ function processMarkdownToken(
 }
 
 /**
- * Sets the expected response from an incoming text message and the corresponding confirmation.
+ * The error for an entry that isn't found.
+ * @param questName the name of the quest
+ * @returns the error result
+ */
+function noSuchEntryError(questName: string): QuestErrorResult {
+  return {
+    status: "error",
+    statusCode: 404,
+    reason: "not-found",
+    message: `No quest with quest name ${questName} and that entry found`,
+  };
+}
+
+/**
+ * Sets the reply one of a quest's entries waits for by text message, and the
+ * confirmation sent back when it arrives.
  * @param questName name of the quest for which to set the expected response
- * @param expectedResponse expected text message response from a quest user
+ * @param entryId the ID of the entry
+ * @param expectedResponse expected text message response from the entry's players
  * @param responseConfirmation the confirmation to send when the correct response is received
  * @returns a response object containing a status, status code, and data
  */
 export async function setExpectedTextResponse(
   questName: string,
+  entryId: string,
   expectedResponse: string,
   responseConfirmation: string
 ): Promise<QuestResult<undefined>> {
+  if (!mongoose.isValidObjectId(entryId)) {
+    return noSuchEntryError(questName);
+  }
   // A single update, so it can't conflict with players' progress.
   let result;
   try {
     result = await QuestModel.updateOne(
-      { name: questName },
+      { name: questName, "entries._id": entryId },
       {
         $set: {
-          "entries.0.textResponse": expectedResponse,
-          "entries.0.textResponseConfirmation": responseConfirmation,
+          "entries.$.textResponse": expectedResponse,
+          "entries.$.textResponseConfirmation": responseConfirmation,
         },
       }
     );
@@ -2432,44 +2890,30 @@ export async function setExpectedTextResponse(
     return unexpectedErrorResult("setExpectedTextResponse", err);
   }
   if (result.matchedCount === 0) {
-    return {
-      status: "error",
-      statusCode: 404,
-      reason: "not-found",
-      message: `No quest with quest name ${questName} found`,
-    };
+    return noSuchEntryError(questName);
   }
   return { status: "success", statusCode: 200 };
 }
 
 /**
- * Validates the text response sent by a user, case insensitively.
+ * Validates the text response sent by one of an entry's players, case
+ * insensitively, and if it's right, clears the reply the entry waits for.
  * @param questName the name of the quest to check for the text response
+ * @param entryId the ID of the sender's entry
  * @param textResponse the text response to validate
  * @returns a response object containing a status, status code, and data
  */
 export async function validateExpectedTextResponse(
   questName: string,
+  entryId: string,
   textResponse: string
 ): Promise<QuestResult<string>> {
   const quest = await QuestModel.findOne({ name: questName });
-  if (quest === null) {
-    return {
-      status: "error",
-      statusCode: 404,
-      reason: "not-found",
-      message: `No quest with quest name ${questName} found`,
-    };
+  const entry = quest?.entries.find((each) => each._id.toString() === entryId);
+  if (!quest || !entry) {
+    return noSuchEntryError(questName);
   }
-  const entry = entryOf(quest);
-  if (!entry.textResponse) {
-    return {
-      status: "error",
-      statusCode: 418,
-      message: `Quest is not expecting a text response`,
-    };
-  }
-  if (!entry.textResponseConfirmation) {
+  if (!entry.textResponse || !entry.textResponseConfirmation) {
     return {
       status: "error",
       statusCode: 418,
@@ -2488,11 +2932,16 @@ export async function validateExpectedTextResponse(
   // Clear the expected response, unless it has changed since it was read;
   // a single update, so it can't conflict with players' progress.
   const cleared = await QuestModel.updateOne(
-    { _id: quest._id, "entries.0.textResponse": entry.textResponse },
+    {
+      _id: quest._id,
+      entries: {
+        $elemMatch: { _id: entry._id, textResponse: entry.textResponse },
+      },
+    },
     {
       $set: {
-        "entries.0.textResponse": "",
-        "entries.0.textResponseConfirmation": "",
+        "entries.$.textResponse": "",
+        "entries.$.textResponseConfirmation": "",
       },
     }
   );

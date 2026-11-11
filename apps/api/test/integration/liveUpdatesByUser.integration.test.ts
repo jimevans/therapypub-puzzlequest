@@ -109,7 +109,7 @@ beforeEach(async () => {
     await QuestService.createQuest({
       name,
       displayName: name,
-      assignee,
+      entrants: [assignee],
       puzzles: [{ puzzleName: "riddle", activationCode: `${name}-code` }],
     });
   }
@@ -250,7 +250,7 @@ describe("a user's quests changing", () => {
 
     await QuestService.updateQuest({
       name: "mine",
-      assignee: { kind: "user", name: "other" },
+      entrants: [{ kind: "user", name: "other" }],
     });
 
     await vi.waitFor(() => {

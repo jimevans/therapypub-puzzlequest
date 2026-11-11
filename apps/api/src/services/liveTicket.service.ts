@@ -5,7 +5,11 @@ import { createHash, randomBytes } from "crypto";
 import { Types } from "mongoose";
 import { LiveTicketModel } from "../models/liveTicket.model.js";
 import { QuestModel } from "../models/quest.model.js";
-import { UserModel } from "../models/user.model.js";
+import {
+  AuthorizationLevel,
+  TeamModel,
+  UserModel,
+} from "../models/user.model.js";
 
 /** Long enough to open a connection; a client asks for one each time. */
 const TICKET_LIFETIME_MS = 60 * 1000;
@@ -26,7 +30,11 @@ function hashTicket(ticket: string): string {
  */
 async function storeTicket(
   target:
-    | { questId: Types.ObjectId; shareLinkId?: string }
+    | {
+        questId: Types.ObjectId;
+        shareLinkId?: string;
+        viewerId?: Types.ObjectId;
+      }
     | { userId: Types.ObjectId }
 ): Promise<{ ticket: string; expiresAt: Date }> {
   const ticket = randomBytes(32).toString("base64url");
@@ -43,12 +51,14 @@ async function storeTicket(
  * Issues a ticket to follow a quest.
  * @param questName the quest's name
  * @param shareLinkId the share link it's issued through, if any
+ * @param viewerId the signed-in user it's issued to, if any
  * @returns the ticket and when it expires, or undefined if there's no such
  *  quest
  */
 export async function issueLiveTicket(
   questName: string,
-  shareLinkId?: string
+  shareLinkId?: string,
+  viewerId?: string
 ): Promise<{ ticket: string; expiresAt: Date } | undefined> {
   const quest = await QuestModel.findOne(
     { name: questName },
@@ -60,6 +70,7 @@ export async function issueLiveTicket(
   return storeTicket({
     questId: quest._id,
     ...(shareLinkId ? { shareLinkId } : {}),
+    ...(viewerId ? { viewerId: new Types.ObjectId(viewerId) } : {}),
   });
 }
 
@@ -77,9 +88,47 @@ export async function issueUserLiveTicket(
 /** What a client asks to follow when it subscribes. */
 export type LiveChannel = { questName: string } | { userName: string };
 
+/**
+ * Who follows a quest, as far as what they may be sent goes: whether they are
+ * staff (administrators included), and the IDs of the user and their teams,
+ * as they were when the connection subscribed.
+ */
+export interface LiveViewer {
+  staff: boolean;
+  assigneeIds: string[];
+}
+
 /** What a redeemed ticket lets a connection follow. */
 export type AdmittedChannel =
-  { questName: string; shareLinkId?: string } | { userId: string };
+  | { questName: string; shareLinkId?: string; viewer?: LiveViewer }
+  | { userId: string };
+
+/**
+ * Finds what a connection's signed-in user may be sent about a quest.
+ * @param viewerId the user's ID
+ * @returns who they are, or undefined if they no longer exist
+ */
+async function findViewer(
+  viewerId: Types.ObjectId
+): Promise<LiveViewer | undefined> {
+  const user = await UserModel.findById(viewerId, {
+    authorizationLevel: 1,
+  }).lean();
+  if (!user) {
+    return undefined;
+  }
+  const teams = await TeamModel.find(
+    { memberIds: viewerId },
+    { _id: 1 }
+  ).lean();
+  return {
+    staff: (user.authorizationLevel ?? 0) >= AuthorizationLevel.STAFF,
+    assigneeIds: [
+      viewerId.toString(),
+      ...teams.map((team) => team._id.toString()),
+    ],
+  };
+}
 
 /**
  * Uses up a ticket, if it's good for what the client asks to follow.
@@ -106,12 +155,17 @@ export async function redeemLiveTicket(
         _id: redeemed.questId,
         name: channel.questName,
       }));
-    return isForQuest
-      ? {
-          questName: channel.questName,
-          shareLinkId: redeemed.shareLinkId?.toString(),
-        }
+    if (!isForQuest) {
+      return undefined;
+    }
+    const viewer = redeemed.viewerId
+      ? await findViewer(redeemed.viewerId)
       : undefined;
+    return {
+      questName: channel.questName,
+      shareLinkId: redeemed.shareLinkId?.toString(),
+      ...(viewer ? { viewer } : {}),
+    };
   }
   const isForUser =
     redeemed.userId &&

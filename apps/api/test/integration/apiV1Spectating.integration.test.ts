@@ -6,15 +6,18 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
-import { userIdsOf } from "../references.js";
+import { entryIdOf, userIdsOf } from "../references.js";
+import { startSessions } from "../sessions.js";
 
 const { createApp } = await import("../../src/createApp.js");
 const { spectatorPuzzleSchema, spectatorQuestSchema } =
   await import("../../src/api/v1/resources.js");
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
 const { QuestModel } = await import("../../src/models/quest.model.js");
-const { TeamModel, UserModel } = await import("../../src/models/user.model.js");
+const { AuthorizationLevel, TeamModel, UserModel } =
+  await import("../../src/models/user.model.js");
 const QuestService = await import("../../src/services/quest.service.js");
+const { SessionModel } = await import("../../src/models/session.model.js");
 
 let mongoServer: MongoMemoryServer | undefined;
 let app: Express;
@@ -32,6 +35,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await Promise.all([
+    SessionModel.deleteMany({}),
     UserModel.deleteMany({}),
     TeamModel.deleteMany({}),
     PuzzleModel.deleteMany({}),
@@ -79,7 +83,7 @@ beforeEach(async () => {
   await QuestService.createQuest({
     name: "quest",
     displayName: "Quest",
-    assignee: { kind: "team", name: "the-team" },
+    entrants: [{ kind: "team", name: "the-team" }],
     puzzles: [
       { puzzleName: "riddle", activationCode: "riddle-code" },
       { puzzleName: "lantern", activationCode: "lantern-code" },
@@ -109,14 +113,16 @@ async function startAndActivateFirst() {
 }
 
 const QUEST = "/api/v1/quests/quest/spectator-view";
-const puzzlePath = (puzzle: string) =>
-  `/api/v1/quests/quest/puzzles/${puzzle}/spectator-view`;
+const puzzlePath = async (puzzle: string, entry?: string) =>
+  `/api/v1/quests/quest/puzzles/${puzzle}/spectator-view?entry=${entry ?? (await entryIdOf("quest"))}`;
 
-/** What no public answer may ever contain, however far the quest has got. */
+/**
+ * What no public answer may ever contain, however far the quest has got: who
+ * plays it is shown by display name only.
+ */
 const ALWAYS_HIDDEN = [
   /assignee/i,
   /the-team/,
-  /Team Display/,
   /Player Person/,
   /activationCode/,
   /-code/,
@@ -147,13 +153,25 @@ describe("following a quest", () => {
   it("shows a quest that hasn't started by name and status alone", async () => {
     const { body, text } = await seen();
 
-    expect(body).toMatchObject({
+    expect(body).toEqual({
       name: "quest",
       displayName: "Quest",
-      status: 0,
-      paused: false,
-      puzzles: [],
-      progress: { running: false, elapsedMs: 0, puzzles: [] },
+      racing: false,
+      stopsHidden: false,
+      entries: [
+        expect.objectContaining({
+          id: await entryIdOf("quest"),
+          entrant: { kind: "team", displayName: "Team Display" },
+          status: 0,
+          paused: false,
+          puzzles: [],
+          progress: expect.objectContaining({
+            running: false,
+            elapsedMs: 0,
+            puzzles: [],
+          }),
+        }),
+      ],
     });
     expectNoneOf(text, [...ALWAYS_HIDDEN, ...UNREACHED, /riddle/i]);
   });
@@ -163,7 +181,7 @@ describe("following a quest", () => {
 
     const { body, text } = await seen();
 
-    expect(body.puzzles).toEqual([
+    expect(body.entries[0].puzzles).toEqual([
       {
         name: "riddle",
         displayName: "Riddle",
@@ -174,7 +192,7 @@ describe("following a quest", () => {
         solutionText: null,
       },
     ]);
-    expect(body.progress.puzzles).toHaveLength(1);
+    expect(body.entries[0].progress.puzzles).toHaveLength(1);
     expectNoneOf(text, [...ALWAYS_HIDDEN, ...UNREACHED, /A piano/]);
   });
 
@@ -184,16 +202,17 @@ describe("following a quest", () => {
 
     const { body, text } = await seen();
 
-    expect(body.puzzles.map((p: { name: string }) => p.name)).toEqual([
+    const [entry] = body.entries;
+    expect(entry.puzzles.map((p: { name: string }) => p.name)).toEqual([
       "riddle",
       "lantern",
     ]);
-    expect(body.puzzles[0]).toMatchObject({
+    expect(entry.puzzles[0]).toMatchObject({
       skipped: true,
       solutionText: "A piano",
     });
-    expect(body.puzzles[1].solutionText).toBeNull();
-    expect(body.progress.puzzles).toHaveLength(2);
+    expect(entry.puzzles[1].solutionText).toBeNull();
+    expect(entry.progress.puzzles).toHaveLength(2);
     expectNoneOf(text, [...ALWAYS_HIDDEN, /finale/i, /Lantern solution/]);
   });
 
@@ -201,7 +220,7 @@ describe("following a quest", () => {
     await startAndActivateFirst();
     await QuestService.pauseQuest("quest");
 
-    expect((await seen()).body.paused).toBe(true);
+    expect((await seen()).body.entries[0].paused).toBe(true);
   });
 
   it("isn't found for a quest that doesn't exist", async () => {
@@ -218,7 +237,7 @@ describe("following a puzzle", () => {
   it("shows what it asks and the hints revealed, once activated", async () => {
     await startAndActivateFirst();
 
-    const response = await request(app).get(puzzlePath("riddle"));
+    const response = await request(app).get(await puzzlePath("riddle"));
 
     expect(response.status).toBe(200);
     const body = JSON.parse(response.text);
@@ -247,7 +266,7 @@ describe("following a puzzle", () => {
     await QuestService.startQuest("quest");
     await QuestService.skipQuestPuzzle("quest", "riddle");
 
-    const response = await request(app).get(puzzlePath("riddle"));
+    const response = await request(app).get(await puzzlePath("riddle"));
 
     expect(JSON.parse(response.text).puzzle).toMatchObject({
       status: 3,
@@ -258,14 +277,216 @@ describe("following a puzzle", () => {
 
   it("answers alike for a puzzle waiting, unreached, and nonexistent", async () => {
     await QuestService.startQuest("quest");
-    const unknown = await request(app).get(puzzlePath("nothing"));
+    const unknown = await request(app).get(await puzzlePath("nothing"));
     expect(unknown.status).toBe(404);
 
     for (const puzzle of ["riddle", "lantern"]) {
-      const response = await request(app).get(puzzlePath(puzzle));
+      const response = await request(app).get(await puzzlePath(puzzle));
 
       expect(response.status).toBe(404);
       expect(response.text.replaceAll(puzzle, "nothing")).toBe(unknown.text);
     }
+  });
+});
+
+describe("a quest several teams race", () => {
+  let sessions: Record<string, string> = {};
+
+  beforeEach(async () => {
+    await UserModel.create([
+      {
+        userName: "rival",
+        displayName: "Rival Person",
+        email: "rival@example.com",
+        password: "hash",
+      },
+      {
+        userName: "helper",
+        displayName: "Helper",
+        email: "helper@example.com",
+        password: "hash",
+        authorizationLevel: AuthorizationLevel.STAFF,
+      },
+    ]);
+    await TeamModel.create({
+      teamName: "rivals",
+      displayName: "Rival Crew",
+      joinCode: "rival-code",
+      memberIds: await userIdsOf("rival"),
+    });
+    expect(
+      await QuestService.updateQuest({
+        name: "quest",
+        entrants: [
+          { kind: "team", name: "the-team" },
+          { kind: "team", name: "rivals" },
+        ],
+      })
+    ).toEqual({ status: "success", statusCode: 200 });
+    await QuestService.startQuest("quest");
+    // The first team is a stop ahead.
+    await QuestService.skipQuestPuzzle(
+      "quest",
+      "riddle",
+      {},
+      { entrant: { kind: "team", name: "the-team" } }
+    );
+    sessions = await startSessions("helper", "player", "rival");
+  });
+
+  function view(path: string, userName?: string) {
+    const pending = request(app).get(path);
+    return userName
+      ? pending.set("Authorization", `Bearer ${sessions[userName]}`)
+      : pending;
+  }
+
+  /** Has every entry finish, the leaders first. */
+  async function finishEveryone() {
+    for (const puzzleName of ["riddle", "lantern", "finale"]) {
+      await QuestService.skipQuestPuzzle("quest", puzzleName);
+    }
+  }
+
+  it.each([[undefined], ["player"], ["rival"]])(
+    "shows %s only the standings, with no stops, until everyone finishes",
+    async (userName) => {
+      const response = await view(QUEST, userName);
+
+      expect(response.status).toBe(200);
+      const body = JSON.parse(response.text);
+      expect(spectatorQuestSchema.parse(body)).toEqual(body);
+      expect(body).toMatchObject({ racing: true, stopsHidden: true });
+      expect(body.entries).toEqual([
+        expect.objectContaining({
+          id: await entryIdOf("quest", 0),
+          entrant: { kind: "team", displayName: "Team Display" },
+          status: 1,
+          statusDescription: "In progress",
+          paused: false,
+          puzzles: [],
+          progress: expect.objectContaining({
+            running: true,
+            totalMs: expect.any(Number),
+            puzzles: [],
+          }),
+        }),
+        expect.objectContaining({
+          id: await entryIdOf("quest", 1),
+          entrant: { kind: "team", displayName: "Rival Crew" },
+          puzzles: [],
+          progress: expect.objectContaining({ puzzles: [] }),
+        }),
+      ]);
+      expectNoneOf(response.text, [
+        ...ALWAYS_HIDDEN,
+        /rivals/,
+        /Rival Person/,
+        /riddle/i,
+        /lantern/i,
+        /finale/i,
+        /A piano/,
+      ]);
+    }
+  );
+
+  it("shows staff every entry's reached stops", async () => {
+    const response = await view(QUEST, "helper");
+
+    const body = JSON.parse(response.text);
+    expect(body).toMatchObject({ racing: true, stopsHidden: false });
+    expect(body.entries).toEqual([
+      expect.objectContaining({
+        puzzles: [
+          expect.objectContaining({ name: "riddle", status: 3 }),
+          expect.objectContaining({ name: "lantern", status: 1 }),
+        ],
+      }),
+      expect.objectContaining({
+        puzzles: [expect.objectContaining({ name: "riddle", status: 1 })],
+      }),
+    ]);
+    expect(body.entries[1].progress.puzzles).toHaveLength(1);
+    expectNoneOf(response.text, [/rivals/, /finale/i]);
+  });
+
+  it("shows everyone the stops once every entry has finished", async () => {
+    await finishEveryone();
+
+    const body = JSON.parse((await view(QUEST)).text);
+
+    expect(body).toMatchObject({ racing: false, stopsHidden: false });
+    for (const entry of body.entries) {
+      expect(entry.puzzles.map((p: { name: string }) => p.name)).toEqual([
+        "riddle",
+        "lantern",
+        "finale",
+      ]);
+    }
+  });
+
+  it("hides every puzzle while racing, except from staff", async () => {
+    const leaders = await entryIdOf("quest", 0);
+    const path = await puzzlePath("riddle", leaders);
+
+    for (const userName of [undefined, "player", "rival"]) {
+      const response = await view(path, userName);
+
+      expect(response.status, userName).toBe(404);
+      expect(response.text).not.toContain("A piano");
+    }
+    const staff = await view(path, "helper");
+    expect(staff.status).toBe(200);
+    expect(JSON.parse(staff.text).puzzle).toMatchObject({
+      status: 3,
+      solutionText: "A piano",
+    });
+  });
+
+  it("follows a puzzle as the entry asked for has it, once everyone has finished", async () => {
+    await QuestService.resetQuestPuzzle(
+      "quest",
+      "riddle",
+      false,
+      {},
+      { entrant: { kind: "team", name: "the-team" } }
+    );
+    await finishEveryone();
+    await QuestService.resetQuestPuzzle(
+      "quest",
+      "finale",
+      false,
+      {},
+      { entrant: { kind: "team", name: "rivals" } }
+    );
+    // The rivals are still racing on the finale, so the stops are hidden.
+    expect((await view(QUEST)).status).toBe(200);
+    expect(JSON.parse((await view(QUEST)).text).stopsHidden).toBe(true);
+
+    await QuestService.skipQuestPuzzle("quest", "finale");
+    const solved = await view(
+      await puzzlePath("finale", await entryIdOf("quest", 1))
+    );
+    expect(solved.status).toBe(200);
+    expect(JSON.parse(solved.text).puzzle).toMatchObject({ status: 3 });
+  });
+
+  it("finds no puzzle for an entry the quest doesn't have", async () => {
+    await finishEveryone();
+
+    for (const entry of ["000000000000000000000000", "not-an-id"]) {
+      const response = await view(await puzzlePath("riddle", entry));
+
+      expect(response.status).toBe(404);
+      expect(JSON.parse(response.text).type).toBe("/problems/not-found");
+    }
+  });
+
+  it("needs the entry to be named for a puzzle", async () => {
+    const response = await view(
+      "/api/v1/quests/quest/puzzles/riddle/spectator-view"
+    );
+
+    expect(response.status).toBe(400);
   });
 });

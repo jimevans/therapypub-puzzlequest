@@ -64,19 +64,25 @@ export function spectatorQuestQuery(name: string) {
 }
 
 /**
- * Says how to fetch what the public may see of a puzzle.
+ * Says how to fetch what the public may see of a puzzle, as one of the quest's
+ * entries has got on with it.
  * @param name the quest's name
  * @param puzzleName the puzzle's name
+ * @param entry the entry's ID, from the quest's spectator view
  * @returns the options for TanStack Query
  */
-export function spectatorPuzzleQuery(name: string, puzzleName: string) {
+export function spectatorPuzzleQuery(
+  name: string,
+  puzzleName: string,
+  entry: string
+) {
   return queryOptions({
-    queryKey: [...questQueryKey(name), "spectator", puzzleName],
+    queryKey: [...questQueryKey(name), "spectator", puzzleName, entry],
     staleTime: JUST_FETCHED_MS,
     queryFn: async () =>
       dataOrThrow(
         await api.GET("/quests/{name}/puzzles/{puzzleName}/spectator-view", {
-          params: { path: { name, puzzleName } },
+          params: { path: { name, puzzleName }, query: { entry } },
           ...shareLinkRequest(name),
         })
       ),

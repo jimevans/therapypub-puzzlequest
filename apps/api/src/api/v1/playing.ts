@@ -1,6 +1,6 @@
 // Playing a quest: seeing its puzzles, activating them, guessing their
-// solutions, and revealing hints. Only the quest's players may, as themselves or as a
-// member of the team it is assigned to.
+// solutions, and revealing hints. Only the quest's players may, as themselves
+// or as a member of a team playing it; each acts on their own entry.
 import { z } from "zod";
 import {
   activationRateLimiter,
@@ -60,14 +60,14 @@ export const playingRoutes = [
     operationId: "getPlayerPuzzle",
     summary: "See a puzzle as its players do",
     description:
-      "For a puzzle the players have reached: what it asks, once activated, the hints revealed, what the next hint would cost, and the solution, once solved. A puzzle not yet reached is not found, even by an administrator, who can see the whole quest with getQuest. Players never learn how many puzzles a quest has.",
+      "For a puzzle the caller's entry has reached: what it asks, once activated, the hints revealed, what the next hint would cost, and the solution, once solved. A puzzle not yet reached is not found, even by an administrator, who can see the whole quest with getQuest; an administrator who doesn't play the quest sees its first entry. Players never learn how many puzzles a quest has.",
     tags: ["Playing"],
     access: "signedIn",
     request: { params: questPuzzleParams },
     responses: {
       200: { description: "The puzzle.", body: playerPuzzleSchema },
     },
-    problems: [Problems.notFound],
+    problems: [Problems.notFound, Problems.wrongState],
     async handle(req, res) {
       const { name, puzzleName } = req.params;
       const found = await QuestService.getQuestAndPuzzle(

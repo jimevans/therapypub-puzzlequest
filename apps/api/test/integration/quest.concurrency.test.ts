@@ -15,7 +15,7 @@ import {
 import { recordLogs } from "../logs.js";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
-import { assigneeIdsOf, userIdsOf } from "../references.js";
+import { assigneeIdsOf, entryIdOf, userIdsOf } from "../references.js";
 
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
 const { QuestModel, QuestPuzzleStatus, QuestStatus } =
@@ -82,7 +82,7 @@ beforeEach(async () => {
   await QuestService.createQuest({
     name: "test-quest",
     displayName: "Test Quest",
-    assignee: { kind: "team", name: "team" },
+    entrants: [{ kind: "team", name: "team" }],
     puzzles: [{ puzzleName: "colors" }, { puzzleName: "fruit" }],
   });
   await QuestService.startQuest("test-quest");
@@ -214,7 +214,7 @@ describe("simultaneous actions on a quest", () => {
     );
   });
 
-  it("gives up after three attempts if the quest keeps changing", async () => {
+  it("gives up after eight attempts if the quest keeps changing", async () => {
     const realSave = QuestModel.prototype.save;
     const save = vi
       .spyOn(QuestModel.prototype, "save")
@@ -243,15 +243,16 @@ describe("simultaneous actions on a quest", () => {
       message:
         "Quest test-quest is being changed by someone else; please try again",
     });
-    expect(save).toHaveBeenCalledTimes(3);
+    expect(save).toHaveBeenCalledTimes(8);
     expect((await storedQuest()).entries[0]!.puzzles[0].status).toBe(
       QuestPuzzleStatus.IN_PROGRESS
     );
   });
 
   it("keeps both a player's progress and an expected text reply set at the same moment", async () => {
+    const entryId = await entryIdOf("test-quest");
     const competing = runBeforeNextSave(() =>
-      QuestService.setExpectedTextResponse("test-quest", "Ready", "Go")
+      QuestService.setExpectedTextResponse("test-quest", entryId, "Ready", "Go")
     );
 
     const result = await QuestService.finishPuzzle(
@@ -272,12 +273,17 @@ describe("simultaneous actions on a quest", () => {
 
   it("reports setting a text reply for an unknown quest", async () => {
     expect(
-      await QuestService.setExpectedTextResponse("missing", "Ready", "Go")
+      await QuestService.setExpectedTextResponse(
+        "missing",
+        "000000000000000000000000",
+        "Ready",
+        "Go"
+      )
     ).toEqual({
       status: "error",
       statusCode: 404,
       reason: "not-found",
-      message: "No quest with quest name missing found",
+      message: "No quest with quest name missing and that entry found",
     });
   });
 

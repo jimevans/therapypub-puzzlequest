@@ -143,7 +143,7 @@ describe("a puzzle", () => {
     });
     await QuestService.createQuest({
       name: "quest",
-      assignee: { kind: "user", name: "player" },
+      entrants: [{ kind: "user", name: "player" }],
       puzzles: [{ puzzleName: "riddle" }],
     });
 

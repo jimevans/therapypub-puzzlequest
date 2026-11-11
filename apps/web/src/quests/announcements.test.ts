@@ -6,6 +6,7 @@ import {
   describePuzzle,
   progressSnapshot,
 } from "./announcements";
+import { describeEntries, entriesSnapshot } from "./entryAnnouncements";
 
 const progress = (
   fields: Partial<ProgressSnapshot> = {}
@@ -100,5 +101,53 @@ describe("a quest's progress snapshot", () => {
         { name: "cipher", displayName: "cipher", solved: false },
       ],
     });
+  });
+});
+
+describe("announcing several entries' progress", () => {
+  const entry = (id: string, name: string, solved: boolean) => ({
+    id,
+    name,
+    paused: false,
+    status: 1,
+    steps: [
+      { name: "riddle", displayName: "The Riddle", status: solved ? 3 : 2 },
+    ],
+  });
+
+  it("says whose entry changed, when there are several", () => {
+    expect(
+      describeEntries(
+        entriesSnapshot([
+          entry("1", "The Reds", false),
+          entry("2", "The Blues", false),
+        ]),
+        entriesSnapshot([
+          entry("1", "The Reds", false),
+          entry("2", "The Blues", true),
+        ])
+      )
+    ).toBe("The Blues: The Riddle is solved.");
+  });
+
+  it("says it as before when there's only one", () => {
+    expect(
+      describeEntries(
+        entriesSnapshot([entry("1", "The Reds", false)]),
+        entriesSnapshot([entry("1", "The Reds", true)])
+      )
+    ).toBe("The Riddle is solved.");
+  });
+
+  it("says nothing of an entry just added, or when nothing changed", () => {
+    expect(
+      describeEntries(
+        entriesSnapshot([entry("1", "The Reds", false)]),
+        entriesSnapshot([
+          entry("1", "The Reds", false),
+          entry("2", "The Blues", true),
+        ])
+      )
+    ).toBeNull();
   });
 });

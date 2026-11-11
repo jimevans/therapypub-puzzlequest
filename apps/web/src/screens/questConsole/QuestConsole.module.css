@@ -180,3 +180,46 @@ table.stops td {
     gap: 0;
   }
 }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.field label {
+  font-weight: 600;
+}
+
+.note {
+  color: var(--ink-soft);
+  font-size: var(--text-small);
+}
+
+.select {
+  width: 100%;
+  min-height: var(--target-size);
+  padding: 0 var(--space-3);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+/* The team or player chosen, in a race's table of them. */
+.chosen {
+  font-weight: 700;
+  text-decoration-thickness: 3px;
+}
+
+/* The chosen team's or player's own part of the console. */
+.entry {
+  padding-top: var(--space-4);
+  border-top: 2px solid var(--rule);
+}
+
+.entry h2,
+.entry h3 {
+  margin: 0;
+}

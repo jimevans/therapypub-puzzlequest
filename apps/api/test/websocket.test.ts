@@ -75,7 +75,7 @@ async function followUser(userName: string) {
 }
 
 const update = (questName: string) =>
-  ({ message: "questUpdated", questName }) as const;
+  ({ message: "questUpdated", questName, entryId: "entry-1" }) as const;
 
 describe("websocket server", () => {
   it.each([

@@ -1,10 +1,12 @@
 import { type InferSchemaType, Schema, model } from "mongoose";
+import { AssigneeKind } from "./quest.model.js";
 
 /**
  * Something that happened in a quest. The collection is an append-only log
  * of quest progress: entries are never changed, and resetting a quest adds a
  * QuestReset entry rather than removing earlier ones. The one exception is
- * deleting an account, which takes its user name out of the log.
+ * deleting an account, which takes its user name out of the log, as actor
+ * and as entrant.
  */
 const questEventSchema = new Schema(
   {
@@ -17,6 +19,20 @@ const questEventSchema = new Schema(
     type: {
       type: String,
       required: true,
+    },
+    /**
+     * The user or team whose entry it happened in, by name as it was then.
+     * Events logged before quests had several entries have none.
+     */
+    entrant: {
+      type: new Schema(
+        {
+          kind: { type: String, enum: AssigneeKind, required: true },
+          /** Absent if a user has since deleted their account. */
+          name: { type: String },
+        },
+        { _id: false }
+      ),
     },
     /** The puzzle it happened to, for puzzle events. */
     puzzleName: {

@@ -248,9 +248,54 @@ const questPuzzleSchema = z
   })
   .meta({ id: "QuestPuzzle" });
 
+/** Who plays one of a quest's entries. */
+const entrantSchema = z
+  .object({
+    kind: z.enum(["user", "team"]),
+    name: z.string().optional().meta({
+      description:
+        "The user name or team name; missing if the user or team has been deleted.",
+    }),
+    displayName: z.string().optional(),
+  })
+  .meta({ id: "QuestEntrant" });
+
+/** How long an entry's players have spent on its quest, puzzle by puzzle. */
+const questProgressSchema = z.object({
+  ...progressFields,
+  puzzles: z.array(z.object({ puzzleName: z.string(), ...progressFields })),
+});
+
 /**
- * A quest. Players see only the puzzles they have reached, and not the
- * activation codes or the text reply the quest is waiting for.
+ * One of a quest's entries: a user or team playing it, with its own
+ * progress. Players see only their own entry, with only the puzzles they have
+ * reached, and not the activation codes or the text reply it is waiting for.
+ */
+export const questEntrySchema = z
+  .object({
+    id: z.string().meta({ description: "The entry's ID." }),
+    entrant: entrantSchema,
+    status: z.number().int().meta({
+      description: "0 not started, 1 in progress, 2 completed.",
+    }),
+    statusDescription: z.string(),
+    paused: z.boolean(),
+    textResponse: z.string().optional().meta({
+      description:
+        "The text message reply the entry is waiting for; only for administrators.",
+    }),
+    textResponseConfirmation: z.string().optional().meta({
+      description:
+        "What is sent back when the reply arrives; only for administrators.",
+    }),
+    puzzles: z.array(questPuzzleSchema),
+    progress: questProgressSchema,
+  })
+  .meta({ id: "QuestEntry" });
+
+/**
+ * A quest: its definition and its entries, the users and teams playing it.
+ * Administrators see every entry; a player sees only their own.
  */
 export const questSchema = z
   .object({
@@ -259,34 +304,77 @@ export const questSchema = z
     visibility: z.enum(["public", "private"]).optional().meta({
       description: "Who can follow the quest; only for administrators.",
     }),
-    assignee: z.object({
-      kind: z.enum(["user", "team"]),
-      id: z.string(),
-      name: z.string().optional().meta({
-        description: "Missing if the user or team has been deleted.",
-      }),
-      displayName: z.string().optional(),
-    }),
-    status: z.number().int().meta({
-      description: "0 not started, 1 in progress, 2 completed.",
-    }),
-    statusDescription: z.string(),
-    paused: z.boolean(),
-    textResponse: z.string().optional().meta({
+    entries: z.array(questEntrySchema).meta({
       description:
-        "The text message reply the quest is waiting for; only for administrators.",
-    }),
-    textResponseConfirmation: z.string().optional().meta({
-      description:
-        "What is sent back when the reply arrives; only for administrators.",
-    }),
-    puzzles: z.array(questPuzzleSchema),
-    progress: z.object({
-      ...progressFields,
-      puzzles: z.array(z.object({ puzzleName: z.string(), ...progressFields })),
+        "The users and teams playing the quest, in order, each with its own progress. A player sees only their own entry.",
     }),
   })
   .meta({ id: "Quest" });
+
+/**
+ * Says who plays an entry, without the user's or team's ID.
+ * @param quest the quest, as seen through the entry
+ * @returns the entrant
+ */
+function entrantOf(quest: QuestService.Quest) {
+  const { kind, name, displayName } = quest.assignee;
+  return {
+    kind,
+    ...(name !== undefined ? { name } : {}),
+    ...(displayName !== undefined ? { displayName } : {}),
+  };
+}
+
+/**
+ * Makes the resource for one of a quest's entries.
+ * @param quest the quest, as seen through the entry
+ * @param view who it's for: an administrator sees everything; a player, the
+ *  puzzles as players see them, and not the text reply
+ * @returns the resource
+ */
+function toQuestEntryResource(
+  quest: QuestService.Quest,
+  view: "admin" | "player"
+) {
+  return {
+    id: quest.entryId,
+    entrant: entrantOf(quest),
+    status: quest.status,
+    statusDescription: quest.statusDescription,
+    paused: quest.paused,
+    ...(view === "admin"
+      ? {
+          textResponse: quest.textResponse,
+          textResponseConfirmation: quest.textResponseConfirmation,
+        }
+      : {}),
+    puzzles: quest.puzzles.map((puzzle) =>
+      view === "admin" ? puzzle.toJSON() : puzzle.toPlayerJSON()
+    ),
+    progress: quest.getProgress(),
+  };
+}
+
+/**
+ * Makes a quest's resource.
+ * @param entries the quest, as seen through each of the entries to show, in
+ *  order (from getQuestEntries); there is at least one
+ * @param view who it's for: an administrator sees everything; a player, their
+ *  own entry as players see it
+ * @returns the resource
+ */
+export function toQuestResource(
+  entries: readonly QuestService.Quest[],
+  view: "admin" | "player"
+) {
+  const [quest] = entries;
+  return {
+    name: quest.name,
+    displayName: quest.displayName,
+    ...(view === "admin" ? { visibility: quest.visibility } : {}),
+    entries: entries.map((entry) => toQuestEntryResource(entry, view)),
+  };
+}
 
 /** The time spent on a quest, on the puzzles reached so far. */
 const reachedProgressSchema = z.object({
@@ -475,21 +563,31 @@ export function toPlayerPuzzleResource(
 }
 
 /**
- * A quest as the public sees it. Anyone can look, including its players, so it
- * shows nothing more than they can see, and nothing about puzzles not yet
- * reached. Every field is listed here on purpose: a new field on a quest stays
- * private until it's added.
+ * One of a quest's entries as the public sees it: who plays it, by display
+ * name only, and the puzzles it has reached. Every field is listed here on
+ * purpose: a new field on a quest stays private until it's added.
  */
-export const spectatorQuestSchema = z
+export const spectatorQuestEntrySchema = z
   .object({
-    name: z.string(),
-    displayName: z.string(),
+    id: z.string().meta({
+      description:
+        "The entry's ID, for following one of its puzzles with getSpectatorPuzzle.",
+    }),
+    entrant: z.object({
+      kind: z.enum(["user", "team"]),
+      displayName: z.string().optional().meta({
+        description: "Missing if the user or team has been deleted.",
+      }),
+    }),
     status: z.number().int().meta({
       description: "0 not started, 1 in progress, 2 completed.",
     }),
     statusDescription: z.string(),
     paused: z.boolean(),
-    progress: reachedProgressSchema,
+    progress: reachedProgressSchema.meta({
+      description:
+        "The entry's time; its puzzles are empty when the quest's stopsHidden is true, leaving the totals: the standings.",
+    }),
     puzzles: z
       .array(
         z.object({
@@ -506,34 +604,93 @@ export const spectatorQuestSchema = z
           }),
         })
       )
-      .meta({ description: "The puzzles reached so far, in order." }),
+      .meta({
+        description:
+          "The puzzles the entry has reached, in order; empty when the quest's stopsHidden is true.",
+      }),
+  })
+  .meta({ id: "SpectatorQuestEntry" });
+
+/**
+ * A quest as the public sees it. Anyone can look, including its players, so it
+ * shows nothing more than they can see, and nothing about puzzles no entry has
+ * reached. While teams race, it's the standings alone, for anyone but staff.
+ */
+export const spectatorQuestSchema = z
+  .object({
+    name: z.string(),
+    displayName: z.string(),
+    racing: z.boolean().meta({
+      description:
+        "True while the quest is a race that not every entry has finished: it has several entries, and not all have completed it. The same for every viewer.",
+    }),
+    stopsHidden: z.boolean().meta({
+      description:
+        "True if this view is the standings alone: while racing, for anyone but staff and administrators, every entry's puzzles and progress.puzzles are empty, so rivals can't read each other's puzzles and answers. Each entry's entrant, status, pause, and progress totals are still shown.",
+    }),
+    entries: z.array(spectatorQuestEntrySchema).meta({
+      description:
+        "The users and teams playing the quest, in order, each with its own progress.",
+    }),
   })
   .meta({ id: "SpectatorQuest" });
 
 /**
+ * Leaves the stops out of an entry's progress when the viewer sees only the
+ * standings.
+ * @param progress the entry's progress
+ * @param stopsHidden true to leave the stops out
+ * @returns the progress
+ */
+function standingsOrAll<P extends { readonly puzzles: readonly unknown[] }>(
+  progress: P,
+  stopsHidden: boolean
+): P {
+  return stopsHidden ? { ...progress, puzzles: [] as const } : progress;
+}
+
+/**
  * Makes a quest's public resource.
- * @param quest the quest, from getSpectatedQuest, holding only reached puzzles
+ * @param spectated the quest as seen through each of its entries, from
+ *  getSpectatedQuest, holding only reached puzzles (there is at least one),
+ *  and whether the viewer sees only the standings
  * @returns the resource
  */
-export function toSpectatorQuestResource(quest: QuestService.Quest) {
+export function toSpectatorQuestResource({
+  entries,
+  racing,
+  stopsHidden,
+}: QuestService.SpectatedQuest) {
+  const [quest] = entries;
   return {
     name: quest.name,
     displayName: quest.displayName,
-    status: quest.status,
-    statusDescription: quest.statusDescription,
-    paused: quest.paused,
-    progress: quest.getProgress(),
-    puzzles: quest.puzzles.map((puzzle) => ({
-      name: puzzle.puzzleName,
-      displayName: puzzle.puzzleDetail?.displayName ?? puzzle.puzzleName,
-      status: puzzle.status,
-      statusDescription: puzzle.statusDescription,
-      skipped: puzzle.skipped,
-      activationTime: puzzle.activationTime ?? null,
-      solutionText:
-        puzzle.status === QuestPuzzleStatus.COMPLETED
-          ? (puzzle.puzzleDetail?.solutionDisplayText ?? null)
-          : null,
+    racing,
+    stopsHidden,
+    entries: entries.map((entry) => ({
+      id: entry.entryId,
+      entrant: {
+        kind: entry.assignee.kind,
+        ...(entry.assignee.displayName !== undefined
+          ? { displayName: entry.assignee.displayName }
+          : {}),
+      },
+      status: entry.status,
+      statusDescription: entry.statusDescription,
+      paused: entry.paused,
+      progress: standingsOrAll(entry.getProgress(), stopsHidden),
+      puzzles: (stopsHidden ? [] : entry.puzzles).map((puzzle) => ({
+        name: puzzle.puzzleName,
+        displayName: puzzle.puzzleDetail?.displayName ?? puzzle.puzzleName,
+        status: puzzle.status,
+        statusDescription: puzzle.statusDescription,
+        skipped: puzzle.skipped,
+        activationTime: puzzle.activationTime ?? null,
+        solutionText:
+          puzzle.status === QuestPuzzleStatus.COMPLETED
+            ? (puzzle.puzzleDetail?.solutionDisplayText ?? null)
+            : null,
+      })),
     })),
   };
 }
@@ -627,6 +784,19 @@ export const questEventSchema = z
       description:
         "True when whoever acted has since deleted their account, which took their name out of the log.",
     }),
+    entrant: z
+      .object({
+        kind: z.enum(["user", "team"]),
+        name: z.string().optional().meta({
+          description:
+            "The user name or team name as it was at the time; missing if the user has since deleted their account, or the team was already deleted.",
+        }),
+      })
+      .nullable()
+      .meta({
+        description:
+          "The user or team whose entry it happened in; null for events logged before quests had several entries.",
+      }),
     data: z
       .record(z.string(), z.unknown())
       .optional()
@@ -643,54 +813,43 @@ export function resourcePath(...segments: string[]): string {
   return `/api/v1/${segments.map(encodeURIComponent).join("/")}`;
 }
 
-/** Who a quest is for, as staff see it. */
-const staffAssigneeSchema = z.object({
-  kind: z.enum(["user", "team"]),
-  name: z.string().optional().meta({
-    description: "Missing if the user or team has been deleted.",
+/** The fields of one of a quest's entries that every staff view has. */
+const staffEntryFields = {
+  id: z.string().meta({ description: "The entry's ID." }),
+  entrant: entrantSchema,
+  status: z.number().int().meta({
+    description: "0 not started, 1 in progress, 2 completed.",
   }),
-  displayName: z.string().optional(),
-});
+  statusDescription: z.string(),
+  paused: z.boolean(),
+};
+
+/** One of a quest's entries in the list staff see, without its puzzles. */
+export const staffQuestEntrySummarySchema = z
+  .object({ ...staffEntryFields, progress: z.object(progressFields) })
+  .meta({ id: "StaffQuestEntrySummary" });
 
 /**
- * A quest in the list staff see: who it's for, and how it's going, without its
- * puzzles. Every field is listed on purpose, as for the public views.
+ * A quest in the list staff see: who plays it, and how each entry is going,
+ * without its puzzles. Every field is listed on purpose, as for the public
+ * views.
  */
 export const staffQuestSummarySchema = z
   .object({
     name: z.string(),
     displayName: z.string(),
-    assignee: staffAssigneeSchema,
-    status: z.number().int().meta({
-      description: "0 not started, 1 in progress, 2 completed.",
-    }),
-    statusDescription: z.string(),
-    paused: z.boolean(),
-    progress: z.object(progressFields),
+    entries: z.array(staffQuestEntrySummarySchema),
   })
   .meta({ id: "StaffQuestSummary" });
 
 /**
- * A quest as staff see it: every stop, in order, reached or not, with its live
- * status. Staff run things at the stops, so they need to know what's coming,
- * and they unlock each stop by showing its activation code; but not how to
- * solve it: no solutions, hint text, or the text reply the quest waits for.
- * Every field is listed on purpose.
+ * One of a quest's entries as staff see it: every stop, in order, reached or
+ * not, with its live status for the entry.
  */
-export const staffQuestSchema = z
+export const staffQuestEntrySchema = z
   .object({
-    name: z.string(),
-    displayName: z.string(),
-    assignee: staffAssigneeSchema,
-    status: z.number().int().meta({
-      description: "0 not started, 1 in progress, 2 completed.",
-    }),
-    statusDescription: z.string(),
-    paused: z.boolean(),
-    progress: z.object({
-      ...progressFields,
-      puzzles: z.array(z.object({ puzzleName: z.string(), ...progressFields })),
-    }),
+    ...staffEntryFields,
+    progress: questProgressSchema,
     puzzles: z.array(
       z.object({
         name: z.string(),
@@ -713,62 +872,85 @@ export const staffQuestSchema = z
       })
     ),
   })
+  .meta({ id: "StaffQuestEntry" });
+
+/**
+ * A quest as staff see it: each entry with every stop, in order, reached or
+ * not, with its live status. Staff run things at the stops, so they need to
+ * know what's coming, and they unlock each stop by showing its activation
+ * code; but not how to solve it: no solutions, hint text, or the text reply
+ * an entry waits for. Every field is listed on purpose.
+ */
+export const staffQuestSchema = z
+  .object({
+    name: z.string(),
+    displayName: z.string(),
+    entries: z.array(staffQuestEntrySchema),
+  })
   .meta({ id: "StaffQuest" });
 
 /**
- * Says who a quest is for, as staff see it.
- * @param quest the quest
- * @returns the assignee, without its ID
+ * Makes the fields of an entry that every staff view has.
+ * @param quest the quest, as seen through the entry
+ * @returns the fields
  */
-function staffAssigneeOf(quest: QuestService.Quest) {
-  const { kind, name, displayName } = quest.assignee;
-  return { kind, name, displayName };
+function staffEntryOf(quest: QuestService.Quest) {
+  return {
+    id: quest.entryId,
+    entrant: entrantOf(quest),
+    status: quest.status,
+    statusDescription: quest.statusDescription,
+    paused: quest.paused,
+  };
 }
 
 /**
  * Makes a quest's resource for the list staff see.
- * @param quest the quest
+ * @param entries the quest, as seen through each of its entries; there is at
+ *  least one
  * @returns the resource, built field by field so that nothing else gets in
  */
-export function toStaffQuestSummaryResource(quest: QuestService.Quest) {
-  const { puzzles: _puzzles, ...progress } = quest.getProgress();
+export function toStaffQuestSummaryResource(
+  entries: readonly QuestService.Quest[]
+) {
+  const [quest] = entries;
   return {
     name: quest.name,
     displayName: quest.displayName,
-    assignee: staffAssigneeOf(quest),
-    status: quest.status,
-    statusDescription: quest.statusDescription,
-    paused: quest.paused,
-    progress,
+    entries: entries.map((entry) => {
+      const { puzzles: _puzzles, ...progress } = entry.getProgress();
+      return { ...staffEntryOf(entry), progress };
+    }),
   };
 }
 
 /**
  * Makes a quest's resource as staff see it.
- * @param quest the quest, with every puzzle and its details
+ * @param entries the quest, as seen through each of its entries, with every
+ *  puzzle and its details; there is at least one
  * @returns the resource, built field by field so that nothing else gets in
  */
-export function toStaffQuestResource(quest: QuestService.Quest) {
+export function toStaffQuestResource(entries: readonly QuestService.Quest[]) {
+  const [quest] = entries;
   return {
     name: quest.name,
     displayName: quest.displayName,
-    assignee: staffAssigneeOf(quest),
-    status: quest.status,
-    statusDescription: quest.statusDescription,
-    paused: quest.paused,
-    progress: quest.getProgress(),
-    puzzles: quest.puzzles.map((puzzle) => ({
-      name: puzzle.puzzleName,
-      displayName: puzzle.puzzleDetail?.displayName ?? puzzle.puzzleName,
-      status: puzzle.status,
-      statusDescription: puzzle.statusDescription,
-      activationCode: puzzle.activationCode,
-      skipped: puzzle.skipped,
-      hintsRevealed: puzzle.nextHintToDisplay,
-      hintCount: puzzle.puzzleDetail?.hints.length ?? 0,
-      activationTime: puzzle.activationTime ?? null,
-      startTime: puzzle.startTime ?? null,
-      endTime: puzzle.endTime ?? null,
+    entries: entries.map((entry) => ({
+      ...staffEntryOf(entry),
+      progress: entry.getProgress(),
+      puzzles: entry.puzzles.map((puzzle) => ({
+        name: puzzle.puzzleName,
+        displayName: puzzle.puzzleDetail?.displayName ?? puzzle.puzzleName,
+        status: puzzle.status,
+        statusDescription: puzzle.statusDescription,
+        activationCode: puzzle.activationCode,
+        skipped: puzzle.skipped,
+        hintsRevealed: puzzle.nextHintToDisplay,
+        hintCount: puzzle.puzzleDetail?.hints.length ?? 0,
+        activationTime: puzzle.activationTime ?? null,
+        startTime: puzzle.startTime ?? null,
+        endTime: puzzle.endTime ?? null,
+      })),
     })),
   };
 }

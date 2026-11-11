@@ -10,7 +10,6 @@ import { createApp } from "./createApp.js";
 import { subscribeQuestEventHandlers } from "./events/subscribers.js";
 import { logger } from "./logger.js";
 import { ensureDefaultOrganization } from "./models/organization.model.js";
-import { moveQuestProgressIntoEntries } from "./models/questEntries.migration.js";
 import * as WebSocketService from "./services/websocket.service.js";
 import { createShutdown } from "./shutdown.js";
 import { runningCommit } from "./version.js";
@@ -42,8 +41,6 @@ try {
 
 // Every record belongs to an organization, so the default one must exist.
 await ensureDefaultOrganization();
-// Quests stored before entries are given theirs, before anything reads them.
-await moveQuestProgressIntoEntries();
 subscribeQuestEventHandlers();
 
 const app = createApp();

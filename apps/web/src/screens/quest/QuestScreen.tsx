@@ -13,10 +13,16 @@ import { Banner } from "../../ui/Banner";
 import styles from "./QuestScreen.module.css";
 
 function QuestDetails({ quest }: { quest: Schemas["Quest"] }) {
+  // A player sees only their own entry, as the quest's one entry.
+  const entry = quest.entries[0];
+  if (!entry) {
+    return <NotAvailable what="quest" />;
+  }
   return (
     <QuestProgress
-      quest={quest}
-      steps={quest.puzzles.map((step) => ({
+      displayName={quest.displayName}
+      entry={entry}
+      steps={entry.puzzles.map((step) => ({
         name: step.puzzleName,
         displayName: step.displayName ?? step.puzzleName,
         status: step.status,
@@ -30,7 +36,7 @@ function QuestDetails({ quest }: { quest: Schemas["Quest"] }) {
       finish={
         <FinishPanel>
           Congratulations! You finished {quest.displayName} in{" "}
-          <strong>{formatDuration(quest.progress.totalMs)}</strong>.
+          <strong>{formatDuration(entry.progress.totalMs)}</strong>.
         </FinishPanel>
       }
     />

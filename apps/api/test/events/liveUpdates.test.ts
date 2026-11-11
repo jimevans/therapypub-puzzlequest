@@ -11,6 +11,15 @@ const { liveUpdateSchema } = await import("../../src/schemas/liveUpdates.js");
 
 const AT = new Date("2026-11-03T20:00:00Z");
 
+/** The entry the activity happened in. */
+const ENTRY = {
+  id: "entry-1",
+  assignee: { kind: "team" as const, id: "000000000000000000000001" },
+};
+
+/** Who may see the updates' content: everyone, outside a race. */
+const AUDIENCE = { racing: false, assigneeId: "000000000000000000000001" };
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -19,6 +28,8 @@ describe("sendLiveUpdates", () => {
   it("announces an activated puzzle", () => {
     sendLiveUpdates({
       questName: "q1",
+      entry: ENTRY,
+      racing: false,
       events: [{ type: "PuzzleActivated", puzzleName: "p1", at: AT }],
     });
 
@@ -26,16 +37,20 @@ describe("sendLiveUpdates", () => {
       {
         message: "puzzleActivated",
         questName: "q1",
+        entryId: "entry-1",
         puzzleName: "p1",
         activationTime: AT.toISOString(),
       },
-      []
+      [],
+      AUDIENCE
     );
   });
 
   it("announces a solved puzzle and the next one, except to the solver", () => {
     sendLiveUpdates({
       questName: "q1",
+      entry: ENTRY,
+      racing: false,
       connectionId: "solver",
       events: [
         {
@@ -58,22 +73,26 @@ describe("sendLiveUpdates", () => {
         {
           message: "puzzleSolved",
           questName: "q1",
+          entryId: "entry-1",
           puzzleName: "p1",
           solutionText: "Red",
           endTime: AT.toISOString(),
           questComplete: undefined,
         },
         ["solver"],
+        AUDIENCE,
       ],
       [
         {
           message: "puzzleStarted",
           questName: "q1",
+          entryId: "entry-1",
           puzzleName: "p2",
           displayName: "Puzzle 2",
           startTime: AT.toISOString(),
         },
         ["solver"],
+        AUDIENCE,
       ],
     ]);
   });
@@ -81,6 +100,8 @@ describe("sendLiveUpdates", () => {
   it("announces a completed quest with its last solved puzzle", () => {
     sendLiveUpdates({
       questName: "q1",
+      entry: ENTRY,
+      racing: false,
       events: [
         {
           type: "PuzzleSolved",
@@ -94,13 +115,16 @@ describe("sendLiveUpdates", () => {
 
     expect(notifyQuestFollowers).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ message: "puzzleSolved", questComplete: true }),
-      []
+      [],
+      AUDIENCE
     );
   });
 
   it("shares a revealed hint, except with the asker", () => {
     sendLiveUpdates({
       questName: "q1",
+      entry: ENTRY,
+      racing: false,
       connectionId: "asker",
       events: [
         {
@@ -120,19 +144,23 @@ describe("sendLiveUpdates", () => {
       {
         message: "hintRequested",
         questName: "q1",
+        entryId: "entry-1",
         puzzleName: "p1",
         hintText: "Look up",
         moreHints: true,
         timePenalty: 60,
         isNextHintSolution: false,
       },
-      ["asker"]
+      ["asker"],
+      AUDIENCE
     );
   });
 
   it("sends nothing when a quest starts or is reset", () => {
     sendLiveUpdates({
       questName: "q1",
+      entry: ENTRY,
+      racing: false,
       events: [
         { type: "QuestStarted", at: AT },
         {
@@ -154,17 +182,25 @@ describe("sendLiveUpdates", () => {
     { type: "PuzzleSkipped", puzzleName: "p1", at: AT },
     { type: "PuzzleReset", puzzleName: "p1", refundedHints: 0, at: AT },
   ] as const)("tells everyone following the quest after $type", (event) => {
-    sendLiveUpdates({ questName: "q1", events: [event] });
+    sendLiveUpdates({
+      questName: "q1",
+      entry: ENTRY,
+      racing: false,
+      events: [event],
+    });
 
     expect(notifyQuestFollowers).toHaveBeenCalledExactlyOnceWith({
       message: "questUpdated",
       questName: "q1",
+      entryId: "entry-1",
     });
   });
 
   it("sends only messages clients expect, as their schemas describe", () => {
     sendLiveUpdates({
       questName: "q1",
+      entry: ENTRY,
+      racing: false,
       events: [
         { type: "PuzzleActivated", puzzleName: "p1", at: AT },
         {

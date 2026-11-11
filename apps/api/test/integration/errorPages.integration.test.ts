@@ -80,7 +80,7 @@ beforeAll(async () => {
   await QuestService.createQuest({
     name: "waiting-quest",
     displayName: "Waiting Quest",
-    assignee: { kind: "user", name: "player" },
+    entrants: [{ kind: "user", name: "player" }],
     puzzles,
   });
   await QuestService.startQuest("waiting-quest");
@@ -88,7 +88,7 @@ beforeAll(async () => {
   await QuestService.createQuest({
     name: "running-quest",
     displayName: "Running Quest",
-    assignee: { kind: "team", name: "team-a" },
+    entrants: [{ kind: "team", name: "team-a" }],
     puzzles,
   });
   await QuestService.startQuest("running-quest");
@@ -147,7 +147,7 @@ describe("a quest puzzle whose puzzle was deleted", () => {
     });
     await QuestService.createQuest({
       name: "doomed-quest",
-      assignee: { kind: "user", name: "player" },
+      entrants: [{ kind: "user", name: "player" }],
       puzzles: [{ puzzleName: "doomed-puzzle" }],
     });
     await QuestService.startQuest("doomed-quest");

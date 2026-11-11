@@ -2,6 +2,7 @@ import type { Schemas } from "@puzzlequest/api-client";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { api, dataOrThrow } from "../../api";
+import { entrantName } from "../../quests/entrants";
 import { LinkButton } from "../../ui/LinkButton";
 import styles from "./Admin.module.css";
 import {
@@ -16,8 +17,28 @@ type Quest = Schemas["Quest"];
 
 const QUERY_KEY = ["quests"];
 
-function assignedTo({ assignee }: Quest): string {
-  return `${assignee.name ?? "(deleted)"} (${assignee.kind})`;
+/** How many entrants a quest lists by name before giving only the count. */
+const NAMED_ENTRANTS = 3;
+
+/** Who plays the quest: their names, or how many there are. */
+function entrantsOf({ entries }: Quest): string {
+  return entries.length > NAMED_ENTRANTS
+    ? `${entries.length} entrants`
+    : entries.map(({ entrant }) => entrantName(entrant)).join(", ");
+}
+
+/**
+ * How the quest is going: its entries' status when they're all at the same
+ * point, otherwise how many are at each, such as "1 Completed, 1 In progress".
+ */
+function statusOf({ entries }: Quest): string {
+  const counts = new Map<string, number>();
+  for (const { statusDescription } of entries) {
+    counts.set(statusDescription, (counts.get(statusDescription) ?? 0) + 1);
+  }
+  return counts.size === 1
+    ? [...counts.keys()].join("")
+    : [...counts].map(([status, count]) => `${count} ${status}`).join("; ");
 }
 
 /** Every quest, however far it has got. */
@@ -49,7 +70,7 @@ export function QuestsList() {
             <tr>
               <th>Quest</th>
               <th className={styles.secondary}>Name</th>
-              <th>Assigned to</th>
+              <th>Entrants</th>
               <th>Status</th>
               <th aria-label="Actions" />
             </tr>
@@ -63,8 +84,8 @@ export function QuestsList() {
                   </Link>
                 </td>
                 <td className={styles.secondary}>{quest.name}</td>
-                <td>{assignedTo(quest)}</td>
-                <td>{quest.statusDescription}</td>
+                <td>{entrantsOf(quest)}</td>
+                <td>{statusOf(quest)}</td>
                 <td className={styles.rowActions}>
                   <DeleteButton
                     name={quest.displayName}

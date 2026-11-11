@@ -15,13 +15,19 @@ import { Button } from "../../ui/Button";
 import adminStyles from "../admin/Admin.module.css";
 import styles from "./QuestConsole.module.css";
 
-type Quest = Schemas["Quest"];
-type QuestPuzzle = Quest["puzzles"][number];
+type Entry = Schemas["QuestEntry"];
+type QuestPuzzle = Entry["puzzles"][number];
 
 interface StopsTableProps {
-  quest: Quest;
-  onSkip: (puzzle: QuestPuzzle) => void;
-  onReset: (puzzle: QuestPuzzle) => void;
+  questName: string;
+  /** The entry whose progress to show. */
+  entry: Entry;
+  /**
+   * Skips or resets a puzzle; missing when the entry's team or player has
+   * been deleted, so there's no one to do it for.
+   */
+  onSkip?: (puzzle: QuestPuzzle) => void;
+  onReset?: (puzzle: QuestPuzzle) => void;
 }
 
 /** A puzzle's name as the quest shows it. */
@@ -30,14 +36,19 @@ export function puzzleLabel(puzzle: QuestPuzzle): string {
 }
 
 /**
- * Every stop of the quest, in order, whether or not the players have reached
- * it, with what the puzzle master needs to run it.
+ * Every stop of the quest, in order, whether or not an entry's players have
+ * reached it, with what the puzzle master needs to run it.
  */
-export function StopsTable({ quest, onSkip, onReset }: StopsTableProps) {
+export function StopsTable({
+  questName,
+  entry,
+  onSkip,
+  onReset,
+}: StopsTableProps) {
   const [shown, setShown] = useState<QrCodeStop | null>(null);
-  const running = quest.status !== QUEST_NOT_STARTED;
+  const running = entry.status !== QUEST_NOT_STARTED;
   const clockOf = (puzzleName: string) =>
-    quest.progress.puzzles.find((clock) => clock.puzzleName === puzzleName);
+    entry.progress.puzzles.find((clock) => clock.puzzleName === puzzleName);
 
   return (
     <div className={styles.stopsBox}>
@@ -55,11 +66,11 @@ export function StopsTable({ quest, onSkip, onReset }: StopsTableProps) {
           </tr>
         </thead>
         <tbody>
-          {quest.puzzles.map((puzzle, index) => {
+          {entry.puzzles.map((puzzle, index) => {
             const label = puzzleLabel(puzzle);
             const clock = clockOf(puzzle.puzzleName);
             const canSkip =
-              quest.status !== QUEST_COMPLETED &&
+              entry.status !== QUEST_COMPLETED &&
               (puzzle.status === STEP_AWAITING_ACTIVATION ||
                 puzzle.status === STEP_IN_PROGRESS);
             const canReset = running && puzzle.status === STEP_COMPLETED;
@@ -115,7 +126,7 @@ export function StopsTable({ quest, onSkip, onReset }: StopsTableProps) {
                   >
                     QR code
                   </Button>
-                  {canSkip && (
+                  {canSkip && onSkip && (
                     <Button
                       aria-label={`Skip ${label}`}
                       onPress={() => onSkip(puzzle)}
@@ -123,7 +134,7 @@ export function StopsTable({ quest, onSkip, onReset }: StopsTableProps) {
                       Skip
                     </Button>
                   )}
-                  {canReset && (
+                  {canReset && onReset && (
                     <Button
                       aria-label={`Reset ${label}`}
                       onPress={() => onReset(puzzle)}
@@ -138,7 +149,7 @@ export function StopsTable({ quest, onSkip, onReset }: StopsTableProps) {
         </tbody>
       </table>
       <QrCodeDialogWhenShown
-        questName={quest.name}
+        questName={questName}
         stop={shown}
         onClose={() => setShown(null)}
       />

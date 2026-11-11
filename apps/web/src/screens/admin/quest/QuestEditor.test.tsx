@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { RouterProvider, createMemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../../api";
-import { aUser, ok, refusal } from "../../../test/fakes";
+import { aUser, ok, refusal, withOneEntry } from "../../../test/fakes";
 import { QuestEditor } from "./QuestEditor";
 
 const STOPPED = { running: false, elapsedMs: 0, penaltyMs: 0, totalMs: 0 };
@@ -24,7 +24,6 @@ function stop(puzzleName: string, status = 0) {
 const QUEST = {
   name: "trail",
   displayName: "The Trail",
-  assignee: { kind: "team", id: "1", name: "reds", displayName: "The Reds" },
   status: 0,
   statusDescription: "Not yet started",
   paused: false,
@@ -49,12 +48,23 @@ const PUZZLES = ["riddle", "cipher", "finale", "lantern", "bell"].map(
   })
 );
 
-/** Has the API answer with this quest, and everyone and everything. */
-function apiWith(quest: unknown) {
+/** The quest as the API gives it, played by the Reds alone. */
+const asStored = (quest: typeof QUEST) => withOneEntry(quest);
+
+/**
+ * Has the API answer with this quest, and everyone and everything.
+ * @param quest the quest, with its one entry's progress beside it, or the
+ *  quest as the API gives it, with its entries
+ */
+function apiWith(
+  quest:
+    ({ name: string; displayName: string } & Record<string, unknown>) | null
+) {
+  const stored = quest && ("entries" in quest ? quest : withOneEntry(quest));
   return vi.spyOn(api, "GET").mockImplementation((async (path: string) => {
     switch (path) {
       case "/quests/{name}":
-        return quest ? ok(quest) : refusal("not-found", "No such quest");
+        return stored ? ok(stored) : refusal("not-found", "No such quest");
       case "/users":
         return ok({
           items: [aUser({ userName: "pat", displayName: "Pat" })],
@@ -62,7 +72,10 @@ function apiWith(quest: unknown) {
         });
       case "/teams":
         return ok({
-          items: [{ teamName: "reds", displayName: "The Reds", members: [] }],
+          items: [
+            { teamName: "reds", displayName: "The Reds", members: [] },
+            { teamName: "blues", displayName: "The Blues", members: [] },
+          ],
           next: null,
         });
       case "/puzzles":
@@ -102,6 +115,15 @@ function stopNames() {
     .map((item) => within(item).getByRole("link").textContent);
 }
 
+/** The names of the entrants, in order. */
+function entrantNames() {
+  return within(screen.getByRole("group", { name: "Entrants" }))
+    .getAllByRole("listitem")
+    .map(
+      (item) => item.querySelector("[data-entrant] > span + span")?.textContent
+    );
+}
+
 beforeEach(() => {
   // jsdom has no modal dialogs.
   HTMLDialogElement.prototype.showModal = vi.fn(function (
@@ -124,7 +146,7 @@ describe("creating a quest", () => {
     apiWith(null);
     const post = vi
       .spyOn(api, "POST")
-      .mockResolvedValue(ok(QUEST, 201) as never);
+      .mockResolvedValue(ok(asStored(QUEST), 201) as never);
     const router = show("/quest/new");
 
     await user.type(await screen.findByLabelText("Name"), "trail");
@@ -134,7 +156,11 @@ describe("creating a quest", () => {
         screen.getByRole("option", { name: "The Reds (reds)" })
       ).toBeInTheDocument()
     );
-    await user.selectOptions(screen.getByLabelText("Assigned to"), "team:reds");
+    await user.selectOptions(
+      screen.getByLabelText("Add a team or player"),
+      "team:reds"
+    );
+    await user.click(screen.getByRole("button", { name: "Add" }));
     await user.click(screen.getByRole("button", { name: "Add puzzles" }));
     const picker = screen.getByRole("dialog", { name: "Add puzzles" });
     await user.click(await within(picker).findByLabelText(/The lantern/));
@@ -156,7 +182,7 @@ describe("creating a quest", () => {
         name: "trail",
         displayName: "The Trail",
         visibility: "public",
-        assignee: { kind: "team", name: "reds" },
+        entrants: [{ kind: "team", name: "reds" }],
         puzzles: [
           { puzzleName: "lantern", cardWord: "" },
           { puzzleName: "riddle", cardWord: "" },
@@ -175,7 +201,7 @@ describe("creating a quest", () => {
 
     expect(await screen.findByText("Enter a name")).toBeVisible();
     expect(screen.getByText("Enter a display name")).toBeVisible();
-    expect(screen.getByText("Choose a team or a player")).toBeVisible();
+    expect(screen.getByText("Add a team or a player")).toBeVisible();
     expect(post).not.toHaveBeenCalled();
   });
 
@@ -196,7 +222,11 @@ describe("creating a quest", () => {
         screen.getByRole("option", { name: "Pat (pat)" })
       ).toBeInTheDocument()
     );
-    await user.selectOptions(screen.getByLabelText("Assigned to"), "user:pat");
+    await user.selectOptions(
+      screen.getByLabelText("Add a team or player"),
+      "user:pat"
+    );
+    await user.click(screen.getByRole("button", { name: "Add" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(await screen.findByText("Already taken")).toBeVisible();
@@ -207,13 +237,13 @@ describe("editing a quest", () => {
   it("reorders and removes stops, keeping their codes", async () => {
     const user = userEvent.setup();
     apiWith(QUEST);
-    const patch = vi.spyOn(api, "PATCH").mockResolvedValue(ok(QUEST) as never);
+    const patch = vi
+      .spyOn(api, "PATCH")
+      .mockResolvedValue(ok(asStored(QUEST)) as never);
     show("/quest/trail/edit");
 
-    expect(await screen.findByLabelText("Assigned to")).toHaveValue(
-      "team:reds"
-    );
-    expect(screen.getByText("riddle-code")).toBeVisible();
+    expect(await screen.findByText("riddle-code")).toBeVisible();
+    expect(entrantNames()).toEqual(["The Reds (team)"]);
     await user.click(
       screen.getByRole("button", { name: "Move The finale up" })
     );
@@ -227,7 +257,7 @@ describe("editing a quest", () => {
       body: {
         displayName: "The Trail",
         visibility: "public",
-        assignee: { kind: "team", name: "reds" },
+        entrants: [{ kind: "team", name: "reds" }],
         puzzles: [
           { puzzleName: "finale", cardWord: "" },
           { puzzleName: "cipher", cardWord: "" },
@@ -246,7 +276,9 @@ describe("editing a quest", () => {
         stop("finale"),
       ],
     });
-    const patch = vi.spyOn(api, "PATCH").mockResolvedValue(ok(QUEST) as never);
+    const patch = vi
+      .spyOn(api, "PATCH")
+      .mockResolvedValue(ok(asStored(QUEST)) as never);
     show("/quest/trail/edit");
 
     const riddle = await screen.findByLabelText("Card word for The riddle");
@@ -273,7 +305,9 @@ describe("editing a quest", () => {
   it("makes a quest private, and shows that it is", async () => {
     const user = userEvent.setup();
     apiWith({ ...QUEST, visibility: "private" });
-    const patch = vi.spyOn(api, "PATCH").mockResolvedValue(ok(QUEST) as never);
+    const patch = vi
+      .spyOn(api, "PATCH")
+      .mockResolvedValue(ok(asStored(QUEST)) as never);
     show("/quest/trail/edit");
 
     const box = await screen.findByLabelText("Private");
@@ -368,6 +402,98 @@ describe("editing a quest", () => {
       "Puzzle cipher has already been reached"
     );
   });
+
+  it("adds, orders and removes the teams and players who play it", async () => {
+    const user = userEvent.setup();
+    apiWith(QUEST);
+    const patch = vi
+      .spyOn(api, "PATCH")
+      .mockResolvedValue(ok(asStored(QUEST)) as never);
+    show("/quest/trail/edit");
+
+    const choice = await screen.findByLabelText("Add a team or player");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("option", { name: "Pat (pat)" })
+      ).toBeInTheDocument()
+    );
+    // Those already playing aren't offered again.
+    expect(
+      screen.queryByRole("option", { name: "The Reds (reds)" })
+    ).not.toBeInTheDocument();
+    await user.selectOptions(choice, "team:blues");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.selectOptions(choice, "user:pat");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    expect(entrantNames()).toEqual([
+      "The Reds (team)",
+      "The Blues (team)",
+      "Pat (player)",
+    ]);
+    await user.click(
+      screen.getByRole("button", { name: "Move Pat (player) up" })
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Remove The Reds (team)" })
+    );
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(patch).toHaveBeenCalled());
+    expect(patch.mock.calls[0]?.[1]).toMatchObject({
+      body: {
+        entrants: [
+          { kind: "user", name: "pat" },
+          { kind: "team", name: "blues" },
+        ],
+      },
+    });
+  });
+
+  it("keeps a team that has started, until it's reset", async () => {
+    apiWith(RUNNING);
+    show("/quest/trail/edit");
+
+    const reds = within(
+      (await screen.findByText("The Reds (team)")).closest("li")!
+    );
+    expect(reds.getByText("Started")).toBeVisible();
+    expect(
+      reds.queryByRole("button", { name: /^Remove/ })
+    ).not.toBeInTheDocument();
+    expect(
+      reds.getByRole("button", { name: "Move The Reds (team) down" })
+    ).toBeDisabled();
+  });
+
+  it.each([
+    [
+      "wrong-state",
+      "The Reds (team) has started quest trail, so can't be removed from it; reset it first",
+    ],
+    [
+      "invalid-quest",
+      "Player pat would be in two of the quest's entrants, team reds and user pat; a player may be in only one",
+    ],
+  ])(
+    "shows the server's %s objection to the entrants beside them",
+    async (type, detail) => {
+      const user = userEvent.setup();
+      apiWith(QUEST);
+      vi.spyOn(api, "PATCH").mockResolvedValue(
+        refusal(type, detail, [
+          { path: "body.entrants", message: detail },
+        ]) as never
+      );
+      show("/quest/trail/edit");
+
+      await user.click(await screen.findByRole("button", { name: "Save" }));
+
+      const entrants = screen.getByRole("group", { name: "Entrants" });
+      expect(await within(entrants).findByText(detail)).toBeVisible();
+      expect(entrants).toHaveAccessibleDescription(detail);
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    }
+  );
 
   it("says when there's no such quest", async () => {
     apiWith(null);

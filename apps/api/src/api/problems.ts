@@ -240,7 +240,8 @@ export const problemSchema = z
       .string()
       .meta({ description: "What went wrong with this request." }),
     errors: z.array(fieldErrorSchema).optional().meta({
-      description: "For an invalid request, each problem with it.",
+      description:
+        "For an invalid request, each problem with it; for another problem about one of the request's fields (such as a quest's entrants), that field.",
     }),
     requestId: z.string().optional().meta({
       description:
@@ -331,10 +332,22 @@ const PROBLEM_FOR_REASON: Record<ServiceErrorReason, ProblemType> = {
  */
 export function sendServiceProblem(
   res: Response,
-  error: { statusCode: number; message: string; reason?: ServiceErrorReason }
+  error: {
+    statusCode: number;
+    message: string;
+    reason?: ServiceErrorReason;
+    field?: string;
+  }
 ): void {
   if (error.reason) {
-    sendProblem(res, PROBLEM_FOR_REASON[error.reason], error.message);
+    sendProblem(
+      res,
+      PROBLEM_FOR_REASON[error.reason],
+      error.message,
+      error.field
+        ? { errors: [{ path: `body.${error.field}`, message: error.message }] }
+        : {}
+    );
     return;
   }
   if (error.statusCode >= 500) {

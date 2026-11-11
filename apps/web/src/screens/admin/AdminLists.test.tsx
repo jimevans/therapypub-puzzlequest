@@ -4,34 +4,37 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../../api";
-import { aUser, ok, refusal } from "../../test/fakes";
+import { aUser, ok, refusal, withOneEntry } from "../../test/fakes";
 import { AdminLayout } from "./AdminLayout";
 import { PuzzlesList } from "./PuzzlesList";
 import { QuestsList } from "./QuestsList";
 import { TeamsList } from "./TeamsList";
 import { UsersList } from "./UsersList";
 
-const QUEST = {
-  name: "trail",
-  displayName: "The Trail",
-  assignee: { kind: "team", id: "1", name: "red" },
-  status: 1,
-  statusDescription: "In progress",
-  paused: false,
-  puzzles: [],
-  progress: {
-    running: false,
-    elapsedMs: 0,
-    penaltyMs: 0,
-    totalMs: 0,
+const QUEST = withOneEntry(
+  {
+    name: "trail",
+    displayName: "The Trail",
+    status: 1,
+    statusDescription: "In progress",
+    paused: false,
     puzzles: [],
+    progress: {
+      running: false,
+      elapsedMs: 0,
+      penaltyMs: 0,
+      totalMs: 0,
+      puzzles: [],
+    },
   },
-};
+  { kind: "team", name: "red", displayName: "The Reds" }
+);
+const [ENTRY] = QUEST.entries;
 const ORPHAN = {
   ...QUEST,
   name: "orphan",
   displayName: "The Orphan",
-  assignee: { kind: "user", id: "2" },
+  entries: [{ ...ENTRY, entrant: { kind: "user" } }],
 };
 const PUZZLE = {
   name: "riddle",
@@ -130,22 +133,61 @@ describe("the admin layout", () => {
 });
 
 describe("the quests list", () => {
-  it("shows each quest, who it's assigned to, and its status", async () => {
+  it("shows each quest, who plays it, and its status", async () => {
     apiLists({ "/quests": [QUEST] });
     show(<QuestsList />);
 
     expect(
       await screen.findByRole("link", { name: "The Trail" })
     ).toHaveAttribute("href", "/quest/trail");
-    expect(screen.getByText("red (team)")).toBeVisible();
+    expect(screen.getByText("The Reds")).toBeVisible();
     expect(screen.getByText("In progress")).toBeVisible();
   });
 
-  it("says when who it was assigned to has been deleted", async () => {
+  it("names a race's entrants, or counts them if there are many", async () => {
+    const entrant = (n: number) => ({
+      ...ENTRY,
+      id: `entry-${n}`,
+      entrant: { kind: "team", name: `team${n}`, displayName: `Team ${n}` },
+    });
+    apiLists({
+      "/quests": [
+        {
+          ...QUEST,
+          entries: [
+            entrant(1),
+            {
+              ...entrant(2),
+              status: 2,
+              statusDescription: "Completed",
+            },
+          ],
+        },
+        {
+          ...QUEST,
+          name: "big",
+          displayName: "The Big Race",
+          entries: [1, 2, 3, 4].map(entrant),
+        },
+      ],
+    });
+    show(<QuestsList />);
+
+    const race = (
+      await screen.findByRole("link", { name: "The Trail" })
+    ).closest("tr") as HTMLElement;
+    expect(race).toHaveTextContent("Team 1, Team 2");
+    expect(race).toHaveTextContent("1 In progress; 1 Completed");
+    expect(
+      screen.getByRole("link", { name: "The Big Race" }).closest("tr")
+    ).toHaveTextContent("4 entrants");
+  });
+
+  it("says when who plays it has been deleted", async () => {
     apiLists({ "/quests": [ORPHAN] });
     show(<QuestsList />);
 
-    expect(await screen.findByText("(deleted) (user)")).toBeVisible();
+    expect(await screen.findByText("A deleted player")).toBeVisible();
   });
 
   it("gets every page", async () => {

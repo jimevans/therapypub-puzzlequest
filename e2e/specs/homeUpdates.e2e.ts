@@ -38,7 +38,7 @@ describe("a player's home screen", () => {
     await api("POST", "/quests", admin, {
       name: questName,
       displayName: "The Home Quest",
-      assignee: { kind: "user", name: player },
+      entrants: [{ kind: "user", name: player }],
       puzzles: [{ puzzleName: riddle }],
     });
   });

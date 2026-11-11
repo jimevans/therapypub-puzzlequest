@@ -24,7 +24,7 @@ export const staffRoutes = [
     operationId: "listStaffQuests",
     summary: "List quests for staff",
     description:
-      "Every quest, with who it's for and how it's going, for staff to choose one to follow.",
+      "Every quest, with who plays it and how each entry is going, for staff to choose one to follow.",
     tags: ["Staff"],
     access: "staff",
     request: { query: pageQuery },
@@ -48,7 +48,7 @@ export const staffRoutes = [
     operationId: "getStaffQuest",
     summary: "Follow a quest as staff",
     description:
-      "Every stop of the quest, in order, whether or not the players have reached it, with its live status, times, and activation code. No solutions or hint text.",
+      "Every entry of the quest, each with every stop, in order, whether or not its players have reached it, with its live status, times, and activation code. No solutions or hint text.",
     tags: ["Staff"],
     access: "staff",
     request: { params: questParams },
@@ -57,7 +57,7 @@ export const staffRoutes = [
     },
     problems: [Problems.notFound],
     async handle(req, res) {
-      const found = await QuestService.getQuestByQuestName(req.params.name);
+      const found = await QuestService.getQuestEntries(req.params.name);
       if (found.status === "error") {
         sendServiceProblem(res, found);
         return;

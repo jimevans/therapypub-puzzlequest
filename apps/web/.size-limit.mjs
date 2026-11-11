@@ -65,7 +65,7 @@ export default [
   onTopOfFirstLoad(
     "Following a quest",
     "src/screens/followAlong/FollowQuest.tsx",
-    "5 KB"
+    "6 KB"
   ),
   onTopOfFirstLoad(
     "Following a puzzle",
@@ -105,12 +105,12 @@ export default [
   onTopOfFirstLoad(
     "A quest, as staff see it",
     "src/screens/staff/StaffQuest.tsx",
-    "5 KB"
+    "6 KB"
   ),
   onTopOfFirstLoad(
     "The quest console",
     "src/screens/questConsole/QuestConsole.tsx",
-    "40 KB"
+    "42 KB"
   ),
   onTopOfFirstLoad(
     "The quest editor",

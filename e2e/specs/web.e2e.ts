@@ -115,7 +115,7 @@ describe("the web app", () => {
       await api("POST", "/quests", admin, {
         name: questName,
         displayName: "The Web Quest",
-        assignee: { kind: "user", name: userName },
+        entrants: [{ kind: "user", name: userName }],
         puzzles: [
           { puzzleName: first, activationCode: "first-code" },
           { puzzleName: second, activationCode: "second-code" },
@@ -254,7 +254,9 @@ describe("the web app", () => {
 
     it("shows spectators a puzzle, read-only, updating live", async () => {
       await browser.url(`/monitor/quest/${questName}`);
-      await $(`a[href="/monitor/quest/${questName}/puzzle/${second}"]`).click();
+      await $(
+        `a[href^="/monitor/quest/${questName}/puzzle/${second}?entry="]`
+      ).click();
 
       await expect($("#puzzle-content strong")).toHaveText("yes");
       await expect($("#guess")).not.toExist();

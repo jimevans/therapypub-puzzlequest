@@ -54,7 +54,7 @@ function createQuest(name: string, assignee: object): Promise<unknown> {
   return QuestService.createQuest({
     name,
     displayName: `Quest ${name}`,
-    assignee: assignee as never,
+    entrants: [assignee as never],
     puzzles: [
       { puzzleName: "riddle", activationCode: "riddle-code" },
       { puzzleName: "finale", activationCode: "finale-code" },

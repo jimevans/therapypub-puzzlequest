@@ -20,7 +20,8 @@ const { QuestModel } = await import("../../src/models/quest.model.js");
 const { QuestEventModel } =
   await import("../../src/models/questEvent.model.js");
 const QuestService = await import("../../src/services/quest.service.js");
-const { UserModel } = await import("../../src/models/user.model.js");
+const { TeamModel, UserModel } = await import("../../src/models/user.model.js");
+const UserService = await import("../../src/services/user.service.js");
 const { questEventBus } = await import("../../src/events/questEventBus.js");
 const { subscribeQuestEventHandlers } =
   await import("../../src/events/subscribers.js");
@@ -42,6 +43,7 @@ let PLAYER: string[] = [];
 
 beforeEach(async () => {
   await UserModel.deleteMany({});
+  await TeamModel.deleteMany({});
   await UserModel.create({
     userName: "player",
     displayName: "Player",
@@ -74,7 +76,7 @@ beforeEach(async () => {
   await QuestService.createQuest({
     name: "test-quest",
     displayName: "Test Quest",
-    assignee: { kind: "user", name: "player" },
+    entrants: [{ kind: "user", name: "player" }],
     puzzles: [{ puzzleName: "colors" }, { puzzleName: "fruit" }],
   });
 });
@@ -204,6 +206,69 @@ describe("the quest event log", () => {
     ]);
   });
 
+  it("records whose entry each event happened in, by name as it was", async () => {
+    await UserModel.create({
+      userName: "rival",
+      displayName: "Rival",
+      email: "rival@example.com",
+      password: "hash",
+    });
+    await TeamModel.create({
+      teamName: "crew",
+      displayName: "Crew",
+      joinCode: "crew-code",
+      memberIds: [],
+    });
+    await QuestService.updateQuest({
+      name: "test-quest",
+      entrants: [
+        { kind: "user", name: "player" },
+        { kind: "team", name: "crew" },
+      ],
+    });
+    await QuestService.startQuest("test-quest", { actor: "admin" });
+    await TeamModel.updateOne({ teamName: "crew" }, { teamName: "renamed" });
+
+    const events = await QuestEventModel.find({ questName: "test-quest" })
+      .sort({ _id: 1 })
+      .lean();
+    expect(events.map(({ type, entrant }) => [type, entrant])).toEqual([
+      ["QuestStarted", { kind: "user", name: "player" }],
+      ["PuzzleStarted", { kind: "user", name: "player" }],
+      ["QuestStarted", { kind: "team", name: "crew" }],
+      ["PuzzleStarted", { kind: "team", name: "crew" }],
+    ]);
+    const page = await QuestService.listQuestEventsPage("test-quest", {
+      limit: 50,
+    });
+    expect(page.data!.items[2]).toMatchObject({
+      type: "QuestStarted",
+      entrant: { kind: "team", name: "crew" },
+    });
+  });
+
+  it("takes a deleted player's name out of the entries they played", async () => {
+    await QuestService.startQuest("test-quest");
+    await UserModel.create({
+      userName: "admin",
+      displayName: "Admin",
+      email: "admin@example.com",
+      password: "hash",
+      authorizationLevel: 10,
+    });
+
+    expect((await UserService.deleteUser("player")).status).toBe("success");
+
+    const events = await QuestEventModel.find({ questName: "test-quest" })
+      .lean()
+      .exec();
+    expect(events.map(({ entrant }) => entrant)).toEqual([
+      { kind: "user" },
+      { kind: "user" },
+    ]);
+    expect(JSON.stringify(events)).not.toContain('"player"');
+  });
+
   it("records nothing for a refused action", async () => {
     await QuestService.startQuest("test-quest");
     await QuestService.activatePuzzle(
@@ -253,7 +318,11 @@ describe("published quest activity", () => {
       questName: "test-quest",
       actor: "player",
       connectionId: "c1",
-      assignee: { kind: "user", id: expect.any(String) },
+      entry: {
+        id: expect.any(String),
+        assignee: { kind: "user", id: expect.any(String) },
+      },
+      racing: false,
       events: [
         {
           type: "HintRevealed",
