@@ -1,6 +1,6 @@
 {
   "name": "@puzzlequest/api",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "The PuzzleQuest server: the v1 API and the server-rendered pages",
   "private": true,
   "type": "module",

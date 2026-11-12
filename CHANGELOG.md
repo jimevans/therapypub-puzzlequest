@@ -8,6 +8,8 @@ description at `/api/v1/openapi.json`.
 
 ## Unreleased
 
+## 1.1.0 — 2026-11-12
+
 ### The API
 
 - Apps can register a phone for push notifications with
