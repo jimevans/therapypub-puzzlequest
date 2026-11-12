@@ -327,7 +327,7 @@ administrators can make others administrators by editing their profiles.
 The server sends push notifications to the apps with Apple's and Firebase's
 key files, which stay on the host and never go in the repository. Put them in
 a folder of their own in the home directory, such as
-`/home/thepuzzlequest/push-keys`, outside the application's folder (which a
+`/home/thepuzzlequest/puzzlequest-private`, outside the application's folder (which a
 deployment may replace) and outside `public_html`:
 
 1. In cPanel's **File Manager**, make the folder and upload the files: the
