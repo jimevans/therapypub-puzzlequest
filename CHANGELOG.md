@@ -8,6 +8,16 @@ description at `/api/v1/openapi.json`.
 
 ## Unreleased
 
+## 1.0.2 — 2026-11-12
+
+### The API
+
+- Starting and resetting a quest now send its followers `questUpdated` over
+  the live-update websocket, as pausing and the puzzle master's other changes
+  do, so a screen following the quest shows them at once. Before, they sent
+  nothing, and a quest reset while a player had it open showed only at the
+  screen's next fetch.
+
 ## 1.0.1 — 2026-11-11
 
 ### The API

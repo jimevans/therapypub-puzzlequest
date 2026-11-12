@@ -7,9 +7,9 @@ import type { QuestActivity } from "./questEventBus.js";
 /**
  * Sends quest activity to the clients following the quest, except the one the
  * action came from, so every player and spectator sees progress as it happens.
- * Starting and resetting quests send nothing: clients see those when they next
- * refresh. An administrator's rescues (pausing, resuming, skipping, and
- * resetting) go to everyone, since they can change much of the quest. Each
+ * Starting and resetting a quest, and an administrator's rescues (pausing,
+ * resuming, skipping, and resetting a puzzle), send questUpdated to everyone,
+ * since they can change much of the quest. Each
  * update names the entry whose progress changed; while teams race, only staff
  * and the entry's own players are sent what changed, and everyone else only
  * that it did.
@@ -55,7 +55,7 @@ export function sendLiveUpdates(activity: QuestActivity): void {
         break;
       case "PuzzleStarted":
         // Only when a solve leads to it: a quest's first puzzle starts with the
-        // quest, which sends nothing.
+        // quest, which sends questUpdated instead.
         if (solved) {
           notify({
             message: "puzzleStarted",
@@ -67,6 +67,8 @@ export function sendLiveUpdates(activity: QuestActivity): void {
           });
         }
         break;
+      case "QuestStarted":
+      case "QuestReset":
       case "QuestPaused":
       case "QuestResumed":
       case "PuzzleSkipped":

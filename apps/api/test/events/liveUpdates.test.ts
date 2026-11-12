@@ -154,7 +154,7 @@ describe("sendLiveUpdates", () => {
     );
   });
 
-  it("sends nothing when a quest starts or is reset", () => {
+  it("sends one update when a quest starts, not its first puzzle's", () => {
     sendLiveUpdates({
       questName: "q1",
       entry: ENTRY,
@@ -167,14 +167,19 @@ describe("sendLiveUpdates", () => {
           displayName: "Puzzle 1",
           at: AT,
         },
-        { type: "QuestReset", at: AT },
       ],
     });
 
-    expect(notifyQuestFollowers).not.toHaveBeenCalled();
+    expect(notifyQuestFollowers).toHaveBeenCalledExactlyOnceWith({
+      message: "questUpdated",
+      questName: "q1",
+      entryId: "entry-1",
+    });
   });
 
   it.each([
+    { type: "QuestStarted", at: AT },
+    { type: "QuestReset", at: AT },
     { type: "QuestPaused", at: AT },
     { type: "QuestResumed", at: AT },
     { type: "PuzzleSkipped", puzzleName: "p1", at: AT },

@@ -75,8 +75,8 @@ const hintRevealed = z.object({
 });
 
 /**
- * The puzzle master changed an entry's progress, such as pausing it or
- * skipping a puzzle; the page reloads to show it.
+ * The puzzle master changed an entry's progress, such as starting, pausing, or
+ * resetting it, or skipping a puzzle; the page reloads to show it.
  */
 const questUpdated = z.object({
   message: z.literal("questUpdated"),

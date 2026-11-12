@@ -241,6 +241,16 @@ describe("following a quest as it's played", () => {
     expect(JSON.parse(follower.raw[0]).entryId).toBe(await entryIdOf("quest"));
   });
 
+  it("tells followers when the quest is reset", async () => {
+    const follower = await follow("quest");
+    const entryId = await entryIdOf("quest");
+
+    await QuestService.resetQuest("quest");
+
+    await vi.waitFor(() => expect(follower.kinds()).toEqual(["questUpdated"]));
+    expect(JSON.parse(follower.raw[0]).entryId).toBe(entryId);
+  });
+
   it("sends nothing about another quest", async () => {
     await QuestService.createQuest({
       name: "another-quest",
