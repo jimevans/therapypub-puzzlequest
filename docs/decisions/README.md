@@ -29,6 +29,7 @@ ask.
 - [0022. A quest's players are entries, each with its own progress](0022-quest-entries.md)
 - [0023. The API's conventions, for version 1.0](0023-api-conventions.md)
 - [0024. Push notifications, sent by the API to phones registered with a session](0024-push-notifications.md)
+- [0025. The puzzle master's messages and challenges reach the apps too](0025-puzzle-master-challenges-in-the-apps.md)
 
 To add one, copy the shape of an existing record (status, date, context,
 decision, consequences, alternatives), number it next, and add it here. A
