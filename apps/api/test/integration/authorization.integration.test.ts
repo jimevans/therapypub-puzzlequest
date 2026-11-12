@@ -133,6 +133,8 @@ const ROUTES: [string, string, Policy][] = [
   ["post", "/api/v1/sessions", PUBLIC],
   ["get", "/api/v1/sessions/current", SIGNED_IN],
   ["delete", "/api/v1/sessions/current", PUBLIC],
+  ["put", "/api/v1/sessions/current/push-target", SIGNED_IN],
+  ["delete", "/api/v1/sessions/current/push-target", SIGNED_IN],
   ["get", "/api/v1/users", ADMIN],
   ["post", "/api/v1/users", PUBLIC],
   ["get", "/api/v1/users/:userName", SELF_OR_ADMIN],

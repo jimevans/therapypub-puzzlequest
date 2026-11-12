@@ -261,6 +261,140 @@
         }
       }
     },
+    "/sessions/current/push-target": {
+      "put": {
+        "operationId": "setPushTarget",
+        "summary": "Get push notifications on this phone",
+        "description": "Sends the session's push notifications to the phone with this token, replacing any it was sending to; a token another session had moves to this one. They stop when the session ends: on signing out, its expiring, or its user's password changing. Apps send this whenever they're launched, since tokens change.",
+        "tags": [
+          "Sessions"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushTarget"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Push notifications go to the phone."
+          },
+          "400": {
+            "description": "/problems/invalid-request: The request isn't valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "/problems/sign-in-required: Sign in to do this. /problems/sign-in-required: Sign in to do this.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "/problems/cross-site-request: Request from another site.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "/problems/body-too-large: Request too large.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "/problems/unexpected: An unexpected error occurred.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "clearPushTarget",
+        "summary": "Stop push notifications",
+        "description": "Stops the session's push notifications. Stopping them when there are none does nothing.",
+        "tags": [
+          "Sessions"
+        ],
+        "security": [
+          {
+            "sessionCookie": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No push notifications are sent."
+          },
+          "401": {
+            "description": "/problems/sign-in-required: Sign in to do this.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "/problems/cross-site-request: Request from another site.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "/problems/unexpected: An unexpected error occurred.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/users": {
       "get": {
         "operationId": "listUsers",
@@ -7666,6 +7800,47 @@
   },
   "components": {
     "schemas": {
+      "PushTarget": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "enum": [
+              "ios",
+              "android"
+            ],
+            "description": "The kind of phone: ios (through APNs) or android (FCM)."
+          },
+          "token": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096,
+            "description": "The token Apple's or Google's push service gave the app: on iOS, the device token in hexadecimal; on Android, the FCM registration token."
+          },
+          "environment": {
+            "type": "string",
+            "enum": [
+              "production",
+              "development"
+            ],
+            "description": "Which of Apple's services the token is for: development for an app built and run from Xcode, production otherwise. Android apps send production."
+          },
+          "categories": {
+            "description": "The kinds of notification wanted; leave it out for every kind, including those added later. Kinds: questStarted, questPaused, questResumed, stopSolved, standingsFinal, message. A kind the server doesn't know is kept, for when it does.",
+            "maxItems": 40,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z]{1,40}$"
+            }
+          }
+        },
+        "required": [
+          "platform",
+          "token",
+          "environment"
+        ]
+      },
       "Role": {
         "type": "string",
         "enum": [

@@ -106,4 +106,78 @@ describe("parseConfig", () => {
       parseError({ ...required, PQ_SMTP_HOST: "smtp.example.com" })
     ).toContain("PQ_EMAIL_FROM is required when PQ_SMTP_HOST is set");
   });
+
+  describe("push notification settings", () => {
+    const apns = {
+      PQ_APNS_KEY:
+        "-----BEGIN PRIVATE KEY-----\\nabc\\n-----END PRIVATE KEY-----",
+      PQ_APNS_KEY_ID: "KEY123",
+      PQ_APNS_TEAM_ID: "TEAM123",
+      PQ_APNS_BUNDLE_ID: "com.example.app",
+    };
+
+    it("leaves sending off when none are set", () => {
+      const config = parseConfig(required);
+
+      expect(config.PQ_APNS_KEY).toBeUndefined();
+      expect(config.PQ_FCM_SERVICE_ACCOUNT).toBeUndefined();
+    });
+
+    it("takes Apple's key with its line breaks written as \\n", () => {
+      const config = parseConfig({ ...required, ...apns });
+
+      expect(config.PQ_APNS_KEY).toBe(
+        "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----"
+      );
+    });
+
+    it("needs all of Apple's settings once any is set", () => {
+      const message = parseError({
+        ...required,
+        PQ_APNS_KEY_ID: "KEY123",
+        PQ_APNS_BUNDLE_ID: "com.example.app",
+      });
+
+      expect(message).toContain(
+        "PQ_APNS_KEY is required when any PQ_APNS_ setting is set"
+      );
+      expect(message).toContain(
+        "PQ_APNS_TEAM_ID is required when any PQ_APNS_ setting is set"
+      );
+      expect(message).not.toContain("PQ_APNS_KEY_ID is required");
+    });
+
+    it("reads Firebase's service account key", () => {
+      const config = parseConfig({
+        ...required,
+        PQ_FCM_SERVICE_ACCOUNT: JSON.stringify({
+          type: "service_account",
+          project_id: "puzzlequest",
+          client_email: "sender@puzzlequest.iam.gserviceaccount.com",
+          private_key: "-----BEGIN PRIVATE KEY-----\nabc",
+        }),
+      });
+
+      expect(config.PQ_FCM_SERVICE_ACCOUNT).toEqual({
+        project_id: "puzzlequest",
+        client_email: "sender@puzzlequest.iam.gserviceaccount.com",
+        private_key: "-----BEGIN PRIVATE KEY-----\nabc",
+        token_uri: "https://oauth2.googleapis.com/token",
+      });
+    });
+
+    it.each(["not json", JSON.stringify({ project_id: "puzzlequest" })])(
+      "refuses a service account key that isn't one: %s",
+      (value) => {
+        const message = parseError({
+          ...required,
+          PQ_FCM_SERVICE_ACCOUNT: value,
+        });
+
+        expect(message).toContain(
+          "PQ_FCM_SERVICE_ACCOUNT must be a Firebase service account's JSON key"
+        );
+      }
+    );
+  });
 });

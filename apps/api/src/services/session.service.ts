@@ -1,5 +1,9 @@
 import { createHash, randomBytes } from "crypto";
-import { SessionModel } from "../models/session.model.js";
+import {
+  type PUSH_ENVIRONMENTS,
+  type PUSH_PLATFORMS,
+  SessionModel,
+} from "../models/session.model.js";
 
 /** How long a session lasts after it was last used. */
 export const SESSION_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
@@ -113,4 +117,121 @@ export async function deleteUserSessions(
     userId,
     ...(keepToken ? { tokenHash: { $ne: hashSessionToken(keepToken) } } : {}),
   });
+}
+
+/** Where an app gets push notifications. */
+export interface PushTarget {
+  platform: (typeof PUSH_PLATFORMS)[number];
+  token: string;
+  environment: (typeof PUSH_ENVIRONMENTS)[number];
+  /** The kinds of notification wanted; leave it out for every kind. */
+  categories?: string[];
+}
+
+/** A user's push target, with the session it belongs to. */
+export interface UserPushTarget extends PushTarget {
+  userId: string;
+}
+
+/**
+ * Sends a session's push notifications to a phone, replacing any target it
+ * had. A phone's token can belong to only one session, so one registered by
+ * another session (an earlier sign-in on the same phone) moves to this one.
+ * @param token the session token
+ * @param target where to send them
+ * @returns false if the session has ended
+ */
+export async function setPushTarget(
+  token: string,
+  target: PushTarget
+): Promise<boolean> {
+  const tokenHash = hashSessionToken(token);
+  const pushTarget = {
+    platform: target.platform,
+    token: target.token,
+    environment: target.environment,
+    ...(target.categories ? { categories: target.categories } : {}),
+  };
+  // Two tries: a sign-in elsewhere could register the same phone between
+  // taking it from other sessions and giving it to this one.
+  for (let attempt = 1; ; attempt++) {
+    await SessionModel.updateMany(
+      { "pushTarget.token": target.token, tokenHash: { $ne: tokenHash } },
+      { $unset: { pushTarget: 1 } }
+    );
+    try {
+      const result = await SessionModel.updateOne(
+        { tokenHash },
+        { $set: { pushTarget } }
+      );
+      return result.matchedCount > 0;
+    } catch (err) {
+      if (attempt >= 2 || (err as { code?: number }).code !== 11000) {
+        throw err;
+      }
+    }
+  }
+}
+
+/**
+ * Stops a session's push notifications.
+ * @param token the session token
+ */
+export async function clearPushTarget(token: string): Promise<void> {
+  await SessionModel.updateOne(
+    { tokenHash: hashSessionToken(token) },
+    { $unset: { pushTarget: 1 } }
+  );
+}
+
+/**
+ * Finds where to send users' push notifications of a kind: the push
+ * targets of their sessions that haven't ended and want that kind.
+ * @param userIds the users
+ * @param category the kind of notification
+ * @returns the push targets, each with its user
+ */
+export async function findPushTargets(
+  userIds: readonly string[],
+  category: string
+): Promise<UserPushTarget[]> {
+  const sessions = await SessionModel.find(
+    {
+      userId: { $in: userIds },
+      expiresAt: { $gt: new Date() },
+      "pushTarget.token": { $exists: true },
+      $or: [
+        { "pushTarget.categories": { $exists: false } },
+        { "pushTarget.categories": category },
+      ],
+    },
+    { userId: 1, pushTarget: 1 }
+  ).lean();
+  return sessions.flatMap(({ userId, pushTarget }) =>
+    pushTarget
+      ? [
+          {
+            userId: userId.toString(),
+            platform: pushTarget.platform,
+            token: pushTarget.token,
+            environment: pushTarget.environment,
+            ...(pushTarget.categories
+              ? { categories: pushTarget.categories }
+              : {}),
+          },
+        ]
+      : []
+  );
+}
+
+/**
+ * Forgets a phone's token, after Apple's or Google's service said it no
+ * longer reaches the app.
+ * @param token the phone's push token
+ */
+export async function forgetPushToken(token: string): Promise<void> {
+  await SessionModel.updateMany(
+    { "pushTarget.token": token },
+    { $unset: { pushTarget: 1 } }
+  );
 }
