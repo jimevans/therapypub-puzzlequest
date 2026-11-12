@@ -70,7 +70,11 @@ beforeEach(async () => {
   PushService.setPushSenders({ ios, android });
 });
 
-const iPhone = { platform: "ios", token: "aa11", environment: "production" };
+const iPhone = {
+  platform: "ios",
+  token: "iphone-token",
+  environment: "production",
+};
 const pixel = {
   platform: "android",
   token: "fcm-1",
@@ -139,7 +143,7 @@ describe("registering a phone", () => {
       category: "message" as const,
     });
 
-    expect(sentTo()).toEqual(["aa11", "fcm-1", "fcm-1"]);
+    expect(sentTo()).toEqual(["iphone-token", "fcm-1", "fcm-1"]);
   });
 
   it("keeps kinds the server doesn't know yet, for when it does", async () => {
@@ -165,7 +169,7 @@ describe("registering a phone", () => {
   it.each([
     ["an unknown platform", { ...iPhone, platform: "windows" }],
     ["no token", { ...iPhone, token: "" }],
-    ["no environment", { platform: "ios", token: "aa11" }],
+    ["no environment", { platform: "ios", token: "iphone-token" }],
     ["a malformed kind", { ...iPhone, categories: ["quest started"] }],
   ])("refuses %s", async (_, body) => {
     const response = await register(tokens.ann, body);
@@ -188,7 +192,7 @@ describe("registering a phone", () => {
     const me = await request(app)
       .get("/api/v1/sessions/current")
       .set("Authorization", `Bearer ${tokens.ann}`);
-    expect(JSON.stringify(me.body)).not.toContain("aa11");
+    expect(JSON.stringify(me.body)).not.toContain("iphone-token");
   });
 });
 
