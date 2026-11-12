@@ -20,8 +20,11 @@ description at `/api/v1/openapi.json`.
 
 - The server sends push notifications to iPhones through Apple's service and
   to Android phones through Firebase, each when its settings are on the host:
-  `PQ_APNS_KEY`, `PQ_APNS_KEY_ID`, `PQ_APNS_TEAM_ID` and `PQ_APNS_BUNDLE_ID`
-  for Apple, and `PQ_FCM_SERVICE_ACCOUNT` for Firebase. A phone either says
+  `PQ_APNS_KEY_FILE`, `PQ_APNS_KEY_ID`, `PQ_APNS_TEAM_ID` and
+  `PQ_APNS_BUNDLE_ID` for Apple, and `PQ_FCM_SERVICE_ACCOUNT_FILE` for
+  Firebase. The two files are the services' key files, kept on the host
+  outside the application's folder; the server won't start if either can't
+  be read. A phone either says
   is gone is forgotten. Nothing sends notifications yet; the next changes
   add them.
 

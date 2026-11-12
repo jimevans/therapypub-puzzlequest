@@ -1,4 +1,5 @@
 import { createPrivateKey } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { config as loadEnvironmentFile } from "dotenv";
 import { z } from "zod";
 import { environmentFile } from "./paths.js";
@@ -68,6 +69,33 @@ const fcmServiceAccountSchema = z.object({
 export type FcmServiceAccount = z.infer<typeof fcmServiceAccountSchema>;
 
 /**
+ * Reads a file a setting names, such as a signing key, adding an issue to
+ * the setting if it can't be read.
+ * @param path the file's path; a relative one is relative to the server's
+ *  working directory
+ * @param context the setting's validation, to add the issue to
+ * @returns the file's contents, or undefined if it can't be read
+ */
+function readSettingFile(
+  path: string,
+  context: z.RefinementCtx
+): string | undefined {
+  try {
+    return readFileSync(path, "utf8");
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    context.addIssue({
+      code: "custom",
+      message:
+        code === "ENOENT"
+          ? `names ${path}, which doesn't exist`
+          : `names ${path}, which can't be read (${code ?? String(err)})`,
+    });
+    return undefined;
+  }
+}
+
+/**
  * Parses JSON, giving undefined instead of throwing for malformed text.
  * @param json the text
  * @returns the value, or undefined
@@ -125,32 +153,48 @@ const configSchema = z
     PQ_TWILIO_MESSAGING_SERVICE_ID: setting(z.string().optional()),
 
     // Push notifications to the iOS app, through Apple's service (APNs): the
-    // signing key's contents (the .p8 file, whose line breaks may be written
-    // as \n), its key ID, the Apple Developer team's ID, and the app's bundle
-    // ID. All four, or none, which turns sending to iPhones off.
-    PQ_APNS_KEY: setting(
+    // path to the signing key's .p8 file, its key ID, the Apple Developer
+    // team's ID, and the app's bundle ID. All four, or none, which turns
+    // sending to iPhones off.
+    PQ_APNS_KEY_FILE: setting(
       z
         .string()
         .optional()
-        .transform((key) => key?.replaceAll("\\n", "\n"))
-        .refine(
-          (key) => key === undefined || isPrivateKey(key, "ec"),
-          "must be the contents of Apple's .p8 key file, from -----BEGIN PRIVATE KEY----- to -----END PRIVATE KEY-----, with its line breaks kept or written as \\n"
-        )
+        .transform((path, context) => {
+          if (path === undefined) {
+            return undefined;
+          }
+          const key = readSettingFile(path, context);
+          if (key === undefined) {
+            return z.NEVER;
+          }
+          if (!isPrivateKey(key, "ec")) {
+            context.addIssue({
+              code: "custom",
+              message: `must be Apple's .p8 key file; ${path} isn't one`,
+            });
+            return z.NEVER;
+          }
+          return { path, key };
+        })
     ),
     PQ_APNS_KEY_ID: setting(z.string().optional()),
     PQ_APNS_TEAM_ID: setting(z.string().optional()),
     PQ_APNS_BUNDLE_ID: setting(z.string().optional()),
     // Push notifications to the Android app, through Firebase Cloud
-    // Messaging: the contents of a Firebase service account's JSON key file.
+    // Messaging: the path to a Firebase service account's JSON key file.
     // Unset, sending to Android phones is off.
-    PQ_FCM_SERVICE_ACCOUNT: setting(
+    PQ_FCM_SERVICE_ACCOUNT_FILE: setting(
       z
         .string()
         .optional()
-        .transform((json, context) => {
-          if (json === undefined) {
+        .transform((path, context) => {
+          if (path === undefined) {
             return undefined;
+          }
+          const json = readSettingFile(path, context);
+          if (json === undefined) {
+            return z.NEVER;
           }
           const parsed = fcmServiceAccountSchema.safeParse(parseJson(json));
           if (!parsed.success) {
@@ -161,12 +205,12 @@ const configSchema = z
             context.addIssue({
               code: "custom",
               message: keyUnreadable
-                ? "must be a Firebase service account's JSON key; its private_key isn't a readable RSA key"
-                : "must be a Firebase service account's JSON key, with project_id, client_email, and private_key",
+                ? `must be a Firebase service account's JSON key file; the private_key in ${path} isn't a readable RSA key`
+                : `must be a Firebase service account's JSON key file, with project_id, client_email, and private_key; ${path} isn't one`,
             });
             return z.NEVER;
           }
-          return parsed.data;
+          return { path, account: parsed.data };
         })
     ),
   })
@@ -179,7 +223,7 @@ const configSchema = z
       });
     }
     const apns = [
-      "PQ_APNS_KEY",
+      "PQ_APNS_KEY_FILE",
       "PQ_APNS_KEY_ID",
       "PQ_APNS_TEAM_ID",
       "PQ_APNS_BUNDLE_ID",

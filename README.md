@@ -78,7 +78,7 @@ The example values work for local development:
   which needs `PQ_TWILIO_AUTH_TOKEN`, and a `PQ_BASE_URL` that matches the
   webhook URLs set in the Twilio console.
 - The push notification settings (`PQ_APNS_*` for iPhones,
-  `PQ_FCM_SERVICE_ACCOUNT` for Android phones) can stay empty. Without them,
+  `PQ_FCM_SERVICE_ACCOUNT_FILE` for Android phones) can stay empty. Without them,
   apps can still register their phones, and nothing is sent.
 
 `apps/api/.env` is git-ignored. Every variable is documented in
@@ -321,6 +321,27 @@ node apps/api/dist/admin/cli.js promote USER_NAME
 
 It signs that user out, so their next sign-in has the new role. After that,
 administrators can make others administrators by editing their profiles.
+
+### Push notification keys
+
+The server sends push notifications to the apps with Apple's and Firebase's
+key files, which stay on the host and never go in the repository. Put them in
+a folder of their own in the home directory, such as
+`/home/thepuzzlequest/push-keys`, outside the application's folder (which a
+deployment may replace) and outside `public_html`:
+
+1. In cPanel's **File Manager**, make the folder and upload the files: the
+   `.p8` key from the Apple Developer account, and the service account's JSON
+   file from the Firebase console.
+2. Select each file, choose **Permissions**, and set them to `600`, so only
+   the account can read them.
+3. On the **Setup Node.js App** page, set `PQ_APNS_KEY_FILE` and
+   `PQ_FCM_SERVICE_ACCOUNT_FILE` to the files' full paths, with Apple's other
+   three settings (see [apps/api/.env.example](apps/api/.env.example)), and
+   restart the application.
+
+The server checks the files when it starts. If one is missing or isn't the
+right kind of key, it doesn't start, and the reason is at the end of the log.
 
 ### Backups
 
