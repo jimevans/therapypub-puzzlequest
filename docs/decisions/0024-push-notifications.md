@@ -15,8 +15,9 @@ that the API gains what they need in one release.
 
 A spike (`spike/native-apps`) sent real notifications through FCM by signing
 its own requests, with no SDK, and APNs works the same way over Node's own
-HTTP/2. The puzzle master's text messages stay SMS, through Twilio, for now;
-that may be revisited, and this design leaves room for it.
+HTTP/2. The puzzle master's messages, sent today by SMS through Twilio, come
+to the apps too; [0025](0025-puzzle-master-challenges-in-the-apps.md) settles
+how, and adds the `message` kind below.
 
 ## Decision
 
@@ -38,12 +39,13 @@ session it signed in with:
 player, or each member of the team), never to the player whose action caused
 them:
 
-| Kind (`category`)             | When                                          | Example                                                 |
-| ----------------------------- | --------------------------------------------- | ------------------------------------------------------- |
-| `questStarted`                | The entry starts                              | "Harbor walk has begun. Head for your first stop."      |
-| `questPaused`, `questResumed` | The puzzle master pauses or resumes the entry | "Harbor walk is paused. The clock has stopped."         |
-| `stopSolved`                  | A teammate solves the entry's stop            | "Your team solved The Lighthouse. On to the next stop." |
-| `standingsFinal`              | Every entry in a race has finished            | "Final standings for Harbor walk: your team came 2nd."  |
+| Kind (`category`)             | When                                                                                                  | Example                                                 |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `questStarted`                | The entry starts                                                                                      | "Harbor walk has begun. Head for your first stop."      |
+| `questPaused`, `questResumed` | The puzzle master pauses or resumes the entry                                                         | "Harbor walk is paused. The clock has stopped."         |
+| `stopSolved`                  | A teammate solves the entry's stop                                                                    | "Your team solved The Lighthouse. On to the next stop." |
+| `standingsFinal`              | Every entry in a race has finished                                                                    | "Final standings for Harbor walk: your team came 2nd."  |
+| `message`                     | The puzzle master sends a message or challenge ([0025](0025-puzzle-master-challenges-in-the-apps.md)) | The puzzle master's text                                |
 
 The game's rules hold on a lock screen as on any other: a notification never
 shows a solution or a hint, never says how many stops a quest has, and never
@@ -76,9 +78,7 @@ without them, sending is off, as in development and tests.
 - Kinds can be added in later 1.x releases without changing registration; an
   app ignores a kind it doesn't know, and asks only for those it shows.
   Per-kind switches in the apps need no server change: they send
-  `categories`. If the puzzle master's messages come to the apps too, they
-  become one more kind (`message`, with the text as its body), sent beside or
-  instead of SMS, with no change to registration.
+  `categories`.
 - Text is in English, as the rest of PuzzleQuest is. When the apps are
   translated, they can write their own text from the category and names, as
   they already do for live updates.
@@ -105,6 +105,3 @@ without them, sending is off, as in development and tests.
 - **Apps writing their own text from the start** (data-only messages): on
   iOS that needs a notification service extension to show anything; English
   from the server is enough until the apps are translated.
-- **Puzzle master messages as push too:** not now; they stay SMS (Twilio),
-  which reaches players without the app. Open to revisiting: they would be
-  one more kind, as above.
