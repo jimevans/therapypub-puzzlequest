@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import recorded from "../live-updates.json" with { type: "json" };
+import recordedPush from "../push-notifications.json" with { type: "json" };
 import description from "../openapi.json" with { type: "json" };
 import {
   breakingChanges,
   type LiveUpdateSchemas,
   liveUpdateBreakingChanges,
   liveUpdateSchemasOf,
+  pushNotificationBreakingChanges,
+  pushNotificationSchemaOf,
   type Schema,
 } from "./compatibility.js";
 
@@ -29,6 +32,72 @@ describe("the live updates", () => {
       current,
       "The live updates differ from live-updates.json. If they only gained something, record it: npm run accept-live-updates --workspace=@puzzlequest/api-client"
     ).toEqual(recorded);
+  });
+});
+
+// What push notifications carry, as apps may rely on it
+// (push-notifications.json), held to the same rules as the server's live
+// updates. `npm run accept-push-notifications --workspace=@puzzlequest/api-client`
+// records additions there, and refuses a breaking change.
+const currentPush = pushNotificationSchemaOf(
+  description as unknown as Parameters<typeof pushNotificationSchemaOf>[0]
+);
+
+describe("the push notifications", () => {
+  it("are compatible with the version apps were written against", () => {
+    expect(
+      pushNotificationBreakingChanges(recordedPush as Schema, currentPush)
+    ).toEqual([]);
+  });
+
+  it("are all recorded, so a later change can't remove what was added", () => {
+    expect(
+      currentPush,
+      "The push notifications differ from push-notifications.json. If they only gained something, record it: npm run accept-push-notifications --workspace=@puzzlequest/api-client"
+    ).toEqual(recordedPush);
+  });
+
+  const base: Schema = {
+    type: "object",
+    properties: {
+      category: { type: "string", enum: ["questStarted", "stopSolved"] },
+      questName: { type: "string" },
+      puzzleName: { type: "string" },
+    },
+    required: ["category", "questName"],
+  };
+
+  it("may gain kinds and fields", () => {
+    expect(
+      pushNotificationBreakingChanges(base, {
+        ...base,
+        properties: {
+          ...(base.properties as object),
+          category: {
+            type: "string",
+            enum: ["questStarted", "stopSolved", "message"],
+          },
+          entryId: { type: "string" },
+        },
+      })
+    ).toEqual([]);
+  });
+
+  it("may not lose a kind, lose a field, or stop always sending one", () => {
+    expect(
+      pushNotificationBreakingChanges(base, {
+        type: "object",
+        properties: {
+          category: { type: "string", enum: ["questStarted"] },
+          questName: { type: "string" },
+        },
+        required: ["category"],
+      })
+    ).toEqual([
+      'PushNotification: category no longer allows "stopSolved"',
+      "PushNotification: puzzleName was removed",
+      "PushNotification: questName became optional",
+    ]);
   });
 });
 

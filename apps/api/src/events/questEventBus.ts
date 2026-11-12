@@ -17,6 +17,8 @@ export type PublishedQuestEvent =
   | (PuzzleSolved & {
       /** The solution text shown to the players. */
       solutionText: string;
+      /** The puzzle's display name. */
+      displayName: string;
     })
   | (PuzzleStarted & {
       /** The puzzle's display name. */

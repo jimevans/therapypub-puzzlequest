@@ -1,19 +1,9 @@
 // What a push notification carries, and the senders that deliver one to a
 // phone through Apple's or Google's service.
+import type { PushNotification } from "../schemas/pushNotifications.js";
 import type { PushTarget } from "../services/session.service.js";
 
-/** A push notification, as the apps receive it. */
-export interface PushNotification {
-  /** The kind of notification, such as questStarted. */
-  category: string;
-  /** The quest it's about. */
-  questName: string;
-  /** The puzzle it's about, if any. */
-  puzzleName?: string;
-  /** What the notification shows, in English. */
-  title: string;
-  body: string;
-}
+export type { PushNotification };
 
 /**
  * What became of a notification: delivered to the service, refused because

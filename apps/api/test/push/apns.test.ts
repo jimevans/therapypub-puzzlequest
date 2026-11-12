@@ -37,7 +37,7 @@ const target: PushTarget = {
 };
 
 const notification = {
-  category: "stopSolved",
+  category: "stopSolved" as const,
   questName: "Harbor walk",
   puzzleName: "The Lighthouse",
   title: "Harbor walk",
@@ -123,7 +123,7 @@ describe("sending to an iPhone", () => {
         sound: "default",
         "thread-id": "Harbor walk",
       },
-      category: "stopSolved",
+      category: "stopSolved" as const,
       questName: "Harbor walk",
       puzzleName: "The Lighthouse",
     });

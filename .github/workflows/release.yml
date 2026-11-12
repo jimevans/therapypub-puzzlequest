@@ -7,6 +7,8 @@ name: Release
 # - openapi.json: the REST API.
 # - live-updates.json: the live-update messages, which openapi.json describes
 #   too, kept whole for the apps' own compatibility checks.
+# - push-notifications.json: what a push notification carries, which
+#   openapi.json describes too, kept whole in the same way.
 #
 # A release that already exists for the tag gets the files replaced.
 
@@ -54,7 +56,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
         run: |
-          files="packages/api-client/openapi.json packages/api-client/live-updates.json"
+          files="packages/api-client/openapi.json packages/api-client/live-updates.json packages/api-client/push-notifications.json"
           if gh release view "$TAG" > /dev/null 2>&1; then
             gh release upload "$TAG" $files --clobber
           else

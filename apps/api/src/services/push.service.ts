@@ -7,7 +7,11 @@ import { config } from "../config.js";
 import { logger } from "../logger.js";
 import { createApnsSender } from "../push/apns.js";
 import { createFcmSender } from "../push/fcm.js";
-import type { PushNotification, PushSender } from "../push/types.js";
+import type { PushSender } from "../push/types.js";
+import {
+  type PushNotification,
+  pushNotificationSchema,
+} from "../schemas/pushNotifications.js";
 import * as SessionService from "./session.service.js";
 
 /** The senders, by platform; a platform without one sends nothing. */
@@ -64,7 +68,8 @@ export function closePushSenders(): void {
 
 /**
  * Sends a notification to the phones of the given users that want its
- * kind. Tokens Apple or Google say are gone are forgotten.
+ * kind, after checking it against what the apps expect. Tokens Apple or
+ * Google say are gone are forgotten.
  * @param userIds the users
  * @param notification the notification
  * @returns how many phones it was sent to
@@ -79,6 +84,8 @@ export async function sendPush(
     return 0;
   }
   try {
+    // A notification the apps' contract doesn't allow is a bug; it's logged.
+    pushNotificationSchema.parse(notification);
     const targets = (
       await SessionService.findPushTargets(userIds, notification.category)
     ).filter((target) => active[target.platform]);

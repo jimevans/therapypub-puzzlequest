@@ -2317,6 +2317,7 @@ async function describeEvents(
         described.push({
           ...event,
           solutionText: puzzle?.solutionDisplayText ?? "",
+          displayName: puzzle?.displayName ?? event.puzzleName,
         });
         break;
       case "PuzzleStarted": {

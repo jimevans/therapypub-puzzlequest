@@ -8,6 +8,7 @@ import {
   PUSH_ENVIRONMENTS,
   PUSH_PLATFORMS,
 } from "../../models/session.model.js";
+import { PUSH_CATEGORIES } from "../../schemas/pushNotifications.js";
 import { loginBody } from "../../schemas/user.schemas.js";
 import * as AuthenticationService from "../../services/authentication.service.js";
 import * as SessionService from "../../services/session.service.js";
@@ -25,16 +26,6 @@ const sessionSchema = z
     }),
   })
   .meta({ id: "Session" });
-
-/** The kinds of push notification the API sends. */
-export const PUSH_CATEGORIES = [
-  "questStarted",
-  "questPaused",
-  "questResumed",
-  "stopSolved",
-  "standingsFinal",
-  "message",
-] as const;
 
 /** Where the session's app gets push notifications. */
 const pushTargetBody = z

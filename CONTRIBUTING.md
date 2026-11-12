@@ -49,7 +49,8 @@ account`, `fix: leave the health check to the server`.
   `npm version X.Y.Z --workspaces --include-workspace-root --no-git-tag-version`,
   and is tagged `vX.Y.Z` on `main` once merged. Pushing the tag publishes a
   GitHub release with that version's changelog notes and the API's
-  description (`openapi.json`, `live-updates.json`) for the apps to pin; it
+  description (`openapi.json`, `live-updates.json`,
+  `push-notifications.json`) for the apps to pin; it
   fails if the tag doesn't match `package.json` or the changelog has no
   section for it. The API's own version (`API_VERSION`) changes only when the
   API does: its minor number when it gains something.
@@ -118,7 +119,9 @@ one is in your way, raise it rather than working around it.
   enumerated values, and live-update messages, but not remove, rename, or
   narrow anything, or make a request field required. CI compares each pull
   request's API description with its base branch's (oasdiff), and a test
-  compares the live updates with `packages/api-client/live-updates.json`.
+  compares the live updates with `packages/api-client/live-updates.json`,
+  and what push notifications carry with
+  `packages/api-client/push-notifications.json`.
   A change that must break goes in a new version, `/api/v2`, alongside v1.
 
 ### Security
@@ -166,7 +169,9 @@ one is in your way, raise it rather than working around it.
    problems it can report.
 4. Run `npm run generate:api`, and commit the regenerated client. If a
    live-update message gained something, record it with
-   `npm run accept-live-updates --workspace=@puzzlequest/api-client`.
+   `npm run accept-live-updates --workspace=@puzzlequest/api-client`; if a
+   push notification did, with
+   `npm run accept-push-notifications --workspace=@puzzlequest/api-client`.
 5. Add a line to `CHANGELOG.md`'s "Unreleased" section.
 
 **A screen:**

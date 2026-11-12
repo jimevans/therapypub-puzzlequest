@@ -18,7 +18,9 @@ export interface AssigneeRef {
  * @param assignees the assignees
  * @returns the users' IDs
  */
-async function playersOf(assignees: readonly AssigneeRef[]): Promise<string[]> {
+export async function playersOf(
+  assignees: readonly AssigneeRef[]
+): Promise<string[]> {
   const userIds = assignees
     .filter((assignee) => assignee.kind === "user")
     .map((assignee) => assignee.id.toString());

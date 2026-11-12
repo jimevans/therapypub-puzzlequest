@@ -17,6 +17,7 @@ import {
   liveUpdateSchema,
   liveUpdateSubscriptionSchema,
 } from "../../schemas/liveUpdates.js";
+import { pushNotificationSchema } from "../../schemas/pushNotifications.js";
 import { type AnyRoute, problemsOf } from "./route.js";
 
 /** The version of the v1 API's description, for clients' caches. */
@@ -34,6 +35,8 @@ Names and values follow the same conventions throughout. Things are named in pat
 Version 1.0 can gain fields, enumerated values, problem types, and live-update messages without a new version. Clients must ignore fields they don't recognise, and treat a value they don't recognise sensibly, such as an unknown status as unknown, rather than failing. So the response schemas here don't forbid fields they don't list, though this version sends only the fields they list.
 
 Clients follow a quest as it happens over the live-update websocket, \`/api/v1/updates\`. Anyone may connect. A client sends a \`LiveUpdateSubscription\` naming the quest, with a ticket from \`POST /quests/{questName}/live-tickets\`; the server answers with its connection's ID, then sends a \`LiveUpdate\` for each change to that quest, naming the puzzle concerned where there is one. A client sends its connection's ID as \`connectionId\` with its own actions, so their updates aren't sent back to it. Each update names the entry whose progress changed (\`entryId\`). While a quest is a race that not every entry has finished, a connection is sent an update's content only if its ticket was issued to staff, an administrator, or a player of that entry; every other connection is sent \`questUpdated\` with the entry's ID instead, and fetches what it shows again. Starting and resetting a quest send its followers \`questUpdated\`, as the puzzle master's other changes do; after a reset, the entry it names may no longer be there to fetch. A player's home screen instead names the user, with a ticket from \`POST /users/{userName}/live-tickets\`, and is sent \`questsChanged\` whenever the list of quests they play should be fetched again, starting and resetting included. Both messages are described under the schemas. Updates can be missed, so a client should fetch what it follows again each time it connects.
+
+An app gets push notifications by registering its phone with its session: \`PUT /sessions/current/push-target\`. They stop when the session ends. The server sends them to an entry's players, except whoever caused them: when the quest starts, is paused or resumed, when a teammate solves a stop, and, once every entry in a race has finished, where each came. What one carries is described under the schemas as \`PushNotification\`, and published with each release as \`push-notifications.json\`.
 
 Errors are problem details (RFC 9457), sent as \`${PROBLEM_MEDIA_TYPE}\`. Act on their \`type\`, one of:
 
@@ -235,6 +238,8 @@ export function createOpenApiDocument(
       schemas: {
         LiveUpdate: liveUpdateSchema,
         LiveUpdateSubscription: liveUpdateSubscriptionSchema,
+        // What push notifications carry, which no route returns either.
+        PushNotification: pushNotificationSchema,
       },
       securitySchemes: {
         shareLink: {
@@ -260,7 +265,11 @@ export function createOpenApiDocument(
     },
   });
   return withOpenResponses(
-    withoutUnusedSchemas(document, ["LiveUpdate", "LiveUpdateSubscription"]),
+    withoutUnusedSchemas(document, [
+      "LiveUpdate",
+      "LiveUpdateSubscription",
+      "PushNotification",
+    ]),
     ["LiveUpdateSubscription"]
   );
 }
