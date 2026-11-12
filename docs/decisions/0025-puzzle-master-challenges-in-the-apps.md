@@ -1,6 +1,6 @@
 # 0025. The puzzle master's messages and challenges reach the apps too
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-11-12
 
 ## Context

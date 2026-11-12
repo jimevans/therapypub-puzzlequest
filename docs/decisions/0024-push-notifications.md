@@ -1,6 +1,6 @@
 # 0024. Push notifications, sent by the API to phones registered with a session
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-11-12
 
 ## Context
