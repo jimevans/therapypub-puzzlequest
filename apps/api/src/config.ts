@@ -37,6 +37,30 @@ function parseTrustProxy(
   return Number.isInteger(hops) ? hops : value;
 }
 
+/** The parts of a Firebase service account's JSON key that sending uses. */
+const fcmServiceAccountSchema = z.object({
+  project_id: z.string().min(1),
+  client_email: z.string().min(1),
+  private_key: z.string().min(1),
+  token_uri: z.url().default("https://oauth2.googleapis.com/token"),
+});
+
+/** A Firebase service account's key, as sending uses it. */
+export type FcmServiceAccount = z.infer<typeof fcmServiceAccountSchema>;
+
+/**
+ * Parses JSON, giving undefined instead of throwing for malformed text.
+ * @param json the text
+ * @returns the value, or undefined
+ */
+function parseJson(json: string): unknown {
+  try {
+    return JSON.parse(json);
+  } catch {
+    return undefined;
+  }
+}
+
 const configSchema = z
   .object({
     // "development" disables secure cookies and logs emails to the console
@@ -80,6 +104,43 @@ const configSchema = z
     PQ_TWILIO_ACCOUNT_SID: setting(z.string().optional()),
     PQ_TWILIO_AUTH_TOKEN: setting(z.string().optional()),
     PQ_TWILIO_MESSAGING_SERVICE_ID: setting(z.string().optional()),
+
+    // Push notifications to the iOS app, through Apple's service (APNs): the
+    // signing key's contents (the .p8 file, whose line breaks may be written
+    // as \n), its key ID, the Apple Developer team's ID, and the app's bundle
+    // ID. All four, or none, which turns sending to iPhones off.
+    PQ_APNS_KEY: setting(
+      z
+        .string()
+        .optional()
+        .transform((key) => key?.replaceAll("\\n", "\n"))
+    ),
+    PQ_APNS_KEY_ID: setting(z.string().optional()),
+    PQ_APNS_TEAM_ID: setting(z.string().optional()),
+    PQ_APNS_BUNDLE_ID: setting(z.string().optional()),
+    // Push notifications to the Android app, through Firebase Cloud
+    // Messaging: the contents of a Firebase service account's JSON key file.
+    // Unset, sending to Android phones is off.
+    PQ_FCM_SERVICE_ACCOUNT: setting(
+      z
+        .string()
+        .optional()
+        .transform((json, context) => {
+          if (json === undefined) {
+            return undefined;
+          }
+          const parsed = fcmServiceAccountSchema.safeParse(parseJson(json));
+          if (!parsed.success) {
+            context.addIssue({
+              code: "custom",
+              message:
+                "must be a Firebase service account's JSON key, with project_id, client_email, and private_key",
+            });
+            return z.NEVER;
+          }
+          return parsed.data;
+        })
+    ),
   })
   .superRefine((settings, context) => {
     if (settings.PQ_SMTP_HOST && !settings.PQ_EMAIL_FROM) {
@@ -88,6 +149,21 @@ const configSchema = z
         path: ["PQ_EMAIL_FROM"],
         message: "is required when PQ_SMTP_HOST is set",
       });
+    }
+    const apns = [
+      "PQ_APNS_KEY",
+      "PQ_APNS_KEY_ID",
+      "PQ_APNS_TEAM_ID",
+      "PQ_APNS_BUNDLE_ID",
+    ] as const;
+    if (apns.some((name) => settings[name])) {
+      for (const name of apns.filter((name) => !settings[name])) {
+        context.addIssue({
+          code: "custom",
+          path: [name],
+          message: "is required when any PQ_APNS_ setting is set",
+        });
+      }
     }
   });
 

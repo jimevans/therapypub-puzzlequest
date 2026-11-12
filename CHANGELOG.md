@@ -8,6 +8,23 @@ description at `/api/v1/openapi.json`.
 
 ## Unreleased
 
+### The API
+
+- Apps can register a phone for push notifications with
+  `PUT /sessions/current/push-target`, giving its platform, token, Apple
+  environment, and optionally the kinds of notification it wants, and stop
+  them with `DELETE`. A phone belongs to the session that registered it, so
+  signing out ends its notifications.
+
+### Running the site
+
+- The server sends push notifications to iPhones through Apple's service and
+  to Android phones through Firebase, each when its settings are on the host:
+  `PQ_APNS_KEY`, `PQ_APNS_KEY_ID`, `PQ_APNS_TEAM_ID` and `PQ_APNS_BUNDLE_ID`
+  for Apple, and `PQ_FCM_SERVICE_ACCOUNT` for Firebase. A phone either says
+  is gone is forgotten. Nothing sends notifications yet; the next changes
+  add them.
+
 ## 1.0.2 — 2026-11-12
 
 ### The API

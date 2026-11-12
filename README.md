@@ -77,6 +77,9 @@ The example values work for local development:
   Incoming calls and texts are accepted only with a valid Twilio signature,
   which needs `PQ_TWILIO_AUTH_TOKEN`, and a `PQ_BASE_URL` that matches the
   webhook URLs set in the Twilio console.
+- The push notification settings (`PQ_APNS_*` for iPhones,
+  `PQ_FCM_SERVICE_ACCOUNT` for Android phones) can stay empty. Without them,
+  apps can still register their phones, and nothing is sent.
 
 `apps/api/.env` is git-ignored. Every variable is documented in
 [apps/api/.env.example](apps/api/.env.example). Environment variables take precedence
