@@ -22,21 +22,21 @@ export type PushSenders = Partial<
 function sendersFromConfig(): PushSenders {
   const senders: PushSenders = {};
   if (
-    config.PQ_APNS_KEY &&
+    config.PQ_APNS_KEY_FILE &&
     config.PQ_APNS_KEY_ID &&
     config.PQ_APNS_TEAM_ID &&
     config.PQ_APNS_BUNDLE_ID
   ) {
     senders.ios = createApnsSender({
-      key: config.PQ_APNS_KEY,
+      key: config.PQ_APNS_KEY_FILE.key,
       keyId: config.PQ_APNS_KEY_ID,
       teamId: config.PQ_APNS_TEAM_ID,
       bundleId: config.PQ_APNS_BUNDLE_ID,
     });
   }
-  if (config.PQ_FCM_SERVICE_ACCOUNT) {
+  if (config.PQ_FCM_SERVICE_ACCOUNT_FILE) {
     senders.android = createFcmSender({
-      serviceAccount: config.PQ_FCM_SERVICE_ACCOUNT,
+      serviceAccount: config.PQ_FCM_SERVICE_ACCOUNT_FILE.account,
     });
   }
   return senders;

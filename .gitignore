@@ -110,3 +110,6 @@ dist
 
 storage/
 /DEPLOYED_COMMIT
+
+# Apple push notification signing keys, which never belong in the repository.
+*.p8
