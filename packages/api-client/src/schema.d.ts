@@ -1812,6 +1812,22 @@ export interface components {
             /** @description A ticket from POST /users/{userName}/live-tickets, which can be used once. */
             ticket: string;
         };
+        /** @description What a push notification carries. On iOS, title and body are the APNs alert, the other fields are custom keys beside aps, and the quest is the thread-id. On Android, title and body are the FCM notification, the other fields are its data (strings), and the quest is its tag. A notification never shows a solution or a hint, never says how many stops a quest has, and never tells a racing player about a rival's progress. */
+        PushNotification: {
+            /**
+             * @description The kind of notification. Later versions may add kinds; an app ignores one it doesn't know.
+             * @enum {string}
+             */
+            category: "questStarted" | "questPaused" | "questResumed" | "stopSolved" | "standingsFinal" | "message";
+            /** @description The quest it's about. Tapping it opens the quest. */
+            questName: string;
+            /** @description The puzzle it's about, where there is one: for stopSolved, the stop solved. */
+            puzzleName?: string;
+            /** @description Its title: the quest's display name. */
+            title: string;
+            /** @description What happened, in English, written by the server. */
+            body: string;
+        };
     };
     responses: never;
     parameters: never;

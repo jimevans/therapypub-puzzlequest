@@ -15,6 +15,13 @@ description at `/api/v1/openapi.json`.
   environment, and optionally the kinds of notification it wants, and stop
   them with `DELETE`. A phone belongs to the session that registered it, so
   signing out ends its notifications.
+- Players' phones are sent push notifications when their quest starts, when
+  the puzzle master pauses or resumes it, when a teammate solves a stop, and,
+  once every entry in a race has finished, where they came. They never show
+  a solution or a hint, how many stops a quest has, or a rival's progress
+  during a race, and the player who caused one isn't sent it. What a
+  notification carries is described as `PushNotification` in the API's
+  description, and published with each release as `push-notifications.json`.
 
 ### Running the site
 
@@ -24,9 +31,7 @@ description at `/api/v1/openapi.json`.
   `PQ_APNS_BUNDLE_ID` for Apple, and `PQ_FCM_SERVICE_ACCOUNT_FILE` for
   Firebase. The two files are the services' key files, kept on the host
   outside the application's folder; the server won't start if either can't
-  be read. A phone either says
-  is gone is forgotten. Nothing sends notifications yet; the next changes
-  add them.
+  be read. A phone either service says is gone is forgotten.
 
 ## 1.0.2 — 2026-11-12
 

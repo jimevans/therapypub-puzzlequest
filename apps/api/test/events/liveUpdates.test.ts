@@ -57,6 +57,7 @@ describe("sendLiveUpdates", () => {
           type: "PuzzleSolved",
           puzzleName: "p1",
           solutionText: "Red",
+          displayName: "Puzzle 1",
           at: AT,
         },
         {
@@ -107,6 +108,7 @@ describe("sendLiveUpdates", () => {
           type: "PuzzleSolved",
           puzzleName: "p1",
           solutionText: "Red",
+          displayName: "Puzzle 1",
           at: AT,
         },
         { type: "QuestCompleted", at: AT },
@@ -215,7 +217,13 @@ describe("sendLiveUpdates", () => {
           nextHint: null,
           at: AT,
         },
-        { type: "PuzzleSolved", puzzleName: "p1", solutionText: "Red", at: AT },
+        {
+          type: "PuzzleSolved",
+          puzzleName: "p1",
+          solutionText: "Red",
+          displayName: "Puzzle 1",
+          at: AT,
+        },
         {
           type: "PuzzleStarted",
           puzzleName: "p2",

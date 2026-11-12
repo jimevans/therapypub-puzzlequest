@@ -23,7 +23,7 @@ const target: PushTarget = {
 };
 
 const notification = {
-  category: "questStarted",
+  category: "questStarted" as const,
   questName: "Harbor walk",
   title: "Harbor walk",
   body: "Harbor walk has begun.",

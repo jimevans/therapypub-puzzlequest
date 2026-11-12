@@ -14,7 +14,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "typecheck": "node ../../node_modules/typescript-native/bin/tsc -p .",
-    "accept-live-updates": "node scripts/accept-live-updates.js"
+    "accept-live-updates": "node scripts/accept-live-updates.js",
+    "accept-push-notifications": "node scripts/accept-push-notifications.js"
   },
   "dependencies": {
     "openapi-fetch": "^0.17.0"

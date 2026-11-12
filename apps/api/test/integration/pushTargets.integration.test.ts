@@ -85,7 +85,7 @@ function register(sessionToken: string, body: object) {
 }
 
 const notification = {
-  category: "questStarted",
+  category: "questStarted" as const,
   questName: "Harbor walk",
   title: "Harbor walk",
   body: "Harbor walk has begun.",
@@ -136,21 +136,30 @@ describe("registering a phone", () => {
     await PushService.sendPush([ids.ann, ids.bob], notification);
     await PushService.sendPush([ids.ann, ids.bob], {
       ...notification,
-      category: "message",
+      category: "message" as const,
     });
 
     expect(sentTo()).toEqual(["aa11", "fcm-1", "fcm-1"]);
   });
 
-  it("keeps kinds the server doesn't know yet", async () => {
+  it("keeps kinds the server doesn't know yet, for when it does", async () => {
     await register(tokens.ann, { ...iPhone, categories: ["somethingNew"] });
 
-    await PushService.sendPush([ids.ann], {
-      ...notification,
-      category: "somethingNew",
-    });
+    const [session] = await SessionModel.find({ userId: ids.ann }).lean();
+    expect(session.pushTarget?.categories).toEqual(["somethingNew"]);
+    expect(await PushService.sendPush([ids.ann], notification)).toBe(0);
+  });
 
-    expect(sentTo()).toEqual(["aa11"]);
+  it("never sends a notification the apps' contract doesn't allow", async () => {
+    await register(tokens.ann, iPhone);
+
+    expect(
+      await PushService.sendPush([ids.ann], {
+        ...notification,
+        category: "somethingNew" as "message",
+      })
+    ).toBe(0);
+    expect(ios.send).not.toHaveBeenCalled();
   });
 
   it.each([

@@ -257,3 +257,32 @@ export function liveUpdateBreakingChanges(
     ).map((change) => `LiveUpdateSubscription: ${change}`),
   ];
 }
+
+/**
+ * Gets the push notification schema from the API's description, whole.
+ * @param description the API's OpenAPI description
+ * @returns what a push notification carries
+ */
+export function pushNotificationSchemaOf(description: {
+  components: { schemas: Record<string, Schema> };
+}): Schema {
+  const { schemas } = description.components;
+  return resolve(schemas.PushNotification, schemas) as Schema;
+}
+
+/**
+ * Lists the breaking changes between two versions of what push
+ * notifications carry. Like the server's live updates, they may gain
+ * fields and kinds, but not lose or change them.
+ * @param base the version apps were written against
+ * @param current the version now described
+ * @returns each breaking change, described; none if compatible
+ */
+export function pushNotificationBreakingChanges(
+  base: Schema,
+  current: Schema
+): string[] {
+  return breakingChanges(base, current, "fromServer").map(
+    (change) => `PushNotification: ${change}`
+  );
+}
