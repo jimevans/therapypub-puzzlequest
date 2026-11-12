@@ -223,3 +223,61 @@ table.stops td {
 .entry h3 {
   margin: 0;
 }
+
+/* The quest's setting for texting players who have the app. */
+.setting {
+  margin-block: 1rem;
+}
+
+/* The puzzle master's messages to an entry, newest first. */
+.messages {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.messages time {
+  color: var(--ink-soft);
+  font-size: var(--text-small);
+}
+
+.messages p {
+  margin: 0.25rem 0 0;
+  white-space: pre-wrap;
+}
+
+.challengeTag {
+  margin-inline-start: 0.5rem;
+  padding: 0 0.4rem;
+  border: 1px solid currentcolor;
+  border-radius: 0.25rem;
+  font-size: var(--text-small);
+}
+
+/* Challenges sent before, in the message dialog, to send again. */
+.keptChallenges ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 1rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.keptChallenges li {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.keptChallenges h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.challengeMessage {
+  margin: 0;
+  white-space: pre-wrap;
+}

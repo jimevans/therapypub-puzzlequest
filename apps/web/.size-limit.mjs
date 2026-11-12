@@ -110,7 +110,7 @@ export default [
   onTopOfFirstLoad(
     "The quest console",
     "src/screens/questConsole/QuestConsole.tsx",
-    "43 KB"
+    "44 KB"
   ),
   onTopOfFirstLoad(
     "The quest editor",

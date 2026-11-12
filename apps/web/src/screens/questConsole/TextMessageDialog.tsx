@@ -1,4 +1,5 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { Schemas } from "@puzzlequest/api-client";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { api, dataOrThrow, messageOf } from "../../api";
 import { fieldErrorsOf } from "../../fieldErrors";
@@ -30,6 +31,11 @@ export interface Recipient {
 interface TextMessageDialogProps {
   questName: string;
   /**
+   * Whether players who have the app are texted too; if not, only those
+   * without it are.
+   */
+  textPlayersWithApp: boolean;
+  /**
    * The teams and players to choose from. With only one, it gets the message,
    * and there's nothing to choose.
    */
@@ -41,19 +47,40 @@ interface TextMessageDialogProps {
 }
 
 /**
- * Texts a team's or player's players, or, with no entrant, every entrant's.
+ * The challenges sent in a quest, to send again. Its key starts with the
+ * quest's, so it's fetched again whenever the quest changes.
+ * @param questName the quest's name
+ * @returns the options for TanStack Query
+ */
+function challengesQuery(questName: string) {
+  return {
+    queryKey: [...questQueryKey(questName), "challenges"],
+    queryFn: async () =>
+      dataOrThrow(
+        await api.GET("/quests/{questName}/challenges", {
+          params: { path: { questName } },
+        })
+      ).challenges,
+  };
+}
+
+/**
+ * Sends the puzzle master's message to a team's or player's players, or,
+ * with no entrant, every entrant's.
  * @param questName the quest's name
  * @param entrant the team or player, if only one
- * @param body the message, and any reply to wait for
+ * @param body the message, and any challenge it sets; or a kept challenge
  */
 async function sendText(
   questName: string,
   entrant: EntrantRef | undefined,
-  body: {
-    message: string;
-    expectedResponse?: string;
-    responseConfirmation?: string;
-  }
+  body:
+    | {
+        message: string;
+        expectedResponse?: string;
+        responseConfirmation?: string;
+      }
+    | { challengeId: string }
 ) {
   if (!entrant) {
     return dataOrThrow(
@@ -76,8 +103,69 @@ async function sendText(
   );
 }
 
+/**
+ * The challenges sent before, each with a button to send it again to whoever
+ * is chosen: one tap for the next team to arrive.
+ */
+function KeptChallenges({
+  questName,
+  sending,
+  onSend,
+}: {
+  questName: string;
+  /** True while something is being sent, when nothing more can be. */
+  sending: boolean;
+  onSend: (challenge: Schemas["QuestChallenge"]) => void;
+}) {
+  const challenges = useQuery(challengesQuery(questName));
+  if (!challenges.data?.length) {
+    return null;
+  }
+  return (
+    <section
+      className={styles.keptChallenges}
+      aria-labelledby="kept-challenges-heading"
+    >
+      <h3 id="kept-challenges-heading">Challenges sent before</h3>
+      <ul id="kept-challenges">
+        {challenges.data.map((challenge) => (
+          <li key={challenge.challengeId}>
+            <div>
+              <p className={styles.challengeMessage}>{challenge.message}</p>
+              <p className={styles.note}>
+                Answer: {challenge.expectedResponse}. Shows: &ldquo;
+                {challenge.responseConfirmation}&rdquo;
+              </p>
+            </div>
+            <Button
+              aria-label={`Send again: ${challenge.message}`}
+              isDisabled={sending}
+              onPress={() => onSend(challenge)}
+            >
+              Send again
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/**
+ * Says who a message reaches.
+ * @param whose whose players: "the quest's" or "their"
+ * @param textPlayersWithApp whether players who have the app are texted too
+ * @returns the sentence
+ */
+function whoItReaches(whose: string, textPlayersWithApp: boolean): string {
+  return textPlayersWithApp
+    ? `It shows in the app for each of ${whose} players, and is texted to those who accept text messages.`
+    : `It shows in the app for each of ${whose} players, and is texted to those who accept text messages and don't have the app.`;
+}
+
 function TextMessageForm({
   questName,
+  textPlayersWithApp,
   recipients,
   defaultRecipient,
   onClose,
@@ -85,7 +173,7 @@ function TextMessageForm({
   const queryClient = useQueryClient();
   const [only] = recipients;
   const choosing = recipients.length > 1;
-  const { control, register, handleSubmit, setError } =
+  const { control, register, handleSubmit, setError, getValues } =
     useForm<TextMessageValues>({
       defaultValues: {
         recipient: choosing ? defaultRecipient : (only?.key ?? ""),
@@ -94,6 +182,15 @@ function TextMessageForm({
         responseConfirmation: "",
       },
     });
+  const entrantFor = (recipient: string) =>
+    recipients.find(({ key }) => key === recipient)?.entrant;
+  const afterSending = async () => {
+    // The quest now shows the message, and any challenge it waits for.
+    await queryClient.invalidateQueries({
+      queryKey: questQueryKey(questName),
+    });
+    onClose(true);
+  };
   const send = useMutation({
     mutationFn: async ({
       recipient,
@@ -103,25 +200,30 @@ function TextMessageForm({
     }: TextMessageValues) =>
       sendText(
         questName,
-        recipients.find(({ key }) => key === recipient)?.entrant,
+        entrantFor(recipient),
         expectedResponse.trim()
           ? { message, expectedResponse, responseConfirmation }
           : { message }
       ),
-    onSuccess: async () => {
-      // The quest now shows the reply it's waiting for.
-      await queryClient.invalidateQueries({
-        queryKey: questQueryKey(questName),
-      });
-      onClose(true);
-    },
+    onSuccess: afterSending,
     onError: (error) => {
       fieldErrorsOf<keyof TextMessageValues>(error).forEach(
         ({ field, message }) => setError(field, { message })
       );
     },
   });
-  const showBanner = send.error && fieldErrorsOf(send.error).length === 0;
+  // Sending a kept challenge again, to whoever is chosen now.
+  const sendAgain = useMutation({
+    mutationFn: async (challengeId: string) =>
+      sendText(questName, entrantFor(getValues("recipient")), {
+        challengeId,
+      }),
+    onSuccess: afterSending,
+  });
+  const failed =
+    (send.error && fieldErrorsOf(send.error).length === 0 && send.error) ||
+    sendAgain.error;
+  const sending = send.isPending || sendAgain.isPending;
 
   return (
     <form
@@ -148,16 +250,19 @@ function TextMessageForm({
             ))}
           </select>
           <p id="text-recipient-description" className={styles.note}>
-            It goes to each of their players who accept text messages, if
-            they&apos;re playing.
+            {whoItReaches("their", textPlayersWithApp)} Only those playing get
+            it.
           </p>
         </div>
       ) : (
-        <p>
-          It goes to each of the quest&apos;s players who accept text messages.
-        </p>
+        <p>{whoItReaches("the quest's", textPlayersWithApp)}</p>
       )}
-      {showBanner && <Banner tone="danger">{messageOf(send.error)}</Banner>}
+      {failed && <Banner tone="danger">{messageOf(failed)}</Banner>}
+      <KeptChallenges
+        questName={questName}
+        sending={sending}
+        onSend={(challenge) => sendAgain.mutate(challenge.challengeId)}
+      />
       <FormTextField
         control={control}
         name="message"
@@ -170,8 +275,8 @@ function TextMessageForm({
         control={control}
         name="expectedResponse"
         id="expected-response"
-        label="Reply to wait for (optional)"
-        description="The quest waits for a player to text this back; with several teams, for one of each."
+        label="Answer's keywords (optional)"
+        description="Makes the message a challenge, which the players answer in the app or by text; with several teams, each answers its own. An answer is right if it contains every keyword. Separate keywords with commas; letter case, spacing, and punctuation don't matter."
       />
       <FormTextField
         control={control}
@@ -180,29 +285,32 @@ function TextMessageForm({
           validate: (confirmation, { expectedResponse }) =>
             !expectedResponse.trim() ||
             String(confirmation).trim() !== "" ||
-            "Enter what to send back when the reply arrives",
+            "Enter what a right answer shows the players",
         }}
         id="response-confirmation"
-        label="Confirmation to send back"
-        description="Needed with a reply to wait for."
+        label="Confirmation for the venue's staff"
+        description="What a right answer shows the players, in the app or texted back, for them to show the venue's staff. Needed with keywords."
       />
       <div className={dialogStyles.actions}>
         <Button onPress={() => onClose(false)}>Cancel</Button>
-        <Button type="submit" variant="primary" isPending={send.isPending}>
-          {send.isPending ? "Sending…" : "Send"}
+        <Button type="submit" variant="primary" isPending={sending}>
+          {sending ? "Sending…" : "Send"}
         </Button>
       </div>
     </form>
   );
 }
 
-/** Writing a text message to the quest's players, or some of them. */
+/**
+ * Writing the puzzle master's message to the quest's players, or some of
+ * them, or sending a challenge sent before again.
+ */
 export function TextMessageDialog(props: TextMessageDialogProps) {
   return (
     <Dialog
       id="text-dialog"
       isOpen={props.isOpen}
-      title="Text the players"
+      title="Message the players"
       onDismiss={() => props.onClose(false)}
     >
       <TextMessageForm {...props} />

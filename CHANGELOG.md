@@ -39,6 +39,18 @@ description at `/api/v1/openapi.json`.
 - A quest's `textPlayersWithApp`, on by default, can be turned off to stop
   texting players who have the app, which shows them the messages anyway.
 
+### Administrators
+
+- The quest console's "Message the players" (formerly "Text the players")
+  says who a message reaches, and sets a challenge with the answer's keywords
+  and a confirmation for the venue's staff. Challenges sent before are listed
+  in it, each sent again to the team chosen with one tap.
+- The console shows each team's messages, newest first, and its challenge:
+  what it waits for, or when it was answered, and whether in the app or by
+  text, as it happens.
+- A quest's console has a "Text players who have the app" setting, which saves
+  as soon as it's changed.
+
 ### Running the site
 
 - The server sends push notifications to iPhones through Apple's service and
