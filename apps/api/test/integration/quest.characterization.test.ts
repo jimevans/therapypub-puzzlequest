@@ -15,11 +15,7 @@ import {
 } from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
-import {
-  assigneeIdsOf,
-  puzzleIdsOf,
-  withPuzzleNames,
-} from "../references.js";
+import { assigneeIdsOf, puzzleIdsOf, withPuzzleNames } from "../references.js";
 
 const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
 const { QuestModel, QuestPuzzleStatus, QuestStatus } =
