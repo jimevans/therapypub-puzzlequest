@@ -34,6 +34,10 @@ const { createShareLink } =
 const QuestService = await import("../../src/services/quest.service.js");
 const WebSocketService =
   await import("../../src/services/websocket.service.js");
+const MessagingService =
+  await import("../../src/services/messaging.service.js");
+const SessionService = await import("../../src/services/session.service.js");
+const PushService = await import("../../src/services/push.service.js");
 
 let mongoServer: MongoMemoryServer | undefined;
 let app: Express;
@@ -265,6 +269,54 @@ describe("following a quest as it's played", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(follower.raw).toEqual([]);
+  });
+});
+
+describe("the puzzle master's messages", () => {
+  it("tell the entry's players to fetch the quest again, and everyone else only that it changed", async () => {
+    // The player has the app, so can be sent messages without a phone number.
+    PushService.setPushSenders({
+      ios: { send: vi.fn(async () => "sent" as const), close() {} },
+    });
+    await SessionService.setPushTarget(session, {
+      platform: "ios",
+      token: "phone",
+      environment: "production",
+    });
+    const player = await follow("quest", { token: session });
+    const anyone = await follow("quest");
+
+    const sent = await MessagingService.sendQuestTextMessage(
+      "quest",
+      { kind: "user", name: "player" },
+      {
+        message: "Secret riddle",
+        reply: {
+          expectedResponse: "answer",
+          responseConfirmation: "Secret confirmation",
+        },
+      }
+    );
+    expect(sent.status).toBe("success");
+    await request(app)
+      .post("/api/v1/quests/quest/challenge/answers")
+      .set("Authorization", `Bearer ${session}`)
+      .send({ answer: "answer" })
+      .expect(200);
+
+    await vi.waitFor(() =>
+      expect(player.kinds()).toEqual(["messageSent", "challengeAnswered"])
+    );
+    await vi.waitFor(() =>
+      expect(anyone.kinds()).toEqual(["questUpdated", "questUpdated"])
+    );
+    expect(JSON.parse(player.raw[0])).toEqual({
+      message: "messageSent",
+      questName: "quest",
+      entryId: await entryIdOf("quest"),
+    });
+    expect([...player.raw, ...anyone.raw].join("\n")).not.toMatch(/Secret/);
+    PushService.setPushSenders(undefined);
   });
 });
 

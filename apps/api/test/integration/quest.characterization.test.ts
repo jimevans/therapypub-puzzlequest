@@ -17,7 +17,6 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import {
   assigneeIdsOf,
-  entryIdOf,
   puzzleIdsOf,
   withPuzzleNames,
 } from "../references.js";
@@ -227,9 +226,11 @@ describe("createQuest", () => {
         id: (await UserModel.findOne({ userName: "player" }).lean())!._id,
       },
       status: QuestStatus.NOT_STARTED,
-      textResponse: "",
-      textResponseConfirmation: "",
+      messages: [],
     });
+    expect(quest.entries[0]!.challenge).toBeUndefined();
+    expect(quest.challenges).toEqual([]);
+    expect(quest.textAppPlayers).toBe(true);
     expect(quest.puzzles.map((puzzle) => puzzle.puzzleName)).toEqual([
       "colors",
       "fruit",
@@ -1568,62 +1569,6 @@ describe("getPuzzleActivationQrCode", () => {
       (await QuestService.getPuzzleActivationQrCode("test-quest", "nope"))
         .statusCode
     ).toBe(404);
-  });
-});
-
-describe("text responses", () => {
-  it("accepts the expected response case-insensitively, once", async () => {
-    await createQuest();
-    const entryId = await entryIdOf("test-quest");
-    await QuestService.setExpectedTextResponse(
-      "test-quest",
-      entryId,
-      "Ready",
-      "Let's go!"
-    );
-
-    expect(
-      await QuestService.validateExpectedTextResponse(
-        "test-quest",
-        entryId,
-        "READY"
-      )
-    ).toEqual({ status: "success", statusCode: 200, data: "Let's go!" });
-    expect(
-      await QuestService.validateExpectedTextResponse(
-        "test-quest",
-        entryId,
-        "ready"
-      )
-    ).toEqual({
-      status: "error",
-      statusCode: 418,
-      message: "Quest is not expecting a text response",
-    });
-  });
-
-  it("rejects a response that does not match, leaving it expected", async () => {
-    await createQuest();
-    const entryId = await entryIdOf("test-quest");
-    await QuestService.setExpectedTextResponse(
-      "test-quest",
-      entryId,
-      "Ready",
-      "Go"
-    );
-
-    expect(
-      await QuestService.validateExpectedTextResponse(
-        "test-quest",
-        entryId,
-        "nope"
-      )
-    ).toEqual({
-      status: "error",
-      statusCode: 400,
-      message: "Expected response does not match",
-    });
-    expect((await storedQuest()).entries[0]!.textResponse).toBe("Ready");
   });
 });
 

@@ -167,6 +167,7 @@ const ROUTES: [string, string, Policy][] = [
   ["delete", "/api/v1/puzzles/:puzzleName", ADMIN],
   ["post", "/api/v1/puzzle-media", ADMIN],
   ["get", "/api/v1/quests", ADMIN],
+  ["get", "/api/v1/quests/:questName/challenges", ADMIN],
   ["post", "/api/v1/quests", ADMIN],
   ["get", "/api/v1/quests/:questName", QUEST_VIEWER],
   ["patch", "/api/v1/quests/:questName", ADMIN],
@@ -234,6 +235,7 @@ const ROUTES: [string, string, Policy][] = [
     QUEST_PLAYER,
   ],
   ["post", "/api/v1/quests/:questName/puzzles/:puzzleName/hints", QUEST_PLAYER],
+  ["post", "/api/v1/quests/:questName/challenge/answers", QUEST_PLAYER],
   ["post", "/api/v1/webhooks/twilio/voice", TWILIO],
   ["post", "/api/v1/webhooks/twilio/messages", TWILIO],
 
@@ -273,6 +275,7 @@ const BODIES: Record<string, object> = {
   "/api/v1/quests/:questName/puzzles/:puzzleName/solution-attempts": {
     guess: "wrong",
   },
+  "/api/v1/quests/:questName/challenge/answers": { answer: "wrong" },
 };
 
 let mongoServer: MongoMemoryServer | undefined;

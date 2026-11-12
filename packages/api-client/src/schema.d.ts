@@ -462,9 +462,29 @@ export interface paths {
         put?: never;
         /**
          * Text every entrant's players
-         * @description Texts the message to the players of every entry in progress who accept text messages, each number once, a few seconds apart, as carriers require. With an expected response, each of those entries waits for that reply and texts the confirmation back when it arrives. To text one team or player, use its own address.
+         * @description Sends the puzzle master's message to every entry in progress, as a team's or player's own address does (see there): kept with each entry and shown in the app, and texted to the players who accept texts, each number once. With an expected response, each of those entries waits for its own answer to the challenge. To message one team or player, use its own address.
          */
         post: operations["sendQuestTextMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quests/{questName}/challenges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a quest's challenges
+         * @description The challenges the puzzle master has sent in the quest, oldest first, kept so that one can be sent to the next team or player with one tap: send its challengeId to a text-messages route. A challenge sent again with the same message, answer, and confirmation is the same challenge.
+         */
+        get: operations["listQuestChallenges"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -731,7 +751,7 @@ export interface paths {
         put?: never;
         /**
          * Text a team's members
-         * @description Texts the message to the entrant's players who accept text messages, a few seconds apart, as carriers require; the entry must be in progress. With an expected response, the entry waits for that reply and texts the confirmation back when it arrives. Not found if the team isn't one of the quest's entrants.
+         * @description Sends the puzzle master's message to the entrant's players; the entry must be in progress. It's kept with the entry, which players see in the app (and players with the app are sent it as a push notification), and texted, a few seconds apart as carriers require, to the players who accept text messages, unless the quest's textPlayersWithApp is false, which leaves out those with the app. With an expected response it sets a challenge, which the entry waits for its players to answer, in the app or by text; a right answer shows them the confirmation. The challenge is kept with the quest, so challengeId can send it to the next entrant. Refused (noRecipients) if no player has the app or accepts texts. Not found if the team isn't one of the quest's entrants.
          */
         post: operations["sendTeamTextMessage"];
         delete?: never;
@@ -871,7 +891,7 @@ export interface paths {
         put?: never;
         /**
          * Text a player
-         * @description Texts the message to the entrant's players who accept text messages, a few seconds apart, as carriers require; the entry must be in progress. With an expected response, the entry waits for that reply and texts the confirmation back when it arrives. Not found if the player isn't one of the quest's entrants.
+         * @description Sends the puzzle master's message to the entrant's players; the entry must be in progress. It's kept with the entry, which players see in the app (and players with the app are sent it as a push notification), and texted, a few seconds apart as carriers require, to the players who accept text messages, unless the quest's textPlayersWithApp is false, which leaves out those with the app. With an expected response it sets a challenge, which the entry waits for its players to answer, in the app or by text; a right answer shows them the confirmation. The challenge is kept with the quest, so challengeId can send it to the next entrant. Refused (noRecipients) if no player has the app or accepts texts. Not found if the player isn't one of the quest's entrants.
          */
         post: operations["sendPlayerTextMessage"];
         delete?: never;
@@ -1034,6 +1054,26 @@ export interface paths {
          * @description Each hint adds its time penalty to the players' time. The answer says what the next hint would cost and whether it gives the solution away, so a client can warn first.
          */
         post: operations["revealHint"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quests/{questName}/challenge/answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Answer the puzzle master's challenge
+         * @description Answers the challenge the player's entry (theirs, or their team's) is waiting for: the latest the puzzle master sent, which the quest shows as its entry's challenge. An answer is right if it contains each of the challenge's keywords, as for puzzle answers; a right one finishes the challenge for the whole team, which every teammate's screen shows, and gives the confirmation to show the venue's staff. A teammate may have answered it first, by text message or in the app (wrongState). Wrong answers are limited for each player, with solution attempts.
+         */
+        post: operations["answerChallenge"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1360,6 +1400,22 @@ export interface components {
             /** @description The file's path on this site, such as /puzzleData/riddle.png: the text of a puzzle that shows it. */
             path: string;
         };
+        QuestChallengeList: {
+            challenges: components["schemas"]["QuestChallenge"][];
+        };
+        QuestChallenge: {
+            challengeId: string;
+            message: string;
+            /** @description The keywords a right answer contains, separated by commas. */
+            expectedResponse: string;
+            /** @description What a right answer shows the players. */
+            responseConfirmation: string;
+            /**
+             * Format: date-time
+             * @description When it was first sent.
+             */
+            createdAt: string;
+        };
         QuestPage: {
             /** @description The page's items. */
             items: components["schemas"]["Quest"][];
@@ -1374,6 +1430,8 @@ export interface components {
              * @enum {string}
              */
             visibility?: "public" | "private";
+            /** @description Whether the puzzle master's messages are texted to players who have the app, as well as shown in it. Only for administrators. */
+            textPlayersWithApp?: boolean;
             /** @description The users and teams playing the quest, in order, each with its own progress. A player sees only their own entry. */
             entries: components["schemas"]["QuestEntry"][];
         };
@@ -1386,10 +1444,14 @@ export interface components {
             statusDescription: string;
             /** @description True while an administrator has paused the entry: its clocks stop, and its players can't activate, guess, or reveal hints until it resumes. Its status stays inProgress. */
             paused: boolean;
-            /** @description The text message reply the entry is waiting for, if any; null if none. Only for administrators: absent for players. */
+            /** @description The keywords of the challenge the entry is waiting to answer, if any; null if none (see challenge). Only for administrators: absent for players. */
             textResponse?: string | null;
-            /** @description What is texted back when the reply arrives; null if no reply is awaited. Only for administrators: absent for players. */
+            /** @description The confirmation of the challenge the entry is waiting to answer; null if none is waiting (see challenge). Only for administrators: absent for players. */
             textResponseConfirmation?: string | null;
+            /** @description What the puzzle master has sent the entry's players, oldest first: the most recent 50. A reset clears them. */
+            messages: components["schemas"]["EntryMessage"][];
+            /** @description The challenge the puzzle master last sent the entry, answered or not; null if none has been sent since it started. */
+            challenge: components["schemas"]["EntryChallenge"] | null;
             /** @description The entry's place on the leaderboard (see SpectatorQuestEntry's rank); null while it hasn't completed. Only for administrators: absent for players. Entries stay in the quest's order. */
             rank?: number | null;
             /** @description The quest's stops, in order, with the entry's progress on each. Players see only those they have reached. */
@@ -1402,6 +1464,28 @@ export interface components {
             name: string | null;
             /** @description Null if the user or team has been deleted. */
             displayName: string | null;
+        };
+        EntryMessage: {
+            text: string;
+            /** Format: date-time */
+            sentAt: string;
+            /** @description True if it set a challenge. */
+            challenge: boolean;
+        };
+        EntryChallenge: {
+            /** @description The quest's kept challenge it was sent from (see GET /quests/{questName}/challenges). */
+            challengeId: string;
+            message: string;
+            /** Format: date-time */
+            sentAt: string;
+            /** @description When a player answered it rightly; null while it waits. */
+            answeredAt: string | null;
+            /** @description How the right answer came: in the app (or on the web), or by text message; null while it waits. */
+            answeredVia: ("app" | "sms") | null;
+            /** @description What a right answer shows the players, to show the venue's staff. Players see it once it has been answered; administrators always. */
+            confirmation?: string;
+            /** @description The keywords a right answer contains, separated by commas. Only for administrators: absent for players. */
+            expectedResponse?: string;
         };
         QuestPuzzle: {
             puzzleName: string;
@@ -1564,6 +1648,12 @@ export interface components {
             timePenaltySeconds: number;
             /** @description What revealing the next hint would cost; null if this was the last. */
             nextHint: components["schemas"]["NextHint"] | null;
+        };
+        ChallengeAnswer: {
+            /** @description What to show the venue's staff. */
+            confirmation: string;
+            /** Format: date-time */
+            answeredAt: string;
         };
         SpectatorQuest: {
             questName: string;
@@ -1791,6 +1881,18 @@ export interface components {
         } | {
             /** @constant */
             message: "questUpdated";
+            questName: string;
+            /** @description The ID of the quest's entry whose progress changed: a quest can have several users or teams playing it, each with its own progress. */
+            entryId: string;
+        } | {
+            /** @constant */
+            message: "messageSent";
+            questName: string;
+            /** @description The ID of the quest's entry whose progress changed: a quest can have several users or teams playing it, each with its own progress. */
+            entryId: string;
+        } | {
+            /** @constant */
+            message: "challengeAnswered";
             questName: string;
             /** @description The ID of the quest's entry whose progress changed: a quest can have several users or teams playing it, each with its own progress. */
             entryId: string;
@@ -4271,11 +4373,14 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    message: string;
-                    /** @description A reply for the quest to wait for; letter case doesn't matter. */
+                    /** @description What to send. Required, unless sending a kept challenge again by its challengeId. */
+                    message?: string;
+                    /** @description To set a challenge: the keywords a right answer contains, separated by commas. Letter case, accents, spacing, and punctuation don't matter, as for puzzle answers. The challenge is kept with the quest, so it can be sent again. */
                     expectedResponse?: string;
-                    /** @description What is texted back when the reply arrives. */
+                    /** @description What a right answer to the challenge shows the players, in the app or texted back, for them to show the venue's staff. */
                     responseConfirmation?: string;
+                    /** @description To send one of the quest's kept challenges again, as it was kept (see GET /quests/{questName}/challenges), instead of a message. */
+                    challengeId?: string;
                 };
             };
         };
@@ -4352,6 +4457,65 @@ export interface operations {
             };
             /** @description /problems/messaging-failed: Text message not sent. */
             502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listQuestChallenges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The quest's name. */
+                questName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The challenges. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestChallengeList"];
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/forbidden: Not allowed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4439,6 +4603,8 @@ export interface operations {
                      * @enum {string}
                      */
                     visibility?: "public" | "private";
+                    /** @description Whether the puzzle master's messages and challenges are texted to players who have the app, which shows them anyway, as well as to those who don't. New quests text them; turning it off saves texting them. */
+                    textPlayersWithApp?: boolean;
                     /** @description The users and teams playing the quest, in order; at least one. Each has its own progress through the same stops. A player may be in only one of them, as a user or in a team. On a change, those already playing keep their progress, new ones start out not started, and those left out are removed, which is allowed only before they start. */
                     entrants: {
                         kind: components["schemas"]["EntrantKind"];
@@ -4658,6 +4824,8 @@ export interface operations {
                      * @enum {string}
                      */
                     visibility?: "public" | "private";
+                    /** @description Whether the puzzle master's messages and challenges are texted to players who have the app, which shows them anyway, as well as to those who don't. New quests text them; turning it off saves texting them. */
+                    textPlayersWithApp?: boolean;
                     /** @description The users and teams playing the quest, in order; at least one. Each has its own progress through the same stops. A player may be in only one of them, as a user or in a team. On a change, those already playing keep their progress, new ones start out not started, and those left out are removed, which is allowed only before they start. */
                     entrants?: {
                         kind: components["schemas"]["EntrantKind"];
@@ -5493,11 +5661,14 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    message: string;
-                    /** @description A reply for the quest to wait for; letter case doesn't matter. */
+                    /** @description What to send. Required, unless sending a kept challenge again by its challengeId. */
+                    message?: string;
+                    /** @description To set a challenge: the keywords a right answer contains, separated by commas. Letter case, accents, spacing, and punctuation don't matter, as for puzzle answers. The challenge is kept with the quest, so it can be sent again. */
                     expectedResponse?: string;
-                    /** @description What is texted back when the reply arrives. */
+                    /** @description What a right answer to the challenge shows the players, in the app or texted back, for them to show the venue's staff. */
                     responseConfirmation?: string;
+                    /** @description To send one of the quest's kept challenges again, as it was kept (see GET /quests/{questName}/challenges), instead of a message. */
+                    challengeId?: string;
                 };
             };
         };
@@ -6047,11 +6218,14 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    message: string;
-                    /** @description A reply for the quest to wait for; letter case doesn't matter. */
+                    /** @description What to send. Required, unless sending a kept challenge again by its challengeId. */
+                    message?: string;
+                    /** @description To set a challenge: the keywords a right answer contains, separated by commas. Letter case, accents, spacing, and punctuation don't matter, as for puzzle answers. The challenge is kept with the quest, so it can be sent again. */
                     expectedResponse?: string;
-                    /** @description What is texted back when the reply arrives. */
+                    /** @description What a right answer to the challenge shows the players, in the app or texted back, for them to show the venue's staff. */
                     responseConfirmation?: string;
+                    /** @description To send one of the quest's kept challenges again, as it was kept (see GET /quests/{questName}/challenges), instead of a message. */
+                    challengeId?: string;
                 };
             };
         };
@@ -6769,6 +6943,116 @@ export interface operations {
             };
             /** @description /problems/body-too-large: Request too large. */
             413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/unexpected: An unexpected error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    answerChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                questName: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description The players' answer to the challenge they were sent. */
+                    answer: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The answer is right. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChallengeAnswer"];
+                };
+            };
+            /** @description /problems/invalid-request: The request isn't valid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/sign-in-required: Sign in to do this. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/cross-site-request: Request from another site. /problems/forbidden: Not allowed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/not-found: Not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/wrong-state: Not possible now. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/body-too-large: Request too large. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/wrong-answer: Not the answer. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description /problems/too-many-requests: Too many requests. */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

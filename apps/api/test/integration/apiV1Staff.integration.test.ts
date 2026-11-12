@@ -100,8 +100,14 @@ beforeEach(async () => {
       "entries.0.puzzles.0.activationTime": new Date(),
       "entries.0.puzzles.0.endTime": new Date(),
       "entries.0.puzzles.0.nextHintToDisplay": 1,
-      "entries.0.textResponse": "secret reply",
-      "entries.0.textResponseConfirmation": "secret confirmation",
+      "entries.0.challenge": {
+        challengeId: new mongoose.Types.ObjectId(),
+        message: "secret challenge",
+        answer: "secret reply",
+        confirmation: "secret confirmation",
+        sentAt: new Date(),
+      },
+      "entries.0.messages": [{ text: "secret message", sentAt: new Date() }],
     }
   );
   sessions = await startSessions("helper", "player");
@@ -121,6 +127,7 @@ const NEVER_SHOWN = [
   /Lantern text/,
   /secret/,
   /textResponse/,
+  /challenge/i,
   /penaltyFreeHints/,
   /assignee/,
 ];

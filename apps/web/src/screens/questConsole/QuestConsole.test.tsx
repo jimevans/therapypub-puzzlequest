@@ -71,6 +71,8 @@ const RUNNING = {
   status: "inProgress",
   statusDescription: "In progress",
   paused: false,
+  messages: [],
+  challenge: null,
   puzzles: [
     step("riddle", 3, "Completed", { hintsRevealed: 1 }),
     step("cipher", 2, "In progress"),

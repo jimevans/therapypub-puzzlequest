@@ -46,18 +46,27 @@ const visibility = z.enum(["public", "private"]).meta({
     "Who can follow the quest: anyone, or only its players (in any of its entries) and staff. New quests are public.",
 });
 
+const textPlayersWithApp = z.boolean().meta({
+  description:
+    "Whether the puzzle master's messages and challenges are texted to players who have the app, which shows them anyway, as well as to those who don't. New quests text them; turning it off saves texting them.",
+});
+
 /** POST /api/v1/quests */
 export const createQuestBody = z
   .object({
     questName: newName,
     displayName: displayName.min(1, "Required"),
     visibility: visibility.optional(),
+    textPlayersWithApp: textPlayersWithApp.optional(),
     entrants,
     puzzles: z.array(questPuzzle).default([]),
   })
-  .transform(({ questName, ...definition }) => ({
+  .transform(({ questName, textPlayersWithApp, ...definition }) => ({
     name: questName,
     ...definition,
+    ...(textPlayersWithApp !== undefined
+      ? { textAppPlayers: textPlayersWithApp }
+      : {}),
   }));
 export type CreateQuestBody = z.output<typeof createQuestBody>;
 
@@ -65,12 +74,20 @@ export type CreateQuestBody = z.output<typeof createQuestBody>;
  * PATCH /api/v1/quests/{questName}. Fields left out keep their stored values; leaving
  * out the puzzle list keeps the puzzles unchanged.
  */
-export const updateQuestBody = z.object({
-  displayName: displayName.min(1, "Required").optional(),
-  visibility: visibility.optional(),
-  entrants: entrants.optional(),
-  puzzles: z.array(questPuzzle).optional(),
-});
+export const updateQuestBody = z
+  .object({
+    displayName: displayName.min(1, "Required").optional(),
+    visibility: visibility.optional(),
+    textPlayersWithApp: textPlayersWithApp.optional(),
+    entrants: entrants.optional(),
+    puzzles: z.array(questPuzzle).optional(),
+  })
+  .transform(({ textPlayersWithApp, ...definition }) => ({
+    ...definition,
+    ...(textPlayersWithApp !== undefined
+      ? { textAppPlayers: textPlayersWithApp }
+      : {}),
+  }));
 export type UpdateQuestBody = z.output<typeof updateQuestBody>;
 
 /**

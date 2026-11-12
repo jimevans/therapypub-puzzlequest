@@ -26,10 +26,13 @@ import {
   timePenaltySeconds,
   toNextHint,
 } from "../../schemas/hints.js";
+import { answerChallengeBody } from "../../schemas/messaging.schemas.js";
+import * as MessagingService from "../../services/messaging.service.js";
 import * as QuestService from "../../services/quest.service.js";
 import * as UserService from "../../services/user.service.js";
 import { Problems, sendProblem, sendServiceProblem } from "../problems.js";
 import {
+  challengeAnswerSchema,
   nextStopSchema,
   playerPuzzleSchema,
   toPlayerPuzzleResource,
@@ -302,6 +305,47 @@ export const playingRoutes = [
         text: hintText,
         timePenaltySeconds: timePenalty,
         nextHint: toNextHint(nextHint),
+      });
+    },
+  }),
+  defineRoute({
+    method: "post",
+    path: "/quests/{questName}/challenge/answers",
+    operationId: "answerChallenge",
+    summary: "Answer the puzzle master's challenge",
+    description:
+      "Answers the challenge the player's entry (theirs, or their team's) is waiting for: the latest the puzzle master sent, which the quest shows as its entry's challenge. An answer is right if it contains each of the challenge's keywords, as for puzzle answers; a right one finishes the challenge for the whole team, which every teammate's screen shows, and gives the confirmation to show the venue's staff. A teammate may have answered it first, by text message or in the app (wrongState). Wrong answers are limited for each player, with solution attempts.",
+    tags: ["Playing"],
+    access: "signedIn",
+    before: [solutionRateLimiter],
+    request: {
+      params: z.object({ questName: z.string() }),
+      body: answerChallengeBody,
+    },
+    responses: {
+      200: { description: "The answer is right.", body: challengeAnswerSchema },
+    },
+    problems: [
+      Problems.forbidden,
+      Problems.notFound,
+      Problems.wrongState,
+      Problems.wrongAnswer,
+      Problems.tooManyRequests,
+    ],
+    async handle(req, res) {
+      const user = UserService.requireLoggedInUser(req.user);
+      const answered = await MessagingService.answerChallengeInApp(
+        req.params.questName,
+        { userId: user.id ?? "", assigneeIds: await user.getAssigneeIds() },
+        req.body.answer
+      );
+      if (answered.status === "error") {
+        sendServiceProblem(res, answered);
+        return;
+      }
+      res.json({
+        confirmation: answered.data.confirmation,
+        answeredAt: answered.data.answeredAt.toISOString(),
       });
     },
   }),
