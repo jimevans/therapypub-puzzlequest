@@ -129,20 +129,20 @@ export async function sendPushNotifications(
   const recipients = async (assignee: AssigneeRef) =>
     (await playersOf([assignee])).filter((id) => id !== excluded);
 
-  const sends: Promise<number>[] = [];
+  // What happened goes first, and only then the standings it led to, so a
+  // phone that's sent both is told in that order.
   if (draft) {
-    sends.push(
-      PushService.sendPush(await recipients(activity.entry.assignee), {
-        ...draft,
-        questName: activity.questName,
-        title,
-      })
-    );
+    await PushService.sendPush(await recipients(activity.entry.assignee), {
+      ...draft,
+      questName: activity.questName,
+      title,
+    });
   }
   // A race is over when its last entry finishes: every entry's players hear
   // where they came. A quest with one entry isn't a race.
   if (raceOver && entries.length > 1) {
     const standings = QuestService.rankQuestEntries(entries);
+    const sends: Promise<number>[] = [];
     for (const { quest, rank } of standings.entries) {
       if (rank === null) {
         continue;
@@ -158,8 +158,8 @@ export async function sendPushNotifications(
         })
       );
     }
+    await Promise.all(sends);
   }
-  await Promise.all(sends);
 }
 
 /**
