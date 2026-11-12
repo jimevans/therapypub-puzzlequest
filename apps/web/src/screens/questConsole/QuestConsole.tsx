@@ -1,9 +1,9 @@
 import type { Schemas } from "@puzzlequest/api-client";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
-import { ApiError, messageOf } from "../../api";
-import { useLiveQuest } from "../../live/useLiveQuest";
+import { ApiError, api, dataOrThrow, messageOf } from "../../api";
+import { questQueryKey, useLiveQuest } from "../../live/useLiveQuest";
 import { ClockTime } from "../../quests/ClockTime";
 import { questQuery } from "../../quests/queries";
 import { copy } from "../../copy";
@@ -237,10 +237,10 @@ function EntryActions({
             Pause
           </Button>
         ))}
-      {/* In a race, the quest's own button texts the team chosen at first. */}
+      {/* In a race, the quest's own button messages the team chosen at first. */}
       {single && inProgress && (
         <Button id="text-players" onPress={() => controls.text(of.key)}>
-          Text the players
+          Message the players
         </Button>
       )}
       {entry.status !== QUEST_NOT_STARTED && (
@@ -335,7 +335,7 @@ function QuestActions({
       )}
       {entries.some(isInProgress) && (
         <Button id="text-players" onPress={() => controls.text(chosen ?? "")}>
-          Text the players
+          Message the players
         </Button>
       )}
       {entries.some((entry) => entry.status !== QUEST_NOT_STARTED) && (
@@ -356,7 +356,7 @@ function QuestActions({
   );
 }
 
-/** An entry's status, time, and the reply it's waiting for. */
+/** An entry's status, time, and the challenge it was last sent. */
 function EntryFacts({ entry, label }: { entry: Entry; label?: string }) {
   return (
     <>
@@ -379,16 +379,123 @@ function EntryFacts({ entry, label }: { entry: Entry; label?: string }) {
           "Not started"
         )}
       </dd>
-      {entry.textResponse && (
-        <>
-          <dt>Waiting for the reply</dt>
-          <dd id="awaited-reply">
-            {entry.textResponse}, then sending &ldquo;
-            {entry.textResponseConfirmation}&rdquo;
-          </dd>
-        </>
-      )}
+      <ChallengeFacts challenge={entry.challenge} />
     </>
+  );
+}
+
+const timeFormat = new Intl.DateTimeFormat(undefined, {
+  dateStyle: "medium",
+  timeStyle: "medium",
+});
+
+/** The challenge an entry was last sent: waiting for its answer, or answered. */
+function ChallengeFacts({ challenge }: { challenge: Entry["challenge"] }) {
+  if (!challenge) {
+    return null;
+  }
+  if (!challenge.answeredAt) {
+    return (
+      <>
+        <dt>Waiting for an answer</dt>
+        <dd id="awaited-reply">
+          With {challenge.expectedResponse}, then showing &ldquo;
+          {challenge.confirmation}&rdquo;
+        </dd>
+      </>
+    );
+  }
+  return (
+    <>
+      <dt>Challenge answered</dt>
+      <dd id="challenge-answered">
+        <time dateTime={challenge.answeredAt}>
+          {timeFormat.format(new Date(challenge.answeredAt))}
+        </time>
+        {challenge.answeredVia === "sms" ? ", by text" : ", in the app"}
+        {/* What the players should have shown the staff. */}, showing &ldquo;
+        {challenge.confirmation}&rdquo;
+      </dd>
+    </>
+  );
+}
+
+/** What the puzzle master has sent an entry's players, newest first. */
+function EntryMessages({
+  entry,
+  Heading,
+}: {
+  entry: Entry;
+  Heading: "h2" | "h3";
+}) {
+  if (!entry.messages.length) {
+    return null;
+  }
+  return (
+    <section className={styles.section} aria-labelledby="messages-heading">
+      <Heading id="messages-heading">Messages</Heading>
+      <ol id="entry-messages" className={styles.messages}>
+        {/* A copy, reversed: the API gives them oldest first. */}
+        {[...entry.messages].reverse().map((message) => (
+          <li key={`${message.sentAt}-${message.text}`}>
+            <time dateTime={message.sentAt}>
+              {timeFormat.format(new Date(message.sentAt))}
+            </time>
+            {message.challenge && (
+              <span className={styles.challengeTag}>Challenge</span>
+            )}
+            <p>{message.text}</p>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+/**
+ * The quest's setting for texting players who have the app, which shows them
+ * the puzzle master's messages anyway. It saves as soon as it's changed.
+ */
+function TextingSetting({ quest }: { quest: Quest }) {
+  const queryClient = useQueryClient();
+  const change = useMutation({
+    mutationFn: async (textPlayersWithApp: boolean) =>
+      dataOrThrow(
+        await api.PATCH("/quests/{questName}", {
+          params: { path: { questName: quest.questName } },
+          body: { textPlayersWithApp },
+        })
+      ),
+    onSettled: () =>
+      queryClient.invalidateQueries({
+        queryKey: questQueryKey(quest.questName),
+      }),
+  });
+  // While saving, show what was chosen, not what's stored.
+  const checked = change.isPending
+    ? change.variables
+    : (quest.textPlayersWithApp ?? true);
+  return (
+    <div className={styles.setting}>
+      <div className={styles.checkbox}>
+        <input
+          id="text-app-players"
+          type="checkbox"
+          checked={checked}
+          disabled={change.isPending}
+          aria-describedby="text-app-players-description"
+          onChange={(event) => change.mutate(event.target.checked)}
+        />
+        <label htmlFor="text-app-players">Text players who have the app</label>
+      </div>
+      <p id="text-app-players-description" className={styles.note}>
+        Messages show in the app either way. Turn this off to text only players
+        without it.
+      </p>
+      {change.isError && (
+        <Banner tone="danger">{messageOf(change.error)}</Banner>
+      )}
+    </div>
   );
 }
 
@@ -620,6 +727,8 @@ function Console({ quest }: { quest: Quest }) {
         </li>
       </ul>
 
+      <TextingSetting quest={quest} />
+
       {single && chosen ? (
         <>
           <EntryStops
@@ -632,6 +741,7 @@ function Console({ quest }: { quest: Quest }) {
               setResetting(chosenPuzzle);
             }}
           />
+          <EntryMessages entry={chosen.entry} Heading="h2" />
           <ShareLinksSection questName={quest.questName} />
           <ActivityLog quest={quest} />
         </>
@@ -673,6 +783,7 @@ function Console({ quest }: { quest: Quest }) {
                   setResetting(chosenPuzzle);
                 }}
               />
+              <EntryMessages entry={chosen.entry} Heading="h3" />
               <ActivityLog
                 // A new log for each entrant, starting with only its events.
                 key={chosen.key}
@@ -719,6 +830,7 @@ function Console({ quest }: { quest: Quest }) {
       />
       <TextMessageDialog
         questName={quest.questName}
+        textPlayersWithApp={quest.textPlayersWithApp ?? true}
         recipients={recipients}
         defaultRecipient={texting ?? ""}
         isOpen={texting !== null}

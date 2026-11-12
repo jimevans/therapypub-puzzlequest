@@ -103,6 +103,24 @@ const NOT_STARTED = {
   progress: { ...STOPPED, puzzles: [] },
 };
 const REDS = { kind: "team", name: "reds" };
+/** A challenge the Reds were sent, and haven't answered. */
+const WAITING_CHALLENGE = {
+  challengeId: "challenge-1",
+  message: "What lights the harbour?",
+  sentAt: "2026-11-07T10:08:00.000Z",
+  answeredAt: null,
+  answeredVia: null,
+  confirmation: "Well done",
+  expectedResponse: "lighthouse",
+};
+/** The same challenge, as the quest keeps it to send again. */
+const KEPT_CHALLENGE = {
+  challengeId: "challenge-1",
+  message: "What lights the harbour?",
+  expectedResponse: "lighthouse",
+  responseConfirmation: "Well done",
+  createdAt: "2026-11-07T10:08:00.000Z",
+};
 
 /** A race: the Reds, running; the Blues, on the first stop; and Sam, alone. */
 const [RED_ENTRY] = withOneEntry(RUNNING).entries;
@@ -177,12 +195,16 @@ function apiQuest(
   quest:
     | ({ questName: string; displayName: string } & Record<string, unknown>)
     | null,
-  events: object[] = EVENTS
+  events: object[] = EVENTS,
+  challenges: object[] = []
 ) {
   const stored = quest && ("entries" in quest ? quest : withOneEntry(quest));
   return vi.spyOn(api, "GET").mockImplementation((async (path: string) => {
     if (path === "/quests/{questName}") {
       return stored ? ok(stored) : refusal("not-found", "No such quest");
+    }
+    if (path === "/quests/{questName}/challenges") {
+      return ok({ challenges });
     }
     if (path === "/quests/{questName}/events") {
       // What an event doesn't say is null, as the API gives it.
@@ -505,7 +527,7 @@ describe("the quest console", () => {
     );
   });
 
-  it("texts the players, waiting for a reply only with a confirmation", async () => {
+  it("messages the players, setting a challenge only with a confirmation", async () => {
     const user = userEvent.setup();
     apiQuest(RUNNING);
     const post = vi
@@ -514,25 +536,25 @@ describe("the quest console", () => {
     show();
 
     await user.click(
-      await screen.findByRole("button", { name: "Text the players" })
+      await screen.findByRole("button", { name: "Message the players" })
     );
-    const dialog = screen.getByRole("dialog", { name: "Text the players" });
+    const dialog = screen.getByRole("dialog", { name: "Message the players" });
     await user.click(within(dialog).getByRole("button", { name: "Send" }));
     expect(within(dialog).getByText("Enter the message")).toBeVisible();
 
     await user.type(within(dialog).getByLabelText("Message"), "Look up");
     await user.type(
-      within(dialog).getByLabelText("Reply to wait for (optional)"),
+      within(dialog).getByLabelText("Answer's keywords (optional)"),
       "lighthouse"
     );
     await user.click(within(dialog).getByRole("button", { name: "Send" }));
     expect(
-      within(dialog).getByText("Enter what to send back when the reply arrives")
+      within(dialog).getByText("Enter what a right answer shows the players")
     ).toBeVisible();
     expect(post).not.toHaveBeenCalled();
 
     await user.type(
-      within(dialog).getByLabelText("Confirmation to send back"),
+      within(dialog).getByLabelText("Confirmation for the venue's staff"),
       "Well done"
     );
     await user.click(within(dialog).getByRole("button", { name: "Send" }));
@@ -565,9 +587,9 @@ describe("the quest console", () => {
     show();
 
     await user.click(
-      await screen.findByRole("button", { name: "Text the players" })
+      await screen.findByRole("button", { name: "Message the players" })
     );
-    const dialog = screen.getByRole("dialog", { name: "Text the players" });
+    const dialog = screen.getByRole("dialog", { name: "Message the players" });
     await user.type(within(dialog).getByLabelText("Message"), "Hello");
     await user.click(within(dialog).getByRole("button", { name: "Send" }));
 
@@ -576,17 +598,130 @@ describe("the quest console", () => {
     );
   });
 
-  it("shows the reply the quest is waiting for", async () => {
+  it("shows the challenge the quest is waiting to have answered", async () => {
+    apiQuest({ ...RUNNING, challenge: WAITING_CHALLENGE });
+    show();
+
+    expect(await screen.findByText(/then showing/)).toHaveTextContent(
+      "With lighthouse, then showing “Well done”"
+    );
+  });
+
+  it("shows when and how the challenge was answered", async () => {
     apiQuest({
       ...RUNNING,
-      textResponse: "lighthouse",
-      textResponseConfirmation: "Well done",
+      challenge: {
+        ...WAITING_CHALLENGE,
+        answeredAt: "2026-11-07T10:09:00.000Z",
+        answeredVia: "sms",
+      },
     });
     show();
 
+    const answered = await screen.findByText(/by text/);
+    expect(answered).toHaveTextContent(", by text, showing “Well done”");
+    expect(within(answered).getByText(/2026/)).toHaveAttribute(
+      "datetime",
+      "2026-11-07T10:09:00.000Z"
+    );
+    expect(screen.queryByText(/then showing/)).not.toBeInTheDocument();
+  });
+
+  it("lists the messages sent to the players, newest first", async () => {
+    apiQuest({
+      ...RUNNING,
+      messages: [
+        {
+          text: "Welcome!",
+          sentAt: "2026-11-07T10:01:00.000Z",
+          challenge: false,
+        },
+        {
+          text: "What lights the harbour?",
+          sentAt: "2026-11-07T10:08:00.000Z",
+          challenge: true,
+        },
+      ],
+    });
+    show();
+
+    const messages = within(
+      await screen.findByRole("region", { name: "Messages" })
+    );
+    const items = messages.getAllByRole("listitem");
+    expect(items[0]).toHaveTextContent("ChallengeWhat lights the harbour?");
+    expect(items[1]).toHaveTextContent("Welcome!");
+    expect(items[1]).not.toHaveTextContent("Challenge");
+  });
+
+  it("sends a challenge sent before again with one tap", async () => {
+    const user = userEvent.setup();
+    apiQuest(RUNNING, EVENTS, [KEPT_CHALLENGE]);
+    const post = vi
+      .spyOn(api, "POST")
+      .mockResolvedValue(ok(undefined, 204) as never);
+    show();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Message the players" })
+    );
+    const dialog = screen.getByRole("dialog", { name: "Message the players" });
+    const kept = within(
+      await within(dialog).findByRole("region", {
+        name: "Challenges sent before",
+      })
+    );
     expect(
-      await screen.findByText(/lighthouse, then sending/)
-    ).toHaveTextContent("lighthouse, then sending “Well done”");
+      kept.getByText("Answer: lighthouse. Shows: “Well done”")
+    ).toBeVisible();
+    await user.click(
+      kept.getByRole("button", {
+        name: "Send again: What lights the harbour?",
+      })
+    );
+
+    expect(await screen.findByText("Message sent.")).toBeVisible();
+    expect(post).toHaveBeenCalledWith(
+      "/quests/{questName}/teams/{teamName}/text-messages",
+      {
+        params: { path: { questName: "trail", teamName: "reds" } },
+        body: { challengeId: "challenge-1" },
+      }
+    );
+  });
+
+  it("says who a message reaches, as the quest's setting says", async () => {
+    const user = userEvent.setup();
+    apiQuest({ ...withOneEntry(RUNNING), textPlayersWithApp: false });
+    show();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Message the players" })
+    );
+    const dialog = screen.getByRole("dialog", { name: "Message the players" });
+    expect(
+      within(dialog).getByText(/accept text messages and don't have the app/)
+    ).toBeVisible();
+  });
+
+  it("turns texting players who have the app off and on", async () => {
+    const user = userEvent.setup();
+    apiQuest(RUNNING);
+    const patch = vi
+      .spyOn(api, "PATCH")
+      .mockResolvedValue(ok(withOneEntry(RUNNING)) as never);
+    show();
+
+    const setting = await screen.findByLabelText(
+      "Text players who have the app"
+    );
+    expect(setting).toBeChecked();
+    await user.click(setting);
+
+    expect(patch).toHaveBeenCalledWith("/quests/{questName}", {
+      params: { path: { questName: "trail" } },
+      body: { textPlayersWithApp: false },
+    });
   });
 
   it("lists what happened, newest first", async () => {
@@ -854,9 +989,9 @@ describe("the quest console, for a race", () => {
     show();
 
     await user.click(
-      await screen.findByRole("button", { name: "Text the players" })
+      await screen.findByRole("button", { name: "Message the players" })
     );
-    let dialog = screen.getByRole("dialog", { name: "Text the players" });
+    let dialog = screen.getByRole("dialog", { name: "Message the players" });
     expect(within(dialog).getByLabelText("Send to")).toHaveDisplayValue(
       "Everyone"
     );
@@ -869,8 +1004,10 @@ describe("the quest console, for a race", () => {
     });
 
     await user.click(screen.getByRole("link", { name: "The Blues (team)" }));
-    await user.click(screen.getByRole("button", { name: "Text the players" }));
-    dialog = screen.getByRole("dialog", { name: "Text the players" });
+    await user.click(
+      screen.getByRole("button", { name: "Message the players" })
+    );
+    dialog = screen.getByRole("dialog", { name: "Message the players" });
     expect(within(dialog).getByLabelText("Send to")).toHaveDisplayValue(
       "The Blues (team)"
     );
@@ -896,9 +1033,9 @@ describe("the quest console, for a race", () => {
     show();
 
     await user.click(
-      await screen.findByRole("button", { name: "Text the players" })
+      await screen.findByRole("button", { name: "Message the players" })
     );
-    const dialog = screen.getByRole("dialog", { name: "Text the players" });
+    const dialog = screen.getByRole("dialog", { name: "Message the players" });
     await user.selectOptions(
       within(dialog).getByLabelText("Send to"),
       "Sam (player)"
