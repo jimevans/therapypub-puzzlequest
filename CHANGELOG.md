@@ -22,6 +22,22 @@ description at `/api/v1/openapi.json`.
   during a race, and the player who caused one isn't sent it. What a
   notification carries is described as `PushNotification` in the API's
   description, and published with each release as `push-notifications.json`.
+- The puzzle master's messages reach players in the app as well as by text.
+  A player's quest (`GET /quests/{questName}`) shows its entry's `messages`
+  and its `challenge`; players answer a challenge with
+  `POST /quests/{questName}/challenge/answers`, or by text as before, and a
+  right answer shows every teammate the confirmation for the venue's staff.
+  Players with the app are sent each message as a push notification
+  (`message`). The entry's players and staff following the quest are sent
+  `messageSent` and `challengeAnswered`; others, only `questUpdated`.
+- A challenge's expected response is now keywords, separated by commas,
+  matched as puzzle answers are: an answer is right if it contains each, in
+  any letter case and whatever its spacing and punctuation. Before, a texted
+  reply had to match the whole response exactly.
+- Each challenge sent is kept with the quest: `GET /quests/{questName}/challenges`
+  lists them, and a text-messages route given a `challengeId` sends one again.
+- A quest's `textPlayersWithApp`, on by default, can be turned off to stop
+  texting players who have the app, which shows them the messages anyway.
 
 ### Running the site
 

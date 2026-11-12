@@ -18,6 +18,8 @@ const { QuestEventModel } =
 const { AuthorizationLevel, UserModel } =
   await import("../../src/models/user.model.js");
 const QuestService = await import("../../src/services/quest.service.js");
+const ChallengeService =
+  await import("../../src/services/challenge.service.js");
 const { subscribeQuestEventHandlers } =
   await import("../../src/events/subscribers.js");
 
@@ -110,11 +112,21 @@ async function playSome() {
   await QuestService.finishPuzzle("quest", "first", player, "first");
   await QuestService.activatePuzzle("quest", "second", player, "code-2");
   await QuestService.getPuzzleHint("quest", "second", player);
-  await QuestService.setExpectedTextResponse(
+  const kept = await ChallengeService.keepChallenge("quest", {
+    message: "Ring the bell",
+    answer: "reply",
+    confirmation: "Thanks",
+  });
+  if (kept.status === "error") {
+    throw new Error(kept.message);
+  }
+  const entryId = await entryIdOf("quest");
+  await ChallengeService.recordMessage("quest", entryId, "Welcome!");
+  await ChallengeService.recordMessage(
     "quest",
-    await entryIdOf("quest"),
-    "reply",
-    "Thanks"
+    entryId,
+    "Ring the bell",
+    kept.data
   );
 }
 
@@ -133,6 +145,18 @@ describe("a quest, as its player sees it", () => {
     const [entry] = quest.entries;
     expect(entry).not.toHaveProperty("textResponse");
     expect(entry).not.toHaveProperty("textResponseConfirmation");
+    expect(entry.messages).toEqual([
+      { text: "Welcome!", sentAt: expect.any(String), challenge: false },
+      { text: "Ring the bell", sentAt: expect.any(String), challenge: true },
+    ]);
+    // Neither its answer nor, until it's answered, its confirmation.
+    expect(entry.challenge).toEqual({
+      challengeId: expect.any(String),
+      message: "Ring the bell",
+      sentAt: expect.any(String),
+      answeredAt: null,
+      answeredVia: null,
+    });
     const [solved, current, ...rest] = entry.puzzles;
     expect(rest).toEqual([]);
     expect(solved).toMatchObject({
@@ -178,7 +202,15 @@ describe("a quest, as an administrator sees it", () => {
     const [entry] = quest.entries;
 
     expect(quest.visibility).toBe("public");
+    expect(quest.textPlayersWithApp).toBe(true);
     expect(entry.textResponse).toBe("reply");
+    expect(entry.textResponseConfirmation).toBe("Thanks");
+    expect(entry.challenge).toMatchObject({
+      message: "Ring the bell",
+      expectedResponse: "reply",
+      confirmation: "Thanks",
+      answeredAt: null,
+    });
     expect(
       entry.puzzles.map((p: { activationCode: string }) => p.activationCode)
     ).toEqual(["code-1", "code-2", "code-3"]);
@@ -226,6 +258,8 @@ describe("listing quests", () => {
     expect(first.items[0].entries[0]).toMatchObject({
       textResponse: null,
       textResponseConfirmation: null,
+      messages: [],
+      challenge: null,
     });
     expect(second).toEqual({
       items: [expect.objectContaining({ questName: "later" })],

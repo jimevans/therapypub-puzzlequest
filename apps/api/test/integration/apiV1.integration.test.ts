@@ -256,6 +256,8 @@ describe("the OpenAPI document", () => {
       "puzzleStarted",
       "hintRevealed",
       "questUpdated",
+      "messageSent",
+      "challengeAnswered",
       "questsChanged",
     ]);
     const subscription = document.components.schemas.LiveUpdateSubscription;

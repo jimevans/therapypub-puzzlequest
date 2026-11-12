@@ -103,6 +103,60 @@ const pauseSchema = new Schema(
   { _id: false }
 );
 
+/** How many of the puzzle master's messages an entry keeps. */
+export const MAX_ENTRY_MESSAGES = 50;
+
+/** How a challenge's answer reached the server. */
+export const ChallengeChannel = ["app", "sms"] as const;
+export type ChallengeChannel = (typeof ChallengeChannel)[number];
+
+/** A message the puzzle master sent an entry's players. */
+const entryMessageSchema = new Schema(
+  {
+    text: { type: String, required: true },
+    sentAt: { type: Date, required: true },
+    /** The challenge it set, if it was one. */
+    challengeId: { type: Schema.Types.ObjectId },
+  },
+  { _id: false }
+);
+
+/**
+ * A challenge sent to an entry: a message whose answer the puzzle master
+ * waits for, and the confirmation shown when it comes. A copy of the quest's
+ * challenge as it was sent.
+ */
+const entryChallengeSchema = new Schema(
+  {
+    /** The quest's challenge it was sent from. */
+    challengeId: { type: Schema.Types.ObjectId, required: true },
+    message: { type: String, required: true },
+    /** The keywords a right answer contains, separated by commas. */
+    answer: { type: String, required: true },
+    confirmation: { type: String, required: true },
+    sentAt: { type: Date, required: true },
+    /** When it was answered; absent while it waits. */
+    answeredAt: { type: Date },
+    /** The user who answered it. */
+    answeredBy: { type: Schema.Types.ObjectId, ref: "User" },
+    /** How the answer came: in the app, or by text message. */
+    answeredVia: { type: String, enum: ChallengeChannel },
+  },
+  { _id: false }
+);
+
+/**
+ * A challenge the puzzle master has sent in a quest, kept so it can be sent
+ * to the next team with one tap.
+ */
+const questChallengeSchema = new Schema({
+  message: { type: String, required: true },
+  /** The keywords a right answer contains, separated by commas. */
+  answer: { type: String, required: true },
+  confirmation: { type: String, required: true },
+  createdAt: { type: Date, required: true },
+});
+
 /**
  * A user or team playing a quest, with their progress through it. A quest
  * may have several, racing one another; each plays the same stops.
@@ -128,16 +182,16 @@ const entrySchema = new Schema({
     required: true,
     default: 0,
   },
-  /** The reply the entry's quest is waiting for by text message, if any. */
-  textResponse: {
-    type: String,
-    default: "",
-  },
-  /** The confirmation sent when the expected reply arrives. */
-  textResponseConfirmation: {
-    type: String,
-    default: "",
-  },
+  /**
+   * What the puzzle master has sent the entry's players, oldest first: the
+   * most recent, up to MAX_ENTRY_MESSAGES. A reset clears them.
+   */
+  messages: { type: [entryMessageSchema], default: [] },
+  /**
+   * The challenge the puzzle master last sent the entry, answered or not; a
+   * new one replaces it, and a reset clears it.
+   */
+  challenge: { type: entryChallengeSchema, default: undefined },
   /** The entry's progress on each of the quest's puzzles. */
   puzzles: [entryPuzzleSchema],
   /**
@@ -176,6 +230,13 @@ const questSchema = new Schema(
     puzzles: [questPuzzleSchema],
     /** The users or teams playing the quest, each with their progress. */
     entries: [entrySchema],
+    /** The challenges the puzzle master has sent in the quest, oldest first. */
+    challenges: { type: [questChallengeSchema], default: [] },
+    /**
+     * False to stop texting players who have the app, which shows them the
+     * puzzle master's messages instead; players without it are still texted.
+     */
+    textAppPlayers: { type: Boolean, default: true },
   },
   {
     // Saving fails with a VersionError if the quest was saved by someone else

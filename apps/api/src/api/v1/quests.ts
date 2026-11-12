@@ -4,12 +4,13 @@
 // Playing them (activating, solving, hints) is in playing.ts.
 import PDFDocument from "pdfkit";
 import { z } from "zod";
-import { sendTextBody } from "../../schemas/messaging.schemas.js";
+import { sendTextBody, toOutgoing } from "../../schemas/messaging.schemas.js";
 import {
   createQuestBody,
   resetPuzzleBody,
   updateQuestBody,
 } from "../../schemas/quest.schemas.js";
+import * as ChallengeService from "../../services/challenge.service.js";
 import * as MessagingService from "../../services/messaging.service.js";
 import { drawQrCards } from "../../services/qrCards.js";
 import * as QuestService from "../../services/quest.service.js";
@@ -23,6 +24,8 @@ import {
   resourcePath,
   toQuestEventResource,
   toQuestResource,
+  questChallengeSchema,
+  toQuestChallengeResource,
 } from "./resources.js";
 import { type AnyRoute, defineRoute } from "./route.js";
 
@@ -279,7 +282,7 @@ const entrantRoutes = ENTRANT_ADDRESSES.flatMap((address) => {
       path: `/quests/{questName}/${address.segment}/{${address.param}}/text-messages`,
       operationId: `send${address.noun}TextMessage`,
       summary: `Text a ${address.kind === "team" ? "team's members" : "player"}`,
-      description: `Texts the message to the entrant's players who accept text messages, a few seconds apart, as carriers require; the entry must be in progress. With an expected response, the entry waits for that reply and texts the confirmation back when it arrives. ${notEntrant}`,
+      description: `Sends the puzzle master's message to the entrant's players; the entry must be in progress. It's kept with the entry, which players see in the app (and players with the app are sent it as a push notification), and texted, a few seconds apart as carriers require, to the players who accept text messages, unless the quest's textPlayersWithApp is false, which leaves out those with the app. With an expected response it sets a challenge, which the entry waits for its players to answer, in the app or by text; a right answer shows them the confirmation. The challenge is kept with the quest, so challengeId can send it to the next entrant. Refused (noRecipients) if no player has the app or accepts texts. ${notEntrant}`,
       tags: ["Running quests"],
       access: "admin",
       request: { params, body: sendTextBody },
@@ -292,14 +295,10 @@ const entrantRoutes = ENTRANT_ADDRESSES.flatMap((address) => {
       ],
       async handle(req, res) {
         const raw = req.params as Record<string, string>;
-        const { message, expectedResponse, responseConfirmation } = req.body;
         const sent = await MessagingService.sendQuestTextMessage(
           raw.questName,
           entrantOf(address, raw),
-          message,
-          expectedResponse && responseConfirmation
-            ? { expectedResponse, responseConfirmation }
-            : undefined
+          toOutgoing(req.body)
         );
         if (sent.status === "error") {
           sendServiceProblem(res, sent);
@@ -318,7 +317,7 @@ export const questRoutes = [
     operationId: "sendQuestTextMessage",
     summary: "Text every entrant's players",
     description:
-      "Texts the message to the players of every entry in progress who accept text messages, each number once, a few seconds apart, as carriers require. With an expected response, each of those entries waits for that reply and texts the confirmation back when it arrives. To text one team or player, use its own address.",
+      "Sends the puzzle master's message to every entry in progress, as a team's or player's own address does (see there): kept with each entry and shown in the app, and texted to the players who accept texts, each number once. With an expected response, each of those entries waits for its own answer to the challenge. To message one team or player, use its own address.",
     tags: ["Running quests"],
     access: "admin",
     request: { params: questParams, body: sendTextBody },
@@ -330,19 +329,45 @@ export const questRoutes = [
       Problems.messagingFailed,
     ],
     async handle(req, res) {
-      const { message, expectedResponse, responseConfirmation } = req.body;
       const sent = await MessagingService.sendQuestTextMessageToAll(
         req.params.questName,
-        message,
-        expectedResponse && responseConfirmation
-          ? { expectedResponse, responseConfirmation }
-          : undefined
+        toOutgoing(req.body)
       );
       if (sent.status === "error") {
         sendServiceProblem(res, sent);
         return;
       }
       res.status(204).end();
+    },
+  }),
+  defineRoute({
+    method: "get",
+    path: "/quests/{questName}/challenges",
+    operationId: "listQuestChallenges",
+    summary: "List a quest's challenges",
+    description:
+      "The challenges the puzzle master has sent in the quest, oldest first, kept so that one can be sent to the next team or player with one tap: send its challengeId to a text-messages route. A challenge sent again with the same message, answer, and confirmation is the same challenge.",
+    tags: ["Running quests"],
+    access: "admin",
+    request: { params: questParams },
+    responses: {
+      200: {
+        description: "The challenges.",
+        body: z
+          .object({ challenges: z.array(questChallengeSchema) })
+          .meta({ id: "QuestChallengeList" }),
+      },
+    },
+    problems: [Problems.notFound],
+    async handle(req, res) {
+      const listed = await ChallengeService.listChallenges(
+        req.params.questName
+      );
+      if (listed.status === "error") {
+        sendServiceProblem(res, listed);
+        return;
+      }
+      res.json({ challenges: listed.data.map(toQuestChallengeResource) });
     },
   }),
   defineRoute({

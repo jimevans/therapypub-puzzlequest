@@ -33,6 +33,8 @@ const { QuestModel, QuestStatus } =
 const { AuthorizationLevel, TeamModel, UserModel } =
   await import("../../src/models/user.model.js");
 const QuestService = await import("../../src/services/quest.service.js");
+const ChallengeService =
+  await import("../../src/services/challenge.service.js");
 
 const ACCOUNT_SID = `AC${"0".repeat(32)}`;
 const MESSAGING_SERVICE_SID = `MG${"1".repeat(32)}`;
@@ -126,6 +128,35 @@ async function createQuest(
 
 async function storedQuest(name: string) {
   return (await QuestModel.findOne({ name }).lean())!;
+}
+
+/**
+ * Sends an entry a challenge, as the console does, without texting anyone.
+ * @param questName the quest
+ * @param entryId the entry
+ * @param answer the answer's keywords
+ * @param confirmation what a right answer shows
+ */
+async function setChallenge(
+  questName: string,
+  entryId: string,
+  answer: string,
+  confirmation: string
+) {
+  const kept = await ChallengeService.keepChallenge(questName, {
+    message: "Say the word",
+    answer,
+    confirmation,
+  });
+  if (kept.status === "error") {
+    throw new Error(kept.message);
+  }
+  await ChallengeService.recordMessage(
+    questName,
+    entryId,
+    "Say the word",
+    kept.data
+  );
 }
 
 /**
@@ -347,7 +378,7 @@ describe("POST /api/v1/webhooks/twilio/messages", () => {
   beforeEach(async () => {
     await createQuest("player-quest", "player");
     await QuestService.startQuest("player-quest");
-    await QuestService.setExpectedTextResponse(
+    await setChallenge(
       "player-quest",
       await entryIdOf("player-quest"),
       "Ready",
@@ -355,26 +386,30 @@ describe("POST /api/v1/webhooks/twilio/messages", () => {
     );
   });
 
-  it("confirms the expected reply, once", async () => {
-    const response = await text("+15551230001", "  READY ");
+  it("confirms an answer containing the keywords, once", async () => {
+    const response = await text("+15551230001", "  I think we're READY! ");
 
     expect(response.status).toBe(200);
     expect(response.type).toBe("text/xml");
     expect(response.text).toBe(
       '<?xml version="1.0" encoding="UTF-8"?><Response><Message>From the PuzzleQuest Game\n\nYour next clue is under the mat.\n\nReply \'STOP\' to unsubscribe</Message></Response>'
     );
-    expect((await storedQuest("player-quest")).entries[0]!.textResponse).toBe(
-      ""
-    );
+    expect(
+      (await storedQuest("player-quest")).entries[0]!.challenge
+    ).toMatchObject({
+      answeredAt: expect.any(Date),
+      answeredVia: "sms",
+      answeredBy: (await userIdsOf("player"))[0],
+    });
   });
 
   it("tells the player when the reply is wrong, and keeps waiting", async () => {
     const response = await text("+15551230001", "not yet");
 
     expect(response.text).toContain("Your response was incorrect.");
-    expect((await storedQuest("player-quest")).entries[0]!.textResponse).toBe(
-      "Ready"
-    );
+    expect(
+      (await storedQuest("player-quest")).entries[0]!.challenge?.answeredAt
+    ).toBeUndefined();
   });
 
   it("tells a player with no expected reply that none is expected", async () => {
@@ -398,7 +433,7 @@ describe("POST /api/v1/webhooks/twilio/messages", () => {
     });
     await QuestService.startQuest("race");
     for (const index of [0, 1]) {
-      await QuestService.setExpectedTextResponse(
+      await setChallenge(
         "race",
         await entryIdOf("race", index),
         "Onward",
@@ -411,8 +446,8 @@ describe("POST /api/v1/webhooks/twilio/messages", () => {
 
     expect(response.text).toContain("Confirmed for entry 0");
     const [team, player] = (await storedQuest("race")).entries;
-    expect(team!.textResponse).toBe("");
-    expect(player!.textResponse).toBe("Onward");
+    expect(team!.challenge?.answeredAt).toEqual(expect.any(Date));
+    expect(player!.challenge?.answeredAt).toBeUndefined();
   });
 
   it("tells unknown numbers they are not registered", async () => {
@@ -502,10 +537,19 @@ describe("POST /api/v1/quests/{questName}/{teams|players}/{entrant}/text-message
       },
     });
     expect(throttle).toHaveBeenCalledWith(5000);
-    expect((await storedQuest("team-quest")).entries[0]).toMatchObject({
-      textResponse: "Found it",
-      textResponseConfirmation: "Well done!",
+    const [entry] = (await storedQuest("team-quest")).entries;
+    expect(entry!.challenge).toMatchObject({
+      message: "Check the garden.",
+      answer: "Found it",
+      confirmation: "Well done!",
     });
+    expect(entry!.messages).toEqual([
+      {
+        text: "Check the garden.",
+        sentAt: expect.any(Date),
+        challengeId: entry!.challenge!.challengeId,
+      },
+    ]);
   });
 
   it("texts every playing entry's players, setting each entry's reply", async () => {
@@ -533,9 +577,9 @@ describe("POST /api/v1/quests/{questName}/{teams|players}/{entrant}/text-message
       twilioRequests.map((sent) => (sent.data as { To: string }).To).sort()
     ).toEqual(["+15551230001", "+15551230002"]);
     for (const entry of (await storedQuest("race")).entries) {
-      expect(entry).toMatchObject({
-        textResponse: "Here",
-        textResponseConfirmation: "See you there!",
+      expect(entry.challenge).toMatchObject({
+        answer: "Here",
+        confirmation: "See you there!",
       });
     }
   });
@@ -644,13 +688,14 @@ describe("POST /api/v1/quests/{questName}/{teams|players}/{entrant}/text-message
     expect(response.status).toBe(409);
     expect(JSON.parse(response.text)).toMatchObject({
       type: "/problems/no-recipients",
-      detail: "No users accepting text messages found for quest",
+      detail: "No players with the app or accepting text messages found",
     });
     expect(twilioRequests).toHaveLength(0);
-    // Nothing was sent, so the quest isn't waiting for a reply to it.
-    expect((await storedQuest("quiet-quest")).entries[0]!.textResponse).toBe(
-      ""
-    );
+    // Nothing was sent, so the quest isn't waiting for an answer, or keeping
+    // the challenge.
+    const quest = await storedQuest("quiet-quest");
+    expect(quest.entries[0]!.challenge).toBeUndefined();
+    expect(quest.challenges).toEqual([]);
   });
 
   it("waits for the reply from only the entrant texted", async () => {
@@ -677,8 +722,9 @@ describe("POST /api/v1/quests/{questName}/{teams|players}/{entrant}/text-message
       twilioRequests.map((sent) => (sent.data as { To: string }).To)
     ).toEqual(["+15551230001"]);
     const [team, player] = (await storedQuest("race")).entries;
-    expect(team!.textResponse).toBe("");
-    expect(player!.textResponse).toBe("Found it");
+    expect(team!.challenge).toBeUndefined();
+    expect(team!.messages).toEqual([]);
+    expect(player!.challenge?.answer).toBe("Found it");
   });
 
   it("isn't found for a user or team not playing the quest", async () => {

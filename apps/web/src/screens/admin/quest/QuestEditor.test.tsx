@@ -39,6 +39,8 @@ const QUEST = {
   status: "notStarted",
   statusDescription: "Not yet started",
   paused: false,
+  messages: [],
+  challenge: null,
   puzzles: [stop("riddle"), stop("cipher"), stop("finale")],
   progress: { ...STOPPED, puzzles: [] },
 };

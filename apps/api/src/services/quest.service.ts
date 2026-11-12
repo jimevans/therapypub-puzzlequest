@@ -42,6 +42,7 @@ import { PuzzleModel } from "../models/puzzle.model.js";
 import { QuestEventModel } from "../models/questEvent.model.js";
 import {
   type AssigneeKind,
+  type ChallengeChannel,
   type QuestVisibility,
   QuestModel,
   QuestStatus,
@@ -96,6 +97,27 @@ export interface QuestAssignee {
   displayName?: string;
 }
 
+/** A message the puzzle master sent an entry's players. */
+export interface EntryMessage {
+  text: string;
+  sentAt: Date;
+  /** The challenge it set, if it was one. */
+  challengeId?: Types.ObjectId | string;
+}
+
+/** A challenge sent to an entry, as it was sent, and its answer if any. */
+export interface EntryChallenge {
+  challengeId: Types.ObjectId | string;
+  message: string;
+  /** The keywords a right answer contains, separated by commas. */
+  answer: string;
+  confirmation: string;
+  sentAt: Date;
+  answeredAt?: Date;
+  answeredBy?: Types.ObjectId | string;
+  answeredVia?: ChallengeChannel;
+}
+
 /** The properties a Quest is created from: a stored quest, or a request. */
 export type QuestProperties = Pick<Quest, "name" | "displayName" | "status"> & {
   /** The entry this is the quest as seen through, and its place in the list. */
@@ -103,7 +125,7 @@ export type QuestProperties = Pick<Quest, "name" | "displayName" | "status"> & {
   entryIndex?: number;
   assignee: Omit<QuestAssignee, "id"> & { id: string | Types.ObjectId };
 } & Partial<
-    Pick<Quest, "textResponse" | "textResponseConfirmation" | "visibility">
+    Pick<Quest, "visibility" | "messages" | "challenge" | "textAppPlayers">
   > & {
     puzzles?: QuestPuzzleProperties[];
     pauses?: readonly Pause[];
@@ -341,16 +363,35 @@ export class Quest {
   statusDescription: string;
 
   /**
-   * Gets or sets the expected text message sent from a user
-   * to the application via SMS.
+   * What the puzzle master has sent the entry's players, oldest first.
    */
-  textResponse?: string;
+  messages: readonly EntryMessage[];
+
+  /** The challenge last sent to the entry, answered or not. */
+  challenge?: EntryChallenge;
+
+  /** False if players who have the app aren't texted. */
+  textAppPlayers: boolean;
 
   /**
-   * Gets or sets the response once the expected text message is
-   * received by a user via SMS.
+   * The keywords of the challenge the entry is waiting to answer; empty if
+   * none is waiting.
    */
-  textResponseConfirmation?: string;
+  get textResponse(): string {
+    return this.challenge && !this.challenge.answeredAt
+      ? this.challenge.answer
+      : "";
+  }
+
+  /**
+   * The confirmation of the challenge the entry is waiting to answer; empty
+   * if none is waiting.
+   */
+  get textResponseConfirmation(): string {
+    return this.challenge && !this.challenge.answeredAt
+      ? this.challenge.confirmation
+      : "";
+  }
 
   /**
    * The list of puzzles assigned to this quest.
@@ -380,8 +421,9 @@ export class Quest {
       id: questDefinition.assignee.id.toString(),
     };
     this.status = questDefinition.status;
-    this.textResponse = questDefinition.textResponse;
-    this.textResponseConfirmation = questDefinition.textResponseConfirmation;
+    this.messages = questDefinition.messages ?? [];
+    this.challenge = questDefinition.challenge ?? undefined;
+    this.textAppPlayers = questDefinition.textAppPlayers ?? true;
     if (questDefinition.puzzles) {
       this.puzzles = questDefinition.puzzles.map(
         (puzzle) => new QuestPuzzle(puzzle)
@@ -491,6 +533,11 @@ export interface QuestDefinition {
   displayName?: string;
   /** Who can follow the quest; new quests are public unless this says not. */
   visibility?: QuestVisibility;
+  /**
+   * False to stop texting players who have the app the puzzle master's
+   * messages; new quests text them.
+   */
+  textAppPlayers?: boolean;
   /**
    * The users and teams playing the quest, by name, in order; at least one.
    * On an update, those already playing keep their progress, those new to it
@@ -670,8 +717,9 @@ function createFindResultProjectionParameter(
     visibility: true,
     assignee: true,
     status: true,
-    textResponse: true,
-    textResponseConfirmation: true,
+    messages: true,
+    challenge: true,
+    textAppPlayers: true,
     pauses: true,
   };
   if (queryOptions?.puzzleStatus) {
@@ -710,8 +758,8 @@ export async function findQuests(
         entryId: "$entries._id",
         assignee: "$entries.assignee",
         status: "$entries.status",
-        textResponse: "$entries.textResponse",
-        textResponseConfirmation: "$entries.textResponseConfirmation",
+        messages: "$entries.messages",
+        challenge: "$entries.challenge",
         pauses: "$entries.pauses",
         puzzles: {
           $map: {
@@ -1616,6 +1664,7 @@ export async function createQuest(
     name: questName,
     displayName: questDefinition.displayName || questName,
     visibility: questDefinition.visibility ?? "public",
+    textAppPlayers: questDefinition.textAppPlayers ?? true,
     puzzles: stops,
     entries: entrants.map((entrant) => newEntry(entrant, stops)),
   });
@@ -1753,6 +1802,9 @@ export async function updateQuest(
       visibility === "private" &&
       (foundQuest.visibility !== "private" || removed.length > 0);
     foundQuest.visibility = visibility;
+    if (questDefinition.textAppPlayers !== undefined) {
+      foundQuest.textAppPlayers = questDefinition.textAppPlayers;
+    }
     if (questDefinition.displayName) {
       foundQuest.displayName = questDefinition.displayName;
     }
@@ -1993,6 +2045,12 @@ function applyQuestState(
 ): void {
   entry.status = state.status;
   entry.set("pauses", state.pauses ?? []);
+  if (state.status === QuestStatus.NOT_STARTED) {
+    // A reset: the puzzle master's messages and challenge go with the rest
+    // of the entry's progress.
+    entry.set("messages", []);
+    entry.set("challenge", undefined);
+  }
   entry.set(
     "puzzles",
     state.puzzles.map((puzzle, index) => ({
@@ -2881,114 +2939,11 @@ function processMarkdownToken(
  * @param questName the name of the quest
  * @returns the error result
  */
-function noSuchEntryError(questName: string): QuestErrorResult {
+export function noSuchEntryError(questName: string): QuestErrorResult {
   return {
     status: "error",
     statusCode: 404,
     reason: "not-found",
     message: `No quest with quest name ${questName} and that entry found`,
-  };
-}
-
-/**
- * Sets the reply one of a quest's entries waits for by text message, and the
- * confirmation sent back when it arrives.
- * @param questName name of the quest for which to set the expected response
- * @param entryId the ID of the entry
- * @param expectedResponse expected text message response from the entry's players
- * @param responseConfirmation the confirmation to send when the correct response is received
- * @returns a response object containing a status, status code, and data
- */
-export async function setExpectedTextResponse(
-  questName: string,
-  entryId: string,
-  expectedResponse: string,
-  responseConfirmation: string
-): Promise<QuestResult<undefined>> {
-  if (!mongoose.isValidObjectId(entryId)) {
-    return noSuchEntryError(questName);
-  }
-  // A single update, so it can't conflict with players' progress.
-  let result;
-  try {
-    result = await QuestModel.updateOne(
-      { name: questName, "entries._id": entryId },
-      {
-        $set: {
-          "entries.$.textResponse": expectedResponse,
-          "entries.$.textResponseConfirmation": responseConfirmation,
-        },
-      }
-    );
-  } catch (err) {
-    return unexpectedErrorResult("setExpectedTextResponse", err);
-  }
-  if (result.matchedCount === 0) {
-    return noSuchEntryError(questName);
-  }
-  return { status: "success", statusCode: 200 };
-}
-
-/**
- * Validates the text response sent by one of an entry's players, case
- * insensitively, and if it's right, clears the reply the entry waits for.
- * @param questName the name of the quest to check for the text response
- * @param entryId the ID of the sender's entry
- * @param textResponse the text response to validate
- * @returns a response object containing a status, status code, and data
- */
-export async function validateExpectedTextResponse(
-  questName: string,
-  entryId: string,
-  textResponse: string
-): Promise<QuestResult<string>> {
-  const quest = await QuestModel.findOne({ name: questName });
-  const entry = quest?.entries.find((each) => each._id.toString() === entryId);
-  if (!quest || !entry) {
-    return noSuchEntryError(questName);
-  }
-  if (!entry.textResponse || !entry.textResponseConfirmation) {
-    return {
-      status: "error",
-      statusCode: 418,
-      message: `Quest is not expecting a text response`,
-    };
-  }
-  const questTextResponse = entry.textResponse.toLowerCase();
-  const questTextResponseConfirmation = entry.textResponseConfirmation;
-  if (questTextResponse !== textResponse.toLowerCase()) {
-    return {
-      status: "error",
-      statusCode: 400,
-      message: `Expected response does not match`,
-    };
-  }
-  // Clear the expected response, unless it has changed since it was read;
-  // a single update, so it can't conflict with players' progress.
-  const cleared = await QuestModel.updateOne(
-    {
-      _id: quest._id,
-      entries: {
-        $elemMatch: { _id: entry._id, textResponse: entry.textResponse },
-      },
-    },
-    {
-      $set: {
-        "entries.$.textResponse": "",
-        "entries.$.textResponseConfirmation": "",
-      },
-    }
-  );
-  if (cleared.modifiedCount === 0) {
-    return {
-      status: "error",
-      statusCode: 418,
-      message: `Quest is not expecting a text response`,
-    };
-  }
-  return {
-    status: "success",
-    statusCode: 200,
-    data: questTextResponseConfirmation,
   };
 }

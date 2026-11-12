@@ -6,6 +6,7 @@
 import { z } from "zod";
 import type { Progress, QuestProgress } from "../../domain/quest/index.js";
 import { QuestPuzzleStatus } from "../../models/quest.model.js";
+import type * as ChallengeService from "../../services/challenge.service.js";
 import type * as QuestService from "../../services/quest.service.js";
 import { rankQuestEntries } from "../../services/quest.service.js";
 import type * as PuzzleService from "../../services/puzzle.service.js";
@@ -446,6 +447,49 @@ const entrantSchema = z
   })
   .meta({ id: "Entrant" });
 
+/** A message the puzzle master sent an entry's players. */
+const entryMessageSchema = z
+  .object({
+    text: z.string(),
+    sentAt: z.iso.datetime(),
+    challenge: z.boolean().meta({
+      description: "True if it set a challenge.",
+    }),
+  })
+  .meta({ id: "EntryMessage" });
+
+/**
+ * The challenge the puzzle master last sent an entry: a message whose answer
+ * the players send (POST /quests/{questName}/challenge/answers, or by text
+ * message), and the confirmation a right answer shows them, for the venue's
+ * staff.
+ */
+const entryChallengeSchema = z
+  .object({
+    challengeId: z.string().meta({
+      description:
+        "The quest's kept challenge it was sent from (see GET /quests/{questName}/challenges).",
+    }),
+    message: z.string(),
+    sentAt: z.iso.datetime(),
+    answeredAt: z.iso.datetime().nullable().meta({
+      description: "When a player answered it rightly; null while it waits.",
+    }),
+    answeredVia: z.enum(["app", "sms"]).nullable().meta({
+      description:
+        "How the right answer came: in the app (or on the web), or by text message; null while it waits.",
+    }),
+    confirmation: z.string().optional().meta({
+      description:
+        "What a right answer shows the players, to show the venue's staff. Players see it once it has been answered; administrators always.",
+    }),
+    expectedResponse: z.string().optional().meta({
+      description:
+        "The keywords a right answer contains, separated by commas. Only for administrators: absent for players.",
+    }),
+  })
+  .meta({ id: "EntryChallenge" });
+
 /**
  * One of a quest's entries: a user or team playing it, with its own
  * progress. Players see only their own entry, with only the puzzles they have
@@ -460,11 +504,19 @@ export const questEntrySchema = z
     paused,
     textResponse: z.string().nullable().optional().meta({
       description:
-        "The text message reply the entry is waiting for, if any; null if none. Only for administrators: absent for players.",
+        "The keywords of the challenge the entry is waiting to answer, if any; null if none (see challenge). Only for administrators: absent for players.",
     }),
     textResponseConfirmation: z.string().nullable().optional().meta({
       description:
-        "What is texted back when the reply arrives; null if no reply is awaited. Only for administrators: absent for players.",
+        "The confirmation of the challenge the entry is waiting to answer; null if none is waiting (see challenge). Only for administrators: absent for players.",
+    }),
+    messages: z.array(entryMessageSchema).meta({
+      description:
+        "What the puzzle master has sent the entry's players, oldest first: the most recent 50. A reset clears them.",
+    }),
+    challenge: entryChallengeSchema.nullable().meta({
+      description:
+        "The challenge the puzzle master last sent the entry, answered or not; null if none has been sent since it started.",
     }),
     rank: rankSchema.optional().meta({
       description:
@@ -489,6 +541,10 @@ export const questSchema = z
     visibility: z.enum(["public", "private"]).optional().meta({
       description:
         "Who can follow the quest: anyone, or only its players, staff, and holders of a share link. Only for administrators.",
+    }),
+    textPlayersWithApp: z.boolean().optional().meta({
+      description:
+        "Whether the puzzle master's messages are texted to players who have the app, as well as shown in it. Only for administrators.",
     }),
     entries: z.array(questEntrySchema).meta({
       description:
@@ -550,10 +606,87 @@ function toQuestEntryResource(
           rank: rank ?? null,
         }
       : {}),
+    messages: quest.messages.map((message) => ({
+      text: message.text,
+      sentAt: message.sentAt.toISOString(),
+      challenge: Boolean(message.challengeId),
+    })),
+    challenge: toEntryChallengeResource(quest.challenge, view),
     puzzles: quest.puzzles.map((puzzle) => toQuestPuzzleResource(puzzle, view)),
     progress: toProgress(quest.getProgress()),
   };
 }
+
+/**
+ * Makes the resource for an entry's challenge.
+ * @param challenge the challenge, if one has been sent
+ * @param view who it's for: players see the confirmation only once they've
+ *  answered, and never the answer
+ * @returns the resource, or null
+ */
+function toEntryChallengeResource(
+  challenge: QuestService.EntryChallenge | undefined,
+  view: "admin" | "player"
+): z.infer<typeof entryChallengeSchema> | null {
+  if (!challenge) {
+    return null;
+  }
+  return {
+    challengeId: challenge.challengeId.toString(),
+    message: challenge.message,
+    sentAt: challenge.sentAt.toISOString(),
+    answeredAt: timeOrNull(challenge.answeredAt),
+    answeredVia: challenge.answeredVia ?? null,
+    ...(view === "admin" || challenge.answeredAt
+      ? { confirmation: challenge.confirmation }
+      : {}),
+    ...(view === "admin" ? { expectedResponse: challenge.answer } : {}),
+  };
+}
+
+/** A challenge kept with a quest, which can be sent again. */
+export const questChallengeSchema = z
+  .object({
+    challengeId: z.string(),
+    message: z.string(),
+    expectedResponse: z.string().meta({
+      description: "The keywords a right answer contains, separated by commas.",
+    }),
+    responseConfirmation: z.string().meta({
+      description: "What a right answer shows the players.",
+    }),
+    createdAt: z.iso.datetime().meta({
+      description: "When it was first sent.",
+    }),
+  })
+  .meta({ id: "QuestChallenge" });
+
+/**
+ * Makes the resource for a challenge kept with a quest.
+ * @param challenge the challenge
+ * @returns the resource
+ */
+export function toQuestChallengeResource(
+  challenge: ChallengeService.QuestChallenge
+): z.infer<typeof questChallengeSchema> {
+  return {
+    challengeId: challenge.id,
+    message: challenge.message,
+    expectedResponse: challenge.answer,
+    responseConfirmation: challenge.confirmation,
+    createdAt: challenge.createdAt.toISOString(),
+  };
+}
+
+/** What a right answer to a challenge shows the players. */
+export const challengeAnswerSchema = z
+  .object({
+    confirmation: z.string().meta({
+      description: "What to show the venue's staff.",
+    }),
+    answeredAt: z.iso.datetime(),
+  })
+  .meta({ id: "ChallengeAnswer" });
 
 /**
  * Makes a quest's resource.
@@ -573,7 +706,12 @@ export function toQuestResource(
   return {
     questName: quest.name,
     displayName: quest.displayName,
-    ...(view === "admin" ? { visibility: quest.visibility } : {}),
+    ...(view === "admin"
+      ? {
+          visibility: quest.visibility,
+          textPlayersWithApp: quest.textAppPlayers,
+        }
+      : {}),
     entries: entries.map((entry) =>
       toQuestEntryResource(entry, view, ranks?.get(entry))
     ),

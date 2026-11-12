@@ -1,10 +1,14 @@
 import { setTimeout } from "timers/promises";
 import Twilio from "twilio";
 import { config } from "../config.js";
-import { QuestStatus } from "../models/quest.model.js";
+import { QuestModel, QuestStatus } from "../models/quest.model.js";
 import * as QuestService from "../services/quest.service.js";
 import { TeamModel, UserModel } from "../models/user.model.js";
 import * as UserService from "../services/user.service.js";
+import * as ChallengeService from "./challenge.service.js";
+import * as PushService from "./push.service.js";
+import * as SessionService from "./session.service.js";
+import * as WebSocketService from "./websocket.service.js";
 import type { ServiceResult } from "../types.js";
 import { unexpectedErrorResult } from "../errors.js";
 
@@ -93,9 +97,9 @@ export async function respondToVoiceCall(
 }
 
 /**
- * Builds the reply to an incoming text message, checking it against any reply
- * the sender's entries in quests in progress (their own, or their team's) are
- * expecting.
+ * Builds the reply to an incoming text message, as an answer to the
+ * challenge the sender's entries in quests in progress (their own, or their
+ * team's) are waiting for.
  * @param initiatingPhoneNumber the sender's number in E.164 format, from Twilio
  * @param incomingMessage the text of the message
  * @returns the TwiML reply
@@ -106,112 +110,82 @@ export async function respondToTextMessage(
 ): Promise<ServiceResult<string>> {
   const messageBody = incomingMessage.trim();
   const messageResponse = new Twilio.twiml.MessagingResponse();
+  const reply = (text: string) => {
+    messageResponse.message(
+      `From the PuzzleQuest Game\n\n${text}\n\nReply 'STOP' to unsubscribe`
+    );
+    return {
+      status: "success" as const,
+      statusCode: 200,
+      data: messageResponse.toString(),
+    };
+  };
   const getUserResult = await UserService.getUsersByPhoneNumber(
     initiatingPhoneNumber
   );
   if (getUserResult.status === "error") {
-    messageResponse.message(
-      "From the PuzzleQuest Game\n\nYou are not a registered user of this service\n\nReply 'STOP' to unsubscribe"
-    );
-    return {
-      status: "success",
-      statusCode: 200,
-      data: messageResponse.toString(),
-    };
+    return reply("You are not a registered user of this service");
   }
-
-  const questsToValidate: QuestEntryRef[] = [];
-  const users = getUserResult.data;
-  for (const user of users) {
+  const waiting: { quest: QuestService.Quest; userId: string }[] = [];
+  for (const user of getUserResult.data) {
     // Gets the entries of the user and any teams the user is a member of.
     const assigneeIds = await user.getAssigneeIds();
-    const findOptions = { assigneeIds };
-    const getQuestsResult = await QuestService.findQuests(findOptions);
+    const getQuestsResult = await QuestService.findQuests({ assigneeIds });
     if (getQuestsResult.status === "success") {
-      // Only the entries in progress and expecting an incoming text message
-      // are checked; other entries of the same quests are left alone.
-      const entries = getQuestsResult.data
-        .filter(
-          (quest) =>
-            quest.status === QuestStatus.IN_PROGRESS && quest.textResponse
-        )
-        .map((quest) => ({ questName: quest.name, entryId: quest.entryId }));
-      questsToValidate.push(...entries);
-    }
-  }
-  let responseBody =
-    "From the PuzzleQuest Game\n\nThe PuzzleMaster is not expecting to hear from you at this time.\n\nReply 'STOP' to unsubscribe";
-  if (questsToValidate.length) {
-    for (const { questName, entryId } of questsToValidate) {
-      const validationResult = await QuestService.validateExpectedTextResponse(
-        questName,
-        entryId,
-        messageBody
+      // Only the entries in progress and waiting for an answer are checked;
+      // other entries of the same quests are left alone.
+      waiting.push(
+        ...getQuestsResult.data
+          .filter(
+            (quest) =>
+              quest.status === QuestStatus.IN_PROGRESS && quest.textResponse
+          )
+          .map((quest) => ({ quest, userId: user.id ?? "" }))
       );
-      if (validationResult.status === "success") {
-        responseBody = `From the PuzzleQuest Game\n\n${validationResult.data}\n\nReply 'STOP' to unsubscribe`;
-        break;
-      }
-      if (validationResult.statusCode === 400) {
-        responseBody =
-          "From the PuzzleQuest Game\n\nYour response was incorrect.\n\nReply 'STOP' to unsubscribe";
-      }
     }
   }
-  messageResponse.message(responseBody);
-  return {
-    status: "success",
-    statusCode: 200,
-    data: messageResponse.toString(),
-  };
-}
-
-/**
- * Records the reply one of a quest's entries expects by text message, and the
- * confirmation to send when it arrives. Does nothing if no reply is expected.
- * @param questName the name of the quest
- * @param entryId the ID of the entry
- * @param expectedIncomingMessage the expected reply, if any
- * @param confirmation the confirmation to send when the reply arrives
- * @returns a success result, or an error result
- */
-export async function setupExpectedTextMessage(
-  questName: string,
-  entryId: string,
-  expectedIncomingMessage: string | undefined,
-  confirmation: string | undefined
-): Promise<ServiceResult<undefined>> {
-  if (expectedIncomingMessage) {
-    if (!confirmation) {
-      return {
-        status: "error",
-        statusCode: 400,
-        message: `Expected response requires a response confirmation`,
-      };
-    }
-
-    const setExpectationResult = await QuestService.setExpectedTextResponse(
-      questName,
-      entryId,
-      expectedIncomingMessage,
-      confirmation
+  if (!waiting.length) {
+    return reply(
+      "The PuzzleMaster is not expecting to hear from you at this time."
     );
-    if (setExpectationResult.status === "error") {
-      return setExpectationResult;
+  }
+  for (const { quest, userId } of waiting) {
+    const answered = await ChallengeService.answerChallenge(
+      quest.name,
+      quest.entryId,
+      messageBody,
+      { userId, via: "sms" }
+    );
+    if (answered.status === "success" && answered.data.outcome === "right") {
+      notifyEntryFollowers("challengeAnswered", quest);
+      return reply(answered.data.confirmation);
     }
   }
-  return { status: "success", statusCode: 200 };
+  return reply("Your response was incorrect.");
+}
+
+/** Who plays an entry, and how each can be sent the puzzle master's messages. */
+export interface EntryRecipients {
+  /** Every player of the entry. */
+  playerIds: string[];
+  /** Those whose phones get the puzzle master's messages as push notifications. */
+  appPlayerIds: string[];
+  /** The numbers to text, in international format. */
+  phoneNumbers: string[];
 }
 
 /**
- * Gets the phone numbers to text for a quest's entry: the user's number, or
- * those of the team's members, for whoever accepts text messages.
+ * Finds how to reach a quest's entry's players: by push notification, those
+ * with the app; by text message, those who accept texts and, unless the quest
+ * says not to text them, those with the app too.
  * @param assignee the user or team playing the entry
- * @returns the phone numbers to text, in international format
+ * @param textAppPlayers false to leave out players who have the app
+ * @returns the players and how to reach them
  */
-export async function getPhoneNumbersToMessage(
-  assignee: Pick<QuestService.QuestAssignee, "kind" | "id">
-): Promise<ServiceResult<string[]>> {
+export async function recipientsOf(
+  assignee: Pick<QuestService.QuestAssignee, "kind" | "id">,
+  textAppPlayers: boolean
+): Promise<ServiceResult<EntryRecipients>> {
   let userIds: readonly unknown[] = [assignee.id];
   if (assignee.kind === "team") {
     const team = await TeamModel.findById(assignee.id, { memberIds: 1 }).lean();
@@ -237,10 +211,25 @@ export async function getPhoneNumbersToMessage(
       message: "The user this quest is assigned to no longer exists",
     };
   }
+  const playerIds = users.map((user) => user._id.toString());
+  const appPlayerIds = [
+    ...new Set(
+      (await SessionService.findPushTargets(playerIds, "message")).map(
+        (target) => target.userId
+      )
+    ),
+  ];
+  const phoneNumbers = users.flatMap((user) =>
+    user.phone &&
+    user.sms &&
+    (textAppPlayers || !appPlayerIds.includes(user._id.toString()))
+      ? [user.phone]
+      : []
+  );
   return {
     status: "success",
     statusCode: 200,
-    data: users.flatMap((user) => (user.phone && user.sms ? [user.phone] : [])),
+    data: { playerIds, appPlayerIds, phoneNumbers },
   };
 }
 
@@ -280,20 +269,129 @@ export async function sendOutgoingTextMessage(
   return { status: "success", statusCode: 200 };
 }
 
+/** What the puzzle master sends: a message, or a challenge kept with the quest. */
+export type Outgoing =
+  | {
+      message: string;
+      /** The answer to wait for and its confirmation, to set a challenge. */
+      reply?: { expectedResponse: string; responseConfirmation: string };
+    }
+  | { challengeId: string };
+
 /**
- * Texts a message to the players of every one of a quest's entries in
- * progress who accept text messages, each number once, and optionally sets
- * the reply each of those entries then waits for.
+ * Works out what's sent: a challenge given in full is kept with the quest,
+ * and one given by its ID is found there.
  * @param questName the quest
- * @param message the message
- * @param reply the reply to wait for, and the confirmation to send back when
- *  it arrives; omit to wait for none
+ * @param outgoing what to send
+ * @returns the message's text, and the challenge it sets, if any
+ */
+async function prepare(
+  questName: string,
+  outgoing: Outgoing
+): Promise<
+  ServiceResult<{ text: string; challenge?: ChallengeService.QuestChallenge }>
+> {
+  if ("challengeId" in outgoing) {
+    const found = await ChallengeService.findChallenge(
+      questName,
+      outgoing.challengeId
+    );
+    return found.status === "error"
+      ? found
+      : {
+          status: "success",
+          statusCode: 200,
+          data: { text: found.data.message, challenge: found.data },
+        };
+  }
+  if (!outgoing.reply) {
+    return {
+      status: "success",
+      statusCode: 200,
+      data: { text: outgoing.message },
+    };
+  }
+  const kept = await ChallengeService.keepChallenge(questName, {
+    message: outgoing.message,
+    answer: outgoing.reply.expectedResponse,
+    confirmation: outgoing.reply.responseConfirmation,
+  });
+  return kept.status === "error"
+    ? kept
+    : {
+        status: "success",
+        statusCode: 200,
+        data: { text: outgoing.message, challenge: kept.data },
+      };
+}
+
+/**
+ * Tells those following a quest that something happened to one entry's
+ * messages: only staff and its own players, since it's no one else's
+ * business; everyone else is told only that the entry changed.
+ * @param message which update
+ * @param quest the quest, as seen through the entry
+ */
+export function notifyEntryFollowers(
+  message: "messageSent" | "challengeAnswered",
+  quest: Pick<QuestService.Quest, "name" | "entryId" | "assignee">
+): void {
+  WebSocketService.notifyQuestFollowers(
+    { message, questName: quest.name, entryId: quest.entryId },
+    [],
+    // As in a race, whether or not this quest is one.
+    { racing: true, assigneeId: quest.assignee.id }
+  );
+}
+
+/**
+ * Delivers a message to an entry: keeps it with the entry, where the app and
+ * the quest console show it, tells those following the quest, and sends it
+ * to the players' phones as a push notification.
+ * @param quest the quest, as seen through the entry
+ * @param text the message
+ * @param challenge the challenge it sets, if any
+ * @param recipients who plays the entry, and who has the app
+ * @returns success, or why it couldn't be kept
+ */
+async function deliver(
+  quest: QuestService.Quest,
+  text: string,
+  challenge: ChallengeService.QuestChallenge | undefined,
+  recipients: EntryRecipients
+): Promise<ServiceResult<undefined>> {
+  const recorded = await ChallengeService.recordMessage(
+    quest.name,
+    quest.entryId,
+    text,
+    challenge
+  );
+  if (recorded.status === "error") {
+    return recorded;
+  }
+  notifyEntryFollowers("messageSent", quest);
+  // Not waited for: Apple's and Google's services never slow the console.
+  void PushService.sendPush(recipients.appPlayerIds, {
+    category: "message",
+    questName: quest.name,
+    title: quest.displayName || quest.name,
+    body: text,
+  });
+  return recorded;
+}
+
+/**
+ * Sends the puzzle master's message, or challenge, to every one of a quest's
+ * entries in progress: in the app to players who have it, and by text to
+ * those who accept texts (each number once), unless the quest says not to
+ * text players who have the app.
+ * @param questName the quest
+ * @param outgoing what to send
  * @returns a success result, or an error result saying why it wasn't sent
  */
 export async function sendQuestTextMessageToAll(
   questName: string,
-  message: string,
-  reply?: { expectedResponse: string; responseConfirmation: string }
+  outgoing: Outgoing
 ): Promise<ServiceResult<undefined>> {
   const found = await QuestService.getQuestEntries(questName);
   if (found.status === "error") {
@@ -310,54 +408,53 @@ export async function sendQuestTextMessageToAll(
       message: `No one is playing quest ${questName} yet`,
     };
   }
-  const numbers = new Set<string>();
-  for (const entry of playing) {
-    const found = await getPhoneNumbersToMessage(entry.assignee);
-    if (found.status === "error") {
-      return found;
+  const reached: { quest: QuestService.Quest; recipients: EntryRecipients }[] =
+    [];
+  for (const quest of playing) {
+    const recipients = await recipientsOf(quest.assignee, quest.textAppPlayers);
+    if (recipients.status === "error") {
+      return recipients;
     }
-    found.data.forEach((number) => numbers.add(number));
+    reached.push({ quest, recipients: recipients.data });
   }
-  if (!numbers.size) {
-    return {
-      status: "error",
-      statusCode: 400,
-      reason: "no-recipients",
-      message: "No users accepting text messages found for quest",
-    };
+  if (!reached.some(({ recipients }) => reachable(recipients))) {
+    return noRecipients();
   }
-  if (reply) {
-    for (const entry of playing) {
-      const expectation = await setupExpectedTextMessage(
-        entry.name,
-        entry.entryId,
-        reply.expectedResponse,
-        reply.responseConfirmation
-      );
-      if (expectation.status === "error") {
-        return expectation;
-      }
+  const prepared = await prepare(questName, outgoing);
+  if (prepared.status === "error") {
+    return prepared;
+  }
+  for (const { quest, recipients } of reached) {
+    const delivered = await deliver(
+      quest,
+      prepared.data.text,
+      prepared.data.challenge,
+      recipients
+    );
+    if (delivered.status === "error") {
+      return delivered;
     }
   }
-  return sendOutgoingTextMessage([...numbers], message);
+  const numbers = new Set(
+    reached.flatMap(({ recipients }) => recipients.phoneNumbers)
+  );
+  return sendOutgoingTextMessage([...numbers], prepared.data.text);
 }
 
 /**
- * Texts a message to the players of one of a quest's entries, once it is in
- * progress, who accept text messages, and optionally sets the reply the entry
- * then waits for.
+ * Sends the puzzle master's message, or challenge, to one of a quest's
+ * entries, once it is in progress: in the app to players who have it, and by
+ * text to those who accept texts, unless the quest says not to text players
+ * who have the app.
  * @param questName the quest
  * @param entrant the user or team playing the entry
- * @param message the message
- * @param reply the reply to wait for, and the confirmation to send back
- *  when it arrives; omit to wait for none
+ * @param outgoing what to send
  * @returns a success result, or an error result saying why it wasn't sent
  */
 export async function sendQuestTextMessage(
   questName: string,
   entrant: QuestService.EntrantRef,
-  message: string,
-  reply?: { expectedResponse: string; responseConfirmation: string }
+  outgoing: Outgoing
 ): Promise<ServiceResult<undefined>> {
   const found = await QuestService.getQuestEntries(questName);
   if (found.status === "error") {
@@ -383,28 +480,131 @@ export async function sendQuestTextMessage(
       message: `Quest ${quest.name} is not in progress`,
     };
   }
-  const numbers = await getPhoneNumbersToMessage(quest.assignee);
-  if (numbers.status === "error") {
-    return numbers;
+  const recipients = await recipientsOf(quest.assignee, quest.textAppPlayers);
+  if (recipients.status === "error") {
+    return recipients;
   }
-  if (!numbers.data.length) {
+  if (!reachable(recipients.data)) {
+    return noRecipients();
+  }
+  const prepared = await prepare(questName, outgoing);
+  if (prepared.status === "error") {
+    return prepared;
+  }
+  const delivered = await deliver(
+    quest,
+    prepared.data.text,
+    prepared.data.challenge,
+    recipients.data
+  );
+  if (delivered.status === "error") {
+    return delivered;
+  }
+  return recipients.data.phoneNumbers.length
+    ? sendOutgoingTextMessage(recipients.data.phoneNumbers, prepared.data.text)
+    : delivered;
+}
+
+/**
+ * Says whether an entry's players can be sent a message at all.
+ * @param recipients who plays the entry, and how to reach them
+ * @returns true if someone has the app or accepts texts
+ */
+function reachable(recipients: EntryRecipients): boolean {
+  return (
+    recipients.appPlayerIds.length > 0 || recipients.phoneNumbers.length > 0
+  );
+}
+
+/** The error for a message no one can be sent. */
+function noRecipients(): ServiceResult<undefined> {
+  return {
+    status: "error",
+    statusCode: 400,
+    reason: "no-recipients",
+    message: "No players with the app or accepting text messages found",
+  };
+}
+
+/**
+ * Answers the challenge a player's entry in a quest waits for, from the app
+ * or the web. A right answer finishes it for the whole entry, and tells
+ * those following the entry.
+ * @param questName the quest
+ * @param player the player: their ID, and the IDs they play as (their own,
+ *  and their teams')
+ * @param answer the answer, as given
+ * @returns the confirmation to show the venue's staff, or why there's none
+ */
+export async function answerChallengeInApp(
+  questName: string,
+  player: { userId: string; assigneeIds: string[] },
+  answer: string
+): Promise<ServiceResult<{ confirmation: string; answeredAt: Date }>> {
+  const found = await QuestService.findQuests({
+    questName,
+    assigneeIds: player.assigneeIds,
+  });
+  const quest = found.status === "success" ? found.data[0] : undefined;
+  if (!quest) {
+    // As for the puzzles: a quest that exists, but isn't theirs, is
+    // forbidden.
+    return (await QuestModel.exists({ name: questName }))
+      ? {
+          status: "error",
+          statusCode: 403,
+          reason: "forbidden",
+          message: `You aren't playing quest ${questName}`,
+        }
+      : {
+          status: "error",
+          statusCode: 404,
+          reason: "not-found",
+          message: `No quest named ${questName}`,
+        };
+  }
+  if (quest.status !== QuestStatus.IN_PROGRESS) {
     return {
       status: "error",
       statusCode: 400,
-      reason: "no-recipients",
-      message: "No users accepting text messages found for quest",
+      reason: "wrong-state",
+      message: `Quest ${questName} is not in progress`,
     };
   }
-  if (reply) {
-    const expectation = await setupExpectedTextMessage(
-      quest.name,
-      quest.entryId,
-      reply.expectedResponse,
-      reply.responseConfirmation
-    );
-    if (expectation.status === "error") {
-      return expectation;
-    }
+  const answered = await ChallengeService.answerChallenge(
+    questName,
+    quest.entryId,
+    answer,
+    { userId: player.userId, via: "app" }
+  );
+  if (answered.status === "error") {
+    return answered;
   }
-  return sendOutgoingTextMessage(numbers.data, message);
+  switch (answered.data.outcome) {
+    case "right":
+      notifyEntryFollowers("challengeAnswered", quest);
+      return {
+        status: "success",
+        statusCode: 200,
+        data: {
+          confirmation: answered.data.confirmation,
+          answeredAt: answered.data.answeredAt,
+        },
+      };
+    case "wrong":
+      return {
+        status: "error",
+        statusCode: 400,
+        reason: "wrong-answer",
+        message: "That isn't the answer",
+      };
+    case "none":
+      return {
+        status: "error",
+        statusCode: 400,
+        reason: "wrong-state",
+        message:
+          "No challenge is waiting for an answer: none was sent, or it has been answered",
+      };
+  }
 }

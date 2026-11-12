@@ -21,6 +21,8 @@ const { PuzzleModel } = await import("../../src/models/puzzle.model.js");
 const { QuestModel, QuestPuzzleStatus, QuestStatus } =
   await import("../../src/models/quest.model.js");
 const QuestService = await import("../../src/services/quest.service.js");
+const ChallengeService =
+  await import("../../src/services/challenge.service.js");
 const { TeamModel, UserModel } = await import("../../src/models/user.model.js");
 
 let mongoServer: MongoMemoryServer | undefined;
@@ -249,10 +251,16 @@ describe("simultaneous actions on a quest", () => {
     );
   });
 
-  it("keeps both a player's progress and an expected text reply set at the same moment", async () => {
+  it("keeps both a player's progress and a challenge sent at the same moment", async () => {
     const entryId = await entryIdOf("test-quest");
     const competing = runBeforeNextSave(() =>
-      QuestService.setExpectedTextResponse("test-quest", entryId, "Ready", "Go")
+      ChallengeService.recordMessage("test-quest", entryId, "Ring the bell", {
+        id: "000000000000000000000001",
+        message: "Ring the bell",
+        answer: "ready",
+        confirmation: "Go",
+        createdAt: new Date(),
+      })
     );
 
     const result = await QuestService.finishPuzzle(
@@ -265,19 +273,19 @@ describe("simultaneous actions on a quest", () => {
     expect((await competing).status).toBe("success");
     expect(result.status).toBe("success");
     const quest = await storedQuest();
-    expect(quest.entries[0]!.textResponse).toBe("Ready");
+    expect(quest.entries[0]!.challenge?.answer).toBe("ready");
+    expect(quest.entries[0]!.messages).toHaveLength(1);
     expect(quest.entries[0]!.puzzles[0].status).toBe(
       QuestPuzzleStatus.COMPLETED
     );
   });
 
-  it("reports setting a text reply for an unknown quest", async () => {
+  it("reports sending a message to an unknown quest", async () => {
     expect(
-      await QuestService.setExpectedTextResponse(
+      await ChallengeService.recordMessage(
         "missing",
         "000000000000000000000000",
-        "Ready",
-        "Go"
+        "Ready"
       )
     ).toEqual({
       status: "error",

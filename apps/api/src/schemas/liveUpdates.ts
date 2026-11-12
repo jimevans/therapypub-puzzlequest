@@ -85,6 +85,28 @@ const questUpdated = z.object({
 });
 
 /**
+ * The puzzle master sent the entry's players a message, which may set a
+ * challenge; the entry's players fetch the quest again to see it. Sent only
+ * to them and to staff: everyone else is sent questUpdated.
+ */
+const messageSent = z.object({
+  message: z.literal("messageSent"),
+  questName: z.string(),
+  entryId,
+});
+
+/**
+ * One of the entry's players answered its challenge, in the app or by text
+ * message; the quest, fetched again, has the confirmation. Sent only to the
+ * entry's players and to staff: everyone else is sent questUpdated.
+ */
+const challengeAnswered = z.object({
+  message: z.literal("challengeAnswered"),
+  questName: z.string(),
+  entryId,
+});
+
+/**
  * The quests the user, or their teams, play changed: one started, moved on,
  * or ended, was paused, reset, given other entrants, or deleted, or the user
  * joined or left a team. Sent to clients following the user's quests, which
@@ -103,6 +125,8 @@ export const liveUpdateSchema = z
     puzzleStarted,
     hintRevealed,
     questUpdated,
+    messageSent,
+    challengeAnswered,
     questsChanged,
   ])
   .meta({

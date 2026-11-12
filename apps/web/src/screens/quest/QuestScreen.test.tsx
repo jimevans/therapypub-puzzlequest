@@ -66,6 +66,8 @@ const QUEST = {
   status: "inProgress",
   statusDescription: "In progress",
   paused: false,
+  messages: [],
+  challenge: null,
   puzzles: [COMPLETED_STEP, WAITING_STEP],
   progress: {
     ...STOPPED,

@@ -18,6 +18,8 @@ const QUEST = withOneEntry(
     status: "inProgress",
     statusDescription: "In progress",
     paused: false,
+    messages: [],
+    challenge: null,
     puzzles: [],
     progress: {
       startTime: null,
