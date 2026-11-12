@@ -1,3 +1,4 @@
+import { generateKeyPairSync } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { parseConfig } from "../src/config.js";
 import { getErrorMessage } from "../src/errors.js";
@@ -108,9 +109,25 @@ describe("parseConfig", () => {
   });
 
   describe("push notification settings", () => {
+    const pem = (type: "ec" | "rsa") =>
+      (type === "ec"
+        ? generateKeyPairSync("ec", { namedCurve: "P-256" })
+        : generateKeyPairSync("rsa", { modulusLength: 2048 })
+      ).privateKey
+        .export({ type: "pkcs8", format: "pem" })
+        .toString()
+        .trim();
+    const appleKey = pem("ec");
+    const googleKey = pem("rsa");
+    const serviceAccount = (privateKey: string) =>
+      JSON.stringify({
+        type: "service_account",
+        project_id: "puzzlequest",
+        client_email: "sender@puzzlequest.iam.gserviceaccount.com",
+        private_key: privateKey,
+      });
     const apns = {
-      PQ_APNS_KEY:
-        "-----BEGIN PRIVATE KEY-----\\nabc\\n-----END PRIVATE KEY-----",
+      PQ_APNS_KEY: appleKey.replaceAll("\n", "\\n"),
       PQ_APNS_KEY_ID: "KEY123",
       PQ_APNS_TEAM_ID: "TEAM123",
       PQ_APNS_BUNDLE_ID: "com.example.app",
@@ -126,8 +143,32 @@ describe("parseConfig", () => {
     it("takes Apple's key with its line breaks written as \\n", () => {
       const config = parseConfig({ ...required, ...apns });
 
-      expect(config.PQ_APNS_KEY).toBe(
-        "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----"
+      expect(config.PQ_APNS_KEY).toBe(appleKey);
+    });
+
+    it("takes Apple's key with its line breaks kept", () => {
+      const config = parseConfig({
+        ...required,
+        ...apns,
+        PQ_APNS_KEY: appleKey,
+      });
+
+      expect(config.PQ_APNS_KEY).toBe(appleKey);
+    });
+
+    it.each([
+      [
+        "without its first and last lines",
+        appleKey.split("\n").slice(1, -1).join("\n"),
+      ],
+      ["with its line breaks made spaces", appleKey.replaceAll("\n", " ")],
+      ["cut short", appleKey.slice(0, 80)],
+      ["an RSA key, not Apple's kind", googleKey],
+    ])("refuses Apple's key %s", (_, key) => {
+      const message = parseError({ ...required, ...apns, PQ_APNS_KEY: key });
+
+      expect(message).toContain(
+        "PQ_APNS_KEY must be the contents of Apple's .p8 key file"
       );
     });
 
@@ -150,20 +191,29 @@ describe("parseConfig", () => {
     it("reads Firebase's service account key", () => {
       const config = parseConfig({
         ...required,
-        PQ_FCM_SERVICE_ACCOUNT: JSON.stringify({
-          type: "service_account",
-          project_id: "puzzlequest",
-          client_email: "sender@puzzlequest.iam.gserviceaccount.com",
-          private_key: "-----BEGIN PRIVATE KEY-----\nabc",
-        }),
+        PQ_FCM_SERVICE_ACCOUNT: serviceAccount(googleKey),
       });
 
       expect(config.PQ_FCM_SERVICE_ACCOUNT).toEqual({
         project_id: "puzzlequest",
         client_email: "sender@puzzlequest.iam.gserviceaccount.com",
-        private_key: "-----BEGIN PRIVATE KEY-----\nabc",
+        private_key: googleKey,
         token_uri: "https://oauth2.googleapis.com/token",
       });
+    });
+
+    it.each([
+      ["cut short", googleKey.slice(0, 80)],
+      ["an elliptic-curve key, not Google's kind", appleKey],
+    ])("refuses a service account whose key is %s", (_, key) => {
+      const message = parseError({
+        ...required,
+        PQ_FCM_SERVICE_ACCOUNT: serviceAccount(key),
+      });
+
+      expect(message).toContain(
+        "PQ_FCM_SERVICE_ACCOUNT must be a Firebase service account's JSON key; its private_key isn't a readable RSA key"
+      );
     });
 
     it.each(["not json", JSON.stringify({ project_id: "puzzlequest" })])(

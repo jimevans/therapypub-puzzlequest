@@ -1,3 +1,4 @@
+import { createPrivateKey } from "node:crypto";
 import { config as loadEnvironmentFile } from "dotenv";
 import { z } from "zod";
 import { environmentFile } from "./paths.js";
@@ -37,11 +38,29 @@ function parseTrustProxy(
   return Number.isInteger(hops) ? hops : value;
 }
 
+/**
+ * Checks that text is a private key of the given type in PEM form, which
+ * signing needs, so that a key mangled in pasting stops the server starting
+ * instead of failing every notification.
+ * @param pem the key's text
+ * @param type the kind of key expected: ec for Apple's, rsa for Google's
+ * @returns true if it can be read and is of that type
+ */
+function isPrivateKey(pem: string, type: "ec" | "rsa"): boolean {
+  try {
+    return createPrivateKey(pem).asymmetricKeyType === type;
+  } catch {
+    return false;
+  }
+}
+
 /** The parts of a Firebase service account's JSON key that sending uses. */
 const fcmServiceAccountSchema = z.object({
   project_id: z.string().min(1),
   client_email: z.string().min(1),
-  private_key: z.string().min(1),
+  private_key: z
+    .string()
+    .refine((key) => isPrivateKey(key, "rsa"), "isn't a readable RSA key"),
   token_uri: z.url().default("https://oauth2.googleapis.com/token"),
 });
 
@@ -114,6 +133,10 @@ const configSchema = z
         .string()
         .optional()
         .transform((key) => key?.replaceAll("\\n", "\n"))
+        .refine(
+          (key) => key === undefined || isPrivateKey(key, "ec"),
+          "must be the contents of Apple's .p8 key file, from -----BEGIN PRIVATE KEY----- to -----END PRIVATE KEY-----, with its line breaks kept or written as \\n"
+        )
     ),
     PQ_APNS_KEY_ID: setting(z.string().optional()),
     PQ_APNS_TEAM_ID: setting(z.string().optional()),
@@ -131,10 +154,15 @@ const configSchema = z
           }
           const parsed = fcmServiceAccountSchema.safeParse(parseJson(json));
           if (!parsed.success) {
+            const keyUnreadable = parsed.error.issues.some(
+              (issue) =>
+                issue.path[0] === "private_key" && issue.code === "custom"
+            );
             context.addIssue({
               code: "custom",
-              message:
-                "must be a Firebase service account's JSON key, with project_id, client_email, and private_key",
+              message: keyUnreadable
+                ? "must be a Firebase service account's JSON key; its private_key isn't a readable RSA key"
+                : "must be a Firebase service account's JSON key, with project_id, client_email, and private_key",
             });
             return z.NEVER;
           }
