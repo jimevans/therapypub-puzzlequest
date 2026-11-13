@@ -8,6 +8,15 @@ description at `/api/v1/openapi.json`.
 
 ## Unreleased
 
+### Everyone
+
+- The site has a new look in PuzzleQuest's brand colors: aubergine headers and
+  banners in place of black, purple buttons and links in place of blue, and a
+  gold finish line. The puzzle-piece logo, now pale gold, sits beside the name
+  at the top of every page.
+- New icons for browser tabs, and for adding the site to an iPhone's or iPad's
+  home screen. Phone browsers color their toolbar to match.
+
 ## 1.1.2 — 2026-11-12
 
 ### Running the site
