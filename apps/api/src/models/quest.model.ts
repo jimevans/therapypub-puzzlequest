@@ -233,10 +233,11 @@ const questSchema = new Schema(
     /** The challenges the puzzle master has sent in the quest, oldest first. */
     challenges: { type: [questChallengeSchema], default: [] },
     /**
-     * False to stop texting players who have the app, which shows them the
-     * puzzle master's messages instead; players without it are still texted.
+     * True to text players who have the app as well, which shows them the
+     * puzzle master's messages anyway; players without it are always texted.
+     * Unset, as on quests made before 1.1.0, means false.
      */
-    textAppPlayers: { type: Boolean, default: true },
+    textAppPlayers: { type: Boolean, default: false },
   },
   {
     // Saving fails with a VersionError if the quest was saved by someone else

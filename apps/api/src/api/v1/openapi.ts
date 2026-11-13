@@ -21,7 +21,7 @@ import { pushNotificationSchema } from "../../schemas/pushNotifications.js";
 import { type AnyRoute, problemsOf } from "./route.js";
 
 /** The version of the v1 API's description, for clients' caches. */
-export const API_VERSION = "1.1.0";
+export const API_VERSION = "1.1.1";
 
 /** The API's description, with the problem types it reports. */
 const DESCRIPTION = `PuzzleQuest's API, for its web pages and for apps. This description is at \`/api/v1/openapi.json\`, and shown as a reference at \`/api/v1/docs\`.

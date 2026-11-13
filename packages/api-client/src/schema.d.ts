@@ -751,7 +751,7 @@ export interface paths {
         put?: never;
         /**
          * Text a team's members
-         * @description Sends the puzzle master's message to the entrant's players; the entry must be in progress. It's kept with the entry, which players see in the app (and players with the app are sent it as a push notification), and texted, a few seconds apart as carriers require, to the players who accept text messages, unless the quest's textPlayersWithApp is false, which leaves out those with the app. With an expected response it sets a challenge, which the entry waits for its players to answer, in the app or by text; a right answer shows them the confirmation. The challenge is kept with the quest, so challengeId can send it to the next entrant. Refused (noRecipients) if no player has the app or accepts texts. Not found if the team isn't one of the quest's entrants.
+         * @description Sends the puzzle master's message to the entrant's players; the entry must be in progress. It's kept with the entry, which players see in the app (and players with the app are sent it as a push notification), and texted, a few seconds apart as carriers require, to the players who accept text messages, except those with the app, unless the quest's textPlayersWithApp is turned on. With an expected response it sets a challenge, which the entry waits for its players to answer, in the app or by text; a right answer shows them the confirmation. The challenge is kept with the quest, so challengeId can send it to the next entrant. Refused (noRecipients) if no player has the app or accepts texts. Not found if the team isn't one of the quest's entrants.
          */
         post: operations["sendTeamTextMessage"];
         delete?: never;
@@ -891,7 +891,7 @@ export interface paths {
         put?: never;
         /**
          * Text a player
-         * @description Sends the puzzle master's message to the entrant's players; the entry must be in progress. It's kept with the entry, which players see in the app (and players with the app are sent it as a push notification), and texted, a few seconds apart as carriers require, to the players who accept text messages, unless the quest's textPlayersWithApp is false, which leaves out those with the app. With an expected response it sets a challenge, which the entry waits for its players to answer, in the app or by text; a right answer shows them the confirmation. The challenge is kept with the quest, so challengeId can send it to the next entrant. Refused (noRecipients) if no player has the app or accepts texts. Not found if the player isn't one of the quest's entrants.
+         * @description Sends the puzzle master's message to the entrant's players; the entry must be in progress. It's kept with the entry, which players see in the app (and players with the app are sent it as a push notification), and texted, a few seconds apart as carriers require, to the players who accept text messages, except those with the app, unless the quest's textPlayersWithApp is turned on. With an expected response it sets a challenge, which the entry waits for its players to answer, in the app or by text; a right answer shows them the confirmation. The challenge is kept with the quest, so challengeId can send it to the next entrant. Refused (noRecipients) if no player has the app or accepts texts. Not found if the player isn't one of the quest's entrants.
          */
         post: operations["sendPlayerTextMessage"];
         delete?: never;
@@ -1430,7 +1430,7 @@ export interface components {
              * @enum {string}
              */
             visibility?: "public" | "private";
-            /** @description Whether the puzzle master's messages are texted to players who have the app, as well as shown in it. Only for administrators. */
+            /** @description Whether the puzzle master's messages are texted to players who have the app, as well as shown in it; false unless turned on. Only for administrators. */
             textPlayersWithApp?: boolean;
             /** @description The users and teams playing the quest, in order, each with its own progress. A player sees only their own entry. */
             entries: components["schemas"]["QuestEntry"][];
@@ -4603,7 +4603,7 @@ export interface operations {
                      * @enum {string}
                      */
                     visibility?: "public" | "private";
-                    /** @description Whether the puzzle master's messages and challenges are texted to players who have the app, which shows them anyway, as well as to those who don't. New quests text them; turning it off saves texting them. */
+                    /** @description Whether the puzzle master's messages and challenges are texted to players who have the app (whose phones get its push notifications), which shows them anyway, as well as to those who don't. New quests don't text them; turn it on to text them too. */
                     textPlayersWithApp?: boolean;
                     /** @description The users and teams playing the quest, in order; at least one. Each has its own progress through the same stops. A player may be in only one of them, as a user or in a team. On a change, those already playing keep their progress, new ones start out not started, and those left out are removed, which is allowed only before they start. */
                     entrants: {
@@ -4824,7 +4824,7 @@ export interface operations {
                      * @enum {string}
                      */
                     visibility?: "public" | "private";
-                    /** @description Whether the puzzle master's messages and challenges are texted to players who have the app, which shows them anyway, as well as to those who don't. New quests text them; turning it off saves texting them. */
+                    /** @description Whether the puzzle master's messages and challenges are texted to players who have the app (whose phones get its push notifications), which shows them anyway, as well as to those who don't. New quests don't text them; turn it on to text them too. */
                     textPlayersWithApp?: boolean;
                     /** @description The users and teams playing the quest, in order; at least one. Each has its own progress through the same stops. A player may be in only one of them, as a user or in a team. On a change, those already playing keep their progress, new ones start out not started, and those left out are removed, which is allowed only before they start. */
                     entrants?: {

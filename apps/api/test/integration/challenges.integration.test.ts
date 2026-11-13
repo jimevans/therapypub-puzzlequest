@@ -190,7 +190,7 @@ async function ownEntry(name: string) {
 }
 
 describe("sending a challenge", () => {
-  it("shows it to the team in the app, sends it to the app's phones, and texts everyone who accepts texts", async () => {
+  it("shows it to the team in the app, sends it to the app's phones, and texts only those without the app", async () => {
     const response = await as(
       "admin",
       "post",
@@ -199,7 +199,7 @@ describe("sending a challenge", () => {
     );
 
     expect(response.status).toBe(204);
-    expect(texted).toEqual(["+15551230001", "+15551230002"]);
+    expect(texted).toEqual(["+15551230002"]);
     await vi.waitFor(() =>
       expect(pushed()).toEqual([
         {
@@ -232,12 +232,12 @@ describe("sending a challenge", () => {
     expect((await ownEntry("cat")).messages).toEqual([]);
   });
 
-  it("doesn't text players who have the app, once the quest says not to", async () => {
+  it("texts players who have the app too, once the quest says to", async () => {
     const changed = await as("admin", "patch", "/quests/walk", {
-      textPlayersWithApp: false,
+      textPlayersWithApp: true,
     });
     expect(changed.status).toBe(200);
-    expect(changed.body.textPlayersWithApp).toBe(false);
+    expect(changed.body.textPlayersWithApp).toBe(true);
 
     await as(
       "admin",
@@ -246,14 +246,13 @@ describe("sending a challenge", () => {
       challenge
     );
 
-    expect(texted).toEqual(["+15551230002"]);
+    expect(texted).toEqual(["+15551230001", "+15551230002"]);
     await vi.waitFor(() =>
       expect(pushed().map(({ to }) => to)).toEqual(["ann-phone"])
     );
   });
 
   it("texts a player whose app doesn't take the puzzle master's messages", async () => {
-    await as("admin", "patch", "/quests/walk", { textPlayersWithApp: false });
     await SessionService.setPushTarget(tokens.ann, {
       platform: "ios",
       token: "ann-phone",
@@ -297,7 +296,7 @@ describe("sending a challenge", () => {
   it("sends every entry in progress the same challenge", async () => {
     await as("admin", "post", "/quests/walk/text-messages", challenge);
 
-    expect(texted).toEqual(["+15551230001", "+15551230002"]);
+    expect(texted).toEqual(["+15551230002"]);
     await vi.waitFor(() =>
       expect(
         pushed()

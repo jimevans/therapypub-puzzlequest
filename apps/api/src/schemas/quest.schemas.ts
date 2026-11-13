@@ -48,7 +48,7 @@ const visibility = z.enum(["public", "private"]).meta({
 
 const textPlayersWithApp = z.boolean().meta({
   description:
-    "Whether the puzzle master's messages and challenges are texted to players who have the app, which shows them anyway, as well as to those who don't. New quests text them; turning it off saves texting them.",
+    "Whether the puzzle master's messages and challenges are texted to players who have the app (whose phones get its push notifications), which shows them anyway, as well as to those who don't. New quests don't text them; turn it on to text them too.",
 });
 
 /** POST /api/v1/quests */

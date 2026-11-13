@@ -202,7 +202,7 @@ describe("a quest, as an administrator sees it", () => {
     const [entry] = quest.entries;
 
     expect(quest.visibility).toBe("public");
-    expect(quest.textPlayersWithApp).toBe(true);
+    expect(quest.textPlayersWithApp).toBe(false);
     expect(entry.textResponse).toBe("reply");
     expect(entry.textResponseConfirmation).toBe("Thanks");
     expect(entry.challenge).toMatchObject({
