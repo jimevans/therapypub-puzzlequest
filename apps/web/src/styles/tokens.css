@@ -1,6 +1,7 @@
-/* The design's values: the Transit Line direction. Components use only the
-   meanings below, never the raw colors, so a theme (for an organization or a
-   quest) can change how things look by overriding meanings alone. */
+/* The design's values: the Transit Line direction, in the brand's colors
+   (brand/README.md). Components use only the meanings below, never the raw
+   colors, so a theme (for an organization or a quest) can change how things
+   look by overriding meanings alone. */
 
 :root {
   /* Raw colors. */
@@ -11,8 +12,11 @@
   --color-gray-200: #dde1e6;
   --color-gray-100: #f1f3f5;
   --color-white: #ffffff;
-  --color-blue-700: #0a4fd6;
-  --color-blue-300: #7ea8ff;
+  --color-aubergine-900: #2a1638;
+  --color-aubergine-700: #45295a;
+  --color-aubergine-200: #c9b6d6;
+  --color-purple-700: #6a2c91;
+  --color-gold-500: #e8b33a;
   --color-red-700: #b3261e;
 
   /* What the colors mean. */
@@ -21,10 +25,15 @@
   --paper: var(--color-white);
   --paper-soft: var(--color-gray-100);
   --rule: var(--color-gray-200);
-  --on-ink: var(--color-white);
-  --on-ink-soft: var(--color-gray-300);
-  --accent: var(--color-blue-700);
+  /* Headers, banners and other dark surfaces, and what's on them. */
+  --banner: var(--color-aubergine-900);
+  --on-banner: var(--color-white);
+  --on-banner-soft: var(--color-aubergine-200);
+  --accent: var(--color-purple-700);
   --on-accent: var(--color-white);
+  /* What stands out on a banner, such as the finish line. */
+  --highlight: var(--color-gold-500);
+  --on-highlight: var(--color-aubergine-900);
   --danger: var(--color-red-700);
   --on-danger: var(--color-white);
   --line-off: var(--color-gray-500);

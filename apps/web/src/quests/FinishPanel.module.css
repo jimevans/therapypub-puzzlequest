@@ -4,8 +4,8 @@
   gap: var(--space-3);
   padding: var(--space-5);
   border-radius: var(--radius);
-  background: var(--ink);
-  color: var(--on-ink);
+  background: var(--banner);
+  color: var(--on-banner);
 }
 
 .finish p {
@@ -20,7 +20,7 @@
 .finishRail {
   flex: 1;
   height: 6px;
-  background: var(--on-ink);
+  background: var(--highlight);
   transform-origin: left;
 }
 
@@ -29,7 +29,7 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: var(--on-ink);
+  background: var(--highlight);
 }
 
 /* The line runs out to its last stop. Anyone who has asked for less motion just

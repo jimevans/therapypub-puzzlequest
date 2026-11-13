@@ -38,7 +38,7 @@ describe("the web app", () => {
     });
     expect(fontLoaded).toBe(true);
     const buttonColor = await $("#login").getCSSProperty("background-color");
-    expect(buttonColor.parsed.hex).toBe("#0a4fd6");
+    expect(buttonColor.parsed.hex).toBe("#6a2c91");
     // React Aria's rule, moved to the stylesheet so the policy allows it. Chrome
     // reports it by its equivalent, "manipulation".
     const touchAction = await $("#login").getCSSProperty("touch-action");

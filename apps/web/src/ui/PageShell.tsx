@@ -34,6 +34,14 @@ export function PageShell({
       {inRouter && <FocusOnNavigate />}
       <header className={styles.header}>
         <a className={styles.name} href="/">
+          {/* The link's text names it, so the logo needs no words of its own. */}
+          <img
+            className={styles.logo}
+            src="/image/logo.svg"
+            alt=""
+            width="37"
+            height="36"
+          />
           PuzzleQuest
         </a>
         <AccountLinks />

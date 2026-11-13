@@ -1,8 +1,9 @@
 /* A departure board: light on dark, sized to the screen rather than the page.
    It overrides the meanings in tokens.css, as a theme would. */
 .board {
-  --paper: var(--color-black);
-  --accent: var(--color-blue-300);
+  --paper: var(--banner);
+  --accent: var(--highlight);
+  --line-off: var(--on-banner-soft);
   /* The line's unit, which ProgressTrail measures itself in. */
   --trail-unit: clamp(1px, 0.14vw, 4px);
   display: flex;
@@ -11,7 +12,7 @@
   min-height: 100dvh;
   padding: 3vh 4vw;
   background: var(--paper);
-  color: var(--on-ink);
+  color: var(--on-banner);
   font-size: clamp(1.125rem, 2.2vw, 3.5rem);
 }
 
@@ -20,7 +21,7 @@
 }
 
 .site {
-  color: var(--on-ink-soft);
+  color: var(--on-banner-soft);
   font-family: var(--font-display);
   font-size: 0.8em;
   font-weight: 700;
@@ -50,15 +51,15 @@
 }
 
 .notStarted {
-  color: var(--on-ink-soft);
+  color: var(--on-banner-soft);
   font-size: 1.6em;
 }
 
 .paused {
   padding: 0.25em 0.6em;
   border-radius: var(--radius);
-  background: var(--on-ink);
-  color: var(--color-black);
+  background: var(--on-banner);
+  color: var(--banner);
   font-weight: 700;
 }
 
@@ -71,7 +72,7 @@
 }
 
 .penalties {
-  color: var(--on-ink-soft);
+  color: var(--on-banner-soft);
 }
 
 .progress {
@@ -94,7 +95,7 @@
 
 .stepStatus {
   display: block;
-  color: var(--on-ink-soft);
+  color: var(--on-banner-soft);
   font-family: var(--font-body);
   font-size: 0.55em;
   font-weight: 400;
@@ -106,7 +107,7 @@
   position: fixed;
   right: 4vw;
   bottom: 3vh;
-  color: var(--on-ink-soft);
+  color: var(--on-banner-soft);
   font-size: 0.8em;
   animation: appear 0.3s 8s both;
 }
@@ -128,9 +129,9 @@
 }
 
 .leaderboard {
-  --ink-soft: var(--on-ink-soft);
-  --rule: var(--color-gray-700);
-  --paper-soft: var(--color-gray-700);
+  --ink-soft: var(--on-banner-soft);
+  --rule: var(--color-aubergine-700);
+  --paper-soft: var(--color-aubergine-700);
   flex: 1;
   font-size: 1.1em;
 }

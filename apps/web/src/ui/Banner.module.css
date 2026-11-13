@@ -5,8 +5,8 @@
 }
 
 .notice {
-  background: var(--ink);
-  color: var(--on-ink);
+  background: var(--banner);
+  color: var(--on-banner);
 }
 
 .danger {

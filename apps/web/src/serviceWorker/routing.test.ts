@@ -32,7 +32,7 @@ describe("the service worker", () => {
     "/puzzleData/riddle.png",
     "/policies/privacy.html",
     "/style/error.css",
-    "/image/pq-logo-192.png",
+    "/image/logo.svg",
     "/user/password/reset",
     "/user/email/verify",
     "/quests",

@@ -1,7 +1,9 @@
 # PuzzleQuest brand
 
 The logo, colors and icons shared by the website and the iPhone and Android
-apps. Each of them copies what it needs from here.
+apps. Each of them copies what it needs from here: the website's copies are in
+`apps/api/src/public/image/`, and its colors in
+`apps/web/src/styles/tokens.css`.
 
 ## Logo
 
@@ -16,8 +18,8 @@ On aubergine, the outline disappears into the background and the gold piece
 stands on its own; on white, the outline keeps its edge. Use the logo as it
 is: don't recolor it, stretch it, or set it on a busy photograph.
 
-The shapes were traced from the original gray logo
-(`apps/api/src/public/image/pq-logo-192.png`) by `tools/trace.swift`. The SVGs
+The shapes were traced from the original gray logo (`original-logo.png`) by
+`tools/trace.swift`. The SVGs
 are the source now; edit them, not the tracer.
 
 ## Colors

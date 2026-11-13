@@ -50,11 +50,16 @@ export function sendErrorPage(
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(title)} · PuzzleQuest</title>
-    <link rel="icon" type="image/png" href="/image/pq-logo-192.png" sizes="192x192" />
+    <link rel="icon" type="image/png" href="/image/favicon-32.png" sizes="32x32" />
+    <link rel="icon" type="image/png" href="/image/favicon-16.png" sizes="16x16" />
+    <link rel="apple-touch-icon" href="/image/apple-touch-icon.png" />
+    <meta name="theme-color" content="#2a1638" />
     <link rel="stylesheet" href="/style/error.css" />
   </head>
   <body>
-    <header><a href="/">PuzzleQuest</a></header>
+    <header>
+      <a href="/"><img src="/image/logo.svg" alt="" width="37" height="36" />PuzzleQuest</a>
+    </header>
     <main>
       <h1>${escapeHtml(title)}</h1>
       <p>${escapeHtml(details)}</p>

@@ -2,7 +2,7 @@
 // brand/logo-piece.svg. Kept to show where the shapes came from; the SVGs are
 // now the source, so this needn't run again.
 //
-// usage (macOS): swift -O brand/tools/trace.swift <original.png> brand
+// usage (macOS): swift -O brand/tools/trace.swift brand/original-logo.png brand
 //
 // It thresholds the PNG at four times its size (alpha for the outline, gray
 // against black for the fill), links pixel edges into loops, smooths them
