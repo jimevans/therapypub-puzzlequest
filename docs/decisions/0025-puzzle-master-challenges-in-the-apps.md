@@ -2,6 +2,9 @@
 
 - **Status:** accepted
 - **Date:** 2026-11-12
+- **Amended:** 2026-11-12, in 1.1.1: texting players who have the app is off
+  by default. It was on in 1.1.0, and trying it, texts to players reading the
+  same message in the app were unwanted.
 
 ## Context
 
@@ -25,11 +28,11 @@ that up, in the same release.
 
 ## Decision
 
-**Both channels, with SMS easy to turn off for app players.** A message or
+**Both channels, with SMS only for players without the app.** A message or
 challenge goes to the entry in the app (shown on the quest screen, and as a
-push notification) and by SMS as today. Each quest has one switch in the
-console, **Text players who have the app**, on by default; turned off, SMS
-goes only to the entry's players who don't have the app. A player "has the
+push notification) and by SMS to the entry's players who don't have the app.
+Each quest has one switch in the console, **Text players who have the app**,
+off by default; turned on, players with the app are texted too. A player "has the
 app" when a session of theirs has a push target ([0024](0024-push-notifications.md))
 that accepts the `message` kind, so a player who refused notifications on
 their phone still gets the text. Players without the app, or with no phone
@@ -87,8 +90,8 @@ master's messages on the quest screen.
 ## Consequences
 
 - The play-test's mini-game works for app players without texting them, and
-  SMS remains for everyone else, so turning SMS off is one switch per quest,
-  not a migration.
+  SMS remains for everyone else; texting app players too is one switch per
+  quest, not a migration.
 - Keyword matching is looser than today's exact match: "the answer is otter"
   is right for `otter`. An expected reply written as a whole phrase still
   works, as one keyword. Production has no quests running, so existing stored

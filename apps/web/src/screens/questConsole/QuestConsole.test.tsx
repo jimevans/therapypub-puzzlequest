@@ -692,7 +692,7 @@ describe("the quest console", () => {
 
   it("says who a message reaches, as the quest's setting says", async () => {
     const user = userEvent.setup();
-    apiQuest({ ...withOneEntry(RUNNING), textPlayersWithApp: false });
+    apiQuest({ ...withOneEntry(RUNNING), textPlayersWithApp: true });
     show();
 
     await user.click(
@@ -700,11 +700,13 @@ describe("the quest console", () => {
     );
     const dialog = screen.getByRole("dialog", { name: "Message the players" });
     expect(
-      within(dialog).getByText(/accept text messages and don't have the app/)
+      within(dialog).getByText(
+        "It shows in the app for each of the quest's players, and is texted to those who accept text messages."
+      )
     ).toBeVisible();
   });
 
-  it("turns texting players who have the app off and on", async () => {
+  it("turns texting players who have the app on and off", async () => {
     const user = userEvent.setup();
     apiQuest(RUNNING);
     const patch = vi
@@ -715,12 +717,13 @@ describe("the quest console", () => {
     const setting = await screen.findByLabelText(
       "Text players who have the app"
     );
-    expect(setting).toBeChecked();
+    // Off unless turned on.
+    expect(setting).not.toBeChecked();
     await user.click(setting);
 
     expect(patch).toHaveBeenCalledWith("/quests/{questName}", {
       params: { path: { questName: "trail" } },
-      body: { textPlayersWithApp: false },
+      body: { textPlayersWithApp: true },
     });
   });
 

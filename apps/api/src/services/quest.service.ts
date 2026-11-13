@@ -370,7 +370,7 @@ export class Quest {
   /** The challenge last sent to the entry, answered or not. */
   challenge?: EntryChallenge;
 
-  /** False if players who have the app aren't texted. */
+  /** True if players who have the app are texted too; false by default. */
   textAppPlayers: boolean;
 
   /**
@@ -423,7 +423,7 @@ export class Quest {
     this.status = questDefinition.status;
     this.messages = questDefinition.messages ?? [];
     this.challenge = questDefinition.challenge ?? undefined;
-    this.textAppPlayers = questDefinition.textAppPlayers ?? true;
+    this.textAppPlayers = questDefinition.textAppPlayers ?? false;
     if (questDefinition.puzzles) {
       this.puzzles = questDefinition.puzzles.map(
         (puzzle) => new QuestPuzzle(puzzle)
@@ -534,8 +534,8 @@ export interface QuestDefinition {
   /** Who can follow the quest; new quests are public unless this says not. */
   visibility?: QuestVisibility;
   /**
-   * False to stop texting players who have the app the puzzle master's
-   * messages; new quests text them.
+   * True to text players who have the app the puzzle master's messages too;
+   * new quests don't.
    */
   textAppPlayers?: boolean;
   /**
@@ -1664,7 +1664,7 @@ export async function createQuest(
     name: questName,
     displayName: questDefinition.displayName || questName,
     visibility: questDefinition.visibility ?? "public",
-    textAppPlayers: questDefinition.textAppPlayers ?? true,
+    textAppPlayers: questDefinition.textAppPlayers ?? false,
     puzzles: stops,
     entries: entrants.map((entrant) => newEntry(entrant, stops)),
   });

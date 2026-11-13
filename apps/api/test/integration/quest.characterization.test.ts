@@ -226,7 +226,7 @@ describe("createQuest", () => {
     });
     expect(quest.entries[0]!.challenge).toBeUndefined();
     expect(quest.challenges).toEqual([]);
-    expect(quest.textAppPlayers).toBe(true);
+    expect(quest.textAppPlayers).toBe(false);
     expect(quest.puzzles.map((puzzle) => puzzle.puzzleName)).toEqual([
       "colors",
       "fruit",

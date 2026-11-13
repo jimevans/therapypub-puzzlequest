@@ -544,7 +544,7 @@ export const questSchema = z
     }),
     textPlayersWithApp: z.boolean().optional().meta({
       description:
-        "Whether the puzzle master's messages are texted to players who have the app, as well as shown in it. Only for administrators.",
+        "Whether the puzzle master's messages are texted to players who have the app, as well as shown in it; false unless turned on. Only for administrators.",
     }),
     entries: z.array(questEntrySchema).meta({
       description:

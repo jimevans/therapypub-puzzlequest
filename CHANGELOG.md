@@ -8,6 +8,22 @@ description at `/api/v1/openapi.json`.
 
 ## Unreleased
 
+## 1.1.1 — 2026-11-12
+
+### The API
+
+- A quest's `textPlayersWithApp` is now off by default: the puzzle master's
+  messages are texted only to players without the app (whose phones don't get
+  its push notifications), unless the quest turns it on. Quests made with
+  1.1.0 keep the setting they were made with; quests made before then, and
+  new ones, don't text players who have the app.
+
+### Administrators
+
+- The quest console's "Text players who have the app" starts unticked, and
+  says that players with the app's notifications aren't texted unless it's
+  ticked.
+
 ## 1.1.0 — 2026-11-12
 
 ### The API

@@ -474,7 +474,7 @@ function TextingSetting({ quest }: { quest: Quest }) {
   // While saving, show what was chosen, not what's stored.
   const checked = change.isPending
     ? change.variables
-    : (quest.textPlayersWithApp ?? true);
+    : (quest.textPlayersWithApp ?? false);
   return (
     <div className={styles.setting}>
       <div className={styles.checkbox}>
@@ -489,8 +489,9 @@ function TextingSetting({ quest }: { quest: Quest }) {
         <label htmlFor="text-app-players">Text players who have the app</label>
       </div>
       <p id="text-app-players-description" className={styles.note}>
-        Messages show in the app either way. Turn this off to text only players
-        without it.
+        Messages show in the app either way, and players with its notifications
+        turned on aren&apos;t texted unless this is on. Players without the app
+        are always texted.
       </p>
       {change.isError && (
         <Banner tone="danger">{messageOf(change.error)}</Banner>
@@ -830,7 +831,7 @@ function Console({ quest }: { quest: Quest }) {
       />
       <TextMessageDialog
         questName={quest.questName}
-        textPlayersWithApp={quest.textPlayersWithApp ?? true}
+        textPlayersWithApp={quest.textPlayersWithApp ?? false}
         recipients={recipients}
         defaultRecipient={texting ?? ""}
         isOpen={texting !== null}
