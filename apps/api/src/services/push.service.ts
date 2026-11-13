@@ -4,7 +4,7 @@
 // settings are on the host; without them, as in development and tests,
 // nothing is sent. Sending never fails the action that caused it.
 import { config } from "../config.js";
-import { logger } from "../logger.js";
+import { log, logger } from "../logger.js";
 import { createApnsSender } from "../push/apns.js";
 import { createFcmSender } from "../push/fcm.js";
 import type { PushSender } from "../push/types.js";
@@ -18,6 +18,18 @@ import * as SessionService from "./session.service.js";
 export type PushSenders = Partial<
   Record<SessionService.PushTarget["platform"], PushSender>
 >;
+
+/**
+ * Says which platforms the host's settings let the server send to, for the
+ * log when it starts, since a platform without them sends nothing, quietly.
+ * @returns whether it sends to iPhones and to Android phones
+ */
+export function pushPlatforms(): { ios: boolean; android: boolean } {
+  return {
+    ios: Boolean(config.PQ_APNS_KEY_FILE),
+    android: Boolean(config.PQ_FCM_SERVICE_ACCOUNT_FILE),
+  };
+}
 
 /**
  * Creates the senders the host's settings allow.
@@ -89,6 +101,13 @@ export async function sendPush(
     const targets = (
       await SessionService.findPushTargets(userIds, notification.category)
     ).filter((target) => active[target.platform]);
+    if (!targets.length) {
+      log().info(
+        { category: notification.category, players: userIds.length },
+        "push notifications: no phones to send them to"
+      );
+      return 0;
+    }
     const outcomes = await Promise.all(
       targets.map(async (target) => {
         const outcome = await active[target.platform]!.send(
@@ -101,7 +120,28 @@ export async function sendPush(
         return outcome;
       })
     );
-    return outcomes.filter((outcome) => outcome === "sent").length;
+    const count = (kind: string) =>
+      outcomes.filter((outcome) => outcome === kind).length;
+    // Which of Apple's services the phones are on tells a build from Xcode
+    // (development) from one from the App Store (production).
+    log().info(
+      {
+        category: notification.category,
+        phones: targets.length,
+        environments: Object.fromEntries(
+          ["production", "development"].map((environment) => [
+            environment,
+            targets.filter((target) => target.environment === environment)
+              .length,
+          ])
+        ),
+        sent: count("sent"),
+        gone: count("gone"),
+        failed: count("failed"),
+      },
+      "push notifications sent"
+    );
+    return count("sent");
   } catch (err) {
     logger.error({ err }, "Push notifications weren't sent");
     return 0;

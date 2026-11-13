@@ -8,6 +8,15 @@ description at `/api/v1/openapi.json`.
 
 ## Unreleased
 
+## 1.1.2 — 2026-11-12
+
+### Running the site
+
+- The log now says, when the server starts, which platforms it can send push
+  notifications to, and each time it sends them, to how many phones, on which
+  of Apple's services, and how many were accepted. Before, a notification
+  Apple accepted, and one never sent, both left nothing in the log.
+
 ## 1.1.1 — 2026-11-12
 
 ### The API

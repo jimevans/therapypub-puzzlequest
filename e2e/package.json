@@ -1,6 +1,6 @@
 {
   "name": "@puzzlequest/e2e",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Browser tests of the whole product, with WebdriverIO over WebDriver BiDi",
   "private": true,
   "type": "module",
