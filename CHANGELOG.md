@@ -8,6 +8,8 @@ description at `/api/v1/openapi.json`.
 
 ## Unreleased
 
+## 1.2.0 — 2026-11-13
+
 ### Everyone
 
 - The site has a new look in PuzzleQuest's brand colors: aubergine headers and
