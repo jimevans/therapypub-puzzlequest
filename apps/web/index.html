@@ -7,9 +7,17 @@
     <link
       rel="icon"
       type="image/png"
-      href="/image/pq-logo-192.png"
-      sizes="192x192"
+      href="/image/favicon-32.png"
+      sizes="32x32"
     />
+    <link
+      rel="icon"
+      type="image/png"
+      href="/image/favicon-16.png"
+      sizes="16x16"
+    />
+    <link rel="apple-touch-icon" href="/image/apple-touch-icon.png" />
+    <meta name="theme-color" content="#2a1638" />
     <!-- React Aria injects a <style> for pressable elements unless an element
          with this ID exists. The Content Security Policy would block it, so
          the rule is in styles/base.css instead. -->
@@ -20,7 +28,14 @@
          downloaded. React replaces it with the same thing: PageShell's frame. -->
     <div id="root">
       <header class="loading-header">
-        <a href="/">PuzzleQuest</a>
+        <a href="/"
+          ><img
+            src="/image/logo.svg"
+            alt=""
+            width="37"
+            height="36"
+          />PuzzleQuest</a
+        >
       </header>
     </div>
     <script type="module" src="/src/main.tsx"></script>

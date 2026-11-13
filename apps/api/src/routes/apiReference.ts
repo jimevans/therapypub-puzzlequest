@@ -20,7 +20,10 @@ const PAGE = `<!doctype html>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>API reference · PuzzleQuest</title>
-    <link rel="icon" type="image/png" href="/image/pq-logo-192.png" sizes="192x192" />
+    <link rel="icon" type="image/png" href="/image/favicon-32.png" sizes="32x32" />
+    <link rel="icon" type="image/png" href="/image/favicon-16.png" sizes="16x16" />
+    <link rel="apple-touch-icon" href="/image/apple-touch-icon.png" />
+    <meta name="theme-color" content="#2a1638" />
     <link rel="stylesheet" href="/api/v1/docs/swagger-ui.css" />
   </head>
   <body>

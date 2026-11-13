@@ -17,10 +17,13 @@ body {
 
 header {
   padding: 0.75rem 1.25rem;
-  background: #111418;
+  background: #2a1638;
 }
 
 header a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   color: #ffffff;
   font-size: 1.625rem;
   font-weight: 700;
@@ -45,5 +48,5 @@ p {
 }
 
 a {
-  color: #0a4fd6;
+  color: #6a2c91;
 }
