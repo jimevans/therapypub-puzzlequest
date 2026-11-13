@@ -10,6 +10,7 @@ import { createApp } from "./createApp.js";
 import { subscribeQuestEventHandlers } from "./events/subscribers.js";
 import { logger } from "./logger.js";
 import { ensureDefaultOrganization } from "./models/organization.model.js";
+import { pushPlatforms } from "./services/push.service.js";
 import * as WebSocketService from "./services/websocket.service.js";
 import { createShutdown } from "./shutdown.js";
 import { runningCommit } from "./version.js";
@@ -25,7 +26,10 @@ process.on("unhandledRejection", (err) => {
   process.exit(1);
 });
 
-logger.info({ configSource, commit: runningCommit() }, "starting");
+logger.info(
+  { configSource, commit: runningCommit(), pushNotifications: pushPlatforms() },
+  "starting"
+);
 
 mongoose.set("strictQuery", false);
 mongoose.connection.on("error", (err) => {

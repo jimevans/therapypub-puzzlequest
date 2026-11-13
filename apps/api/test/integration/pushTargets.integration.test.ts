@@ -15,6 +15,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
 import request from "supertest";
 import type { PushSender } from "../../src/push/types.js";
+import { recordLogs } from "../logs.js";
 import { startSessions } from "../sessions.js";
 
 const { createApp } = await import("../../src/createApp.js");
@@ -275,6 +276,52 @@ describe("sending", () => {
 
     expect(ios.close).toHaveBeenCalled();
     expect(android.close).toHaveBeenCalled();
+  });
+
+  it("logs what it sent, and to which of Apple's services, but no token", async () => {
+    const logs = recordLogs();
+    await register(tokens.ann, { ...iPhone, environment: "development" });
+    await register(tokens.bob, pixel);
+    android.send.mockResolvedValue("gone");
+
+    await PushService.sendPush([ids.ann, ids.bob], notification);
+    await PushService.sendPush([ids.ann], {
+      ...notification,
+      category: "message" as const,
+    });
+
+    expect(logs).toContainEqual(
+      expect.objectContaining({
+        level: "info",
+        msg: "push notifications sent",
+        category: "questStarted",
+        phones: 2,
+        environments: { production: 1, development: 1 },
+        sent: 1,
+        gone: 1,
+        failed: 0,
+      })
+    );
+    expect(JSON.stringify(logs)).not.toContain("iphone-token");
+    expect(JSON.stringify(logs)).not.toContain("fcm-1");
+  });
+
+  it("logs when the players have no phones to send to", async () => {
+    const logs = recordLogs();
+
+    await PushService.sendPush([ids.ann], notification);
+
+    expect(logs).toContainEqual(
+      expect.objectContaining({
+        msg: "push notifications: no phones to send them to",
+        players: 1,
+      })
+    );
+  });
+
+  it("says which platforms the host's settings let it send to", () => {
+    // Tests have none.
+    expect(PushService.pushPlatforms()).toEqual({ ios: false, android: false });
   });
 
   it("never fails, logging what went wrong instead", async () => {

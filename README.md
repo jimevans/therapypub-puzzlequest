@@ -342,6 +342,12 @@ deployment may replace) and outside `public_html`:
 
 The server checks the files when it starts. If one is missing or isn't the
 right kind of key, it doesn't start, and the reason is at the end of the log.
+Once started, its first line in the log, `starting`, says which platforms it
+can send to (`pushNotifications`). Each time it sends, it logs `push
+notifications sent`, with how many phones, on which of Apple's services
+(`development` for an app built from Xcode, `production` from the App Store),
+and how many Apple or Google accepted (`sent`), said were gone, or refused;
+a refusal also logs Apple's or Google's reason.
 
 ### Backups
 
