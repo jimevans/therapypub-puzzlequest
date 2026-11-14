@@ -40,6 +40,21 @@ describe.each(["privacy", "terms", "cookies", "delete-account", "support"])(
   }
 );
 
+it("says how to delete an account, rather than linking a page that isn't there", async () => {
+  const html = await page("privacy");
+
+  expect(html).not.toContain("privacyrequest");
+  expect(html).toContain('href="/policies/delete-account.html"');
+  expect(html).toContain('href="/policies/cookies.html"');
+});
+
+it("says the cookie notice's one cookie, and no tracking", async () => {
+  const html = await page("cookies");
+
+  expect(html).toContain("<strong>pq-session</strong>");
+  expect(html).not.toMatch(/advertising network|opt out of targeted/i);
+});
+
 // The app stores link to these: Google Play's account deletion page and the
 // App Store's support page, which must be reachable without signing in.
 describe("the pages the app stores link to", () => {
@@ -49,7 +64,7 @@ describe("the pages the app stores link to", () => {
     expect(html).toContain("<strong>Delete account</strong>");
     expect(html).toContain('href="/login"');
     expect(html).toContain('href="/user/password/forgot"');
-    expect(html).toContain('href="mailto:jim@thepuzzlequest.com"');
+    expect(html).toContain('href="mailto:privacy@thepuzzlequest.com"');
   });
 
   it("give a way to contact support, and link the policies", async () => {
