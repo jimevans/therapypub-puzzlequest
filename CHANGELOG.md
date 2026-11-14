@@ -10,6 +10,14 @@ description at `/api/v1/openapi.json`.
 
 ## 1.3.0 — 2026-11-14
 
+### Everyone
+
+- A support page, `/policies/support.html`, with how to contact us and
+  answers to common questions, for the App Store's support link.
+- A page saying how to delete an account, `/policies/delete-account.html`:
+  in the app, on the website, or by email if you can't sign in, and what's
+  deleted and what's kept. Google Play links to it from the app's listing.
+
 ### Running the site
 
 - Apple's push notification keys can be limited to one environment, and the
