@@ -27,6 +27,15 @@ jobs:
       # --engine-strict fails the install if any dependency drops support for
       # the Node version in .nvmrc, which is what the production host runs.
       - run: npm ci --engine-strict
+      # The web app's build imports rolldown itself (for the service worker)
+      # as well as through Vite. Two versions installed means two native
+      # bundlers loaded at once, with their own threads and memory, which the
+      # production host refuses mid-build (see .cpanel.yml).
+      - name: One rolldown
+        run: |
+          versions=$(npm ls rolldown --all --json | jq -r '[.. | objects | .dependencies?.rolldown?.version // empty] | unique | join(" ")')
+          echo "rolldown: $versions"
+          test "$(wc -w <<<"$versions")" -eq 1
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build

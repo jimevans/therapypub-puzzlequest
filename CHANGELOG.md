@@ -10,6 +10,13 @@ description at `/api/v1/openapi.json`.
 
 ## 1.3.0 — 2026-11-14
 
+### Running the site
+
+- The deployment's build no longer runs out of memory on the host. The
+  dependency updates had installed a second, newer copy of the web app's
+  bundler (rolldown) beside the one Vite uses, and the build loaded both. The
+  web app uses Vite's copy again, and CI fails if two are ever installed.
+
 ### Everyone
 
 - A support page, `/policies/support.html`, with how to contact us and

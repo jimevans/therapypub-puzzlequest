@@ -24,6 +24,12 @@ updates:
       # which production runs. Raise this when moving to a newer Node.
       - dependency-name: "@types/node"
         versions: [">=25.0.0"]
+      # rolldown must be the version Vite itself depends on, so that one copy
+      # is installed: the build loads both, and two native bundlers at once
+      # are more than the production host allows (CI's "One rolldown" step
+      # checks). Raise its range by hand when Vite moves to a newer one.
+      - dependency-name: rolldown
+        update-types: [version-update:semver-minor, version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: /
