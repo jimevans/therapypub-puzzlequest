@@ -8,6 +8,18 @@ description at `/api/v1/openapi.json`.
 
 ## Unreleased
 
+### Running the site
+
+- Apple's push notification keys can be limited to one environment, and the
+  server can now hold one for each: `PQ_APNS_SANDBOX_KEY_FILE` and
+  `PQ_APNS_SANDBOX_KEY_ID` name the Sandbox key, for apps built and run from
+  Xcode, beside the Production key in `PQ_APNS_KEY_FILE` and `PQ_APNS_KEY_ID`,
+  for apps from the App Store and TestFlight. Each phone's notifications are
+  signed with its environment's key. Without the new settings, the one key
+  signs for both, as before. The `starting` line in the log says whether the
+  sandbox has its own key (`iosSandboxKey`), and Apple's refusals name the
+  environment.
+
 ## 1.2.0 — 2026-11-13
 
 ### Everyone

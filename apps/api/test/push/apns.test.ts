@@ -83,16 +83,17 @@ afterEach(async () => {
 /**
  * Reads a request's bearer token, checking its signature.
  * @param headers the request's headers
+ * @param key the public key it should be signed with
  * @returns the token's header and claims
  */
-function bearer(headers: IncomingHttpHeaders) {
+function bearer(headers: IncomingHttpHeaders, key = publicKey) {
   const token = String(headers.authorization).replace(/^bearer /, "");
   const [header, claims, signature] = token.split(".");
   expect(
     verify(
       "sha256",
       Buffer.from(`${header}.${claims}`),
-      { key: publicKey, dsaEncoding: "ieee-p1363" },
+      { key, dsaEncoding: "ieee-p1363" },
       Buffer.from(signature, "base64url")
     )
   ).toBe(true);
@@ -102,6 +103,61 @@ function bearer(headers: IncomingHttpHeaders) {
 }
 
 describe("sending to an iPhone", () => {
+  it("signs for the sandbox with its own key, when it has one", async () => {
+    const sandbox = generateKeyPairSync("ec", { namedCurve: "P-256" });
+    sender.close();
+    sender = createApnsSender({
+      key: privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
+      keyId: "KEY123",
+      teamId: "TEAM123",
+      bundleId: "com.example.puzzlequest",
+      sandbox: {
+        key: sandbox.privateKey
+          .export({ type: "pkcs8", format: "pem" })
+          .toString(),
+        keyId: "SANDBOX1",
+      },
+      // Both environments at the stand-in, to see what each is sent.
+      origins: { production: origin, development: origin },
+      now: () => clock,
+    });
+
+    // An app from Xcode, then one from the App Store or TestFlight.
+    expect(
+      await sender.send({ ...target, environment: "development" }, notification)
+    ).toBe("sent");
+    expect(await sender.send(target, notification)).toBe("sent");
+
+    expect(bearer(received[0].headers, sandbox.publicKey).header).toEqual({
+      alg: "ES256",
+      kid: "SANDBOX1",
+    });
+    expect(bearer(received[1].headers).header).toEqual({
+      alg: "ES256",
+      kid: "KEY123",
+    });
+  });
+
+  it("signs for both environments with the one key, when the sandbox has none", async () => {
+    sender.close();
+    sender = createApnsSender({
+      key: privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
+      keyId: "KEY123",
+      teamId: "TEAM123",
+      bundleId: "com.example.puzzlequest",
+      origins: { production: origin, development: origin },
+      now: () => clock,
+    });
+
+    await sender.send({ ...target, environment: "development" }, notification);
+    await sender.send(target, notification);
+
+    expect(received.map(({ headers }) => bearer(headers).header)).toEqual([
+      { alg: "ES256", kid: "KEY123" },
+      { alg: "ES256", kid: "KEY123" },
+    ]);
+  });
+
   it("posts an alert to the device, signed with the account's key", async () => {
     expect(await sender.send(target, notification)).toBe("sent");
 

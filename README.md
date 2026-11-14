@@ -340,14 +340,24 @@ deployment may replace) and outside `public_html`:
    three settings (see [apps/api/.env.example](apps/api/.env.example)), and
    restart the application.
 
+Apple's keys can be limited to one of its environments: **Production**, where
+apps from the App Store and TestFlight register, or **Sandbox**, where apps
+built and run from Xcode do. A key limited to one can't reach phones in the
+other, and Apple refuses those notifications. With one key for each, set
+`PQ_APNS_KEY_FILE` and `PQ_APNS_KEY_ID` to the Production key, and
+`PQ_APNS_SANDBOX_KEY_FILE` and `PQ_APNS_SANDBOX_KEY_ID` to the Sandbox key;
+each phone's notifications are signed with its environment's key. With one
+key for both (not limited), leave the two sandbox settings empty.
+
 The server checks the files when it starts. If one is missing or isn't the
 right kind of key, it doesn't start, and the reason is at the end of the log.
 Once started, its first line in the log, `starting`, says which platforms it
-can send to (`pushNotifications`). Each time it sends, it logs `push
+can send to (`pushNotifications`), and whether Apple's sandbox has a key of its
+own (`iosSandboxKey`). Each time it sends, it logs `push
 notifications sent`, with how many phones, on which of Apple's services
 (`development` for an app built from Xcode, `production` from the App Store),
 and how many Apple or Google accepted (`sent`), said were gone, or refused;
-a refusal also logs Apple's or Google's reason.
+a refusal also logs Apple's or Google's reason, and for Apple, the environment.
 
 ### Backups
 

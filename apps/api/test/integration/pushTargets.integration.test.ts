@@ -321,7 +321,11 @@ describe("sending", () => {
 
   it("says which platforms the host's settings let it send to", () => {
     // Tests have none.
-    expect(PushService.pushPlatforms()).toEqual({ ios: false, android: false });
+    expect(PushService.pushPlatforms()).toEqual({
+      ios: false,
+      iosSandboxKey: false,
+      android: false,
+    });
   });
 
   it("never fails, logging what went wrong instead", async () => {
