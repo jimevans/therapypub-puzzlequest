@@ -17,6 +17,13 @@ description at `/api/v1/openapi.json`.
 - A page saying how to delete an account, `/policies/delete-account.html`:
   in the app, on the website, or by email if you can't sign in, and what's
   deleted and what's kept. Google Play links to it from the app's listing.
+- The privacy notice covers the PuzzleQuest app: the camera (used only to
+  scan a stop's QR code), push notification tokens, the answers and times
+  kept with a quest, and the services that send email, text messages and
+  notifications. It now says the site's one cookie keeps you signed in and
+  nothing tracks you for analytics or advertising, and its broken links (the
+  request page and the cookie notice) point to the account deletion page and
+  the cookie notice.
 
 ### Running the site
 
