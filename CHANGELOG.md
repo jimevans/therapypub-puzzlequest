@@ -24,6 +24,9 @@ description at `/api/v1/openapi.json`.
   nothing tracks you for analytics or advertising, and its broken links (the
   request page and the cookie notice) point to the account deletion page and
   the cookie notice.
+- The cookie notice says what the site really keeps: one cookie, which keeps
+  you signed in, the site's own files for working offline, and, for a tab, a
+  quest's share link. Nothing is used for analytics or advertising.
 
 ### Running the site
 

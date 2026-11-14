@@ -48,6 +48,13 @@ it("says how to delete an account, rather than linking a page that isn't there",
   expect(html).toContain('href="/policies/cookies.html"');
 });
 
+it("says the cookie notice's one cookie, and no tracking", async () => {
+  const html = await page("cookies");
+
+  expect(html).toContain("<strong>pq-session</strong>");
+  expect(html).not.toMatch(/advertising network|opt out of targeted/i);
+});
+
 // The app stores link to these: Google Play's account deletion page and the
 // App Store's support page, which must be reachable without signing in.
 describe("the pages the app stores link to", () => {
