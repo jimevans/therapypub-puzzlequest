@@ -55,6 +55,33 @@ function isPrivateKey(pem: string, type: "ec" | "rsa"): boolean {
   }
 }
 
+/**
+ * A setting naming Apple's .p8 signing key file, read and checked to be one.
+ * @returns the setting's schema: the file's path and contents, if set
+ */
+function apnsKeyFile() {
+  return z
+    .string()
+    .optional()
+    .transform((path, context) => {
+      if (path === undefined) {
+        return undefined;
+      }
+      const key = readSettingFile(path, context);
+      if (key === undefined) {
+        return z.NEVER;
+      }
+      if (!isPrivateKey(key, "ec")) {
+        context.addIssue({
+          code: "custom",
+          message: `must be Apple's .p8 key file; ${path} isn't one`,
+        });
+        return z.NEVER;
+      }
+      return { path, key };
+    });
+}
+
 /** The parts of a Firebase service account's JSON key that sending uses. */
 const fcmServiceAccountSchema = z.object({
   project_id: z.string().min(1),
@@ -156,31 +183,16 @@ const configSchema = z
     // path to the signing key's .p8 file, its key ID, the Apple Developer
     // team's ID, and the app's bundle ID. All four, or none, which turns
     // sending to iPhones off.
-    PQ_APNS_KEY_FILE: setting(
-      z
-        .string()
-        .optional()
-        .transform((path, context) => {
-          if (path === undefined) {
-            return undefined;
-          }
-          const key = readSettingFile(path, context);
-          if (key === undefined) {
-            return z.NEVER;
-          }
-          if (!isPrivateKey(key, "ec")) {
-            context.addIssue({
-              code: "custom",
-              message: `must be Apple's .p8 key file; ${path} isn't one`,
-            });
-            return z.NEVER;
-          }
-          return { path, key };
-        })
-    ),
+    PQ_APNS_KEY_FILE: setting(apnsKeyFile()),
     PQ_APNS_KEY_ID: setting(z.string().optional()),
     PQ_APNS_TEAM_ID: setting(z.string().optional()),
     PQ_APNS_BUNDLE_ID: setting(z.string().optional()),
+    // Apple's keys can be limited to one environment. If the key above is
+    // limited to production (App Store and TestFlight apps), the sandbox
+    // (apps built and run from Xcode) needs its own: its .p8 file and key
+    // ID, both or neither. Unset, the key above signs for both.
+    PQ_APNS_SANDBOX_KEY_FILE: setting(apnsKeyFile()),
+    PQ_APNS_SANDBOX_KEY_ID: setting(z.string().optional()),
     // Push notifications to the Android app, through Firebase Cloud
     // Messaging: the path to a Firebase service account's JSON key file.
     // Unset, sending to Android phones is off.
@@ -228,12 +240,25 @@ const configSchema = z
       "PQ_APNS_TEAM_ID",
       "PQ_APNS_BUNDLE_ID",
     ] as const;
-    if (apns.some((name) => settings[name])) {
+    const sandbox = [
+      "PQ_APNS_SANDBOX_KEY_FILE",
+      "PQ_APNS_SANDBOX_KEY_ID",
+    ] as const;
+    if ([...apns, ...sandbox].some((name) => settings[name])) {
       for (const name of apns.filter((name) => !settings[name])) {
         context.addIssue({
           code: "custom",
           path: [name],
           message: "is required when any PQ_APNS_ setting is set",
+        });
+      }
+    }
+    if (sandbox.some((name) => settings[name])) {
+      for (const name of sandbox.filter((name) => !settings[name])) {
+        context.addIssue({
+          code: "custom",
+          path: [name],
+          message: "is required when any PQ_APNS_SANDBOX_ setting is set",
         });
       }
     }

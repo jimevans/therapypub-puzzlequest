@@ -21,12 +21,19 @@ export type PushSenders = Partial<
 
 /**
  * Says which platforms the host's settings let the server send to, for the
- * log when it starts, since a platform without them sends nothing, quietly.
- * @returns whether it sends to iPhones and to Android phones
+ * log when it starts, since a platform without them sends nothing, quietly;
+ * and whether Apple's sandbox has a key of its own.
+ * @returns whether it sends to iPhones and to Android phones, and whether
+ *  the sandbox's key is its own
  */
-export function pushPlatforms(): { ios: boolean; android: boolean } {
+export function pushPlatforms(): {
+  ios: boolean;
+  iosSandboxKey: boolean;
+  android: boolean;
+} {
   return {
     ios: Boolean(config.PQ_APNS_KEY_FILE),
+    iosSandboxKey: Boolean(config.PQ_APNS_SANDBOX_KEY_FILE),
     android: Boolean(config.PQ_FCM_SERVICE_ACCOUNT_FILE),
   };
 }
@@ -48,6 +55,13 @@ function sendersFromConfig(): PushSenders {
       keyId: config.PQ_APNS_KEY_ID,
       teamId: config.PQ_APNS_TEAM_ID,
       bundleId: config.PQ_APNS_BUNDLE_ID,
+      sandbox:
+        config.PQ_APNS_SANDBOX_KEY_FILE && config.PQ_APNS_SANDBOX_KEY_ID
+          ? {
+              key: config.PQ_APNS_SANDBOX_KEY_FILE.key,
+              keyId: config.PQ_APNS_SANDBOX_KEY_ID,
+            }
+          : undefined,
     });
   }
   if (config.PQ_FCM_SERVICE_ACCOUNT_FILE) {

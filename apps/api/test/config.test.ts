@@ -231,6 +231,59 @@ describe("parseConfig", () => {
       expect(message).not.toContain("PQ_APNS_KEY_ID is required");
     });
 
+    it("reads the sandbox's own key, when it has one", () => {
+      const sandboxKey = generateKeyPairSync("ec", { namedCurve: "P-256" })
+        .privateKey.export({ type: "pkcs8", format: "pem" })
+        .toString();
+      const path = file("AuthKey_SANDBOX1.p8", sandboxKey);
+      const config = parseConfig({
+        ...required,
+        ...apns,
+        PQ_APNS_SANDBOX_KEY_FILE: path,
+        PQ_APNS_SANDBOX_KEY_ID: "SANDBOX1",
+      });
+
+      expect(config.PQ_APNS_SANDBOX_KEY_FILE).toEqual({
+        path,
+        key: sandboxKey,
+      });
+      expect(config.PQ_APNS_SANDBOX_KEY_ID).toBe("SANDBOX1");
+      // Without them, the one key signs for both.
+      expect(
+        parseConfig({ ...required, ...apns }).PQ_APNS_SANDBOX_KEY_FILE
+      ).toBeUndefined();
+    });
+
+    it("needs both of the sandbox's settings, and Apple's others, once either is set", () => {
+      const message = parseError({
+        ...required,
+        PQ_APNS_SANDBOX_KEY_ID: "SANDBOX1",
+      });
+
+      expect(message).toContain(
+        "PQ_APNS_SANDBOX_KEY_FILE is required when any PQ_APNS_SANDBOX_ setting is set"
+      );
+      expect(message).toContain(
+        "PQ_APNS_KEY_FILE is required when any PQ_APNS_ setting is set"
+      );
+      expect(message).not.toContain("PQ_APNS_SANDBOX_KEY_ID is required");
+    });
+
+    it("refuses a sandbox key that isn't Apple's kind", () => {
+      const path = file("sandbox.p8", googleKey);
+
+      expect(
+        parseError({
+          ...required,
+          ...apns,
+          PQ_APNS_SANDBOX_KEY_FILE: path,
+          PQ_APNS_SANDBOX_KEY_ID: "SANDBOX1",
+        })
+      ).toContain(
+        `PQ_APNS_SANDBOX_KEY_FILE must be Apple's .p8 key file; ${path} isn't one`
+      );
+    });
+
     it("reads Firebase's service account key file as downloaded", () => {
       const path = file("service-account.json", serviceAccount(googleKey));
 

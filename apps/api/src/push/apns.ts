@@ -2,7 +2,9 @@
 // token-based authentication: each request carries a short JSON Web Token
 // signed with the Apple Developer account's key, over HTTP/2, which Node
 // speaks itself. One connection to each of Apple's environments is kept
-// open and reused, as Apple asks.
+// open and reused, as Apple asks. Apple's keys can be limited to one
+// environment, so the sandbox (where apps built and run from Xcode
+// register) may have a key of its own.
 import { sign } from "node:crypto";
 import {
   type ClientHttp2Session,
@@ -13,11 +15,20 @@ import { logger } from "../logger.js";
 import type { PushTarget } from "../services/session.service.js";
 import type { PushNotification, PushSender } from "./types.js";
 
-/** The settings APNs needs. */
-export interface ApnsSettings {
-  /** The .p8 signing key's contents. */
+/** A signing key: a .p8 file's contents, and its ID. */
+export interface ApnsKey {
   key: string;
   keyId: string;
+}
+
+/** The settings APNs needs. */
+export interface ApnsSettings extends ApnsKey {
+  /**
+   * The sandbox's own key, for apps built and run from Xcode, when the key
+   * above is limited to production (App Store and TestFlight apps); without
+   * it, the key above signs for both.
+   */
+  sandbox?: ApnsKey;
   teamId: string;
   /** The app's bundle ID, which notifications are addressed to. */
   bundleId: string;
@@ -58,27 +69,41 @@ export function createApnsSender(settings: ApnsSettings): PushSender {
   const origins = settings.origins ?? APPLE_ORIGINS;
   const now = settings.now ?? Date.now;
   const sessions = new Map<string, ClientHttp2Session>();
-  let signed: { token: string; at: number } | undefined;
+  /** Each environment's key: the sandbox's own, if it has one. */
+  const keys: Record<PushTarget["environment"], ApnsKey> = {
+    production: settings,
+    development: settings.sandbox ?? settings,
+  };
+  /** Each environment's signed token, reused until near its end. */
+  const signed = new Map<
+    PushTarget["environment"],
+    { token: string; at: number }
+  >();
 
-  /** The bearer token, signed afresh when the last is near its end. */
-  function bearerToken(): string {
+  /**
+   * The bearer token for an environment, signed with its key afresh when
+   * the last is near its end.
+   */
+  function bearerToken(environment: PushTarget["environment"]): string {
     const time = now();
-    if (!signed || time - signed.at >= TOKEN_LIFETIME_MS) {
-      const encode = (value: object) =>
-        Buffer.from(JSON.stringify(value)).toString("base64url");
-      const unsigned = `${encode({ alg: "ES256", kid: settings.keyId })}.${encode(
-        {
-          iss: settings.teamId,
-          iat: Math.floor(time / 1000),
-        }
-      )}`;
-      const signature = sign("sha256", Buffer.from(unsigned), {
-        key: settings.key,
-        dsaEncoding: "ieee-p1363",
-      }).toString("base64url");
-      signed = { token: `${unsigned}.${signature}`, at: time };
+    const last = signed.get(environment);
+    if (last && time - last.at < TOKEN_LIFETIME_MS) {
+      return last.token;
     }
-    return signed.token;
+    const { key, keyId } = keys[environment];
+    const encode = (value: object) =>
+      Buffer.from(JSON.stringify(value)).toString("base64url");
+    const unsigned = `${encode({ alg: "ES256", kid: keyId })}.${encode({
+      iss: settings.teamId,
+      iat: Math.floor(time / 1000),
+    })}`;
+    const signature = sign("sha256", Buffer.from(unsigned), {
+      key,
+      dsaEncoding: "ieee-p1363",
+    }).toString("base64url");
+    const token = `${unsigned}.${signature}`;
+    signed.set(environment, { token, at: time });
+    return token;
   }
 
   /** The open connection to an environment's service, opened if need be. */
@@ -110,15 +135,16 @@ export function createApnsSender(settings: ApnsSettings): PushSender {
    * @returns the response's status and body
    */
   function post(
-    origin: string,
+    environment: PushTarget["environment"],
     deviceToken: string,
     payload: string
   ): Promise<{ status: number; body: string }> {
+    const origin = origins[environment];
     return new Promise((resolve, reject) => {
       const request = session(origin).request({
         [http2.HTTP2_HEADER_METHOD]: "POST",
         [http2.HTTP2_HEADER_PATH]: `/3/device/${encodeURIComponent(deviceToken)}`,
-        authorization: `bearer ${bearerToken()}`,
+        authorization: `bearer ${bearerToken(environment)}`,
         "apns-topic": settings.bundleId,
         "apns-push-type": "alert",
         "apns-priority": "10",
@@ -149,11 +175,7 @@ export function createApnsSender(settings: ApnsSettings): PushSender {
       const payload = JSON.stringify(apnsPayload(notification));
       let response;
       try {
-        response = await post(
-          origins[target.environment],
-          target.token,
-          payload
-        );
+        response = await post(target.environment, target.token, payload);
       } catch (err) {
         logger.warn({ err }, "A push notification to an iPhone wasn't sent");
         return "failed";
@@ -167,10 +189,10 @@ export function createApnsSender(settings: ApnsSettings): PushSender {
       }
       if (response.status === 403) {
         // A refused key or token: sign a new one next time.
-        signed = undefined;
+        signed.delete(target.environment);
       }
       logger.warn(
-        { status: response.status, reason },
+        { status: response.status, reason, environment: target.environment },
         "Apple's push service refused a notification"
       );
       return "failed";
