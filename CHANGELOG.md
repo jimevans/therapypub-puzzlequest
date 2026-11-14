@@ -8,6 +8,8 @@ description at `/api/v1/openapi.json`.
 
 ## Unreleased
 
+## 1.3.0 — 2026-11-14
+
 ### Running the site
 
 - Apple's push notification keys can be limited to one environment, and the
