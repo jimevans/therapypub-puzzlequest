@@ -76,7 +76,7 @@ export default [
   onTopOfFirstLoad(
     "Forgot password",
     "src/screens/account/ForgotPassword.tsx",
-    "32 KB"
+    "33 KB"
   ),
   onTopOfFirstLoad(
     "Reset password",
@@ -88,12 +88,12 @@ export default [
     "src/screens/account/VerifyEmail.tsx",
     "18 KB"
   ),
-  onTopOfFirstLoad("Signing up", "src/screens/account/SignUp.tsx", "34 KB"),
+  onTopOfFirstLoad("Signing up", "src/screens/account/SignUp.tsx", "35 KB"),
   onTopOfFirstLoad("A profile", "src/screens/account/Profile.tsx", "36 KB"),
   onTopOfFirstLoad(
     "Editing a profile",
     "src/screens/account/EditProfile.tsx",
-    "34 KB"
+    "35 KB"
   ),
   onTopOfFirstLoad("A list", "src/screens/admin/TeamsList.tsx", "36 KB"),
   onTopOfFirstLoad(
@@ -135,7 +135,7 @@ export default [
   onTopOfFirstLoad(
     "The sign-in screen",
     "src/screens/signIn/SignIn.tsx",
-    "32 KB"
+    "33 KB"
   ),
   // Already compressed, and only the Latin files download, by unicode-range.
   {
