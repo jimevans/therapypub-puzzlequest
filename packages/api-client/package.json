@@ -24,7 +24,7 @@
     "@vitest/coverage-v8": "^5.1.0",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
-    "jsdom": "^31.0.0",
+    "jsdom": "^31.0.1",
     "openapi-typescript": "^7.13.0",
     "vitest": "^5.1.0"
   }
