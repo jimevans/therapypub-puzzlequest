@@ -17,7 +17,7 @@
     "@wdio/local-runner": "10.2.0",
     "@wdio/mocha-framework": "10.2.0",
     "@wdio/spec-reporter": "10.2.0",
-    "axe-core": "^4.14.0",
+    "axe-core": "^4.14.1",
     "mongodb-memory-server": "^11.3.0",
     "qrcode": "^1.5.4",
     "twilio": "^6.3.0",
