@@ -51,7 +51,7 @@
     "globals": "^17.14.0",
     "prettier": "^3.10.1",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.72.2",
+    "typescript-eslint": "^8.73.0",
     "typescript-native": "npm:typescript@^7.0.2"
   },
   "scarfSettings": {
